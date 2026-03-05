@@ -717,8 +717,8 @@ function renderLeadDetail(lead) {
   const body = document.getElementById('lead-detail-body');
   if (!body) return;
 
-  const scoreColor = { Hot:'#ef4444', Warm:'#F59E0B', Cold:'#3B82F6' };
-  const scoreEmoji = { Hot:'🔥', Warm:'☀️', Cold:'❄️' };
+  const scoreColor = { Hot:'#ef4444', Warm:'#F59E0B', Cold:'#3B82F6', Closing:'#22C55E', Out:'#6B7280' };
+  const scoreEmoji = { Hot:'🔥', Warm:'☀️', Cold:'❄️', Closing:'🤝', Out:'🚫' };
   const sc = scoreColor[lead.Score] || '#6B7280';
   const harga = lead.Harga_Format || formatRupiah(lead.Harga);
 
@@ -750,6 +750,14 @@ function renderLeadDetail(lead) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       ${makeDetailField('Sumber', lead.Sumber)}
       ${makeDetailField('Status Lead', lead.Status_Lead)}
+      ${lead.Score === 'Closing' ? `
+        <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+          <div style="font-size:10px;color:#4ade80;font-weight:700;margin-bottom:6px">🤝 INFO CLOSING</div>
+          ${lead.Closing_Tipe ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:4px"><span style="color:rgba(255,255,255,0.4)">Tipe:</span> <b>${escapeHtml(lead.Closing_Tipe)}</b></div>` : ''}
+          ${lead.Closing_Listing_Nama ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:4px"><span style="color:rgba(255,255,255,0.4)">Listing:</span> ${escapeHtml(lead.Closing_Listing_Nama)}</div>` : ''}
+          ${lead.Closing_Cobroke ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:4px"><span style="color:rgba(255,255,255,0.4)">Cobroke:</span> ${escapeHtml(lead.Closing_Cobroke)}</div>` : ''}
+          ${lead.Closing_Proyek ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:4px"><span style="color:rgba(255,255,255,0.4)">Proyek:</span> ${escapeHtml(lead.Closing_Proyek)}</div>` : ''}
+        </div>` : ''}
       ${makeDetailField('Tipe Properti', lead.Tipe_Properti)}
       ${makeDetailField('Jenis', lead.Jenis)}
       ${makeDetailField('Budget Min', lead.Budget_Min ? formatRupiah(lead.Budget_Min) : '')}
@@ -794,14 +802,144 @@ function openChangeStatus(leadId, leadName) {
   _currentLeadId = leadId;
   const el = document.getElementById('cls-lead-name');
   if (el) el.textContent = leadName || '';
+  // Reset semua sub-panels
   document.getElementById('ool-wrap').style.display = 'none';
   document.getElementById('ool-reason').value = '';
+  document.getElementById('closing-wrap').style.display = 'none';
+  document.getElementById('cls-secondary-wrap').style.display = 'none';
+  document.getElementById('cls-primary-wrap').style.display = 'none';
+  document.getElementById('cls-own-wrap').style.display = 'none';
+  document.getElementById('cls-cobroke-wrap').style.display = 'none';
   closeModal('modal-lead-detail');
   openModal('modal-change-status');
 }
 
 function showOutOfList() {
   document.getElementById('ool-wrap').style.display = 'block';
+  document.getElementById('closing-wrap').style.display = 'none';
+}
+
+// ── Closing panel functions ───────────────────────────────
+function showClosingPanel() {
+  document.getElementById('ool-wrap').style.display = 'none';
+  document.getElementById('closing-wrap').style.display = 'block';
+  // Reset tipe selection
+  document.getElementById('cls-secondary-wrap').style.display = 'none';
+  document.getElementById('cls-primary-wrap').style.display = 'none';
+  ['cls-btn-secondary','cls-btn-primary'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.style.outline = 'none'; b.style.boxShadow = 'none'; }
+  });
+}
+
+function selectClosingTipe(tipe) {
+  // Highlight tombol
+  document.getElementById('cls-btn-secondary').style.outline = tipe === 'Secondary' ? '2px solid #a855f7' : 'none';
+  document.getElementById('cls-btn-primary').style.outline   = tipe === 'Primary'   ? '2px solid #22d3ee' : 'none';
+  document.getElementById('cls-secondary-wrap').style.display = tipe === 'Secondary' ? 'block' : 'none';
+  document.getElementById('cls-primary-wrap').style.display   = tipe === 'Primary'   ? 'block' : 'none';
+
+  if (tipe === 'Secondary') {
+    // Reset source selection
+    document.getElementById('cls-own-wrap').style.display = 'none';
+    document.getElementById('cls-cobroke-wrap').style.display = 'none';
+    ['cls-btn-own','cls-btn-cobroke'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.style.outline = 'none';
+    });
+  }
+}
+
+function selectSecondarySource(source) {
+  document.getElementById('cls-btn-own').style.outline     = source === 'own'     ? '2px solid #D4A853' : 'none';
+  document.getElementById('cls-btn-cobroke').style.outline = source === 'cobroke' ? '2px solid #fb923c' : 'none';
+  document.getElementById('cls-own-wrap').style.display     = source === 'own'     ? 'block' : 'none';
+  document.getElementById('cls-cobroke-wrap').style.display = source === 'cobroke' ? 'block' : 'none';
+
+  if (source === 'own') {
+    // Load listing milik agen sendiri
+    _loadOwnListingsForClosing();
+  } else {
+    // Load semua listing untuk cobroke picker
+    _loadAllListingsForCobroke();
+  }
+}
+
+async function _loadOwnListingsForClosing() {
+  const sel = document.getElementById('cls-own-listing');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Memuat... —</option>';
+  try {
+    const res = await API.get(`/listings?agen_id=${STATE.user.id}`);
+    const listings = res.data || [];
+    if (!listings.length) {
+      sel.innerHTML = '<option value="">— Belum ada listing —</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">— Pilih listing kamu —</option>' +
+      listings.map(l => `<option value="${escapeHtml(l.ID)}" data-nama="${escapeHtml(l.Judul||'')} (${l.Kode_Listing||''})">${escapeHtml(l.Kode_Listing||'')} — ${escapeHtml(l.Judul||'')} | ${l.Kota||''}</option>`).join('');
+  } catch { sel.innerHTML = '<option value="">— Gagal load —</option>'; }
+}
+
+async function _loadAllListingsForCobroke() {
+  const sel = document.getElementById('cls-cobroke-listing');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Memuat... —</option>';
+  try {
+    const res = await API.get('/listings?all=1');
+    const listings = res.data || [];
+    sel.innerHTML = '<option value="">— Pilih dari listing CRM (opsional) —</option>' +
+      listings.map(l => `<option value="${escapeHtml(l.ID)}" data-nama="${escapeHtml(l.Judul||'')} (${l.Kode_Listing||''})">${escapeHtml(l.Kode_Listing||'')} — ${escapeHtml(l.Judul||'')} | ${l.Agen_Nama||''}</option>`).join('');
+  } catch { sel.innerHTML = '<option value="">— Gagal load —</option>'; }
+}
+
+async function doClosingSubmit() {
+  if (!_currentLeadId) return;
+
+  // Validasi tipe
+  const secBtn = document.getElementById('cls-btn-secondary');
+  const priBtn = document.getElementById('cls-btn-primary');
+  const isSecondary = secBtn?.style.outline?.includes('solid');
+  const isPrimary   = priBtn?.style.outline?.includes('solid');
+  if (!isSecondary && !isPrimary) {
+    showToast('Pilih tipe transaksi dulu (Secondary / Primary)', 'error'); return;
+  }
+
+  const payload = { Score: 'Closing', Closing_Tipe: isSecondary ? 'Secondary' : 'Primary' };
+
+  if (isSecondary) {
+    const ownBtn    = document.getElementById('cls-btn-own');
+    const isOwn     = ownBtn?.style.outline?.includes('solid');
+    const isCobroke = !isOwn;
+
+    if (isOwn) {
+      const sel = document.getElementById('cls-own-listing');
+      const opt = sel?.options[sel.selectedIndex];
+      if (!sel?.value) { showToast('Pilih listing kamu', 'error'); return; }
+      payload.Closing_Listing_ID   = sel.value;
+      payload.Closing_Listing_Nama = opt?.dataset?.nama || opt?.text || '';
+    } else {
+      const detail = document.getElementById('cls-cobroke-detail')?.value?.trim();
+      const coSel  = document.getElementById('cls-cobroke-listing');
+      const coOpt  = coSel?.options[coSel?.selectedIndex];
+      if (!detail && !coSel?.value) { showToast('Isi detail cobroke atau pilih listing', 'error'); return; }
+      payload.Closing_Cobroke       = detail || (coOpt?.text || '');
+      payload.Closing_Listing_ID    = coSel?.value || '';
+      payload.Closing_Listing_Nama  = coOpt?.dataset?.nama || '';
+    }
+  } else {
+    const proyek = document.getElementById('cls-primary-proyek')?.value?.trim();
+    if (!proyek) { showToast('Isi nama proyek / developer', 'error'); return; }
+    payload.Closing_Proyek = proyek;
+  }
+
+  try {
+    await API.put(`/leads/${_currentLeadId}`, payload);
+    showToast('🤝 Closing! Lead berhasil di-mark sebagai deal', 'success');
+    closeModal('modal-change-status');
+    await loadLeads();
+    if (STATE.currentPage === 'dashboard') await loadDashboard();
+  } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
 }
 
 async function doChangeStatus(newScore) {
@@ -1539,8 +1677,8 @@ function renderLeadsList(leads) {
   if (!el) return;
   if (!leads.length) { el.innerHTML = emptyState('Tidak ada leads'); return; }
 
-  const scoreColor = { Hot:'#ef4444', Warm:'#F59E0B', Cold:'#3B82F6' };
-  const scoreEmoji = { Hot:'🔥', Warm:'☀️', Cold:'❄️' };
+  const scoreColor = { Hot:'#ef4444', Warm:'#F59E0B', Cold:'#3B82F6', Closing:'#22C55E', Out:'#6B7280' };
+  const scoreEmoji = { Hot:'🔥', Warm:'☀️', Cold:'❄️', Closing:'🤝', Out:'🚫' };
 
   el.innerHTML = leads.map(l => {
     const sc = scoreColor[l.Score] || '#6B7280';

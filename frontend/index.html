@@ -645,17 +645,83 @@
     <div class="mheader"><div class="drag-handle"></div><h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff">Ubah Status Lead</h3></div>
     <div class="mbody">
       <p id="cls-lead-name" style="color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:16px"></p>
+      <!-- Status buttons -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-        <button onclick="doChangeStatus('Hot')"   style="padding:14px;border-radius:12px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;font-size:13px;font-weight:700;cursor:pointer">🔥 Hot</button>
-        <button onclick="doChangeStatus('Warm')"  style="padding:14px;border-radius:12px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#fbbf24;font-size:13px;font-weight:700;cursor:pointer">☀️ Warm</button>
-        <button onclick="doChangeStatus('Cold')"  style="padding:14px;border-radius:12px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;font-size:13px;font-weight:700;cursor:pointer">❄️ Cold</button>
-        <button onclick="showOutOfList()"         style="padding:14px;border-radius:12px;background:rgba(107,114,128,0.15);border:1px solid rgba(107,114,128,0.3);color:#9ca3af;font-size:13px;font-weight:700;cursor:pointer">🚫 Out</button>
+        <button onclick="doChangeStatus('Hot')"    style="padding:14px;border-radius:12px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;font-size:13px;font-weight:700;cursor:pointer">🔥 Hot</button>
+        <button onclick="doChangeStatus('Warm')"   style="padding:14px;border-radius:12px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#fbbf24;font-size:13px;font-weight:700;cursor:pointer">☀️ Warm</button>
+        <button onclick="doChangeStatus('Cold')"   style="padding:14px;border-radius:12px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;font-size:13px;font-weight:700;cursor:pointer">❄️ Cold</button>
+        <button onclick="showOutOfList()"          style="padding:14px;border-radius:12px;background:rgba(107,114,128,0.15);border:1px solid rgba(107,114,128,0.3);color:#9ca3af;font-size:13px;font-weight:700;cursor:pointer">🚫 Out</button>
+        <button onclick="showClosingPanel()" style="padding:14px;border-radius:12px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);color:#4ade80;font-size:13px;font-weight:700;cursor:pointer;grid-column:1/-1">🤝 Closing (Deal)</button>
       </div>
+
+      <!-- Out of List panel -->
       <div id="ool-wrap" style="display:none;margin-bottom:12px">
         <label class="form-label">Keterangan Out of List</label>
         <textarea id="ool-reason" class="form-input" rows="3" placeholder="Alasan lead tidak dilanjutkan..." style="resize:none"></textarea>
         <button onclick="doChangeStatus('Out')" class="btn-gold" style="width:100%;margin-top:8px">Konfirmasi Out</button>
       </div>
+
+      <!-- Closing panel -->
+      <div id="closing-wrap" style="display:none;background:rgba(34,197,94,0.05);border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:14px;margin-bottom:12px">
+        <p style="font-size:12px;font-weight:700;color:#4ade80;margin-bottom:12px">🤝 Detail Closing</p>
+        
+        <!-- Tipe Closing -->
+        <label class="form-label">Tipe Transaksi</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+          <button id="cls-btn-secondary" onclick="selectClosingTipe('Secondary')"
+            style="padding:12px 8px;border-radius:10px;background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.3);color:#c084fc;font-size:12px;font-weight:600;cursor:pointer">
+            🏘️ Secondary<br><span style="font-size:10px;opacity:0.6;font-weight:400">Listing existing</span>
+          </button>
+          <button id="cls-btn-primary" onclick="selectClosingTipe('Primary')"
+            style="padding:12px 8px;border-radius:10px;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.3);color:#22d3ee;font-size:12px;font-weight:600;cursor:pointer">
+            🏗️ Primary<br><span style="font-size:10px;opacity:0.6;font-weight:400">Proyek developer</span>
+          </button>
+        </div>
+
+        <!-- Secondary sub-panel -->
+        <div id="cls-secondary-wrap" style="display:none">
+          <label class="form-label">Sumber Listing</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+            <button id="cls-btn-own" onclick="selectSecondarySource('own')"
+              style="padding:10px 6px;border-radius:10px;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:11px;font-weight:600;cursor:pointer">
+              🔑 Listing Sendiri
+            </button>
+            <button id="cls-btn-cobroke" onclick="selectSecondarySource('cobroke')"
+              style="padding:10px 6px;border-radius:10px;background:rgba(249,115,22,0.12);border:1px solid rgba(249,115,22,0.3);color:#fb923c;font-size:11px;font-weight:600;cursor:pointer">
+              🤝 Cobroke
+            </button>
+          </div>
+
+          <!-- Own listing picker -->
+          <div id="cls-own-wrap" style="display:none;margin-bottom:10px">
+            <label class="form-label">Pilih Listing Kamu</label>
+            <select id="cls-own-listing" class="form-input" style="font-size:12px">
+              <option value="">— Loading listings... —</option>
+            </select>
+          </div>
+
+          <!-- Cobroke detail -->
+          <div id="cls-cobroke-wrap" style="display:none;margin-bottom:10px">
+            <label class="form-label">Detail Listing Cobroke</label>
+            <input id="cls-cobroke-detail" class="form-input" type="text"
+              placeholder="Contoh: Kode/Nama listing + brand/agen pemilik" style="font-size:12px"/>
+            <label class="form-label" style="margin-top:8px">Cari dari Semua Listing</label>
+            <select id="cls-cobroke-listing" class="form-input" style="font-size:12px">
+              <option value="">— Pilih dari listing CRM (opsional) —</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Primary sub-panel -->
+        <div id="cls-primary-wrap" style="display:none">
+          <label class="form-label">Nama Proyek / Developer</label>
+          <input id="cls-primary-proyek" class="form-input" type="text"
+            placeholder="Contoh: Grand Wisata Bekasi – Cluster Magnolia" style="font-size:12px;margin-bottom:10px"/>
+        </div>
+
+        <button onclick="doClosingSubmit()" class="btn-gold" style="width:100%;margin-top:4px">✅ Konfirmasi Closing</button>
+      </div>
+
       <button onclick="closeModal('modal-change-status')" class="btn-ghost" style="width:100%">Batal</button>
     </div>
   </div>

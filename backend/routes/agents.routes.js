@@ -17,8 +17,6 @@ const { authMiddleware, requireRole, requireMinRole } = require('../middleware/a
 const sheetsService = require('../services/sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 
-router.use(authMiddleware);
-
 const VALID_ROLES = ['superadmin', 'principal', 'business_manager', 'admin', 'agen'];
 
 function rowToAgent(row, headers) {
@@ -26,7 +24,8 @@ function rowToAgent(row, headers) {
   return cols.reduce((obj, col, i) => { obj[col] = row[i] || ''; return obj; }, {});
 }
 
-// GET /agents?telegram_id=xxx — PUBLIC (untuk Telegram Bot auth, tidak perlu JWT)
+// ─── PUBLIC route (no auth) — HARUS sebelum router.use(authMiddleware) ────────
+// GET /agents/by-telegram/:id — untuk Telegram Bot auth tanpa JWT
 router.get('/by-telegram/:telegram_id', async (req, res) => {
   try {
     const rows = await sheetsService.getRange(SHEETS.AGENTS);
@@ -41,6 +40,9 @@ router.get('/by-telegram/:telegram_id', async (req, res) => {
     res.json({ success: true, data: agent });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
+
+// ─── Semua route di bawah ini butuh JWT ──────────────────────────────────────
+router.use(authMiddleware);
 
 // GET /agents
 router.get('/', requireMinRole('admin'), async (req, res) => {

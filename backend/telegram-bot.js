@@ -31,7 +31,9 @@ if (!TOKEN) {
   return;
 }
 
-const bot = new TelegramBot(TOKEN, { polling: true });
+// Webhook mode untuk Cloud Run (polling tidak kompatibel dengan serverless)
+// Bot diinit tanpa polling — updates diterima via POST dari Telegram
+const bot = new TelegramBot(TOKEN, { polling: false });
 
 // ── State percakapan (per chat_id) ────────────────────────────────────────────
 const sessions = new Map();
@@ -113,8 +115,10 @@ async function downloadTelegramPhoto(fileId) {
 }
 
 // ── Helper: Kirim listing card ────────────────────────────────────────────────
-function listingCard(l, idx) {
+function listingCard(l, idx, agentWA) {
   const statusEmoji = { Aktif: '✅', Terjual: '🏷️', Tersewa: '🔑', Ditarik: '🚫' };
+  const wa = agentWA || l.Agen_WA || '';
+  const waLink = wa ? `wa.me/${wa.replace(/\D/g,'')}` : null;
   const lines = [
     `${idx ? `*${idx}.* ` : ''}${statusEmoji[l.Status_Listing] || '📋'} *${l.Judul || '—'}*`,
     `🏷️ \`${l.Kode_Listing || '-'}\`  •  ${l.Tipe_Properti || ''} ${l.Status_Transaksi === 'Disewakan' ? '(Sewa)' : '(Jual)'}`,
@@ -122,8 +126,26 @@ function listingCard(l, idx) {
     `💰 *${fmt(l.Harga)}*`,
     l.Luas_Tanah ? `📐 LT ${l.Luas_Tanah}m²${l.Luas_Bangunan ? ` / LB ${l.Luas_Bangunan}m²` : ''}` : '',
     (l.Kamar_Tidur || l.Kamar_Mandi) ? `🛏 ${l.Kamar_Tidur || 0}KT  🚿 ${l.Kamar_Mandi || 0}KM` : '',
+    `👤 *${l.Agen_Nama || '—'}*${waLink ? `  •  📞 [WA](https://${waLink})` : wa ? `  •  📞 ${wa}` : ''}`,
   ].filter(Boolean).join('\n');
   return lines;
+}
+
+// ── Helper: Ambil map agenId → No_WA dari AGENTS sheet ──────────────────────
+async function getAgentWAMap() {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.AGENTS);
+    if (!rows || rows.length < 2) return {};
+    const headers = rows[0];
+    const idIdx = headers.indexOf('ID');
+    const waIdx = headers.indexOf('No_WA');
+    if (idIdx === -1 || waIdx === -1) return {};
+    const map = {};
+    rows.slice(1).forEach(r => {
+      if (r[idIdx]) map[r[idIdx]] = r[waIdx] || '';
+    });
+    return map;
+  } catch { return {}; }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -236,7 +258,10 @@ bot.onText(/\/listing(.*)/, async (msg, match) => {
   if (!agent) return;
 
   try {
-    const allListings = await listingsService.getAll({});
+    const [allListings, agentWAMap] = await Promise.all([
+      listingsService.getAll({}),
+      getAgentWAMap(),
+    ]);
     let results;
 
     if (keyword) {
@@ -272,7 +297,7 @@ bot.onText(/\/listing(.*)/, async (msg, match) => {
 
     for (let i = 0; i < results.length; i++) {
       const l    = results[i];
-      const text = listingCard(l, i + 1);
+      const text = listingCard(l, i + 1, agentWAMap[l.Agen_ID] || '');
 
       if (l.Foto_Utama_URL) {
         try {
@@ -601,9 +626,28 @@ async function simpanListing(chatId, sess) {
 }
 
 // ── Error handler ─────────────────────────────────────────────────────────────
-bot.on('polling_error', (err) => {
-  console.error('[TelegramBot] Polling error:', err.message);
-});
+// Setup webhook setelah bot diinisiasi
+async function setupWebhook() {
+  try {
+    const BASE_URL = process.env.BASE_URL || process.env.CLOUD_RUN_URL || '';
+    if (!BASE_URL) {
+      console.warn('[TelegramBot] BASE_URL tidak diset — webhook tidak terdaftar otomatis');
+      console.warn('[TelegramBot] Set manual via: https://api.telegram.org/bot<TOKEN>/setWebhook?url=<URL>/api/telegram-webhook');
+      return;
+    }
+    const webhookUrl = `${BASE_URL}/api/telegram-webhook`;
+    const result = await bot.setWebHook(webhookUrl);
+    if (result) {
+      console.log('[TelegramBot] ✅ Webhook aktif:', webhookUrl);
+    } else {
+      console.warn('[TelegramBot] ⚠️ Webhook set gagal — cek BASE_URL');
+    }
+  } catch(e) {
+    console.error('[TelegramBot] Webhook setup error:', e.message);
+  }
+}
 
-console.log('🤖 Telegram Bot siap menerima pesan');
+setupWebhook();
+
+console.log('🤖 Telegram Bot siap (webhook mode)');
 module.exports = bot;

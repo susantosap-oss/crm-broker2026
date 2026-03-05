@@ -148,10 +148,23 @@ app.listen(PORT, async () => {
   await migrateHeaders();
 });
 
-// ── Telegram Bot ───────────────────────────────────────────
+// ── Telegram Bot Webhook Endpoint ──────────────────────────
+// HARUS sebelum SPA fallback, SETELAH semua /api routes
 if (process.env.TELEGRAM_BOT_TOKEN) {
-  require('./telegram-bot');
-  console.log('🤖 Telegram Bot aktif');
+  const telegramBot = require('./telegram-bot');
+  if (telegramBot) {
+    // Endpoint yang menerima update dari Telegram
+    app.post('/api/telegram-webhook', (req, res) => {
+      try {
+        telegramBot.processUpdate(req.body);
+        res.sendStatus(200);
+      } catch(e) {
+        console.error('[Webhook] processUpdate error:', e.message);
+        res.sendStatus(200); // tetap 200 agar Telegram tidak retry spam
+      }
+    });
+    console.log('🤖 Telegram Bot aktif (webhook mode) — endpoint: POST /api/telegram-webhook');
+  }
 }
 
 module.exports = app;

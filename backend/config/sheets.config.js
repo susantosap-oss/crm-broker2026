@@ -109,6 +109,11 @@ const COLUMNS = {
     'Catatan_Out',        // Y
     'Is_Buyer_Request',   // Z  ★ NEW (TRUE/FALSE)
     'Team_ID',            // AA ★ NEW
+    'Closing_Tipe',       // AB  Secondary | Primary
+    'Closing_Listing_ID', // AC  ID listing sendiri (Secondary-own)
+    'Closing_Listing_Nama', // AD  Nama listing untuk display
+    'Closing_Cobroke',    // AE  Detail listing cobroke / brand lain
+    'Closing_Proyek',     // AF  Nama proyek (Primary)
   ],
 
   AGENTS: [

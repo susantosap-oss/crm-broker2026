@@ -94,8 +94,11 @@ async function handleLogin() {
 
     STATE.token = json.data.token;
     STATE.user  = json.data.user;
+    // Clear semua sesi lama sebelum set yang baru
+    sessionStorage.clear();
     sessionStorage.setItem('crm_token', STATE.token);
     sessionStorage.setItem('crm_user', JSON.stringify(STATE.user));
+    sessionStorage.setItem('crm_login_at', Date.now().toString());
 
     showApp();
   } catch (err) {
@@ -143,12 +146,20 @@ function showApp() {
   document.getElementById('bottom-nav')?.classList.remove('hidden');
   document.getElementById('fab-area')?.classList.remove('hidden');
 
-  // Reset in-memory data to force fresh fetch (Bug #2 - stale cache)
-  STATE.listings = [];
-  STATE.leads    = [];
-  STATE.tasks    = [];
+  // Reset in-memory data to force fresh fetch
+  STATE.listings       = [];
+  STATE.leads          = [];
+  STATE.tasks          = [];
   STATE.pipelineStages = [];
   STATE.currentPage    = 'dashboard';
+
+  // Wipe rendered DOM dari sesi sebelumnya (prevent stale data flash)
+  ['stat-listing','stat-leads','stat-hot','stat-konversi',
+   'dash-hot-leads','dash-tasks','dash-pipeline',
+   'hot-leads-list','tasks-list','admin-dash-content'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
 
   const { nama, role, email } = STATE.user;
   const initial = (nama || 'A').charAt(0).toUpperCase();
