@@ -140,12 +140,16 @@ async function migrateHeaders() {
 }
 
 // ── Start Server ───────────────────────────────────────────
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
   console.log(`\n🏢 CRM Broker Properti v2.0`);
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`👥 Roles: superadmin | principal | business_manager | admin | agen`);
   console.log(`📊 Google Sheets SSoT connected\n`);
-  await migrateHeaders();
+
+  // Jalankan migrasi di background — tidak blocking startup Cloud Run
+  setTimeout(() => {
+    migrateHeaders().catch(e => console.warn('[Migrate] Error:', e.message));
+  }, 3000);
 });
 
 // ── Telegram Bot Webhook Endpoint ──────────────────────────

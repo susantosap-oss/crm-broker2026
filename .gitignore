@@ -1,9 +1,25 @@
-node_modules/
+# --- SENSITIF (WAJIB ADA) ---
 .env
-.env.yaml
+config.json
+secrets.py
+credentials.json
+*.pem
+*.key
+
+# --- DATABASE & LOG ---
+*.db
+*.sqlite
 *.log
-/tmp/
-.DS_Store
-dist/
-coverage/
+npm-debug.log*
+
+# --- NODE.JS / PYTHON ---
 node_modules/
+venv/
+.venv/
+__pycache__/
+
+# --- CLOUD SHELL / IDE ---
+.vscode/
+.cloudshell_last_opened
+.DS_Store
+.env.yaml

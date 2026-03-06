@@ -51,6 +51,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       email:   agentObj.Email,
       role:    agentObj.Role || 'agen',
       team_id: agentObj.Team_ID || '',
+      no_wa:   agentObj.No_WA  || '',
     };
 
     const token = jwt.sign(user, process.env.JWT_SECRET, {

@@ -420,7 +420,7 @@
 <!-- ADD LISTING (PR 9) -->
 <div id="modal-add-listing" class="modal-overlay">
   <div class="modal-sheet">
-    <div class="mheader"><div class="drag-handle"></div><div style="display:flex;align-items:center;justify-content:space-between"><h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff">Tambah Listing</h3><button onclick="resetListingModal()" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button></div></div>
+    <div class="mheader"><div class="drag-handle"></div><div style="display:flex;align-items:center;justify-content:space-between"><h3 id="modal-listing-title" style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff">Tambah Listing</h3><button onclick="resetListingModal()" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button></div></div>
     <div class="mbody">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label class="form-label">Tipe *</label><select id="add-tipe" class="form-input"><option value="">Pilih</option><option>Rumah</option><option>Ruko</option><option>Tanah</option><option>Apartemen</option><option>Gudang</option></select></div>
@@ -461,7 +461,7 @@
       </div>
       <div style="display:flex;gap:10px;padding-top:4px">
         <button onclick="resetListingModal()" class="btn-ghost" style="flex:1">Batal</button>
-        <button onclick="submitAddListing()" class="btn-gold" style="flex:1"><i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan</button>
+        <button id="listing-submit-btn" onclick="submitAddListing()" class="btn-gold" style="flex:1"><i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan</button>
       </div>
     </div>
   </div>

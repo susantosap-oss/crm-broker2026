@@ -115,10 +115,15 @@ async function downloadTelegramPhoto(fileId) {
 }
 
 // ── Helper: Kirim listing card ────────────────────────────────────────────────
-function listingCard(l, idx, agentWA) {
+function listingCard(l, idx, agentInfo) {
   const statusEmoji = { Aktif: '✅', Terjual: '🏷️', Tersewa: '🔑', Ditarik: '🚫' };
-  const wa = agentWA || l.Agen_WA || '';
-  const waLink = wa ? `wa.me/${wa.replace(/\D/g,'')}` : null;
+  // agentInfo bisa object {wa, nama} atau string lama
+  const agentNama = (agentInfo && agentInfo.nama) || l.Agen_Nama || '—';
+  const agentWA   = (agentInfo && agentInfo.wa)   || '';
+  const waClean   = agentWA.replace(/\D/g, '');
+  const waLine    = agentWA
+    ? `👤 *${agentNama}*  •  📞 [Hubungi via WA](https://wa.me/${waClean})`
+    : `👤 *${agentNama}*`;
   const lines = [
     `${idx ? `*${idx}.* ` : ''}${statusEmoji[l.Status_Listing] || '📋'} *${l.Judul || '—'}*`,
     `🏷️ \`${l.Kode_Listing || '-'}\`  •  ${l.Tipe_Properti || ''} ${l.Status_Transaksi === 'Disewakan' ? '(Sewa)' : '(Jual)'}`,
@@ -126,7 +131,7 @@ function listingCard(l, idx, agentWA) {
     `💰 *${fmt(l.Harga)}*`,
     l.Luas_Tanah ? `📐 LT ${l.Luas_Tanah}m²${l.Luas_Bangunan ? ` / LB ${l.Luas_Bangunan}m²` : ''}` : '',
     (l.Kamar_Tidur || l.Kamar_Mandi) ? `🛏 ${l.Kamar_Tidur || 0}KT  🚿 ${l.Kamar_Mandi || 0}KM` : '',
-    `👤 *${l.Agen_Nama || '—'}*${waLink ? `  •  📞 [WA](https://${waLink})` : wa ? `  •  📞 ${wa}` : ''}`,
+    waLine,
   ].filter(Boolean).join('\n');
   return lines;
 }
@@ -137,12 +142,18 @@ async function getAgentWAMap() {
     const rows = await sheetsService.getRange(SHEETS.AGENTS);
     if (!rows || rows.length < 2) return {};
     const headers = rows[0];
-    const idIdx = headers.indexOf('ID');
-    const waIdx = headers.indexOf('No_WA');
-    if (idIdx === -1 || waIdx === -1) return {};
+    const idIdx   = headers.indexOf('ID');
+    const waIdx   = headers.indexOf('No_WA');
+    const namaIdx = headers.indexOf('Nama');
+    if (idIdx === -1) return {};
     const map = {};
     rows.slice(1).forEach(r => {
-      if (r[idIdx]) map[r[idIdx]] = r[waIdx] || '';
+      const id = String(r[idIdx] || '').trim();
+      if (!id) return;
+      map[id] = {
+        wa:   waIdx  !== -1 ? String(r[waIdx]   || '').trim() : '',
+        nama: namaIdx !== -1 ? String(r[namaIdx] || '').trim() : '',
+      };
     });
     return map;
   } catch { return {}; }
@@ -297,7 +308,7 @@ bot.onText(/\/listing(.*)/, async (msg, match) => {
 
     for (let i = 0; i < results.length; i++) {
       const l    = results[i];
-      const text = listingCard(l, i + 1, agentWAMap[l.Agen_ID] || '');
+      const text = listingCard(l, i + 1, agentWAMap[l.Agen_ID] || null);
 
       if (l.Foto_Utama_URL) {
         try {

@@ -592,13 +592,17 @@ async function openListingDetail(id) {
     </div>
 
     <!-- Action Buttons -->
-    <div style="display:flex;gap:10px;padding-top:4px">
-      <button onclick="shareListingWA('${escapeHtml(id)}')" style="flex:1;padding:13px;border-radius:12px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:13px;font-weight:600;cursor:pointer">
+    <div style="display:flex;gap:10px;padding-top:4px;flex-wrap:wrap">
+      <button onclick="shareListingWA('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-brands fa-whatsapp" style="margin-right:6px"></i>Share WA
       </button>
-      <button onclick="shareListingWACatalog('${escapeHtml(id)}')" style="flex:1;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
+      <button onclick="shareListingWACatalog('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-regular fa-copy" style="margin-right:6px"></i>WA Catalog
       </button>
+      ${listing.Agen_ID === STATE.user?.id ? `
+      <button onclick="openEditListing('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:rgba(43,123,255,0.12);border:1px solid rgba(43,123,255,0.25);color:#60a5fa;font-size:13px;font-weight:600;cursor:pointer;margin-top:0">
+        <i class="fa-solid fa-pen-to-square" style="margin-right:6px"></i>Edit Listing
+      </button>` : ''}
     </div>
   `;
 
@@ -648,20 +652,43 @@ async function saveCaption(listingId) {
   } catch (e) { showToast('Gagal simpan: ' + e.message, 'error'); }
 }
 
-// PR 7: Share to WhatsApp
+// PR 7: Share to WhatsApp — plain text, no emoji, + Hubungi agen
 function shareListingWA(listingId) {
   const listing = _allListings.find(l => l.ID === listingId);
   if (!listing) return;
   const harga = listing.Harga_Format || formatRupiah(listing.Harga);
-  const caption = document.getElementById('ld-caption')?.value || listing.Caption_Sosmed || '';
-  const text = caption ||
-    `🏠 *${listing.Judul}*\n` +
-    `📍 ${[listing.Kecamatan, listing.Kota].filter(Boolean).join(', ')}\n` +
-    `💰 ${harga}\n` +
-    `📋 ${listing.Kode_Listing || ''}\n` +
-    `Hubungi saya untuk info lebih lanjut!`;
-  const encoded = encodeURIComponent(text);
-  window.open(`https://wa.me/?text=${encoded}`, '_blank');
+
+  // Ambil nama & WA dari STATE.user (agen yang sedang login = yang share)
+  const agentNama = STATE.user?.nama || listing.Agen_Nama || '';
+  const agentWA   = STATE.user?.no_wa || STATE.user?.No_WA || '';
+  const waClean   = agentWA.replace(/\D/g, '');
+
+  // Build detail properti plain text (tanpa emoji)
+  const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ');
+  const spek = [
+    listing.Luas_Tanah   ? `LT ${listing.Luas_Tanah} m2`    : '',
+    listing.Luas_Bangunan ? `LB ${listing.Luas_Bangunan} m2` : '',
+    listing.Kamar_Tidur  ? `${listing.Kamar_Tidur} KT`       : '',
+    listing.Kamar_Mandi  ? `${listing.Kamar_Mandi} KM`       : '',
+  ].filter(Boolean).join(' / ');
+
+  const deskripsi = listing.Deskripsi
+    ? '\n' + listing.Deskripsi.substring(0, 300) + (listing.Deskripsi.length > 300 ? '...' : '')
+    : '';
+
+  const text =
+    `${listing.Judul || 'Properti Dijual'}\n` +
+    `${listing.Tipe_Properti || ''} - ${listing.Status_Transaksi || ''}\n` +
+    `Lokasi : ${lokasi || '-'}\n` +
+    `Harga  : ${harga}\n` +
+    (spek ? `Spek   : ${spek}\n` : '') +
+    (listing.Kode_Listing ? `Kode   : ${listing.Kode_Listing}\n` : '') +
+    deskripsi +
+    `\n\nHubungi :\n` +
+    `Nama : ${agentNama}\n` +
+    (waClean ? `WA   : +${waClean}\n` : '');
+
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
 }
 
 // PR 17: WA Business Catalog format
@@ -1713,6 +1740,79 @@ function renderLeadsList(leads) {
 // ─────────────────────────────────────────────────────────
 // SUBMIT FORMS
 // ─────────────────────────────────────────────────────────
+// Track edit mode
+let _editListingId = null;
+
+function resetListingModal() {
+  _editListingId = null;
+  ['add-tipe','add-transaksi','add-judul','add-kota','add-kecamatan',
+   'add-harga','add-deskripsi','add-caption'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const prevGrid = document.getElementById('photo-preview-grid');
+  if (prevGrid) prevGrid.innerHTML = '';
+  // Reset photo inputs
+  ['add-photos','add-photo2','add-photo3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  // Reset prev-photo divs
+  ['prev-photo2','prev-photo3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<span style="font-size:11px;color:rgba(255,255,255,0.3)">+ ${id === 'prev-photo2' ? 'Foto 2' : 'Foto 3'}</span>`;
+  });
+  // Reset modal title & button
+  const titleEl = document.getElementById('modal-listing-title');
+  const btnEl   = document.getElementById('listing-submit-btn');
+  if (titleEl) titleEl.textContent = 'Tambah Listing';
+  if (btnEl)   btnEl.innerHTML = '<i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan';
+  closeModal('modal-add-listing');
+}
+
+// Open Edit Listing — pre-fill form with existing data
+function openEditListing(listingId) {
+  const l = _allListings.find(x => x.ID === listingId);
+  if (!l) { showToast('Data listing tidak ditemukan', 'error'); return; }
+
+  _editListingId = listingId;
+
+  // Update modal title & button
+  const titleEl = document.getElementById('modal-listing-title');
+  const btnEl   = document.getElementById('listing-submit-btn');
+  if (titleEl) titleEl.textContent = 'Edit Listing';
+  if (btnEl)   btnEl.innerHTML = '<i class="fa-solid fa-floppy-disk" style="margin-right:6px"></i>Update';
+
+  // Pre-fill all fields
+  setVal('add-tipe',       l.Tipe_Properti     || '');
+  setVal('add-transaksi',  l.Status_Transaksi  || '');
+  setVal('add-judul',      l.Judul             || '');
+  setVal('add-kota',       l.Kota              || '');
+  setVal('add-kecamatan',  l.Kecamatan         || '');
+  setVal('add-harga',      l.Harga             || '');
+  setVal('add-deskripsi',  l.Deskripsi         || '');
+  setVal('add-caption',    l.Caption_Sosmed    || '');
+
+  // Show existing photos as preview
+  const prevGrid = document.getElementById('photo-preview-grid');
+  if (prevGrid) {
+    const photos = [l.Foto_Utama_URL, l.Foto_2_URL, l.Foto_3_URL].filter(Boolean);
+    prevGrid.innerHTML = photos.map(u =>
+      `<div style="border-radius:8px;overflow:hidden;height:80px;background:#1C2D52">
+        <img src="${escapeHtml(u)}" style="width:100%;height:100%;object-fit:cover"/>
+      </div>`
+    ).join('');
+  }
+
+  closeModal('modal-listing-detail');
+  openModal('modal-add-listing');
+}
+
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val;
+}
+
 async function submitAddListing() {
   const tipe      = getVal('add-tipe');
   const transaksi = getVal('add-transaksi');
@@ -1724,6 +1824,8 @@ async function submitAddListing() {
     showToast('Lengkapi field wajib (*)', 'error'); return;
   }
 
+  const isEdit = !!_editListingId;
+
   const formData = new FormData();
   formData.append('Tipe_Properti',    tipe);
   formData.append('Status_Transaksi', transaksi);
@@ -1734,7 +1836,7 @@ async function submitAddListing() {
   formData.append('Deskripsi',        getVal('add-deskripsi'));
   formData.append('Caption_Sosmed',   getVal('add-caption'));
   formData.append('Harga_Format',     formatRupiah(harga));
-  formData.append('Status_Listing',   'Aktif');
+  if (!isEdit) formData.append('Status_Listing', 'Aktif');
 
   // Multi photo: utama + foto2 + foto3 (max 3)
   const photoInputs = [
@@ -1742,8 +1844,10 @@ async function submitAddListing() {
     document.getElementById('add-photo2'),
     document.getElementById('add-photo3'),
   ];
+  let hasNewPhotos = false;
   for (const input of photoInputs) {
     if (input?.files?.length) {
+      hasNewPhotos = true;
       for (const f of input.files) {
         const compressed = await compressImage(f, 1280, 0.80);
         formData.append('photos', compressed, f.name);
@@ -1751,18 +1855,25 @@ async function submitAddListing() {
     }
   }
 
+  const btn = document.getElementById('listing-submit-btn');
   try {
-    const btn = document.querySelector('#modal-add-listing .btn-gold');
     if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
-    await API.post('/listings', formData, true);
-    showToast('✅ Listing berhasil ditambahkan!', 'success');
+
+    if (isEdit) {
+      await API.put(`/listings/${_editListingId}`, formData, true);
+      showToast('✅ Listing berhasil diupdate!', 'success');
+    } else {
+      await API.post('/listings', formData, true);
+      showToast('✅ Listing berhasil ditambahkan!', 'success');
+    }
+
+    resetListingModal();
     closeModal('modal-add-listing');
     await loadDashboard();
     if (STATE.currentPage === 'listings') await loadListings();
   } catch (e) {
     showToast('Gagal: ' + e.message, 'error');
   } finally {
-    const btn = document.querySelector('#modal-add-listing .btn-gold');
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan'; }
   }
 }
@@ -2280,8 +2391,11 @@ async function loadTeamPage() {
                 <div style="font-size:14px;font-weight:700;color:#fff">${escapeHtml(team.Nama_Team)}</div>
                 <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">BM: ${escapeHtml(team.BM_Nama||'-')}</div>
               </div>
-              ${role === 'principal' || role === 'superadmin' ? `
-              <button onclick="openEditTeamModal('${team.Team_ID}')" style="background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.3);color:#D4A853;border-radius:8px;padding:6px 12px;font-size:11px;cursor:pointer">Edit</button>` : ''}
+              ${(role === 'principal' || role === 'superadmin' || role === 'admin') ? `
+              <div style="display:flex;gap:6px">
+                <button onclick="openEditTeamModal('${team.Team_ID}')" style="background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.3);color:#D4A853;border-radius:8px;padding:6px 12px;font-size:11px;cursor:pointer">Edit</button>
+                <button onclick="confirmDeleteTeam('${team.Team_ID}','${(team.Nama_Team||'').replace(/'/g,"\\'")}')" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:6px 12px;font-size:11px;cursor:pointer">Hapus</button>
+              </div>` : ''}
             </div>
 
             <!-- Leads stats per agent -->
@@ -2371,6 +2485,26 @@ function closeTeamModal() {
   document.getElementById('team-modal-overlay').classList.add('hidden');
   document.getElementById('team-modal').classList.add('hidden');
 }
+
+async function confirmDeleteTeam(teamId, teamName) {
+  const ok = confirm(`Hapus tim "${teamName}"?\n\nAnggota tim tidak akan terhapus, hanya struktur timnya saja.`);
+  if (!ok) return;
+  try {
+    await API.delete(`/teams/${teamId}`);
+    showToast('✅ Tim berhasil dihapus', 'success');
+    // Reload teams section
+    const container = document.getElementById('admin-dash-content');
+    if (container) {
+      const activeSection = container.querySelector('[data-section="teams"]');
+      if (activeSection || STATE.currentPage === 'dashboard') {
+        await loadAdminDashboard();
+      }
+    }
+  } catch (e) {
+    showToast('Gagal hapus tim: ' + e.message, 'error');
+  }
+}
+
 
 async function saveTeam() {
   const nama = document.getElementById('tm-nama').value.trim();

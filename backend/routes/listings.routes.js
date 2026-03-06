@@ -25,12 +25,17 @@ router.get('/', async (req, res) => {
     const filters = { ...req.query };
     const { role, id, team_id } = req.user;
 
-    if (role === 'agen' && req.query.all !== '1') {
+    if (req.query.all !== '1') {
+      // Tab "Listing Saya" — semua role filter by agen sendiri
       filters.agen_id = id;
-    } else if (role === 'business_manager' && req.query.all === '1') {
-      if (team_id) filters.team_id = team_id;
-    } else if (role === 'principal' && req.query.all === '1') {
-      filters.principal_id = id; // listingsService akan resolve ke team filter
+    } else {
+      // Tab "Semua Kantor" — filter berdasarkan scope role
+      if (role === 'business_manager' && team_id) {
+        filters.team_id = team_id;
+      } else if (role === 'principal') {
+        filters.principal_id = id;
+      }
+      // superadmin & admin → lihat semua, tidak ada filter tambahan
     }
 
     const listings = await listingsService.getAll(filters);

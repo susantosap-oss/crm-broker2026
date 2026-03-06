@@ -10,7 +10,7 @@
 const express = require('express');
 const router  = express.Router();
 const { v4: uuidv4 } = require('uuid');
-const { authMiddleware, requireRole } = require('../middleware/auth.middleware');
+const { authMiddleware, requireRole, requireMinRole } = require('../middleware/auth.middleware');
 const sheetsService = require('../services/sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 
@@ -144,7 +144,7 @@ router.put('/:id', requireRole('principal', 'superadmin'), async (req, res) => {
 });
 
 // DELETE /teams/:id
-router.delete('/:id', requireRole('principal', 'superadmin'), async (req, res) => {
+router.delete('/:id', requireMinRole('admin'), async (req, res) => {
   try {
     const result = await sheetsService.findRowById(SHEETS.TEAMS, req.params.id, 0);
     if (!result) return res.status(404).json({ success: false, message: 'Tim tidak ditemukan' });
