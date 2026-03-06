@@ -2011,7 +2011,7 @@ async function navigateTo(page) {
     b.className = b.id === `nav-${page}` ? 'nav-btn active' : 'nav-btn';
   });
 
-  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Jadwal & Tasks' };
+  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Jadwal & Tasks', member:'Member Kantor' };
   setEl('page-title', titles[page] || page);
   STATE.currentPage = page;
 
@@ -2024,6 +2024,132 @@ async function navigateTo(page) {
   if (page === 'leads')     await loadLeads();
   if (page === 'tasks')     await loadTasks();
   if (page === 'team')      await loadTeamPage();
+  if (page === 'member')    await loadMemberPage();
+}
+
+// ─────────────────────────────────────────────────────────
+// PAGE MEMBER — daftar kantor & agen
+// ─────────────────────────────────────────────────────────
+let _officesData = [];
+
+async function loadMemberPage() {
+  const container = document.getElementById('member-container');
+  if (!container) return;
+  container.innerHTML = `<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3);font-size:13px"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</div>`;
+  try {
+    const res  = await API.get('/agents/offices');
+    _officesData = res.data || [];
+    renderOffices(_officesData);
+  } catch(e) {
+    container.innerHTML = `<div style="text-align:center;padding:40px;color:rgba(239,68,68,0.7);font-size:13px">Gagal memuat data kantor</div>`;
+  }
+}
+
+function renderOffices(offices) {
+  const container = document.getElementById('member-container');
+  if (!container) return;
+  if (!offices.length) {
+    container.innerHTML = `<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3);font-size:13px">Belum ada data kantor</div>`;
+    return;
+  }
+  container.innerHTML = offices.map(office => officeCard(office)).join('');
+}
+
+function officeCard(office) {
+  const namaBesar = office.nama_kantor.replace(/^MANSION\s*:\s*/i,'').trim() || 'Kantor Pusat';
+  const totalMember = office.members.length;
+  const aktif = office.members.filter(m => m.status === 'Aktif').length;
+
+  const memberAvatars = office.members.slice(0,5).map(m => {
+    const initial = (m.nama||'?').charAt(0).toUpperCase();
+    const foto = m.foto_url ? `<img src="${escapeHtml(m.foto_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>` : `<span style="font-weight:700;color:#D4A853;font-size:11px">${initial}</span>`;
+    return `<div style="width:30px;height:30px;border-radius:50%;background:#1C2D52;border:2px solid #0D1526;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-left:-8px">${foto}</div>`;
+  }).join('');
+  const extraCount = totalMember > 5 ? `<div style="width:30px;height:30px;border-radius:50%;background:#131F38;border:2px solid #0D1526;display:flex;align-items:center;justify-content:center;margin-left:-8px;font-size:9px;color:rgba(255,255,255,0.4);font-weight:600">+${totalMember-5}</div>` : '';
+
+  return `
+    <div style="background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:16px;overflow:hidden">
+      <!-- Vcard header -->
+      <div style="background:linear-gradient(135deg,#0D1A35,#131F38);padding:18px 18px 14px;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div>
+            <div style="font-size:9px;font-weight:700;letter-spacing:2.5px;color:#D4A853;margin-bottom:4px">MANSION</div>
+            <div style="font-size:17px;font-weight:700;color:#fff;font-family:'DM Serif Display',serif">${escapeHtml(namaBesar)}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:18px;font-weight:800;color:#D4A853">${totalMember}</div>
+            <div style="font-size:9px;color:rgba(255,255,255,0.35);letter-spacing:1px">MEMBER</div>
+          </div>
+        </div>
+        <!-- Avatar stack -->
+        <div style="display:flex;align-items:center;margin-top:14px">
+          <div style="display:flex;margin-left:8px">${memberAvatars}${extraCount}</div>
+          <div style="margin-left:12px;font-size:11px;color:rgba(255,255,255,0.4)">${aktif} aktif</div>
+        </div>
+      </div>
+      <!-- Expand toggle -->
+      <button onclick="toggleOfficeMembers(this)" data-office="${escapeHtml(office.nama_kantor)}"
+        style="width:100%;padding:11px 18px;background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:rgba(255,255,255,0.45);font-size:12px">
+        <span>Lihat anggota</span>
+        <i class="fa-solid fa-chevron-down" style="font-size:11px;transition:transform 0.2s"></i>
+      </button>
+      <!-- Member list (hidden by default) -->
+      <div class="office-member-list" style="display:none;padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;display:none">
+        ${office.members.map(m => memberRow(m)).join('')}
+      </div>
+    </div>`;
+}
+
+function memberRow(m) {
+  const roleLabel = { agen:'Agen', admin:'Admin', business_manager:'BM', principal:'Principal', superadmin:'Super Admin' }[m.role] || m.role;
+  const statusColor = m.status === 'Aktif' ? '#4ade80' : m.status === 'Cuti' ? '#facc15' : '#6b7280';
+  const initial = (m.nama||'?').charAt(0).toUpperCase();
+  const foto = m.foto_url
+    ? `<img src="${escapeHtml(m.foto_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`
+    : `<span style="font-weight:700;color:#D4A853;font-size:14px">${initial}</span>`;
+  const waBtn = m.no_wa ? `<button onclick="openWA('${escapeHtml(m.no_wa)}')" style="padding:6px 12px;border-radius:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.2);color:#4ade80;font-size:11px;cursor:pointer"><i class="fa-brands fa-whatsapp" style="margin-right:4px"></i>WA</button>` : '';
+  return `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 6px;border-top:1px solid rgba(255,255,255,0.04)">
+      <div style="width:40px;height:40px;border-radius:50%;background:#1C2D52;border:2px solid rgba(212,168,83,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden">${foto}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(m.nama||'—')}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+          <span style="font-size:10px;color:rgba(255,255,255,0.35)">${roleLabel}</span>
+          <span style="font-size:8px;color:${statusColor}">● ${escapeHtml(m.status||'')}</span>
+        </div>
+        ${m.no_wa ? `<div style="font-size:10px;color:rgba(212,168,83,0.7);margin-top:3px">+${m.no_wa.replace(/[^0-9]/g,'')}</div>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        <div style="text-align:right;margin-right:4px">
+          <div style="font-size:11px;font-weight:700;color:#D4A853">${m.listing_count||0}</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.3)">listing</div>
+        </div>
+        ${waBtn}
+      </div>
+    </div>`;
+}
+
+function toggleOfficeMembers(btn) {
+  const list = btn.nextElementSibling;
+  const icon = btn.querySelector('i');
+  const isOpen = list.style.display !== 'none';
+  list.style.display = isOpen ? 'none' : 'flex';
+  list.style.flexDirection = 'column';
+  icon.style.transform = isOpen ? '' : 'rotate(180deg)';
+  btn.querySelector('span').textContent = isOpen ? 'Lihat anggota' : 'Sembunyikan';
+}
+
+function filterMemberPage(q) {
+  if (!q.trim()) { renderOffices(_officesData); return; }
+  const kw = q.toLowerCase();
+  const filtered = _officesData.map(o => ({
+    ...o,
+    members: o.members.filter(m =>
+      m.nama.toLowerCase().includes(kw) ||
+      o.nama_kantor.toLowerCase().includes(kw)
+    )
+  })).filter(o => o.members.length > 0 || o.nama_kantor.toLowerCase().includes(kw));
+  renderOffices(filtered);
 }
 
 // ─────────────────────────────────────────────────────────
@@ -2276,6 +2402,7 @@ function openEditUser(id) {
   setVal('eu-id', u.ID||'');
   setVal('eu-nama', u.Nama||'');
   setVal('eu-wa', u.No_WA||'');
+  setVal('eu-kantor', (u.Nama_Kantor||'').replace(/^MANSION\s*:\s*/i,'').trim());
   setVal('eu-password', '');
   setVal('eu-telegram', u.Telegram_ID||'');
   setVal('eu-role', u.Role||'agen');
@@ -2290,6 +2417,7 @@ async function submitEditUser() {
     Nama: getVal('eu-nama').trim(),
     No_WA: getVal('eu-wa').trim(),
     Role: getVal('eu-role'),
+    Nama_Kantor: getVal('eu-kantor').trim() ? `MANSION : ${getVal('eu-kantor').trim()}` : '',
     Status: getVal('eu-status'),
     Telegram_ID: getVal('eu-telegram').trim(),
   };
@@ -2313,6 +2441,7 @@ async function submitAddUser() {
     Nama: nama, Email: email, Password: pass,
     No_WA: getVal('nu-wa').trim(),
     Role: getVal('nu-role'),
+    Nama_Kantor: getVal('nu-kantor').trim() ? `MANSION : ${getVal('nu-kantor').trim()}` : '',
     Status: getVal('nu-status'),
     Telegram_ID: getVal('nu-telegram').trim(),
   };
@@ -2323,7 +2452,7 @@ async function submitAddUser() {
     showToast(`✅ User ${nama} berhasil ditambahkan!`, 'success');
     setUserTab('list');
     loadUserList();
-    ['nu-nama','nu-email','nu-password','nu-wa','nu-telegram'].forEach(id => setVal(id,''));
+    ['nu-nama','nu-email','nu-password','nu-wa','nu-telegram','nu-kantor'].forEach(id => setVal(id,''));
   } catch (e) {
     showToast('Gagal: ' + e.message, 'error');
   } finally {

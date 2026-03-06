@@ -134,6 +134,7 @@ const COLUMNS = {
     'Team_ID',            // O  ★ NEW
     'Updated_At',         // P  ★ NEW
     'No_WA_Business',     // Q  ★ WA Business number
+    'Nama_Kantor',        // R  ★ Nama kantor (format: MANSION : {nama})
   ],
 
   // ★ NEW SHEET

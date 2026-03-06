@@ -139,6 +139,38 @@ router.post('/', requireMinRole('admin'), async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// GET /agents/offices — group by Nama_Kantor, return struktur kantor + anggota
+router.get('/offices', async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.AGENTS);
+    if (!rows || rows.length < 2) return res.json({ success: true, data: [] });
+    const [, ...data] = rows;
+    const agents = data
+      .map(row => rowToAgent(row))
+      .filter(a => a.ID)
+      .map(a => { delete a.Password_Hash; return a; });
+    const map = {};
+    agents.forEach(a => {
+      if (a.Status === 'Nonaktif') return;
+      const kantor = a.Nama_Kantor || 'MANSION : Administrator';
+      if (!map[kantor]) map[kantor] = { nama_kantor: kantor, members: [] };
+      map[kantor].members.push({
+        id:          a.ID,
+        nama:        a.Nama,
+        role:        a.Role,
+        no_wa:       a.No_WA,
+        foto_url:    a.Foto_URL,
+        status:      a.Status,
+        listing_count: a.Listing_Count || 0,
+        deal_count:    a.Deal_Count    || 0,
+        join_date:     a.Join_Date     || '',
+      });
+    });
+    const offices = Object.values(map).sort((a, b) => a.nama_kantor.localeCompare(b.nama_kantor));
+    res.json({ success: true, data: offices });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // PUT /agents/change-password
 router.put('/change-password', async (req, res) => {
   try {
@@ -194,6 +226,11 @@ router.put('/:id', requireMinRole('admin'), async (req, res) => {
     if (!result) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     const existing = rowToAgent(result.data);
     const { newPassword, ...updates } = req.body;
+    // Normalize Nama_Kantor format
+    if (updates.Nama_Kantor) {
+      const raw = updates.Nama_Kantor.replace(/^MANSION\s*:\s*/i, '').trim();
+      updates.Nama_Kantor = raw ? `MANSION : ${raw}` : '';
+    }
     const merged = { ...existing, ...updates, Updated_At: new Date().toISOString() };
     if (newPassword && newPassword.length >= 6)
       merged.Password_Hash = await bcrypt.hash(newPassword, 10);

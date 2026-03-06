@@ -280,6 +280,22 @@
 
   </main>
 
+  <!-- PAGE: MEMBER -->
+  <div id="page-member" class="page" style="display:none;flex-direction:column;height:100%;overflow-y:auto">
+    <div style="padding:16px 16px 0">
+      <div id="member-search-wrap" style="position:relative;margin-bottom:12px">
+        <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.3);font-size:13px"></i>
+        <input id="member-search" type="text" placeholder="Cari kantor atau agen..." oninput="filterMemberPage(this.value)"
+          style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:11px 14px 11px 40px;color:#fff;font-size:13px;box-sizing:border-box"/>
+      </div>
+    </div>
+    <div id="member-container" style="padding:0 16px 100px;display:flex;flex-direction:column;gap:12px">
+      <div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3);font-size:13px">
+        <i class="fa-solid fa-spinner fa-spin"></i> Memuat...
+      </div>
+    </div>
+  </div>
+
   <!-- BOTTOM NAV -->
   <nav id="bottom-nav" style="position:fixed;bottom:0;left:0;right:0;z-index:40;background:rgba(13,21,38,0.97);border-top:1px solid rgba(255,255,255,0.07);backdrop-filter:blur(12px);padding-bottom:env(safe-area-inset-bottom,0px)">
     <div style="display:flex;align-items:center;height:56px;max-width:520px;margin:0 auto">
@@ -291,6 +307,7 @@
           <i class="fa-solid fa-plus" style="color:#0D1526;font-size:20px"></i>
         </button>
       </div>
+      <button class="nav-btn" id="nav-member" onclick="navigateTo('member')"><i class="fa-solid fa-building-user"></i><span>Member</span></button>
       <button class="nav-btn" id="nav-leads" onclick="navigateTo('leads')"><i class="fa-solid fa-users"></i><span>Leads</span></button>
       <button class="nav-btn" id="nav-tasks" onclick="navigateTo('tasks')"><i class="fa-solid fa-calendar-check"></i><span>Jadwal</span></button>
     </div>
@@ -322,6 +339,7 @@
       <button onclick="openSettings();closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-gear" style="color:rgba(255,255,255,0.4);width:16px;text-align:center"></i><span>Pengaturan Profil</span></button>
       <button onclick="openKomisiForm();closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-money-bill-wave" style="color:#D4A853;width:16px;text-align:center"></i><span>Request Komisi</span></button>
       <button id="sidebar-team-mgmt" onclick="navigateTo('team');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-people-group" style="color:#a78bfa;width:16px;text-align:center"></i><span>Manajemen Tim</span></button>
+      <button onclick="navigateTo('member');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-building-user" style="color:#D4A853;width:16px;text-align:center"></i><span>Member Kantor</span></button>
       <button onclick="openAddPhotoModal();closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-camera-retro" style="color:#fb923c;width:16px;text-align:center"></i><span>Listing Tanpa Foto</span></button>
       <button id="sidebar-user-mgmt" onclick="openUserMgmt();closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-users-cog" style="color:#60a5fa;width:16px;text-align:center"></i><span>Manajemen User</span></button>
     </nav>
@@ -588,6 +606,13 @@
           <div><label class="form-label">Status</label><select id="nu-status" class="form-input"><option value="Aktif">Aktif</option><option value="Cuti">Cuti</option><option value="Nonaktif">Nonaktif</option></select></div>
         </div>
         <div><label class="form-label">Telegram ID <span style="color:rgba(255,255,255,0.3)">(opsional)</span></label><input id="nu-telegram" type="text" class="form-input" placeholder="Dari /myid di bot Telegram"/></div>
+        <div>
+          <label class="form-label">Nama Kantor</label>
+          <div style="display:flex;align-items:center;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;overflow:hidden">
+            <span style="padding:12px 14px;font-size:13px;font-weight:700;color:#D4A853;white-space:nowrap;border-right:1px solid rgba(255,255,255,0.08)">MANSION :</span>
+            <input id="nu-kantor" type="text" class="form-input" placeholder="Nama Kantor" style="border:none;border-radius:0;background:transparent;flex:1"/>
+          </div>
+        </div>
         <div style="display:flex;gap:10px;padding-top:4px">
           <button onclick="setUserTab('list')" class="btn-ghost" style="flex:1">Batal</button>
           <button onclick="submitAddUser()" class="btn-gold" style="flex:1"><i class="fa-solid fa-user-plus" style="margin-right:6px"></i>Tambah User</button>
@@ -616,6 +641,13 @@
               <option value="superadmin">Super Admin</option>
             </select></div>
         <div><label class="form-label">Status</label><select id="eu-status" class="form-input"><option value="Aktif">Aktif</option><option value="Cuti">Cuti</option><option value="Nonaktif">Nonaktif</option></select></div>
+      </div>
+      <div>
+        <label class="form-label">Nama Kantor</label>
+        <div style="display:flex;align-items:center;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;overflow:hidden">
+          <span style="padding:12px 14px;font-size:13px;font-weight:700;color:#D4A853;white-space:nowrap;border-right:1px solid rgba(255,255,255,0.08)">MANSION :</span>
+          <input id="eu-kantor" type="text" class="form-input" placeholder="Nama Kantor" style="border:none;border-radius:0;background:transparent;flex:1"/>
+        </div>
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px">

@@ -53,6 +53,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       team_id:     agentObj.Team_ID || '',
       no_wa:       agentObj.No_WA          || '',
       no_wa_biz:   agentObj.No_WA_Business || '',
+      nama_kantor: agentObj.Nama_Kantor    || '',
     };
 
     const token = jwt.sign(user, process.env.JWT_SECRET, {
