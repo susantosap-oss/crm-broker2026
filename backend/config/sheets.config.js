@@ -133,6 +133,7 @@ const COLUMNS = {
     'Telegram_ID',        // N
     'Team_ID',            // O  ★ NEW
     'Updated_At',         // P  ★ NEW
+    'No_WA_Business',     // Q  ★ WA Business number
   ],
 
   // ★ NEW SHEET

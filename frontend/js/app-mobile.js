@@ -69,7 +69,8 @@ function openSettings() {
   const u = STATE?.user || {};
   const d = _profileData;
   setVal('set-nama', d.nama || u.nama || '');
-  setVal('set-wa', d.wa || u.waNumber || '');
+  setVal('set-wa',     d.wa     || u.no_wa    || '');
+  setVal('set-wa-biz', d.waBiz  || u.no_wa_biz || '');
 
   // Photo preview in settings
   const sImg = document.getElementById('set-avatar-img');
@@ -122,8 +123,9 @@ function setStatus(status) {
 }
 
 async function saveSettings() {
-  const nama = getVal('set-nama').trim();
-  const wa   = getVal('set-wa').trim();
+  const nama  = getVal('set-nama').trim();
+  const wa    = getVal('set-wa').trim();
+  const waBiz = getVal('set-wa-biz').trim();
   if (!nama) { showToast('Nama wajib diisi', 'error'); return; }
 
   // Upload photo to Cloudinary if pending
@@ -136,8 +138,9 @@ async function saveSettings() {
       showToast('Gagal upload foto: ' + e.message, 'error'); return;
     }
   }
-  _profileData.nama = nama;
-  _profileData.wa   = wa;
+  _profileData.nama  = nama;
+  _profileData.wa    = wa;
+  _profileData.waBiz = waBiz;
   saveProfileToStorage();
   applyProfileToUI();
 
@@ -160,7 +163,7 @@ async function saveSettings() {
   closeModal('modal-settings');
 
   // Sync profile to server
-  try { await API.put('/agents/profile', { nama, wa, status: _profileData.status, photoUrl: _profileData.photoUrl }); } catch (_) {}
+  try { await API.put('/agents/profile', { nama, wa, wa_business: waBiz, status: _profileData.status, photoUrl: _profileData.photoUrl }); } catch (_) {}
   showToast('✅ Profil berhasil disimpan!', 'success');
 }
 
@@ -593,7 +596,7 @@ async function openListingDetail(id) {
 
     <!-- Action Buttons -->
     <div style="display:flex;gap:10px;padding-top:4px;flex-wrap:wrap">
-      <button onclick="shareListingWA('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:13px;font-weight:600;cursor:pointer">
+      <button onclick="openShareWAPicker('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-brands fa-whatsapp" style="margin-right:6px"></i>Share WA
       </button>
       <button onclick="shareListingWACatalog('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
@@ -653,30 +656,29 @@ async function saveCaption(listingId) {
 }
 
 // PR 7: Share to WhatsApp — plain text, no emoji, + Hubungi agen
-function shareListingWA(listingId) {
-  const listing = _allListings.find(l => l.ID === listingId);
-  if (!listing) return;
-  const harga = listing.Harga_Format || formatRupiah(listing.Harga);
+// ── Share WA helpers ──────────────────────────────────────
+let _shareWAListingId = null;
 
-  // Ambil nama & WA dari STATE.user (agen yang sedang login = yang share)
-  const agentNama = STATE.user?.nama || listing.Agen_Nama || '';
-  const agentWA   = STATE.user?.no_wa || STATE.user?.No_WA || '';
-  const waClean   = agentWA.replace(/\D/g, '');
-
-  // Build detail properti plain text (tanpa emoji)
-  const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ');
-  const spek = [
-    listing.Luas_Tanah   ? `LT ${listing.Luas_Tanah} m2`    : '',
+function _buildShareText(listing) {
+  const harga     = listing.Harga_Format || formatRupiah(listing.Harga);
+  const agentNama  = STATE.user?.nama || listing.Agen_Nama || '';
+  const agentWA    = STATE.user?.no_wa    || STATE.user?.No_WA    || '';
+  const agentWABiz = STATE.user?.no_wa_biz || '';
+  const waClean    = agentWA.replace(/\D/g, '');
+  const waBizClean = agentWABiz.replace(/\D/g, '');
+  const lokasi    = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ');
+  const spek      = [
+    listing.Luas_Tanah    ? `LT ${listing.Luas_Tanah} m2`    : '',
     listing.Luas_Bangunan ? `LB ${listing.Luas_Bangunan} m2` : '',
-    listing.Kamar_Tidur  ? `${listing.Kamar_Tidur} KT`       : '',
-    listing.Kamar_Mandi  ? `${listing.Kamar_Mandi} KM`       : '',
+    listing.Kamar_Tidur   ? `${listing.Kamar_Tidur} KT`       : '',
+    listing.Kamar_Mandi   ? `${listing.Kamar_Mandi} KM`       : '',
   ].filter(Boolean).join(' / ');
-
-  const deskripsi = listing.Deskripsi
-    ? '\n' + listing.Deskripsi.substring(0, 300) + (listing.Deskripsi.length > 300 ? '...' : '')
+  // Strip hashtag dari deskripsi
+  const rawDesk = (listing.Deskripsi || '').replace(/#\w+/g, '').replace(/\s{2,}/g, ' ').trim();
+  const deskripsi = rawDesk
+    ? '\n' + rawDesk.substring(0, 300) + (rawDesk.length > 300 ? '...' : '')
     : '';
-
-  const text =
+  return (
     `${listing.Judul || 'Properti Dijual'}\n` +
     `${listing.Tipe_Properti || ''} - ${listing.Status_Transaksi || ''}\n` +
     `Lokasi : ${lokasi || '-'}\n` +
@@ -685,10 +687,72 @@ function shareListingWA(listingId) {
     (listing.Kode_Listing ? `Kode   : ${listing.Kode_Listing}\n` : '') +
     deskripsi +
     `\n\nHubungi :\n` +
-    `Nama : ${agentNama}\n` +
-    (waClean ? `WA   : +${waClean}\n` : '');
+    `Nama       : ${agentNama}\n` +
+    (waClean    ? `WA         : +${waClean}\n`    : '') +
+    (waBizClean ? `WA Business: +${waBizClean}\n` : '')
+  );
+}
 
-  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+function openShareWAPicker(listingId) {
+  _shareWAListingId = listingId;
+  // Tampilkan mini-picker di atas tombol
+  const existing = document.getElementById('wa-picker-popup');
+  if (existing) { existing.remove(); return; }
+
+  const popup = document.createElement('div');
+  popup.id = 'wa-picker-popup';
+  popup.style.cssText = `
+    position:fixed;bottom:160px;left:50%;transform:translateX(-50%);
+    background:#141E35;border:1px solid rgba(212,168,83,0.4);border-radius:16px;
+    padding:16px;z-index:9999;width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  `;
+  popup.innerHTML = `
+    <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:12px;text-align:center">Pilih aplikasi WhatsApp</div>
+    <button onclick="doShareWA('wa')" style="width:100%;padding:13px;border-radius:12px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#4ade80;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="fa-brands fa-whatsapp" style="font-size:18px"></i> WhatsApp
+    </button>
+    <button onclick="doShareWA('wab')" style="width:100%;padding:13px;border-radius:12px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);color:#25d366;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="fa-brands fa-whatsapp" style="font-size:18px"></i> WA Business
+    </button>
+    <button onclick="document.getElementById('wa-picker-popup')?.remove()" style="width:100%;padding:8px;margin-top:8px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer">Batal</button>
+  `;
+
+  document.body.appendChild(popup);
+
+  // Tutup kalau tap di luar
+  setTimeout(() => {
+    document.addEventListener('click', function handler(e) {
+      if (!popup.contains(e.target)) {
+        popup.remove();
+        document.removeEventListener('click', handler);
+      }
+    });
+  }, 100);
+}
+
+function doShareWA(type) {
+  document.getElementById('wa-picker-popup')?.remove();
+  const listing = _allListings.find(l => l.ID === _shareWAListingId);
+  if (!listing) return;
+  const text    = _buildShareText(listing);
+  const encoded = encodeURIComponent(text);
+
+  if (type === 'wab') {
+    // Android: intent URL paksa buka package WA Business (com.whatsapp.w4b)
+    const isAndroid = /android/i.test(navigator.userAgent);
+    if (isAndroid) {
+      window.open(`intent://send?text=${encoded}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`, '_blank');
+    }
+    // iOS: tidak didukung, skip
+  } else {
+    // WA biasa
+    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+  }
+}
+
+// Legacy: dipanggil dari tempat lain kalau ada
+function shareListingWA(listingId) {
+  openShareWAPicker(listingId);
 }
 
 // PR 17: WA Business Catalog format
@@ -701,7 +765,7 @@ function shareListingWACatalog(listingId) {
     `Harga: ${harga}\n` +
     `Tipe: ${listing.Tipe_Properti || ''} | ${listing.Status_Transaksi || ''}\n` +
     `Lokasi: ${[listing.Kecamatan, listing.Kota].filter(Boolean).join(', ')}\n` +
-    `${listing.Deskripsi ? '\n' + listing.Deskripsi : ''}\n` +
+    `${listing.Deskripsi ? '\n' + listing.Deskripsi.replace(/#\w+/g,'').replace(/\s{2,}/g,' ').trim() : ''}\n` +
     `\nKode: ${listing.Kode_Listing || ''}\n` +
     `📸 Foto: ${listing.Foto_Utama_URL || ''}`;
 

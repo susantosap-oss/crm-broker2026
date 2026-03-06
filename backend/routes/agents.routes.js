@@ -174,11 +174,12 @@ router.put('/profile', async (req, res) => {
     const result = await sheetsService.findRowById(SHEETS.AGENTS, req.user.id);
     if (!result) return res.json({ success: true, message: 'Saved locally' });
     const existing = rowToAgent(result.data);
-    const { nama, wa, status, photoUrl } = req.body;
-    if (nama)     existing.Nama     = nama;
-    if (wa)       existing.No_WA    = wa;
-    if (status)   existing.Status   = status;
-    if (photoUrl) existing.Foto_URL = photoUrl;
+    const { nama, wa, wa_business, status, photoUrl } = req.body;
+    if (nama)        existing.Nama           = nama;
+    if (wa)          existing.No_WA          = wa;
+    if (wa_business !== undefined) existing.No_WA_Business = wa_business;
+    if (status)      existing.Status         = status;
+    if (photoUrl)    existing.Foto_URL       = photoUrl;
     existing.Updated_At = new Date().toISOString();
     const row = COLUMNS.AGENTS.map(col => existing[col] || '');
     await sheetsService.updateRow(SHEETS.AGENTS, result.rowIndex, row);

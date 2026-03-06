@@ -4,7 +4,7 @@
  * Enables offline functionality & installable app.
  */
 
-const CACHE_NAME = 'crm-properti-20260305';
+const CACHE_NAME = 'crm-properti-20260307';
 
 const STATIC_ASSETS = [
   '/',
