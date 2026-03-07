@@ -33,6 +33,7 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // ── Internal API Routes ────────────────────────────────────
 app.use('/api/v1/auth',          require('./routes/auth.routes'));
 app.use('/api/v1/listings',      require('./routes/listings.routes'));
+app.use('/api/v1/favourites',    require('./routes/favourites.routes'));
 app.use('/api/v1/leads',         require('./routes/leads.routes'));
 app.use('/api/v1/agents',        require('./routes/agents.routes'));
 app.use('/api/v1/teams',         require('./routes/teams.routes'));

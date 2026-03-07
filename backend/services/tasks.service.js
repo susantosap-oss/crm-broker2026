@@ -276,12 +276,22 @@ class TasksService {
   getConversionStats(leads) {
     const c = {
       total:      leads.length,
-      dihubungi:  leads.filter((l) => l.Status_Lead !== 'Baru').length,
+      // Dihubungi: pakai Tanggal_Dihubungi (field riil) — fallback ke status != Baru untuk data lama
+      dihubungi:  leads.filter((l) => l.Tanggal_Dihubungi || l.Status_Lead !== 'Baru').length,
       visit:      leads.filter((l) => ['Visit','Negosiasi','Proses_Admin','Deal'].includes(l.Status_Lead)).length,
       negosiasi:  leads.filter((l) => ['Negosiasi','Proses_Admin','Deal'].includes(l.Status_Lead)).length,
       deal:       leads.filter((l) => l.Status_Lead === 'Deal').length,
+      gagal:      leads.filter((l) => l.Status_Lead === 'Batal').length,
     };
     const pct = (n, d) => (d > 0 ? Math.round((n / d) * 100) : 0);
+
+    // Metode 2: Deal / (Deal + Gagal) — hanya leads selesai
+    const selesai = c.deal + c.gagal;
+    const qualified_cr = pct(c.deal, selesai);
+
+    // Metode 1 (lama): Deal / Total — untuk referensi
+    const overall_cr = pct(c.deal, c.total);
+
     return {
       stages: [
         { label: 'Leads In',   count: c.total,     cr: 100,                          color: '#2B7BFF', icon: 'fa-users' },
@@ -290,7 +300,9 @@ class TasksService {
         { label: 'Negosiasi',  count: c.negosiasi, cr: pct(c.negosiasi, c.visit),   color: '#EAB308', icon: 'fa-handshake' },
         { label: 'Deal ✅',    count: c.deal,      cr: pct(c.deal, c.negosiasi),    color: '#22C55E', icon: 'fa-trophy' },
       ],
-      overall_cr: pct(c.deal, c.total),
+      overall_cr,        // Metode 1: Deal / Total
+      qualified_cr,      // Metode 2: Deal / (Deal + Gagal) — lebih fair
+      selesai,           // Total leads yang sudah final (Deal + Batal)
     };
   }
 

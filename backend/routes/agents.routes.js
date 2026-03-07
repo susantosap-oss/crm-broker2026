@@ -152,7 +152,7 @@ router.get('/offices', async (req, res) => {
     const map = {};
     agents.forEach(a => {
       if (a.Status === 'Nonaktif') return;
-      const kantor = a.Nama_Kantor || 'MANSION : Administrator';
+      const kantor = a.Nama_Kantor || 'MANSION : Kantor Pusat';
       if (!map[kantor]) map[kantor] = { nama_kantor: kantor, members: [] };
       map[kantor].members.push({
         id:          a.ID,

@@ -54,6 +54,164 @@ router.get('/no-photo', async (req, res) => {
 });
 
 // GET single listing
+// GET /listings/pdf?ids=id1,id2,... — generate PDF properti favorit
+router.get('/pdf', async (req, res) => {
+  try {
+    const { ids } = req.query;
+    if (!ids) return res.status(400).json({ success: false, message: 'ids diperlukan' });
+
+    const idList = ids.split(',').map(s => s.trim()).filter(Boolean).slice(0, 20);
+
+    // Pakai listingsService yang sudah ter-import
+    const allListings = await listingsService.getAll();
+    const listings = idList.map(id => allListings.find(l => l.ID === id)).filter(Boolean);
+    if (!listings.length) return res.status(404).json({ success: false, message: 'Listing tidak ditemukan' });
+
+    const PDFDocument = require('pdfkit');
+    const axios        = require('axios');
+
+    // Helper: download image buffer dari URL
+    const fetchImage = async (url) => {
+      if (!url) return null;
+      try {
+        const r = await axios.get(url, { responseType: 'arraybuffer', timeout: 5000 });
+        return Buffer.from(r.data);
+      } catch (_) { return null; }
+    };
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="mansion-listing-${Date.now()}.pdf"`);
+    doc.pipe(res);
+
+    const formatRp = (n) => {
+      const num = parseInt(n) || 0;
+      if (num >= 1e9) return `Rp ${(num/1e9).toFixed(1).replace('.0','')} M`;
+      if (num >= 1e6) return `Rp ${(num/1e6).toFixed(0)} Jt`;
+      return `Rp ${num.toLocaleString('id-ID')}`;
+    };
+
+    const NAVY  = '#0D1526';
+    const GOLD  = '#C9972A';
+    const GRAY  = '#555555';
+    const LIGHT = '#F5F5F5';
+
+    for (let idx = 0; idx < listings.length; idx++) {
+      const l = listings[idx];
+      if (idx > 0) doc.addPage();
+
+      // ── Header bar ──
+      doc.rect(0, 0, 595, 56).fill(NAVY);
+      doc.fontSize(18).fillColor(GOLD).font('Helvetica-Bold')
+         .text('MANSION PROPERTI', 40, 16);
+      doc.fontSize(9).fillColor('white').font('Helvetica')
+         .text('Properti Listing', 40, 38);
+      doc.fontSize(9).fillColor(GOLD)
+         .text(`${idx+1} / ${listings.length}`, 500, 24, { align: 'right', width: 55 });
+
+      let y = 76;
+
+      // ── Judul & badge ──
+      doc.fontSize(16).fillColor(NAVY).font('Helvetica-Bold')
+         .text(l.Judul || 'Listing Properti', 40, y, { width: 515 });
+      y = doc.y + 6;
+
+      // Badges
+      const badges = [l.Tipe_Properti, l.Status_Transaksi, l.Status_Listing].filter(Boolean);
+      let bx = 40;
+      badges.forEach(b => {
+        const w = b.length * 7 + 14;
+        doc.roundedRect(bx, y, w, 18, 4).fill(GOLD);
+        doc.fontSize(8).fillColor('white').font('Helvetica-Bold').text(b, bx + 7, y + 5);
+        bx += w + 8;
+      });
+      y += 30;
+
+      // ── Thumbnail foto ──
+      const imgBuf = await fetchImage(l.Foto_Utama_URL);
+      if (imgBuf) {
+        try {
+          doc.image(imgBuf, 40, y, { width: 200, height: 140, fit: [200, 140], align: 'center', valign: 'center' });
+          // Info di sebelah kanan foto
+          const rx = 260;
+          if (l.Kode_Listing) {
+            doc.fontSize(9).fillColor(GRAY).font('Helvetica').text(`Kode: ${l.Kode_Listing}`, rx, y);
+          }
+          doc.fontSize(22).fillColor(GOLD).font('Helvetica-Bold')
+             .text(l.Harga_Format || formatRp(l.Harga), rx, y + 16, { width: 295 });
+          const lokasi = [l.Kecamatan, l.Kota].filter(Boolean).join(', ') || '—';
+          doc.fontSize(10).fillColor(GRAY).font('Helvetica')
+             .text(lokasi, rx, y + 50, { width: 295 });
+          y += 150;
+        } catch (_) {
+          // fallback: tampil kode & harga tanpa foto
+          if (l.Kode_Listing) { doc.fontSize(9).fillColor(GRAY).font('Helvetica').text(`Kode: ${l.Kode_Listing}`, 40, y); y += 14; }
+          doc.fontSize(22).fillColor(GOLD).font('Helvetica-Bold').text(l.Harga_Format || formatRp(l.Harga), 40, y);
+          y = doc.y + 10;
+        }
+      } else {
+        // Tidak ada foto — tampil kode & harga
+        if (l.Kode_Listing) { doc.fontSize(9).fillColor(GRAY).font('Helvetica').text(`Kode: ${l.Kode_Listing}`, 40, y); y += 14; }
+        doc.fontSize(22).fillColor(GOLD).font('Helvetica-Bold').text(l.Harga_Format || formatRp(l.Harga), 40, y);
+        y = doc.y + 10;
+      }
+      // ── Divider ──
+      doc.moveTo(40, y).lineTo(555, y).strokeColor(GOLD).lineWidth(1).stroke();
+      y += 14;
+
+      // ── Info grid 2 kolom ──
+      const col1 = 40, col2 = 300, colW = 240;
+      const fields = [
+        ['Lokasi',    [l.Kecamatan, l.Kota].filter(Boolean).join(', ') || '—'],
+        ['Luas Tanah',  l.Luas_Tanah   ? `${l.Luas_Tanah} m²`    : '—'],
+        ['Luas Bangunan', l.Luas_Bangunan ? `${l.Luas_Bangunan} m²` : '—'],
+        ['Kamar Tidur',   l.Kamar_Tidur  ? `${l.Kamar_Tidur} KT`    : '—'],
+        ['Kamar Mandi',   l.Kamar_Mandi  ? `${l.Kamar_Mandi} KM`    : '—'],
+        ['Sertifikat',    l.Sertifikat   || '—'],
+      ];
+
+      fields.forEach(([label, val], i) => {
+        const cx = i % 2 === 0 ? col1 : col2;
+        if (i % 2 === 0 && i > 0) y += 28;
+        doc.fontSize(8).fillColor(GRAY).font('Helvetica').text(label, cx, y);
+        doc.fontSize(11).fillColor(NAVY).font('Helvetica-Bold').text(val, cx, y + 11, { width: colW });
+      });
+      y += 38;
+
+      // ── Agen ──
+      doc.moveTo(40, y).lineTo(555, y).strokeColor('#DDDDDD').lineWidth(0.5).stroke();
+      y += 10;
+      doc.fontSize(8).fillColor(GRAY).font('Helvetica').text('Agen', 40, y);
+      doc.fontSize(10).fillColor(NAVY).font('Helvetica-Bold').text(l.Agen_Nama || '—', 40, y + 11);
+      y += 30;
+
+      // ── Deskripsi ──
+      if (l.Deskripsi) {
+        const desk = l.Deskripsi.replace(/#\w+/g, '').trim().substring(0, 500);
+        doc.moveTo(40, y).lineTo(555, y).strokeColor('#DDDDDD').lineWidth(0.5).stroke();
+        y += 10;
+        doc.fontSize(8).fillColor(GRAY).font('Helvetica').text('Deskripsi', 40, y);
+        y += 12;
+        doc.fontSize(10).fillColor(GRAY).font('Helvetica')
+           .text(desk, 40, y, { width: 515, lineGap: 3 });
+        y = doc.y + 10;
+      }
+
+      // ── Footer ──
+      doc.rect(0, 800, 595, 42).fill(NAVY);
+      doc.fontSize(8).fillColor('#8899BB').font('Helvetica')
+         .text('Mansion Properti  ·  Dokumen Internal', 40, 812);
+      doc.fontSize(8).fillColor(GOLD)
+         .text(new Date().toLocaleDateString('id-ID', {dateStyle:'medium'}), 400, 812, { align:'right', width: 155 });
+    }
+
+    doc.end();
+  } catch (e) {
+    console.error('[PDF ERROR]', e.message, e.stack);
+    if (!res.headersSent) res.status(500).json({ success: false, message: e.message, stack: e.stack });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const listing = await listingsService.getById(req.params.id);
@@ -95,8 +253,14 @@ router.post('/', upload.array('photos', 3), async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-// PATCH update listing
+// PATCH / PUT update listing
 router.patch('/:id', async (req, res) => {
+  try {
+    const listing = await listingsService.update(req.params.id, req.body);
+    res.json({ success: true, data: listing, message: 'Listing berhasil diupdate' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+router.put('/:id', async (req, res) => {
   try {
     const listing = await listingsService.update(req.params.id, req.body);
     res.json({ success: true, data: listing, message: 'Listing berhasil diupdate' });

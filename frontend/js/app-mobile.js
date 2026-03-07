@@ -385,29 +385,41 @@ function requestNotifPermission() {
 // ─────────────────────────────────────────────────────────
 let _favourites = new Set();
 
-function loadFavourites() {
+// ── Favourites — server-side sync (lintas device) ──────────
+async function loadFavourites() {
   try {
-    const saved = JSON.parse(localStorage.getItem('crm_favs') || '[]');
-    _favourites = new Set(saved);
-  } catch (_) {}
+    const res = await API.get('/favourites');
+    _favourites = new Set(res.data || []);
+  } catch (_) {
+    // fallback localStorage kalau offline
+    try { _favourites = new Set(JSON.parse(localStorage.getItem('crm_favs') || '[]')); } catch (__) {}
+  }
 }
 
-function saveFavourites() {
-  localStorage.setItem('crm_favs', JSON.stringify([..._favourites]));
-}
-
-function toggleFav(listingId, btn) {
-  if (_favourites.has(listingId)) {
+async function toggleFav(listingId, btn) {
+  const wasFav = _favourites.has(listingId);
+  // Optimistic update
+  if (wasFav) {
     _favourites.delete(listingId);
-    if (btn) { btn.innerHTML = '<i class="fa-regular fa-star" style="color:rgba(255,255,255,0.4);font-size:14px"></i>'; }
+    if (btn) btn.innerHTML = '<i class="fa-regular fa-star" style="color:rgba(255,255,255,0.4);font-size:14px"></i>';
     showToast('Dihapus dari favorit', 'info');
   } else {
     _favourites.add(listingId);
-    if (btn) { btn.innerHTML = '<i class="fa-solid fa-star" style="color:#D4A853;font-size:14px"></i>'; }
+    if (btn) btn.innerHTML = '<i class="fa-solid fa-star" style="color:#D4A853;font-size:14px"></i>';
     showToast('⭐ Ditambahkan ke favorit!', 'success');
   }
-  saveFavourites();
   updateFavBar();
+  try {
+    await API.post(`/favourites/${listingId}`);
+  } catch (_) {
+    // Rollback kalau API gagal
+    if (wasFav) _favourites.add(listingId); else _favourites.delete(listingId);
+    if (btn) btn.innerHTML = wasFav
+      ? '<i class="fa-solid fa-star" style="color:#D4A853;font-size:14px"></i>'
+      : '<i class="fa-regular fa-star" style="color:rgba(255,255,255,0.4);font-size:14px"></i>';
+    updateFavBar();
+    showToast('Gagal menyimpan favorit', 'error');
+  }
 }
 
 function updateFavBar() {
@@ -423,12 +435,24 @@ async function downloadFavPDF() {
   if (!_favourites.size) { showToast('Belum ada favorit', 'error'); return; }
   showToast('📄 Membuat PDF…', 'info');
   try {
-    const ids = [..._favourites].join(',');
-    const res = await API.get(`/listings/pdf?ids=${ids}`);
-    if (res.pdfUrl) window.open(res.pdfUrl, '_blank');
-    else showToast('Fitur PDF belum tersedia', 'info');
-  } catch (_) {
-    showToast('Fitur PDF belum tersedia', 'info');
+    const ids   = [..._favourites].join(',');
+    const res   = await fetch(`/api/v1/listings/pdf?ids=${ids}`, {
+      headers: { 'Authorization': `Bearer ${STATE.token}` }
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.message || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `mansion-listing-${Date.now()}.pdf`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    showToast('✅ PDF berhasil diunduh!', 'success');
+  } catch (err) {
+    showToast('PDF error: ' + (err.message || 'unknown'), 'error');
+    console.error('[PDF]', err);
   }
 }
 
@@ -452,7 +476,10 @@ async function loadListings() {
   grid.innerHTML = '<div class="skeleton" style="height:100px;border-radius:14px"></div>'.repeat(3);
 
   try {
-    const endpoint = _listingTab === 'all' ? '/listings?all=1' : '/listings';
+    // Tab fav: ambil semua listing supaya bisa filter lintas agen
+    const endpoint = (_listingTab === 'all' || _listingTab === 'fav')
+      ? '/listings?all=1'
+      : '/listings';
     const res = await API.get(endpoint);
     _allListings = res.data || [];
 
@@ -545,8 +572,13 @@ async function openListingDetail(id) {
   body.innerHTML = `
     <!-- Photos -->
     ${listing.Foto_Utama_URL ? `
-      <div style="border-radius:14px;overflow:hidden;max-height:200px">
-        <img src="${escapeHtml(listing.Foto_Utama_URL)}" style="width:100%;object-fit:cover;max-height:200px" loading="lazy"/>
+      <div style="border-radius:14px;overflow:hidden;position:relative">
+        <img src="${escapeHtml(listing.Foto_Utama_URL)}" onclick="openPhotoViewer('${escapeHtml(listing.Foto_Utama_URL)}','${escapeHtml(listing.Foto_2_URL||'')}','${escapeHtml(listing.Foto_3_URL||'')}')"
+          style="width:100%;object-fit:cover;max-height:220px;cursor:zoom-in;display:block" loading="lazy"/>
+        <div style="position:absolute;bottom:8px;right:8px;display:flex;gap:6px">
+          ${listing.Foto_2_URL ? `<div style="width:44px;height:44px;border-radius:8px;overflow:hidden;border:2px solid rgba(255,255,255,0.3);cursor:pointer" onclick="openPhotoViewer('${escapeHtml(listing.Foto_Utama_URL)}','${escapeHtml(listing.Foto_2_URL||'')}','${escapeHtml(listing.Foto_3_URL||'')}',1)"><img src="${escapeHtml(listing.Foto_2_URL)}" style="width:100%;height:100%;object-fit:cover"/></div>` : ''}
+          ${listing.Foto_3_URL ? `<div style="width:44px;height:44px;border-radius:8px;overflow:hidden;border:2px solid rgba(255,255,255,0.3);cursor:pointer" onclick="openPhotoViewer('${escapeHtml(listing.Foto_Utama_URL)}','${escapeHtml(listing.Foto_2_URL||'')}','${escapeHtml(listing.Foto_3_URL||'')}',2)"><img src="${escapeHtml(listing.Foto_3_URL)}" style="width:100%;height:100%;object-fit:cover"/></div>` : ''}
+        </div>
       </div>` : ''}
 
     <!-- Info Row -->
@@ -841,6 +873,7 @@ function renderLeadDetail(lead) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       ${makeDetailField('Sumber', lead.Sumber)}
       ${makeDetailField('Status Lead', lead.Status_Lead)}
+      ${lead.Tanggal_Dihubungi ? makeDetailField('Pertama Dihubungi', new Date(lead.Tanggal_Dihubungi).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})) : ''}
       ${lead.Score === 'Closing' ? `
         <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:10px 12px;margin-bottom:8px">
           <div style="font-size:10px;color:#4ade80;font-weight:700;margin-bottom:6px">🤝 INFO CLOSING</div>
@@ -1286,9 +1319,23 @@ async function loadDashboard() {
       setEl('stat-leads',      s.totalLeads       ?? 0);
       setEl('stat-hot',        s.hotLeads         ?? 0);
       setEl('nav-listing-count', s.totalListings  ?? 0);
-      setEl('stat-conversion', (s.overall_conversion ?? 0) + '%');
+      // Tampilkan Metode 2 (qualified) sebagai utama, Metode 1 sebagai sub-info
+      const qcr = s.qualified_conversion ?? 0;
+      const ocr = s.overall_conversion   ?? 0;
+      setEl('stat-conversion', qcr + '%');
+      // Sub-label konversi — tunjukkan basis perhitungan
+      const convSub = document.getElementById('stat-conversion-sub');
+      if (convSub) {
+        convSub.textContent = s.selesai_leads > 0
+          ? `${s.selesai_leads} leads selesai · raw ${ocr}%`
+          : 'Belum ada leads selesai';
+      }
       // Render funnel dari dashboard stats (sudah terfilter by role)
-      if (s.funnel?.length) renderFunnel(s.funnel);
+      if (s.funnel?.length && s.totalLeads > 0) renderFunnel(s.funnel);
+      else if (s.totalLeads === 0) {
+        const fc = document.getElementById('funnel-container');
+        if (fc) fc.innerHTML = '<p style="color:rgba(255,255,255,0.3);font-size:12px;text-align:center;padding:20px">Belum ada leads — pipeline akan muncul setelah leads masuk</p>';
+      }
       // Hot leads sudah ada di dashboard stats
       if (s.hotLeadsList?.length) renderHotLeads(s.hotLeadsList);
       else { const el = document.getElementById('hot-leads-list'); if (el) el.innerHTML = emptyState('Tidak ada hot leads saat ini'); }
@@ -2028,6 +2075,103 @@ async function navigateTo(page) {
 }
 
 // ─────────────────────────────────────────────────────────
+// PHOTO VIEWER — lightbox dengan swipe & download
+// ─────────────────────────────────────────────────────────
+let _photoViewerPhotos = [];
+let _photoViewerIdx   = 0;
+
+function openPhotoViewer(foto1, foto2, foto3, startIdx = 0) {
+  _photoViewerPhotos = [foto1, foto2, foto3].filter(Boolean);
+  _photoViewerIdx   = startIdx;
+
+  // Buat overlay kalau belum ada
+  let overlay = document.getElementById('photo-viewer-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'photo-viewer-overlay';
+    overlay.style.cssText = `
+      position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.95);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+    `;
+    overlay.innerHTML = `
+      <div style="position:absolute;top:16px;right:16px;display:flex;gap:10px;z-index:2">
+        <button id="pv-download" onclick="downloadCurrentPhoto()"
+          style="width:40px;height:40px;border-radius:50%;background:rgba(212,168,83,0.2);border:1px solid rgba(212,168,83,0.4);color:#D4A853;cursor:pointer;display:flex;align-items:center;justify-content:center">
+          <i class="fa-solid fa-download" style="font-size:14px"></i>
+        </button>
+        <button onclick="closePhotoViewer()"
+          style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center">
+          <i class="fa-solid fa-xmark" style="font-size:16px"></i>
+        </button>
+      </div>
+      <button id="pv-prev" onclick="photoViewerNav(-1)"
+        style="position:absolute;left:16px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <img id="pv-img" src="" style="max-width:92vw;max-height:80vh;object-fit:contain;border-radius:8px"/>
+      <div id="pv-counter" style="margin-top:14px;font-size:12px;color:rgba(255,255,255,0.5)"></div>
+      <button id="pv-next" onclick="photoViewerNav(1)"
+        style="position:absolute;right:16px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    `;
+    // Tap overlay tutup (bukan pada tombol)
+    overlay.addEventListener('click', e => { if (e.target === overlay) closePhotoViewer(); });
+    document.body.appendChild(overlay);
+  }
+
+  overlay.style.display = 'flex';
+  _renderPhotoViewer();
+}
+
+function _renderPhotoViewer() {
+  const img     = document.getElementById('pv-img');
+  const counter = document.getElementById('pv-counter');
+  const prev    = document.getElementById('pv-prev');
+  const next    = document.getElementById('pv-next');
+  if (!img) return;
+
+  img.src = _photoViewerPhotos[_photoViewerIdx] || '';
+  if (counter) counter.textContent = _photoViewerPhotos.length > 1
+    ? `${_photoViewerIdx + 1} / ${_photoViewerPhotos.length}`
+    : '';
+  if (prev) prev.style.display = _photoViewerPhotos.length > 1 ? 'flex' : 'none';
+  if (next) next.style.display = _photoViewerPhotos.length > 1 ? 'flex' : 'none';
+}
+
+function photoViewerNav(dir) {
+  const n = _photoViewerPhotos.length;
+  _photoViewerIdx = (_photoViewerIdx + dir + n) % n;
+  _renderPhotoViewer();
+}
+
+function closePhotoViewer() {
+  const overlay = document.getElementById('photo-viewer-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+async function downloadCurrentPhoto() {
+  const url = _photoViewerPhotos[_photoViewerIdx];
+  if (!url) return;
+  try {
+    showToast('⬇️ Mengunduh foto…', 'info');
+    const res  = await fetch(url);
+    const blob = await res.blob();
+    const ext  = blob.type.includes('png') ? 'png' : 'jpg';
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = `mansion-listing-foto-${Date.now()}.${ext}`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    showToast('✅ Foto berhasil diunduh!', 'success');
+  } catch (_) {
+    // Fallback: buka di tab baru
+    window.open(url, '_blank');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
 // PAGE MEMBER — daftar kantor & agen
 // ─────────────────────────────────────────────────────────
 let _officesData = [];
@@ -2155,7 +2299,7 @@ function filterMemberPage(q) {
 // ─────────────────────────────────────────────────────────
 // SHOW APP (override)
 // ─────────────────────────────────────────────────────────
-function showApp() {
+async function showApp() {
   document.getElementById('login-screen').classList.add('hidden');
   const appEl = document.getElementById('app');
   appEl.classList.remove('hidden');
@@ -2175,7 +2319,7 @@ function showApp() {
 
   applyProfileToUI();
   requestNotifPermission();
-  loadFavourites();
+  await loadFavourites();
   loadCloudinaryConfig().then(() => {});
   checkAdminMenu();
   setTimeout(() => navigateTo('dashboard'), 100);

@@ -142,6 +142,14 @@ router.patch('/:id', async (req, res) => {
     }
 
     const merged = { ...existing, ...req.body, Updated_At: new Date().toISOString() };
+
+    // Auto-set Tanggal_Dihubungi saat pertama kali status berubah dari 'Baru'
+    const wasNew    = existing.Status_Lead === 'Baru';
+    const nowNotNew = req.body.Status_Lead && req.body.Status_Lead !== 'Baru';
+    if (wasNew && nowNotNew && !existing.Tanggal_Dihubungi) {
+      merged.Tanggal_Dihubungi = new Date().toISOString();
+    }
+
     const row = COLUMNS.LEADS.map(col => merged[col] || '');
     await sheetsService.updateRow(SHEETS.LEADS, result.rowIndex, row);
     res.json({ success: true, message: 'Lead berhasil diupdate' });
@@ -155,6 +163,12 @@ router.put('/:id', async (req, res) => {
     if (!result) return res.status(404).json({ success: false, message: 'Lead tidak ditemukan' });
     const existing = rowToLead(result.data);
     const merged = { ...existing, ...req.body, Updated_At: new Date().toISOString() };
+
+    // Auto-set Tanggal_Dihubungi saat pertama kali status berubah dari 'Baru'
+    if (existing.Status_Lead === 'Baru' && req.body.Status_Lead && req.body.Status_Lead !== 'Baru' && !existing.Tanggal_Dihubungi) {
+      merged.Tanggal_Dihubungi = new Date().toISOString();
+    }
+
     const row = COLUMNS.LEADS.map(col => merged[col] || '');
     await sheetsService.updateRow(SHEETS.LEADS, result.rowIndex, row);
     res.json({ success: true, message: 'Lead berhasil diupdate' });

@@ -11,8 +11,8 @@ const NodeCache = require('node-cache');
 
 // Cache instance (TTL dari env)
 const cache = new NodeCache({
-  stdTTL: parseInt(process.env.CACHE_TTL_LISTINGS || 300),
-  checkperiod: 60,
+  stdTTL: parseInt(process.env.CACHE_TTL || process.env.CACHE_TTL_LISTINGS || 30),
+  checkperiod: 10,
 });
 
 class SheetsService {
@@ -119,6 +119,7 @@ class SheetsService {
       spreadsheetId: this.spreadsheetId,
       requestBody: { requests: [{ deleteDimension: { range: { sheetId, dimension: "ROWS", startIndex: rowIndex-1, endIndex: rowIndex }}}]}
     });
+    cache.del(`${sheetName}:all`);
   }
 
   // ── Get Sheet Stats ───────────────────────────────────────

@@ -32,6 +32,7 @@ const SHEETS = {
   CONFIG:          'CONFIG',
   KOMISI_REQUEST:  'KOMISI_REQUEST',
   LAPORAN_HARIAN:  'LAPORAN_HARIAN',
+  FAVOURITES:      'FAVOURITES',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -114,6 +115,7 @@ const COLUMNS = {
     'Closing_Listing_Nama', // AD  Nama listing untuk display
     'Closing_Cobroke',    // AE  Detail listing cobroke / brand lain
     'Closing_Proyek',     // AF  Nama proyek (Primary)
+    'Tanggal_Dihubungi',  // AG  ★ Timestamp pertama kali agen hubungi lead
   ],
 
   AGENTS: [
@@ -256,6 +258,13 @@ const COLUMNS = {
     'Isi_Laporan',    // E
     'Created_At',     // F
     'Updated_At',     // G
+  ],
+
+  FAVOURITES: [
+    'ID',             // A
+    'Agen_ID',        // B
+    'Listing_ID',     // C
+    'Created_At',     // D
   ],
 
   PIPELINE_STAGES: [

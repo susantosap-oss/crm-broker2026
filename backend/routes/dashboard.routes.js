@@ -55,7 +55,8 @@ router.get('/stats', async (req, res) => {
     // admin & superadmin: semua
 
     const taskSummary = await tasksService.getSummary(role === 'agen' ? id : null);
-    const funnel = tasksService.getConversionStats(leads);
+    const conversionData = tasksService.getConversionStats(leads);
+    const funnel = conversionData;
     const thisMonth = new Date().toISOString().substring(0, 7);
 
     // Unread notifications count
@@ -85,7 +86,9 @@ router.get('/stats', async (req, res) => {
       dealsThisMonth: leads.filter(l => l.Status_Lead === 'Deal' && l.Updated_At?.startsWith(thisMonth)).length,
       tasks:          taskSummary,
       funnel:         funnel.stages,
-      overall_conversion: funnel.overall_cr,
+      overall_conversion:   conversionData.overall_cr,
+      qualified_conversion: conversionData.qualified_cr,
+      selesai_leads:        conversionData.selesai,
       unreadNotif,
       hotLeadsList: leads
         .filter(l => l.Score === 'Hot' && !['Deal','Batal'].includes(l.Status_Lead))
