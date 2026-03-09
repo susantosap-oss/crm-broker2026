@@ -344,7 +344,8 @@ const TRANSAKSI_OPTIONS = ['Dijual', 'Disewakan'];
 
 const WIZARD_STEPS = [
   'tipe', 'transaksi', 'judul', 'kota', 'kecamatan',
-  'harga', 'deskripsi', 'foto', 'konfirmasi',
+  'harga', 'luas_tanah', 'luas_bangunan', 'kamar_tidur', 'kamar_mandi',
+  'deskripsi', 'foto', 'konfirmasi',
 ];
 
 const STEP_PROMPTS = {
@@ -354,6 +355,10 @@ const STEP_PROMPTS = {
   kota:          `🌆 *Kota:*\n_Contoh: Surabaya_`,
   kecamatan:     `📍 *Kecamatan / Area:*\n_Contoh: Lakarsantri_`,
   harga:         `💰 *Harga (angka saja, Rp):*\n_Contoh: 850000000_`,
+  luas_tanah:    `📐 *Luas Tanah (m²):*\n_Ketik 0 jika tidak ada / tidak tahu_`,
+  luas_bangunan: `🏗 *Luas Bangunan (m²):*\n_Ketik 0 jika tidak ada_`,
+  kamar_tidur:   `🛏 *Jumlah Kamar Tidur:*\n_Ketik 0 jika tidak ada_`,
+  kamar_mandi:   `🚿 *Jumlah Kamar Mandi:*\n_Ketik 0 jika tidak ada_`,
   deskripsi:     `📝 *Deskripsi listing:*\n_Tulis detail properti, kondisi, keunggulan, dll._\n_Ketik /skip untuk lewati_`,
   foto:          `📸 *Upload foto properti (maks. 3):*\n\nKirim foto satu per satu.\nKetik /selesaifoto setelah selesai upload.\nKetik /skip untuk lewati foto.`,
 };
@@ -432,9 +437,7 @@ bot.on('photo', async (msg) => {
 
     const sisa = 3 - sess.photoUrls.length;
     bot.sendMessage(chatId,
-      `📝 *Deskripsi*: ${(d.Deskripsi||'').substring(0,80)}${(d.Deskripsi||'').length>80?'...':''}\n` +
-    `📝 *Deskripsi*: ${(d.Deskripsi||'').substring(0,80)}${(d.Deskripsi||'').length>80?'...':''}\n` +
-    `✅ *Foto ${sess.photoUrls.length} berhasil diupload!*\n\n` +
+      `✅ *Foto ${sess.photoUrls.length} berhasil diupload!*\n\n` +
       (sisa > 0
         ? `Kirim foto lagi (sisa ${sisa}) atau ketik /selesaifoto untuk lanjut.`
         : `Sudah 3 foto (maks). Ketik /selesaifoto untuk lanjut.`),
@@ -500,6 +503,22 @@ bot.on('message', async (msg) => {
     if (!harga || harga < 1000) return bot.sendMessage(chatId, '⚠️ Masukkan harga yang valid (angka saja).');
     d.Harga       = harga;
     d.Harga_Format = fmt(harga);
+    sess.step = 'luas_tanah';
+
+  } else if (step === 'luas_tanah') {
+    d.Luas_Tanah = parseInt(text) || 0;
+    sess.step = 'luas_bangunan';
+
+  } else if (step === 'luas_bangunan') {
+    d.Luas_Bangunan = parseInt(text) || 0;
+    sess.step = 'kamar_tidur';
+
+  } else if (step === 'kamar_tidur') {
+    d.Kamar_Tidur = parseInt(text) || 0;
+    sess.step = 'kamar_mandi';
+
+  } else if (step === 'kamar_mandi') {
+    d.Kamar_Mandi = parseInt(text) || 0;
     sess.step = 'deskripsi';
 
   } else if (step === 'deskripsi') {
@@ -544,6 +563,8 @@ function sendConfirmation(chatId, sess) {
     `✏️ *Judul*   : ${d.Judul}\n` +
     `📍 *Lokasi*  : ${d.Kecamatan}, ${d.Kota}\n` +
     `💰 *Harga*   : ${d.Harga_Format}\n` +
+    `📐 *LT/LB*   : ${d.Luas_Tanah || 0}m² / ${d.Luas_Bangunan || 0}m²\n` +
+    `🛏 *KT/KM*   : ${d.Kamar_Tidur || 0} / ${d.Kamar_Mandi || 0}\n` +
     `📸 *Foto*    : ${sess.photoUrls.length} foto\n` +
     `─────────────────────────────\n\n` +
     `Simpan listing ini?\nKetik *YA* untuk simpan atau *TIDAK* untuk batal.`;
@@ -570,6 +591,10 @@ async function simpanListing(chatId, sess) {
       Kecamatan:        d.Kecamatan,
       Harga:            d.Harga,
       Harga_Format:     d.Harga_Format,
+      Luas_Tanah:       d.Luas_Tanah || '',
+      Luas_Bangunan:    d.Luas_Bangunan || '',
+      Kamar_Tidur:      d.Kamar_Tidur || '',
+      Kamar_Mandi:      d.Kamar_Mandi || '',
       Deskripsi:        d.Deskripsi || '',
       Status_Listing:   'Aktif',
       Tampilkan_di_Web: 'FALSE',

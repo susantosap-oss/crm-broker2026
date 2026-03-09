@@ -28,33 +28,6 @@ function maskLead(lead, role) {
   return { ...lead, No_WA: '***masked***' };
 }
 
-// GET /leads/export/csv
-router.get('/export/csv', async (req, res) => {
-  try {
-    const rows = await sheetsService.getRange(SHEETS.LEADS);
-    const [, ...data] = rows;
-    let leads = data.map(rowToLead).filter(l => l.ID);
-    const { role, id } = req.user;
-    if (role === 'agen') {
-      leads = leads.filter(l => l.Agen_ID === id);
-    } else if (role !== 'superadmin') {
-      return res.status(403).json({ success: false, message: 'Akses ditolak' });
-    }
-    const esc = (v) => { const s = String(v||'').replace(/"/g,'""'); return /[,"\n]/.test(s)?`"${s}"`:s; };
-    const lines = [['Nama','No WA','Tipe Properti','Transaksi'].join(',')];
-    for (const l of leads) {
-      const tipe = l.Minat_Tipe || l.Closing_Tipe || l.Tipe_Properti || '';
-      const trx  = l.Jenis || l.Status_Transaksi || '';
-      lines.push([esc(l.Nama), esc(l.No_WA), esc(tipe), esc(trx)].join(','));
-    }
-    const date  = new Date().toISOString().slice(0,10);
-    const fname = role === 'superadmin' ? `leads-all-${date}.csv` : `leads-saya-${date}.csv`;
-    res.setHeader('Content-Type','text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition',`attachment; filename="${fname}"`);
-    res.send('\uFEFF' + lines.join('\r\n'));
-  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
 // GET /leads
 router.get('/', async (req, res) => {
   try {

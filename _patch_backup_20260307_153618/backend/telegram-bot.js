@@ -433,7 +433,6 @@ bot.on('photo', async (msg) => {
     const sisa = 3 - sess.photoUrls.length;
     bot.sendMessage(chatId,
       `📝 *Deskripsi*: ${(d.Deskripsi||'').substring(0,80)}${(d.Deskripsi||'').length>80?'...':''}\n` +
-    `📝 *Deskripsi*: ${(d.Deskripsi||'').substring(0,80)}${(d.Deskripsi||'').length>80?'...':''}\n` +
     `✅ *Foto ${sess.photoUrls.length} berhasil diupload!*\n\n` +
       (sisa > 0
         ? `Kirim foto lagi (sisa ${sisa}) atau ketik /selesaifoto untuk lanjut.`

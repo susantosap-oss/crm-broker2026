@@ -3,34 +3,8 @@
  * PR 1–15: All features implemented
  */
 
-// ── Export CSV Leads ─────────────────────────────────
-async function exportLeadsCSV() {
-  try {
-    showToast('Mempersiapkan CSV...', 'info');
-    const res = await fetch('/api/v1/leads/export/csv', {
-      headers: { Authorization: `Bearer ${STATE.token}` }
-    });
-    if (!res.ok) { showToast('Gagal export CSV', 'error'); return; }
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `leads-${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-    showToast('✅ CSV berhasil didownload!', 'success');
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-// ── Force Logout All Devices (superadmin) ─────────────
-async function forceLogoutAllDevices() {
-  if (!confirm('⚠️ Semua agen akan di-logout dari semua device.\nLanjutkan?')) return;
-  try {
-    const r = await API.post('/agents/force-logout-all', {});
-    showToast('✅ ' + r.message, 'success');
-  } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
-}
-
-// ── PR 2: LOGOUT FIX
+// ─────────────────────────────────────────────────────────
+// PR 2: LOGOUT FIX
 // ─────────────────────────────────────────────────────────
 function logout() { doLogout(); }
 
@@ -114,9 +88,6 @@ function openSettings() {
   ['set-pass-old','set-pass-new','set-pass-confirm'].forEach(id => setVal(id, ''));
 
   setStatus(d.status || 'Aktif');
-  // Tampilkan danger zone untuk superadmin
-  const dz = document.getElementById('superadmin-danger-zone');
-  if (dz) dz.style.display = (STATE.user?.role === 'superadmin') ? 'block' : 'none';
   openModal('modal-settings');
 }
 
@@ -351,8 +322,8 @@ async function handleLogin() {
 
     STATE.token = data.data.token;
     STATE.user  = data.data.user;
-    localStorage.setItem('crm_token', STATE.token);
-    localStorage.setItem('crm_user', JSON.stringify(STATE.user));
+    sessionStorage.setItem('crm_token', STATE.token);
+    sessionStorage.setItem('crm_user', JSON.stringify(STATE.user));
     showApp();
   } catch (e) {
     if (errEl) { errEl.textContent = e.message; errEl.classList.remove('hidden'); }

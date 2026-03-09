@@ -35,9 +35,7 @@ const API = {
 
     // Auto-redirect on 401
     if (res.status === 401) {
-      localStorage.removeItem('crm_token');
-      localStorage.removeItem('crm_user');
-      localStorage.removeItem('crm_login_at');
+      sessionStorage.clear();
       STATE.token = null; STATE.user = null;
       showLoginScreen();
       showToast('Sesi berakhir. Silakan login ulang.', 'error');
@@ -58,8 +56,8 @@ const API = {
 
 // ── INIT ───────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  const token = localStorage.getItem('crm_token');
-  const user  = localStorage.getItem('crm_user');
+  const token = sessionStorage.getItem('crm_token');
+  const user  = sessionStorage.getItem('crm_user');
 
   if (token && user) {
     STATE.token = token;
@@ -97,9 +95,10 @@ async function handleLogin() {
     STATE.token = json.data.token;
     STATE.user  = json.data.user;
     // Clear semua sesi lama sebelum set yang baru
-    localStorage.setItem('crm_token', STATE.token);
-    localStorage.setItem('crm_user', JSON.stringify(STATE.user));
-    localStorage.setItem('crm_login_at', Date.now().toString());
+    sessionStorage.clear();
+    sessionStorage.setItem('crm_token', STATE.token);
+    sessionStorage.setItem('crm_user', JSON.stringify(STATE.user));
+    sessionStorage.setItem('crm_login_at', Date.now().toString());
 
     showApp();
   } catch (err) {
@@ -125,9 +124,7 @@ function togglePasswordVisibility() {
 function togglePassword() { togglePasswordVisibility(); }
 
 function doLogout() {
-  localStorage.removeItem('crm_token');
-  localStorage.removeItem('crm_user');
-  localStorage.removeItem('crm_login_at');
+  sessionStorage.clear();
   STATE.token = null; STATE.user = null;
   STATE.listings = []; STATE.leads = []; STATE.tasks = [];
   closeModal('modal-sidebar');

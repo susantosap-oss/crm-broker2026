@@ -3,34 +3,8 @@
  * PR 1–15: All features implemented
  */
 
-// ── Export CSV Leads ─────────────────────────────────
-async function exportLeadsCSV() {
-  try {
-    showToast('Mempersiapkan CSV...', 'info');
-    const res = await fetch('/api/v1/leads/export/csv', {
-      headers: { Authorization: `Bearer ${STATE.token}` }
-    });
-    if (!res.ok) { showToast('Gagal export CSV', 'error'); return; }
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `leads-${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-    showToast('✅ CSV berhasil didownload!', 'success');
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-// ── Force Logout All Devices (superadmin) ─────────────
-async function forceLogoutAllDevices() {
-  if (!confirm('⚠️ Semua agen akan di-logout dari semua device.\nLanjutkan?')) return;
-  try {
-    const r = await API.post('/agents/force-logout-all', {});
-    showToast('✅ ' + r.message, 'success');
-  } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
-}
-
-// ── PR 2: LOGOUT FIX
+// ─────────────────────────────────────────────────────────
+// PR 2: LOGOUT FIX
 // ─────────────────────────────────────────────────────────
 function logout() { doLogout(); }
 
@@ -114,9 +88,6 @@ function openSettings() {
   ['set-pass-old','set-pass-new','set-pass-confirm'].forEach(id => setVal(id, ''));
 
   setStatus(d.status || 'Aktif');
-  // Tampilkan danger zone untuk superadmin
-  const dz = document.getElementById('superadmin-danger-zone');
-  if (dz) dz.style.display = (STATE.user?.role === 'superadmin') ? 'block' : 'none';
   openModal('modal-settings');
 }
 
@@ -351,8 +322,8 @@ async function handleLogin() {
 
     STATE.token = data.data.token;
     STATE.user  = data.data.user;
-    localStorage.setItem('crm_token', STATE.token);
-    localStorage.setItem('crm_user', JSON.stringify(STATE.user));
+    sessionStorage.setItem('crm_token', STATE.token);
+    sessionStorage.setItem('crm_user', JSON.stringify(STATE.user));
     showApp();
   } catch (e) {
     if (errEl) { errEl.textContent = e.message; errEl.classList.remove('hidden'); }
@@ -728,21 +699,11 @@ function _buildShareText(listing) {
   const waClean    = agentWA.replace(/\D/g, '');
   const waBizClean = agentWABiz.replace(/\D/g, '');
   const lokasi    = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ');
-    // Parse spek dari deskripsi (fallback untuk listing lama)
-  const _desc   = listing.Deskripsi || '';
-  const _px     = (re) => { const m = _desc.match(re); return m ? m[1] : ''; };
-  const _lt     = listing.Luas_Tanah    || _px(/LT[:\s]*(\d+)/i);
-  const _lb     = listing.Luas_Bangunan || _px(/LB[:\s]*(\d+)/i);
-  const _kt     = listing.Kamar_Tidur   || _px(/(\d+)\s*KT/i);
-  const _km     = listing.Kamar_Mandi   || _px(/(\d+)\s*KM/i);
-  const _srt    = listing.Sertifikat    || _px(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i);
-  
-  const spek    = [
-    _lt  ? `LT ${_lt} m2`  : '',
-    _lb  ? `LB ${_lb} m2`  : '',
-    _kt  ? `${_kt} KT`     : '',
-    _km  ? `${_km} KM`     : '',
-    _srt ? _srt            : '',
+  const spek      = [
+    listing.Luas_Tanah    ? `LT ${listing.Luas_Tanah} m2`    : '',
+    listing.Luas_Bangunan ? `LB ${listing.Luas_Bangunan} m2` : '',
+    listing.Kamar_Tidur   ? `${listing.Kamar_Tidur} KT`       : '',
+    listing.Kamar_Mandi   ? `${listing.Kamar_Mandi} KM`       : '',
   ].filter(Boolean).join(' / ');
   // Strip hashtag dari deskripsi
   const rawDesk = (listing.Deskripsi || '').replace(/#\w+/g, '').replace(/\s{2,}/g, ' ').trim();
@@ -750,18 +711,18 @@ function _buildShareText(listing) {
     ? '\n' + rawDesk.substring(0, 300) + (rawDesk.length > 300 ? '...' : '')
     : '';
   return (
-    `*${(listing.Judul || 'Properti Dijual').toUpperCase().trim()}*\n` + 
-    `_${listing.Tipe_Properti || ''} - ${listing.Status_Transaksi || ''}_\n\n` + 
-    `📍 *Lokasi* : ${lokasi || '-'}\n` +
-    `💰 *Harga* : *${harga}*\n` + 
-    (spek ? `🏠 *Spek* : ${spek}\n` : '') +
-    (listing.Kode_Listing ? `🆔 *Kode* : ${listing.Kode_Listing}\n` : '') +
-    `\n${deskripsi}\n\n` +
-    `*Hubungi Agen:*\n` +
-    `👤 ${agentNama}\n` +
-    (waClean    ? `📱 : +${waClean}\n` : '') + 
-    (waBizClean ? `💼 : +${waBizClean}\n` : '')
-);
+    `${listing.Judul || 'Properti Dijual'}\n` +
+    `${listing.Tipe_Properti || ''} - ${listing.Status_Transaksi || ''}\n` +
+    `Lokasi : ${lokasi || '-'}\n` +
+    `Harga  : ${harga}\n` +
+    (spek ? `Spek   : ${spek}\n` : '') +
+    (listing.Kode_Listing ? `Kode   : ${listing.Kode_Listing}\n` : '') +
+    deskripsi +
+    `\n\nHubungi :\n` +
+    `Nama       : ${agentNama}\n` +
+    (waClean    ? `WA         : +${waClean}\n`    : '') +
+    (waBizClean ? `WA Business: +${waBizClean}\n` : '')
+  );
 }
 
 function openShareWAPicker(listingId) {
@@ -831,23 +792,11 @@ function shareListingWACatalog(listingId) {
   const listing = _allListings.find(l => l.ID === listingId);
   if (!listing) return;
   const harga = listing.Harga_Format || formatRupiah(listing.Harga);
-  const _d2  = listing.Deskripsi || '';
-  const _p2  = (re) => { const m = _d2.match(re); return m ? m[1] : ''; };
-  const _spekCat = [
-    (listing.Luas_Tanah    || _p2(/LT[:\s]*(\d+)/i))  ? `LT ${listing.Luas_Tanah || _p2(/LT[:\s]*(\d+)/i)} m2` : '',
-    (listing.Luas_Bangunan || _p2(/LB[:\s]*(\d+)/i))  ? `LB ${listing.Luas_Bangunan || _p2(/LB[:\s]*(\d+)/i)} m2` : '',
-    (listing.Kamar_Tidur   || _p2(/(\d+)\s*KT/i))     ? `${listing.Kamar_Tidur || _p2(/(\d+)\s*KT/i)} KT` : '',
-    (listing.Kamar_Mandi   || _p2(/(\d+)\s*KM/i))     ? `${listing.Kamar_Mandi || _p2(/(\d+)\s*KM/i)} KM` : '',
-    listing.Sertifikat || _p2(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i) || '',
-  ].filter(Boolean).join(' / ');
-  
   const catalogText =
     `${listing.Judul || 'Properti'}\n` +
     `Harga: ${harga}\n` +
     `Tipe: ${listing.Tipe_Properti || ''} | ${listing.Status_Transaksi || ''}\n` +
     `Lokasi: ${[listing.Kecamatan, listing.Kota].filter(Boolean).join(', ')}\n` +
-    (_spekCat ? `Spek: ${_spekCat}\n` : '') +
-    (listing.Sertifikat ? `Sertifikat: ${listing.Sertifikat}\n` : '') +
     `${listing.Deskripsi ? '\n' + listing.Deskripsi.replace(/#\w+/g,'').replace(/\s{2,}/g,' ').trim() : ''}\n` +
     `\nKode: ${listing.Kode_Listing || ''}\n` +
     `📸 Foto: ${listing.Foto_Utama_URL || ''}`;
@@ -1954,6 +1903,12 @@ function openEditListing(listingId) {
   setVal('add-harga',      l.Harga             || '');
   setVal('add-deskripsi',  l.Deskripsi         || '');
   setVal('add-caption',    l.Caption_Sosmed    || '');
+  // Spesifikasi (patch v2)
+  setVal('add-lt',         l.Luas_Tanah        || '');
+  setVal('add-lb',         l.Luas_Bangunan     || '');
+  setVal('add-kt',         l.Kamar_Tidur       || '');
+  setVal('add-km',         l.Kamar_Mandi       || '');
+  setVal('add-sertifikat', l.Sertifikat        || '');
 
   // Show existing photos as preview
   const prevGrid = document.getElementById('photo-preview-grid');
@@ -2000,6 +1955,17 @@ async function submitAddListing() {
   formData.append('Harga_Format',     formatRupiah(harga));
   if (!isEdit) formData.append('Status_Listing', 'Aktif');
 
+  // Spesifikasi Properti (patch v2)
+  const _lt  = getVal('add-lt');
+  const _lb  = getVal('add-lb');
+  const _kt  = getVal('add-kt');
+  const _km  = getVal('add-km');
+  const _srt = getVal('add-sertifikat');
+  if (_lt)  formData.append('Luas_Tanah',    _lt);
+  if (_lb)  formData.append('Luas_Bangunan', _lb);
+  if (_kt)  formData.append('Kamar_Tidur',   _kt);
+  if (_km)  formData.append('Kamar_Mandi',   _km);
+  if (_srt) formData.append('Sertifikat',    _srt);
 
   // Multi photo: utama + foto2 + foto3 (max 3)
   const photoInputs = [

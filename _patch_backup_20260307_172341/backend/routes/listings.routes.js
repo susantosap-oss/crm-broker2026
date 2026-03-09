@@ -306,70 +306,17 @@ router.post('/', upload.array('photos', 3), async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-// PATCH / PUT update listing — support multipart/form-data + optional foto
-router.patch('/:id', upload.array('photos', 3), async (req, res) => {
+// PATCH / PUT update listing
+router.patch('/:id', async (req, res) => {
   try {
-    const listing = await listingsService.getById(req.params.id);
-    if (!listing) return res.status(404).json({ success: false, message: 'Listing tidak ditemukan' });
-
-    let updateData = { ...req.body };
-
-    // Handle foto baru jika ada
-    if (req.files?.length) {
-      const uploads = await cloudinaryService.uploadMultiple(req.files, req.params.id);
-
-      // Tentukan slot foto: isi slot kosong dulu, lalu overwrite dari awal
-      const slots = ['Foto_Utama_URL', 'Foto_2_URL', 'Foto_3_URL'];
-      let idx = 0;
-      // Pass 1: isi slot kosong
-      for (const slot of slots) {
-        if (idx >= uploads.length) break;
-        if (!listing[slot]) { updateData[slot] = uploads[idx]?.secure_url || ''; idx++; }
-      }
-      // Pass 2: overwrite dari slot 1 jika masih ada foto tersisa
-      for (const slot of slots) {
-        if (idx >= uploads.length) break;
-        updateData[slot] = uploads[idx]?.secure_url || ''; idx++;
-      }
-      const existingIds = (() => { try { return JSON.parse(listing.Cloudinary_IDs || '[]'); } catch { return []; } })();
-      updateData.Cloudinary_IDs = JSON.stringify([...existingIds, ...uploads.map(u => u.public_id)]);
-      updateData.Foto_Gallery   = JSON.stringify(
-        [updateData.Foto_2_URL || listing.Foto_2_URL, updateData.Foto_3_URL || listing.Foto_3_URL].filter(Boolean)
-      );
-    }
-
-    const updated = await listingsService.update(req.params.id, updateData);
-    res.json({ success: true, data: updated, message: 'Listing berhasil diupdate' });
+    const listing = await listingsService.update(req.params.id, req.body);
+    res.json({ success: true, data: listing, message: 'Listing berhasil diupdate' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
-router.put('/:id', upload.array('photos', 3), async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
-    const listing = await listingsService.getById(req.params.id);
-    if (!listing) return res.status(404).json({ success: false, message: 'Listing tidak ditemukan' });
-
-    let updateData = { ...req.body };
-
-    if (req.files?.length) {
-      const uploads = await cloudinaryService.uploadMultiple(req.files, req.params.id);
-      const slots = ['Foto_Utama_URL', 'Foto_2_URL', 'Foto_3_URL'];
-      let idx = 0;
-      for (const slot of slots) {
-        if (idx >= uploads.length) break;
-        if (!listing[slot]) { updateData[slot] = uploads[idx]?.secure_url || ''; idx++; }
-      }
-      for (const slot of slots) {
-        if (idx >= uploads.length) break;
-        updateData[slot] = uploads[idx]?.secure_url || ''; idx++;
-      }
-      const existingIds = (() => { try { return JSON.parse(listing.Cloudinary_IDs || '[]'); } catch { return []; } })();
-      updateData.Cloudinary_IDs = JSON.stringify([...existingIds, ...uploads.map(u => u.public_id)]);
-      updateData.Foto_Gallery   = JSON.stringify(
-        [updateData.Foto_2_URL || listing.Foto_2_URL, updateData.Foto_3_URL || listing.Foto_3_URL].filter(Boolean)
-      );
-    }
-
-    const updated = await listingsService.update(req.params.id, updateData);
-    res.json({ success: true, data: updated, message: 'Listing berhasil diupdate' });
+    const listing = await listingsService.update(req.params.id, req.body);
+    res.json({ success: true, data: listing, message: 'Listing berhasil diupdate' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 

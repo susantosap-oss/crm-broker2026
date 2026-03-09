@@ -8,23 +8,7 @@
 const jwt = require('jsonwebtoken');
 const { ROLE_LEVEL } = require('../config/sheets.config');
 
-
-// Force Logout Cache (baca CONFIG sheet, cache 2 menit)
-let _flCache = { ts: 0, val: 0 };
-async function getForceLogoutAt() {
-  const now = Date.now();
-  if (now - _flCache.ts < 120000) return _flCache.val;
-  try {
-    const ss = require('../services/sheets.service');
-    const { SHEETS } = require('../config/sheets.config');
-    const rows = await ss.getRange(SHEETS.CONFIG);
-    const row  = (rows||[]).find(r => r[0] === 'Force_Logout_All_At');
-    _flCache = { ts: now, val: row ? (parseInt(row[1])||0) : 0 };
-  } catch { /* pakai cache lama */ }
-  return _flCache.val;
-}
-
-const authMiddleware = async (req, res, next) => {
+const authMiddleware = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -33,11 +17,6 @@ const authMiddleware = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
-    // Cek force logout
-    const flAt = await getForceLogoutAt();
-    if (flAt && decoded.iat && (decoded.iat * 1000) < flAt) {
-      return res.status(401).json({ success: false, message: 'Sesi diakhiri oleh admin. Silakan login ulang.' });
-    }
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {

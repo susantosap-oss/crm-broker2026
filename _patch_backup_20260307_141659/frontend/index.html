@@ -256,7 +256,6 @@
         <button onclick="setLeadFilter('Warm',this)" data-filter="Warm" class="chip">☀️ Warm</button>
         <button onclick="setLeadFilter('Cold',this)" data-filter="Cold" class="chip">❄️ Cold</button>
       </div>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onclick="exportLeadsCSV()" style="background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.35);color:rgba(212,168,83,0.9);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer"><i class="fa-solid fa-file-csv" style="margin-right:5px"></i>Export CSV</button></div>
       <div id="leads-list" style="display:flex;flex-direction:column;gap:8px">
         <div class="skeleton" style="height:76px;border-radius:14px"></div>
         <div class="skeleton" style="height:76px;border-radius:14px"></div>
@@ -432,8 +431,7 @@
       </div>
       <div style="display:flex;gap:10px;padding-top:4px">
         <button onclick="closeModal('modal-settings')" class="btn-ghost" style="flex:1">Batal</button>
-        <div id="superadmin-danger-zone" style="display:none;margin-top:8px;padding:12px 14px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:12px"><p style="font-size:11px;color:rgba(239,68,68,0.7);font-weight:600;margin:0 0 8px 0">⚠️ Superadmin — Danger Zone</p><button onclick="forceLogoutAllDevices()" style="width:100%;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:#ef4444;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">🚪 Force Logout Semua Device</button></div>
-      <button onclick="saveSettings()" class="btn-gold" style="flex:1"><i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan</button>
+        <button onclick="saveSettings()" class="btn-gold" style="flex:1"><i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan</button>
       </div>
     </div>
   </div>
@@ -454,7 +452,6 @@
         <div><label class="form-label">Area</label><input id="add-kecamatan" type="text" placeholder="Wonokromo / Rungkut / Citraland" class="form-input"/></div>
       </div>
       <div><label class="form-label">Harga (Rp) *</label><input id="add-harga" type="number" placeholder="750000000" class="form-input"/></div>
-
       <div>
         <label class="form-label">Deskripsi</label>
         <textarea id="add-deskripsi" rows="4" class="form-input" style="resize:none" placeholder="LT 120m² / LB 90m² / 3KT 2KM / SHM / 2 Lantai / ROW 8m / Hadap Timur / Semi Furnished / bebas banjir dekat tol..."></textarea>

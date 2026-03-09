@@ -180,47 +180,11 @@ router.get('/pdf', async (req, res) => {
       const col1 = 40, col2 = 300, colW = 240;
       const fields = [
         ['Lokasi',    [l.Kecamatan, l.Kota].filter(Boolean).join(', ') || '—'],
-        // parse dari deskripsi sbg fallback (kolom sheet mungkin kosong)
-        ...((() => {
-          const raw = l.Deskripsi || '';
-          const px  = (re) => { const m = raw.match(re); return m ? m[1] : ''; };
-          const lt  = l.Luas_Tanah    || px(/LT[:\s]*(\d+)/i);
-          const lb  = l.Luas_Bangunan || px(/LB[:\s]*(\d+)/i);
-          const kt  = l.Kamar_Tidur   || px(/(\d+)\s*KT/i);
-          const km  = l.Kamar_Mandi   || px(/(\d+)\s*KM/i);
-          const srt = l.Sertifikat    || px(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i);
-          return [
-                    // parse spek dari deskripsi sbg fallback
-        ...((() => {
-          const raw = l.Deskripsi || '';
-          const px  = (re) => { const m = raw.match(re); return m ? m[1] : ''; };
-          const lt  = l.Luas_Tanah    || px(/LT[:\s]*(\d+)/i);
-          const lb  = l.Luas_Bangunan || px(/LB[:\s]*(\d+)/i);
-          const kt  = l.Kamar_Tidur   || px(/(\d+)\s*KT/i);
-          const km  = l.Kamar_Mandi   || px(/(\d+)\s*KM/i);
-          const srt = l.Sertifikat    || px(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i);
-          return [
-                    // parse spek dari deskripsi sbg fallback
-        ...((() => {
-          const raw = l.Deskripsi || '';
-          const px  = (re) => { const m = raw.match(re); return m ? m[1] : ''; };
-          const lt  = l.Luas_Tanah    || px(/LT[:\s]*(\d+)/i);
-          const lb  = l.Luas_Bangunan || px(/LB[:\s]*(\d+)/i);
-          const kt  = l.Kamar_Tidur   || px(/(\d+)\s*KT/i);
-          const km  = l.Kamar_Mandi   || px(/(\d+)\s*KM/i);
-          const srt = l.Sertifikat    || px(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i);
-          return [
-            ['Luas Tanah',    lt  ? `${lt} m2`  : 'N/A'],
-            ['Luas Bangunan', lb  ? `${lb} m2`  : 'N/A'],
-            ['Kamar Tidur',   kt  ? `${kt} KT`  : 'N/A'],
-            ['Kamar Mandi',   km  ? `${km} KM`  : 'N/A'],
-            ['Sertifikat',    srt ? sanitize(srt) : 'N/A'],
-          ];
-        })()),
-          ];
-        })()),
-          ];
-        })()),
+        ['Luas Tanah',    l.Luas_Tanah    ? `${l.Luas_Tanah} m2`    : 'N/A'],
+        ['Luas Bangunan', l.Luas_Bangunan ? `${l.Luas_Bangunan} m2` : 'N/A'],
+        ['Kamar Tidur',   l.Kamar_Tidur   ? `${l.Kamar_Tidur} KT`   : 'N/A'],
+        ['Kamar Mandi',   l.Kamar_Mandi   ? `${l.Kamar_Mandi} KM`   : 'N/A'],
+        ['Sertifikat',    sanitize(l.Sertifikat) || 'N/A'],
       ];
 
       fields.forEach(([label, val], i) => {
@@ -306,70 +270,17 @@ router.post('/', upload.array('photos', 3), async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-// PATCH / PUT update listing — support multipart/form-data + optional foto
-router.patch('/:id', upload.array('photos', 3), async (req, res) => {
+// PATCH / PUT update listing
+router.patch('/:id', async (req, res) => {
   try {
-    const listing = await listingsService.getById(req.params.id);
-    if (!listing) return res.status(404).json({ success: false, message: 'Listing tidak ditemukan' });
-
-    let updateData = { ...req.body };
-
-    // Handle foto baru jika ada
-    if (req.files?.length) {
-      const uploads = await cloudinaryService.uploadMultiple(req.files, req.params.id);
-
-      // Tentukan slot foto: isi slot kosong dulu, lalu overwrite dari awal
-      const slots = ['Foto_Utama_URL', 'Foto_2_URL', 'Foto_3_URL'];
-      let idx = 0;
-      // Pass 1: isi slot kosong
-      for (const slot of slots) {
-        if (idx >= uploads.length) break;
-        if (!listing[slot]) { updateData[slot] = uploads[idx]?.secure_url || ''; idx++; }
-      }
-      // Pass 2: overwrite dari slot 1 jika masih ada foto tersisa
-      for (const slot of slots) {
-        if (idx >= uploads.length) break;
-        updateData[slot] = uploads[idx]?.secure_url || ''; idx++;
-      }
-      const existingIds = (() => { try { return JSON.parse(listing.Cloudinary_IDs || '[]'); } catch { return []; } })();
-      updateData.Cloudinary_IDs = JSON.stringify([...existingIds, ...uploads.map(u => u.public_id)]);
-      updateData.Foto_Gallery   = JSON.stringify(
-        [updateData.Foto_2_URL || listing.Foto_2_URL, updateData.Foto_3_URL || listing.Foto_3_URL].filter(Boolean)
-      );
-    }
-
-    const updated = await listingsService.update(req.params.id, updateData);
-    res.json({ success: true, data: updated, message: 'Listing berhasil diupdate' });
+    const listing = await listingsService.update(req.params.id, req.body);
+    res.json({ success: true, data: listing, message: 'Listing berhasil diupdate' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
-router.put('/:id', upload.array('photos', 3), async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
-    const listing = await listingsService.getById(req.params.id);
-    if (!listing) return res.status(404).json({ success: false, message: 'Listing tidak ditemukan' });
-
-    let updateData = { ...req.body };
-
-    if (req.files?.length) {
-      const uploads = await cloudinaryService.uploadMultiple(req.files, req.params.id);
-      const slots = ['Foto_Utama_URL', 'Foto_2_URL', 'Foto_3_URL'];
-      let idx = 0;
-      for (const slot of slots) {
-        if (idx >= uploads.length) break;
-        if (!listing[slot]) { updateData[slot] = uploads[idx]?.secure_url || ''; idx++; }
-      }
-      for (const slot of slots) {
-        if (idx >= uploads.length) break;
-        updateData[slot] = uploads[idx]?.secure_url || ''; idx++;
-      }
-      const existingIds = (() => { try { return JSON.parse(listing.Cloudinary_IDs || '[]'); } catch { return []; } })();
-      updateData.Cloudinary_IDs = JSON.stringify([...existingIds, ...uploads.map(u => u.public_id)]);
-      updateData.Foto_Gallery   = JSON.stringify(
-        [updateData.Foto_2_URL || listing.Foto_2_URL, updateData.Foto_3_URL || listing.Foto_3_URL].filter(Boolean)
-      );
-    }
-
-    const updated = await listingsService.update(req.params.id, updateData);
-    res.json({ success: true, data: updated, message: 'Listing berhasil diupdate' });
+    const listing = await listingsService.update(req.params.id, req.body);
+    res.json({ success: true, data: listing, message: 'Listing berhasil diupdate' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
