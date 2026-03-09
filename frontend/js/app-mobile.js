@@ -2082,13 +2082,13 @@ async function submitAddTask() {
 async function navigateTo(page) {
   document.querySelectorAll('.page').forEach(p => { p.style.display='none'; });
   const target = document.getElementById(`page-${page}`);
-  if (target) target.style.display = 'block';
+  if (target) { target.style.display = 'block'; target.scrollTop = 0; }
 
   document.querySelectorAll('.nav-btn').forEach(b => {
     b.className = b.id === `nav-${page}` ? 'nav-btn active' : 'nav-btn';
   });
 
-  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Jadwal & Tasks', member:'Member Kantor' };
+  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Jadwal & Tasks', member:'Member Kantor', primary:'Primary' };
   setEl('page-title', titles[page] || page);
   STATE.currentPage = page;
 
