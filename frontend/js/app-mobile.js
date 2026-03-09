@@ -1,25 +1,3 @@
-/**
- * app-mobile.js — CRM Broker Properti GAS Edition
- * PR 1–15: All features implemented
- */
-
-// ── Export CSV Leads ─────────────────────────────────
-async function exportLeadsCSV() {
-  try {
-    showToast('Mempersiapkan CSV...', 'info');
-    const res = await fetch('/api/v1/leads/export/csv', {
-      headers: { Authorization: `Bearer ${STATE.token}` }
-    });
-    if (!res.ok) { showToast('Gagal export CSV', 'error'); return; }
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `leads-${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-    showToast('✅ CSV berhasil didownload!', 'success');
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
-}
 
 // ── Force Logout All Devices (superadmin) ─────────────
 async function forceLogoutAllDevices() {
@@ -3608,3 +3586,21 @@ function checkPrimaryDeeplink() {
 //
 // Dan di bagian update nav buttons di navigateTo():
 //   document.getElementById('nav-primary')?.classList.toggle('active', page === 'primary');
+
+// ── Export CSV Leads ─────────────────────────────────
+async function exportLeadsCSV() {
+  try {
+    showToast('Mempersiapkan CSV...', 'info');
+    const res = await fetch('/api/v1/leads/export/csv', {
+      headers: { Authorization: `Bearer ${STATE.token}` }
+    });
+    if (!res.ok) { showToast('Gagal export CSV', 'error'); return; }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `leads-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    showToast('✅ CSV berhasil didownload!', 'success');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
