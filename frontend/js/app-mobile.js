@@ -2123,6 +2123,7 @@ async function navigateTo(page) {
   if (page === 'leads')     await loadLeads();
   if (page === 'tasks')     await loadTasks();
   if (page === 'team')      await loadTeamPage();
+  if (page === 'primary')   await loadPrimaryPage();
   if (page === 'member')    await loadMemberPage();
 }
 
@@ -2923,3 +2924,678 @@ function timeAgo(isoStr) {
   if (h < 24) return h + ' jam lalu';
   return Math.floor(h / 24) + ' hari lalu';
 }
+
+// ── Hapus Team ────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+// PRIMARY FEATURE — app-mobile.js patch
+// Tambahkan di bagian bawah app-mobile.js
+// ════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────
+let _projectsData       = [];     // cache semua proyek
+let _currentProjectId   = null;   // proyek yang sedang dibuka
+let _projectPhotoSlot   = 1;      // slot foto yang sedang diupload
+let _projectPhotos      = { 1: { url: '', cloudId: '' }, 2: { url: '', cloudId: '' } };
+let _projectBundle      = null;   // sosmed bundle dari API
+const MANAGE_ROLES_PRIMARY = ['superadmin', 'principal', 'admin'];
+
+// ─────────────────────────────────────────────────────────
+// NAVIGATION HOOK — integrasi ke navigateTo()
+// Tambahkan ke dalam switch/case navigateTo yang sudah ada
+// ─────────────────────────────────────────────────────────
+// Di dalam navigateTo(page), tambahkan case:
+//   case 'primary': loadPrimaryPage(); break;
+//
+// Di checkAdminMenu(), tambahkan:
+//   if (['superadmin','principal','admin','agen'].includes(role)) {
+//     document.getElementById('nav-primary')?.style.removeProperty('display');
+//     document.getElementById('sb-primary')?.style.removeProperty('display');
+//   }
+//   if (MANAGE_ROLES_PRIMARY.includes(role)) {
+//     document.getElementById('btn-add-project')?.style.removeProperty('display');
+//     document.getElementById('primary-filter-status').style.display = '';
+//     document.getElementById('pd-admin-actions').style.display = '';
+//   }
+
+// ─────────────────────────────────────────────────────────
+// LOAD PAGE
+// ─────────────────────────────────────────────────────────
+async function loadPrimaryPage() {
+  // Tampilkan/sembunyikan elemen berdasarkan role
+  const role = STATE.user?.role;
+  const canManage = MANAGE_ROLES_PRIMARY.includes(role);
+
+  const addBtn = document.getElementById('btn-add-project');
+  if (addBtn) addBtn.style.display = canManage ? 'flex' : 'none';
+
+  const filterStatus = document.getElementById('primary-filter-status');
+  if (filterStatus) filterStatus.style.display = canManage ? '' : 'none';
+
+  await fetchProjects();
+}
+
+async function fetchProjects(silent = false) {
+  if (!silent) renderProjectSkeletons();
+  try {
+    const params = new URLSearchParams();
+    const role = STATE.user?.role;
+    if (role === 'agen') params.set('status', 'Publish');
+    const search = document.getElementById('primary-search')?.value?.trim();
+    const tipe   = document.getElementById('primary-filter-tipe')?.value;
+    const status = document.getElementById('primary-filter-status')?.value;
+    if (search) params.set('search', search);
+    if (tipe)   params.set('tipe', tipe);
+    if (status) params.set('status', status);
+
+    const res = await API.get('/projects?' + params.toString());
+    _projectsData = res.data || [];
+    renderProjectGrid(_projectsData);
+  } catch (e) {
+    showToast('Gagal load proyek: ' + e.message, 'error');
+    renderProjectGrid([]);
+  }
+}
+
+function renderProjectSkeletons() {
+  const grid = document.getElementById('primary-grid');
+  if (!grid) return;
+  grid.innerHTML = [1, 2, 3].map(() =>
+    `<div style="height:280px;border-radius:16px;background:rgba(255,255,255,0.04);animation:pulse 1.5s infinite"></div>`
+  ).join('');
+  document.getElementById('primary-empty').style.display = 'none';
+}
+
+function renderProjectGrid(projects) {
+  const grid  = document.getElementById('primary-grid');
+  const empty = document.getElementById('primary-empty');
+  if (!grid) return;
+
+  if (!projects.length) {
+    grid.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  grid.innerHTML = projects.map(p => buildProjectCard(p)).join('');
+}
+
+function buildProjectCard(p) {
+  const statusColor = p.Status === 'Publish' ? '#4ade80' : '#94a3b8';
+  const statusBg    = p.Status === 'Publish' ? 'rgba(34,197,94,0.12)' : 'rgba(148,163,184,0.1)';
+  const tipeEmoji   = { Rumah: '🏡', Ruko: '🏪', Apartemen: '🏢', Gudang: '🏭' }[p.Tipe_Properti] || '🏠';
+  const foto        = p.Foto_1_URL || '';
+  const cara        = p.Cara_Bayar ? p.Cara_Bayar.split(',').join(' · ') : '—';
+
+  return `
+  <div onclick="openProjectDetail('${escHtml(p.ID)}')"
+    style="background:#0D1E36;border:1px solid rgba(255,255,255,0.07);border-radius:16px;overflow:hidden;cursor:pointer;transition:all 0.2s"
+    onmouseenter="this.style.borderColor='rgba(212,168,83,0.35)'"
+    onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'">
+
+    <!-- Foto -->
+    <div style="height:160px;background:#131F38;position:relative;overflow:hidden">
+      ${foto
+        ? `<img src="${escHtml(foto)}" alt="" style="width:100%;height:100%;object-fit:cover"/>`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px">${tipeEmoji}</div>`}
+      <!-- Status badge -->
+      <span style="position:absolute;top:10px;left:10px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:${statusBg};color:${statusColor};border:1px solid ${statusColor}33">
+        ${p.Status || 'Draft'}
+      </span>
+      ${p.Foto_2_URL
+        ? `<img src="${escHtml(p.Foto_2_URL)}" style="position:absolute;bottom:8px;right:8px;width:46px;height:46px;border-radius:8px;object-fit:cover;border:2px solid rgba(255,255,255,0.2)"/>`
+        : ''}
+    </div>
+
+    <!-- Content -->
+    <div style="padding:14px">
+      <p style="color:rgba(255,255,255,0.4);font-size:10px;margin:0 0 3px;text-transform:uppercase;letter-spacing:1px">${escHtml(p.Kode_Proyek)}</p>
+      <h3 style="font-family:'DM Serif Display',serif;font-size:15px;color:#fff;margin:0 0 3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${escHtml(p.Nama_Proyek)}</h3>
+      <p style="color:#D4A853;font-size:12px;font-weight:600;margin:0 0 10px">${escHtml(p.Nama_Developer)}</p>
+
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <p style="color:#fff;font-size:14px;font-weight:700;margin:0">${escHtml(p.Harga_Format || 'On Request')}</p>
+          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:2px 0 0">${tipeEmoji} ${escHtml(p.Tipe_Properti)} · ${escHtml(cara)}</p>
+        </div>
+        <div style="background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:6px 12px;font-size:12px;color:#D4A853;font-weight:600">
+          Detail →
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────────
+// FILTER
+// ─────────────────────────────────────────────────────────
+function filterProjects() {
+  const search = (document.getElementById('primary-search')?.value || '').toLowerCase();
+  const tipe   = document.getElementById('primary-filter-tipe')?.value || '';
+  const status = document.getElementById('primary-filter-status')?.value || '';
+
+  const filtered = _projectsData.filter(p => {
+    const matchSearch = !search || [p.Nama_Proyek, p.Nama_Developer, p.Deskripsi].join(' ').toLowerCase().includes(search);
+    const matchTipe   = !tipe   || p.Tipe_Properti === tipe;
+    const matchStatus = !status || p.Status === status;
+    return matchSearch && matchTipe && matchStatus;
+  });
+
+  renderProjectGrid(filtered);
+}
+
+// ─────────────────────────────────────────────────────────
+// DETAIL MODAL
+// ─────────────────────────────────────────────────────────
+async function openProjectDetail(id) {
+  _currentProjectId = id;
+  const project = _projectsData.find(p => p.ID === id) || await loadProjectById(id);
+  if (!project) return showToast('Proyek tidak ditemukan', 'error');
+
+  // Isi konten
+  setEl('pd-nama-proyek', project.Nama_Proyek || '');
+  setEl('pd-developer',   project.Nama_Developer || '');
+  setEl('pd-harga',       project.Harga_Format || project.Harga_Mulai || 'On Request');
+  setEl('pd-deskripsi',   project.Deskripsi || '(tidak ada deskripsi)');
+  setEl('pd-tipe-badge',  (({ Rumah: '🏡', Ruko: '🏪', Apartemen: '🏢', Gudang: '🏭' }[project.Tipe_Properti] || '🏠') + ' ' + (project.Tipe_Properti || '')));
+  setEl('pd-cara-badge',  '💳 ' + (project.Cara_Bayar || '').replace(/,/g, ' · ') || '—');
+
+  // Status badge
+  const badge = document.getElementById('pd-status-badge');
+  if (badge) {
+    badge.textContent = project.Status || 'Draft';
+    badge.style.cssText = project.Status === 'Publish'
+      ? 'position:absolute;top:12px;left:12px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(34,197,94,0.2);color:#4ade80;border:1px solid rgba(34,197,94,0.4)'
+      : 'position:absolute;top:12px;left:12px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(148,163,184,0.15);color:#94a3b8;border:1px solid rgba(148,163,184,0.3)';
+  }
+
+  // Foto
+  const foto1 = document.getElementById('pd-foto1');
+  const foto2 = document.getElementById('pd-foto2-thumb');
+  if (foto1) {
+    if (project.Foto_1_URL) { foto1.src = project.Foto_1_URL; foto1.style.display = ''; }
+    else { foto1.style.display = 'none'; }
+  }
+  if (foto2) {
+    if (project.Foto_2_URL) { foto2.src = project.Foto_2_URL; foto2.style.display = ''; }
+    else { foto2.style.display = 'none'; }
+  }
+
+  // Admin actions visibility
+  const role = STATE.user?.role;
+  const canManage = MANAGE_ROLES_PRIMARY.includes(role);
+  const adminDiv = document.getElementById('pd-admin-actions');
+  if (adminDiv) adminDiv.style.display = canManage ? 'flex' : 'none';
+
+  const delBtn = document.getElementById('pd-delete-btn');
+  if (delBtn) delBtn.style.display = canManage ? '' : 'none';
+
+  // Publish button text
+  const pubBtn = document.getElementById('pd-publish-btn');
+  if (pubBtn) {
+    pubBtn.textContent = project.Status === 'Publish' ? '📴 Sembunyikan' : '🌐 Publish';
+    pubBtn.style.color = project.Status === 'Publish' ? '#f87171' : '#4ade80';
+  }
+
+  // Referral section — principal/superadmin only
+  const refSection = document.getElementById('pd-referral-section');
+  if (refSection) refSection.style.display = ['superadmin','principal'].includes(role) ? '' : 'none';
+
+  // Reset shortlink box
+  document.getElementById('pd-shortlink-box').style.display = 'none';
+  document.getElementById('pd-referral-list').innerHTML = '';
+
+  openModal('modal-project-detail');
+}
+
+async function loadProjectById(id) {
+  try {
+    const res = await API.get('/projects/' + id);
+    return res.data;
+  } catch { return null; }
+}
+
+function toggleDetailPhoto() {
+  const f1 = document.getElementById('pd-foto1');
+  const f2 = document.getElementById('pd-foto2-thumb');
+  if (!f1 || !f2) return;
+  const project = _projectsData.find(p => p.ID === _currentProjectId);
+  if (!project?.Foto_2_URL) return;
+  const cur = f1.src;
+  f1.src = cur === project.Foto_1_URL ? project.Foto_2_URL : project.Foto_1_URL;
+}
+
+// ─────────────────────────────────────────────────────────
+// SHORTLINK
+// ─────────────────────────────────────────────────────────
+async function generateProjectShortlink() {
+  if (!_currentProjectId) return;
+  try {
+    showToast('Membuat shortlink...', 'info');
+    const res = await API.get('/projects/' + _currentProjectId + '/shortlink');
+    const ref = res.data;
+
+    const box     = document.getElementById('pd-shortlink-box');
+    const urlCode = document.getElementById('pd-shortlink-url');
+    if (box && urlCode) {
+      urlCode.textContent = ref.Short_URL || '';
+      box.style.display   = '';
+    }
+    showToast('✅ Shortlink siap!', 'success');
+  } catch (e) {
+    showToast('Gagal buat shortlink: ' + e.message, 'error');
+  }
+}
+
+async function copyProjectShortlink() {
+  const url = document.getElementById('pd-shortlink-url')?.textContent;
+  if (!url) return;
+  try { await navigator.clipboard.writeText(url); }
+  catch { document.execCommand('copy'); }
+  showToast('✅ Shortlink disalin!', 'success');
+}
+
+// ─────────────────────────────────────────────────────────
+// REFERRAL STATS
+// ─────────────────────────────────────────────────────────
+async function loadReferralStats() {
+  if (!_currentProjectId) return;
+  const list = document.getElementById('pd-referral-list');
+  if (!list) return;
+  list.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;padding:8px">Memuat...</p>';
+  try {
+    const res  = await API.get('/projects/' + _currentProjectId + '/referrals');
+    const data = res.data || [];
+    if (!data.length) {
+      list.innerHTML = '<p style="color:rgba(255,255,255,0.3);font-size:12px;text-align:center;padding:8px">Belum ada klik</p>';
+      return;
+    }
+    list.innerHTML = `
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;overflow:hidden">
+        <div style="padding:8px 14px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between">
+          <span style="color:rgba(255,255,255,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Agen</span>
+          <span style="color:rgba(255,255,255,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px">Klik</span>
+        </div>
+        ${data.map((r, i) => `
+          <div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;color:#D4A853;font-weight:700;min-width:20px">#${i + 1}</span>
+              <span style="color:#fff;font-size:13px">${escHtml(r.Agen_Nama || r.Agen_ID)}</span>
+            </div>
+            <span style="color:#D4A853;font-size:14px;font-weight:700">${r.Click_Count || 0}</span>
+          </div>`).join('')}
+      </div>`;
+  } catch (e) {
+    list.innerHTML = `<p style="color:#ef4444;font-size:12px;text-align:center">${e.message}</p>`;
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// SHARE WA
+// ─────────────────────────────────────────────────────────
+async function shareProjectWA() {
+  if (!_currentProjectId) return;
+  const project = _projectsData.find(p => p.ID === _currentProjectId);
+  if (!project) return;
+
+  let shortUrl = '';
+  try {
+    const r = await API.get('/projects/' + _currentProjectId + '/shortlink');
+    shortUrl = r.data?.Short_URL || '';
+  } catch (_) {}
+
+  const tipeEmoji = { Rumah: '🏡', Ruko: '🏪', Apartemen: '🏢', Gudang: '🏭' }[project.Tipe_Properti] || '🏠';
+  const cara      = (project.Cara_Bayar || '').replace(/,/g, ', ');
+
+  const text = `${tipeEmoji} *${project.Nama_Proyek}*\n`
+    + `Developer: *${project.Nama_Developer}*\n`
+    + `Tipe: ${project.Tipe_Properti} | Mulai *${project.Harga_Format || 'On Request'}*\n`
+    + `💳 ${cara}\n\n`
+    + (project.Deskripsi ? project.Deskripsi.slice(0, 250) + (project.Deskripsi.length > 250 ? '...' : '') + '\n\n' : '')
+    + (shortUrl ? `🔗 Info lengkap: ${shortUrl}\n\n` : '')
+    + `📞 Hubungi saya untuk info & jadwal survei!`;
+
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+}
+
+// ─────────────────────────────────────────────────────────
+// SIAPKAN KONTEN (sosmed bundle)
+// ─────────────────────────────────────────────────────────
+async function openProjectContent() {
+  if (!_currentProjectId) return;
+  const project = _projectsData.find(p => p.ID === _currentProjectId);
+  if (!project) return;
+
+  setEl('pc-project-name', project.Nama_Proyek + ' — ' + project.Nama_Developer);
+
+  // Foto
+  const f1 = document.getElementById('pc-foto1');
+  const f2 = document.getElementById('pc-foto2');
+  if (f1) { f1.src = project.Foto_1_URL || ''; f1.style.display = project.Foto_1_URL ? '' : 'none'; }
+  if (f2) { f2.src = project.Foto_2_URL || ''; f2.style.display = project.Foto_2_URL ? '' : 'none'; }
+
+  // Load bundle
+  try {
+    const res = await API.get('/projects/' + _currentProjectId + '/bundle');
+    _projectBundle = res.data;
+  } catch (_) {
+    _projectBundle = null;
+  }
+
+  // Reset platform tabs
+  document.querySelectorAll('.platform-tab[data-pkey]').forEach(b => {
+    b.style.cssText = 'background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.08);padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer';
+  });
+  const igTab = document.querySelector('.platform-tab[data-pkey="instagram"]');
+  if (igTab) igTab.style.cssText = 'background:rgba(212,168,83,0.15);color:#D4A853;border:1px solid rgba(212,168,83,0.3);padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer';
+
+  switchProjectPlatform('instagram');
+  openModal('modal-project-content');
+}
+
+function switchProjectPlatform(key) {
+  document.querySelectorAll('.platform-tab[data-pkey]').forEach(b => {
+    b.style.cssText = 'background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.08);padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer';
+  });
+  const active = document.querySelector(`.platform-tab[data-pkey="${key}"]`);
+  if (active) active.style.cssText = 'background:rgba(212,168,83,0.15);color:#D4A853;border:1px solid rgba(212,168,83,0.3);padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer';
+
+  const captionEl = document.getElementById('pc-caption-display');
+  if (captionEl && _projectBundle) {
+    const keyMap = { instagram: 'caption_ig', facebook: 'caption_fb', tiktok: 'caption_tiktok', wa: 'caption_wa' };
+    captionEl.textContent = _projectBundle[keyMap[key]] || '—';
+  }
+}
+
+async function copyProjectCaption() {
+  const text = document.getElementById('pc-caption-display')?.textContent;
+  if (!text || text === '—') return showToast('Tidak ada caption', 'error');
+  try { await navigator.clipboard.writeText(text); }
+  catch { const ta = Object.assign(document.createElement('textarea'), { value: text, style: 'position:fixed;opacity:0' }); document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  showToast('✅ Caption disalin!', 'success');
+}
+
+async function regenerateProjectCaption() {
+  if (!_currentProjectId) return;
+  try {
+    showToast('Generating caption...', 'info');
+    const res = await API.post('/projects/' + _currentProjectId + '/caption', {});
+    _projectBundle = res.data;
+
+    // Find active platform
+    const active = document.querySelector('.platform-tab[data-pkey][style*="D4A853"]');
+    const key = active?.dataset?.pkey || 'instagram';
+    switchProjectPlatform(key);
+
+    showToast('✅ Caption baru siap!', 'success');
+  } catch (e) {
+    showToast('Gagal: ' + e.message, 'error');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// FORM: TAMBAH / EDIT
+// ─────────────────────────────────────────────────────────
+function openAddProject() {
+  _projectPhotos = { 1: { url: '', cloudId: '' }, 2: { url: '', cloudId: '' } };
+  document.getElementById('project-form-id').value    = '';
+  document.getElementById('project-form-title').textContent = '⭐ Tambah Proyek Primary';
+  document.getElementById('project-form-btn-text').textContent = '💾 Simpan Proyek';
+  document.getElementById('pf-nama-proyek').value     = '';
+  document.getElementById('pf-nama-developer').value  = '';
+  document.getElementById('pf-tipe').value            = 'Rumah';
+  document.getElementById('pf-harga').value           = '';
+  document.getElementById('pf-harga-preview').textContent = '';
+  document.getElementById('pf-deskripsi').value       = '';
+  document.getElementById('pf-notes').value           = '';
+  document.querySelectorAll('.pf-cara').forEach(cb => cb.checked = false);
+  resetProjectPhotoPreview(1);
+  resetProjectPhotoPreview(2);
+  openModal('modal-project-form');
+}
+
+function editCurrentProject() {
+  if (!_currentProjectId) return;
+  const p = _projectsData.find(pr => pr.ID === _currentProjectId);
+  if (!p) return;
+
+  closeModal('modal-project-detail');
+
+  document.getElementById('project-form-id').value    = p.ID;
+  document.getElementById('project-form-title').textContent = '✏️ Edit Proyek';
+  document.getElementById('project-form-btn-text').textContent = '💾 Simpan Perubahan';
+  document.getElementById('pf-nama-proyek').value     = p.Nama_Proyek   || '';
+  document.getElementById('pf-nama-developer').value  = p.Nama_Developer|| '';
+  document.getElementById('pf-tipe').value            = p.Tipe_Properti || 'Rumah';
+  document.getElementById('pf-harga').value           = p.Harga_Mulai   || '';
+  document.getElementById('pf-harga-preview').textContent = p.Harga_Format || '';
+  document.getElementById('pf-deskripsi').value       = p.Deskripsi     || '';
+  document.getElementById('pf-notes').value           = p.Notes         || '';
+
+  // Cara bayar checkboxes
+  const caraBayar = (p.Cara_Bayar || '').split(',').map(c => c.trim());
+  document.querySelectorAll('.pf-cara').forEach(cb => {
+    cb.checked = caraBayar.includes(cb.value);
+  });
+
+  // Foto previews
+  _projectPhotos = {
+    1: { url: p.Foto_1_URL || '', cloudId: '' },
+    2: { url: p.Foto_2_URL || '', cloudId: '' },
+  };
+  setProjectPhotoPreview(1, p.Foto_1_URL || '');
+  setProjectPhotoPreview(2, p.Foto_2_URL || '');
+
+  openModal('modal-project-form');
+}
+
+function formatHargaInput(el) {
+  const raw = el.value.replace(/[^0-9]/g, '');
+  el.value = raw;
+  const preview = document.getElementById('pf-harga-preview');
+  if (!preview) return;
+  const num = parseInt(raw) || 0;
+  if (!num) { preview.textContent = ''; return; }
+  if (num >= 1_000_000_000) preview.textContent = `≈ Rp ${(num / 1_000_000_000).toFixed(1)} M`;
+  else if (num >= 1_000_000) preview.textContent = `≈ Rp ${Math.floor(num / 1_000_000)} Jt`;
+  else preview.textContent = `≈ Rp ${num.toLocaleString('id-ID')}`;
+}
+
+async function submitProjectForm() {
+  const id  = document.getElementById('project-form-id').value?.trim();
+  const btn = document.getElementById('project-form-btn-text');
+
+  const body = {
+    Nama_Proyek:    document.getElementById('pf-nama-proyek').value.trim(),
+    Nama_Developer: document.getElementById('pf-nama-developer').value.trim(),
+    Tipe_Properti:  document.getElementById('pf-tipe').value,
+    Harga_Mulai:    document.getElementById('pf-harga').value.replace(/[^0-9]/g, ''),
+    Deskripsi:      document.getElementById('pf-deskripsi').value.trim(),
+    Notes:          document.getElementById('pf-notes').value.trim(),
+    Cara_Bayar:     [...document.querySelectorAll('.pf-cara:checked')].map(cb => cb.value),
+  };
+
+  if (!body.Nama_Proyek)    return showToast('Nama Proyek wajib diisi', 'error');
+  if (!body.Nama_Developer) return showToast('Nama Developer wajib diisi', 'error');
+
+  // Upload foto yang pending jika ada file baru
+  await uploadPendingProjectPhotos();
+
+  body.Foto_1_URL     = _projectPhotos[1].url || '';
+  body.Foto_2_URL     = _projectPhotos[2].url || '';
+  body.Cloudinary_IDs = [_projectPhotos[1].cloudId, _projectPhotos[2].cloudId].filter(Boolean);
+
+  try {
+    if (btn) btn.textContent = '⏳ Menyimpan...';
+    let res;
+    if (id) {
+      res = await API.put('/projects/' + id, body);
+    } else {
+      res = await API.post('/projects', body);
+    }
+    closeModal('modal-project-form');
+    showToast(res.message || '✅ Proyek disimpan!', 'success');
+    await fetchProjects(true);
+  } catch (e) {
+    showToast('Gagal: ' + e.message, 'error');
+  } finally {
+    if (btn) btn.textContent = id ? '💾 Simpan Perubahan' : '💾 Simpan Proyek';
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// PUBLISH TOGGLE
+// ─────────────────────────────────────────────────────────
+async function toggleProjectPublish() {
+  if (!_currentProjectId) return;
+  const project = _projectsData.find(p => p.ID === _currentProjectId);
+  if (!project) return;
+
+  const newStatus = project.Status === 'Publish' ? 'Draft' : 'Publish';
+  try {
+    const res = await API.patch('/projects/' + _currentProjectId + '/publish', { status: newStatus });
+    showToast(res.message || `Status diubah ke ${newStatus}`, 'success');
+
+    // Update cache
+    const idx = _projectsData.findIndex(p => p.ID === _currentProjectId);
+    if (idx !== -1) _projectsData[idx] = { ..._projectsData[idx], Status: newStatus };
+
+    // Update publish button
+    const pubBtn = document.getElementById('pd-publish-btn');
+    if (pubBtn) {
+      pubBtn.textContent = newStatus === 'Publish' ? '📴 Sembunyikan' : '🌐 Publish';
+      pubBtn.style.color = newStatus === 'Publish' ? '#f87171' : '#4ade80';
+    }
+
+    // Update badge
+    const badge = document.getElementById('pd-status-badge');
+    if (badge) {
+      badge.textContent = newStatus;
+      badge.style.background = newStatus === 'Publish' ? 'rgba(34,197,94,0.2)' : 'rgba(148,163,184,0.15)';
+      badge.style.color      = newStatus === 'Publish' ? '#4ade80' : '#94a3b8';
+    }
+
+    renderProjectGrid(_projectsData);
+  } catch (e) {
+    showToast('Gagal: ' + e.message, 'error');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// DELETE
+// ─────────────────────────────────────────────────────────
+async function deleteCurrentProject() {
+  if (!_currentProjectId) return;
+  const project = _projectsData.find(p => p.ID === _currentProjectId);
+  if (!confirm(`Hapus proyek "${project?.Nama_Proyek}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+  try {
+    await API.delete('/projects/' + _currentProjectId);
+    closeModal('modal-project-detail');
+    showToast('✅ Proyek dihapus', 'success');
+    _projectsData = _projectsData.filter(p => p.ID !== _currentProjectId);
+    _currentProjectId = null;
+    renderProjectGrid(_projectsData);
+  } catch (e) {
+    showToast('Gagal hapus: ' + e.message, 'error');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// FOTO UPLOAD
+// ─────────────────────────────────────────────────────────
+function triggerProjectPhotoUpload(slot) {
+  _projectPhotoSlot = slot;
+  const input = document.getElementById('pf-photo-input');
+  if (input) { input.value = ''; input.click(); }
+}
+
+function handleProjectPhotoSelect(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const slot = _projectPhotoSlot;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    _projectPhotos[slot] = { url: '', cloudId: '', _file: file, _preview: e.target.result };
+    setProjectPhotoPreview(slot, e.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+function setProjectPhotoPreview(slot, src) {
+  const preview = document.getElementById(`pf-foto${slot}-preview`);
+  const delBtn  = document.getElementById(`pf-foto${slot}-del`);
+  if (preview) { preview.src = src; preview.style.display = src ? '' : 'none'; }
+  if (delBtn)  { delBtn.style.display = src ? '' : 'none'; }
+}
+
+function clearProjectPhoto(slot) {
+  _projectPhotos[slot] = { url: '', cloudId: '' };
+  resetProjectPhotoPreview(slot);
+}
+
+function resetProjectPhotoPreview(slot) {
+  const preview = document.getElementById(`pf-foto${slot}-preview`);
+  const delBtn  = document.getElementById(`pf-foto${slot}-del`);
+  if (preview) { preview.src = ''; preview.style.display = 'none'; }
+  if (delBtn)  { delBtn.style.display = 'none'; }
+}
+
+async function uploadPendingProjectPhotos() {
+  const cloudName   = STATE.cloudinaryConfig?.cloudName;
+  const uploadPreset = STATE.cloudinaryConfig?.uploadPreset || 'crm_unsigned';
+  if (!cloudName) return;
+
+  for (const slot of [1, 2]) {
+    const photo = _projectPhotos[slot];
+    if (!photo._file) {
+      // Keep existing URL as-is
+      continue;
+    }
+    try {
+      showToast(`Mengupload foto ${slot}...`, 'info');
+      const formData = new FormData();
+      formData.append('file', photo._file);
+      formData.append('upload_preset', uploadPreset);
+      formData.append('folder', 'crm_projects');
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST', body: formData,
+      });
+      const data = await res.json();
+      _projectPhotos[slot] = { url: data.secure_url, cloudId: data.public_id };
+    } catch (e) {
+      showToast(`Gagal upload foto ${slot}: ${e.message}`, 'error');
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// DEEPLINK: buka detail dari shortlink redirect
+// Tambahkan di showApp() atau setelah navigateTo('primary')
+// ─────────────────────────────────────────────────────────
+function checkPrimaryDeeplink() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('primary') === '1') {
+    const pid = params.get('pid');
+    navigateTo('primary');
+    if (pid) setTimeout(() => openProjectDetail(pid), 600);
+    // Bersihkan URL
+    history.replaceState({}, '', '/');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// INTEGRASI navigateTo — tambahkan ini ke fungsi navigateTo:
+// ─────────────────────────────────────────────────────────
+// Tambah ke dalam switch (page) di navigateTo():
+//
+//   case 'primary':
+//     showSection('page-primary');
+//     loadPrimaryPage();
+//     break;
+//
+// Dan di bagian update nav buttons di navigateTo():
+//   document.getElementById('nav-primary')?.classList.toggle('active', page === 'primary');

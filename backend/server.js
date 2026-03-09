@@ -5,7 +5,7 @@
  * Roles: superadmin | principal | business_manager | admin | agen
  */
 
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
@@ -44,6 +44,7 @@ app.use('/api/v1/dashboard',     require('./routes/dashboard.routes'));
 app.use('/api/v1/captions',      require('./routes/captions.routes'));
 app.use('/api/v1/tasks',         require('./routes/tasks.routes'));
 app.use('/api/v1/komisi',        require('./routes/komisi.routes'));
+app.use('/api/v1/projects',  require('./routes/projects.routes'));
 app.use('/api/v1/laporan',       require('./routes/laporan.routes'));
 
 // Config endpoints
@@ -83,6 +84,8 @@ app.use((err, req, res, next) => {
 });
 
 // ── SPA Fallback ───────────────────────────────────────────
+app.use('/p', require('./routes/shortlink.routes'));
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
@@ -126,7 +129,9 @@ async function migrateHeaders() {
     { sheet: SHEETS.TEAMS,          cols: COLUMNS.TEAMS },
     { sheet: SHEETS.NOTIFICATIONS,  cols: COLUMNS.NOTIFICATIONS },
     { sheet: SHEETS.KOMISI_REQUEST, cols: COLUMNS.KOMISI_REQUEST },
-    { sheet: SHEETS.LAPORAN_HARIAN, cols: COLUMNS.LAPORAN_HARIAN },
+    { sheet: SHEETS.LAPORAN_HARIAN,  cols: COLUMNS.LAPORAN_HARIAN },
+    { sheet: SHEETS.PROJECTS,      cols: COLUMNS.PROJECTS },
+    { sheet: SHEETS.PROJECT_REFS,  cols: COLUMNS.PROJECT_REFS },
   ]) {
     try {
       const rows = await sheetsService.getRange(sheet);

@@ -33,12 +33,14 @@ const authMiddleware = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
-    // Cek force logout
-    const flAt = await getForceLogoutAt();
-    if (flAt && decoded.iat && (decoded.iat * 1000) < flAt) {
-      return res.status(401).json({ success: false, message: 'Sesi diakhiri oleh admin. Silakan login ulang.' });
-    }
-    next();
+      // Cek force logout
+      const flAt = await getForceLogoutAt();
+      if (flAt && decoded.iat && (decoded.iat * 1000) < flAt) {
+        return res.status(401).json({ success: false, message: 'Sesi diakhiri oleh admin. Silakan login ulang.' });
+      }
+
+
+      next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ success: false, message: 'Sesi berakhir, silakan login ulang' });

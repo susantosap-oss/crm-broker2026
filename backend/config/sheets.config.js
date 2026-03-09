@@ -33,6 +33,8 @@ const SHEETS = {
   KOMISI_REQUEST:  'KOMISI_REQUEST',
   LAPORAN_HARIAN:  'LAPORAN_HARIAN',
   FAVOURITES:      'FAVOURITES',
+  PROJECTS:      'PROJECTS',
+  PROJECT_REFS:  'PROJECT_REFS',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -265,6 +267,45 @@ const COLUMNS = {
     'Agen_ID',        // B
     'Listing_ID',     // C
     'Created_At',     // D
+  ],
+
+
+  // ★ PRIMARY — Proyek Developer
+  PROJECTS: [
+    'ID',             // A
+    'Tanggal_Input',  // B
+    'Kode_Proyek',    // C
+    'Nama_Proyek',    // D
+    'Nama_Developer', // E
+    'Tipe_Properti',  // F
+    'Harga_Mulai',    // G
+    'Harga_Format',   // H
+    'Cara_Bayar',     // I
+    'Deskripsi',      // J
+    'Foto_1_URL',     // K
+    'Foto_2_URL',     // L
+    'Cloudinary_IDs', // M
+    'Caption_Sosmed', // N
+    'Status',         // O  Draft|Publish
+    'Created_By_ID',  // P
+    'Created_By_Nama',// Q
+    'Created_At',     // R
+    'Updated_At',     // S
+    'Notes',          // T
+  ],
+
+  // ★ PRIMARY — Shortlink tracking per agen
+  PROJECT_REFS: [
+    'ID',           // A
+    'Project_ID',   // B
+    'Kode_Proyek',  // C
+    'Agen_ID',      // D
+    'Agen_Nama',    // E
+    'Ref_Code',     // F
+    'Short_URL',    // G
+    'Click_Count',  // H
+    'Last_Click_At',// I
+    'Created_At',   // J
   ],
 
   PIPELINE_STAGES: [

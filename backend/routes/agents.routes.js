@@ -60,6 +60,118 @@ router.post('/force-logout-all', requireRole('superadmin'), async (req, res) => 
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// POST /agents/force-logout-all — superadmin only
+router.post('/force-logout-all', requireRole('superadmin'), async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.CONFIG);
+    const now  = Date.now().toString();
+    const idx  = (rows||[]).findIndex(r => r[0] === 'Force_Logout_All_At');
+    if (idx >= 0) {
+      const row = [...rows[idx]]; row[1] = now;
+      await sheetsService.updateRow(SHEETS.CONFIG, idx + 1, row);
+    } else {
+      await sheetsService.appendRow(SHEETS.CONFIG, ['Force_Logout_All_At', now, 'Force logout semua token']);
+    }
+    res.json({ success: true, message: 'Semua device telah di-logout. Agen harus login ulang.' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /agents/force-logout-all — superadmin only
+router.post('/force-logout-all', requireRole('superadmin'), async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.CONFIG);
+    const now  = Date.now().toString();
+    const idx  = (rows||[]).findIndex(r => r[0] === 'Force_Logout_All_At');
+    if (idx >= 0) {
+      const row = [...rows[idx]]; row[1] = now;
+      await sheetsService.updateRow(SHEETS.CONFIG, idx + 1, row);
+    } else {
+      await sheetsService.appendRow(SHEETS.CONFIG, ['Force_Logout_All_At', now, 'Force logout semua token']);
+    }
+    res.json({ success: true, message: 'Semua device telah di-logout. Agen harus login ulang.' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /agents/force-logout-all — superadmin only
+router.post('/force-logout-all', requireRole('superadmin'), async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.CONFIG);
+    const now  = Date.now().toString();
+    const idx  = (rows||[]).findIndex(r => r[0] === 'Force_Logout_All_At');
+    if (idx >= 0) {
+      const row = [...rows[idx]]; row[1] = now;
+      await sheetsService.updateRow(SHEETS.CONFIG, idx + 1, row);
+    } else {
+      await sheetsService.appendRow(SHEETS.CONFIG, ['Force_Logout_All_At', now, 'Force logout semua token']);
+    }
+    res.json({ success: true, message: 'Semua device telah di-logout. Agen harus login ulang.' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /agents/force-logout-all — superadmin only
+router.post('/force-logout-all', requireRole('superadmin'), async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.CONFIG);
+    const now  = Date.now().toString();
+    const idx  = (rows||[]).findIndex(r => r[0] === 'Force_Logout_All_At');
+    if (idx >= 0) {
+      const row = [...rows[idx]]; row[1] = now;
+      await sheetsService.updateRow(SHEETS.CONFIG, idx + 1, row);
+    } else {
+      await sheetsService.appendRow(SHEETS.CONFIG, ['Force_Logout_All_At', now, 'Force logout semua token']);
+    }
+    res.json({ success: true, message: 'Semua device telah di-logout. Agen harus login ulang.' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /agents/force-logout-all — superadmin only
+router.post('/force-logout-all', requireRole('superadmin'), async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.CONFIG);
+    const now  = Date.now().toString();
+    const idx  = (rows||[]).findIndex(r => r[0] === 'Force_Logout_All_At');
+    if (idx >= 0) {
+      const row = [...rows[idx]]; row[1] = now;
+      await sheetsService.updateRow(SHEETS.CONFIG, idx + 1, row);
+    } else {
+      await sheetsService.appendRow(SHEETS.CONFIG, ['Force_Logout_All_At', now, 'Force logout semua token']);
+    }
+    res.json({ success: true, message: 'Semua device telah di-logout. Agen harus login ulang.' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /agents/force-logout-all — superadmin only
+router.post('/force-logout-all', requireRole('superadmin'), async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.CONFIG);
+    const now  = Date.now().toString();
+    const idx  = (rows||[]).findIndex(r => r[0] === 'Force_Logout_All_At');
+    if (idx >= 0) {
+      const row = [...rows[idx]]; row[1] = now;
+      await sheetsService.updateRow(SHEETS.CONFIG, idx + 1, row);
+    } else {
+      await sheetsService.appendRow(SHEETS.CONFIG, ['Force_Logout_All_At', now, 'Force logout semua token']);
+    }
+    res.json({ success: true, message: 'Semua device telah di-logout. Agen harus login ulang.' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /agents/force-logout-all — superadmin only
+router.post('/force-logout-all', requireRole('superadmin'), async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.CONFIG);
+    const now  = Date.now().toString();
+    const idx  = (rows||[]).findIndex(r => r[0] === 'Force_Logout_All_At');
+    if (idx >= 0) {
+      const row = [...rows[idx]]; row[1] = now;
+      await sheetsService.updateRow(SHEETS.CONFIG, idx + 1, row);
+    } else {
+      await sheetsService.appendRow(SHEETS.CONFIG, ['Force_Logout_All_At', now, 'Force logout semua token']);
+    }
+    res.json({ success: true, message: 'Semua device telah di-logout. Agen harus login ulang.' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // GET /agents
 router.get('/', requireMinRole('admin'), async (req, res) => {
   try {
