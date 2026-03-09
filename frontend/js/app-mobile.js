@@ -2677,6 +2677,15 @@ async function doDeleteUser(id, nama) {
 
 // Tampilkan menu Manajemen User hanya untuk admin
 function checkAdminMenu() {
+  const _pRoles = ['superadmin','principal','admin','agen','business_manager'];
+  if (_pRoles.includes(STATE.user?.role)) {
+    document.getElementById('nav-primary')?.style.removeProperty('display');
+    document.getElementById('sb-primary')?.style.removeProperty('display');
+  }
+  if (['superadmin','principal','admin'].includes(STATE.user?.role)) {
+    const _ab = document.getElementById('btn-add-project');
+    if (_ab) _ab.style.display = 'flex';
+  }
   const role = STATE.user?.role;
   const btn = document.getElementById('sidebar-user-mgmt');
   if (btn && ['admin','principal','superadmin'].includes(role)) btn.style.display = 'flex';
