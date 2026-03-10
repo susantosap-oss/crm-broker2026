@@ -1018,7 +1018,7 @@
             style="flex:1;background:#D4A853;color:#0D1526;border:none;padding:14px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer">
             <span id="project-form-btn-text">💾 Simpan Proyek</span>
           </button>
-          <button onclick="closeModal('modal-project-form')"
+          <button onclick="closeModal('modal-project-form');sessionStorage.removeItem('_pf_draft');sessionStorage.removeItem('_pf_modal_open')"
             style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);padding:14px 20px;border-radius:12px;font-size:14px;cursor:pointer">
             Batal
           </button>

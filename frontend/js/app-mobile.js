@@ -2355,7 +2355,26 @@ async function showApp() {
   applyProfileToUI();
   requestNotifPermission();
   await loadFavourites();
-  document.addEventListener('visibilitychange', () => { if (document.hidden) saveProjectFormState(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      // Simpan state form jika modal sedang terbuka
+      const modal = document.getElementById('modal-project-form');
+      if (modal && modal.style.display !== 'none') {
+        saveProjectFormState();
+        sessionStorage.setItem('_pf_modal_open', '1');
+      }
+    } else {
+      // App kembali - restore modal jika sebelumnya terbuka
+      setTimeout(() => {
+        const shouldReopen = sessionStorage.getItem('_pf_modal_open');
+        const hasDraft = sessionStorage.getItem('_pf_draft');
+        if (shouldReopen && hasDraft) {
+          sessionStorage.removeItem('_pf_modal_open');
+          openAddProject();
+        }
+      }, 300);
+    }
+  });
   loadCloudinaryConfig().then(() => {});
   checkAdminMenu();
   setTimeout(() => navigateTo('dashboard'), 100);
@@ -3430,6 +3449,7 @@ async function submitProjectForm() {
     }
     closeModal('modal-project-form');
     sessionStorage.removeItem('_pf_draft');
+    sessionStorage.removeItem('_pf_modal_open');
     showToast(res.message || '✅ Proyek disimpan!', 'success');
     await fetchProjects(true);
   } catch (e) {
