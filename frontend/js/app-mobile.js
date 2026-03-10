@@ -224,6 +224,7 @@ async function loadCloudinaryConfig() {
     if (res.cloudName) {
       window._CLOUD_NAME = res.cloudName;
       window._UPLOAD_PRESET = res.uploadPreset || 'crm_unsigned';
+      STATE.cloudinaryConfig = { cloudName: res.cloudName, uploadPreset: res.uploadPreset || 'crm_unsigned' };
     }
   } catch (_) {}
 }
@@ -2354,6 +2355,7 @@ async function showApp() {
   applyProfileToUI();
   requestNotifPermission();
   await loadFavourites();
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveProjectFormState(); });
   loadCloudinaryConfig().then(() => {});
   checkAdminMenu();
   setTimeout(() => navigateTo('dashboard'), 100);
@@ -3330,6 +3332,7 @@ async function regenerateProjectCaption() {
 // ─────────────────────────────────────────────────────────
 function openAddProject() {
   _projectPhotos = { 1: { url: '', cloudId: '' }, 2: { url: '', cloudId: '' } };
+  setTimeout(() => { const r = restoreProjectFormState(); if (r) showToast('📋 Draft dipulihkan', 'info'); }, 150);
   document.getElementById('project-form-id').value    = '';
   document.getElementById('project-form-title').textContent = '⭐ Tambah Proyek Primary';
   document.getElementById('project-form-btn-text').textContent = '💾 Simpan Proyek';
@@ -3426,6 +3429,7 @@ async function submitProjectForm() {
       res = await API.post('/projects', body);
     }
     closeModal('modal-project-form');
+    sessionStorage.removeItem('_pf_draft');
     showToast(res.message || '✅ Proyek disimpan!', 'success');
     await fetchProjects(true);
   } catch (e) {
@@ -3495,6 +3499,47 @@ async function deleteCurrentProject() {
 // ─────────────────────────────────────────────────────────
 // FOTO UPLOAD
 // ─────────────────────────────────────────────────────────
+
+// ── Project Form State Persistence ──
+function saveProjectFormState() {
+  try {
+    const state = {
+      id: document.getElementById("project-form-id")?.value || "",
+      nama: document.getElementById("pf-nama-proyek")?.value || "",
+      developer: document.getElementById("pf-nama-developer")?.value || "",
+      tipe: document.getElementById("pf-tipe")?.value || "",
+      harga: document.getElementById("pf-harga")?.value || "",
+      deskripsi: document.getElementById("pf-deskripsi")?.value || "",
+      notes: document.getElementById("pf-notes")?.value || "",
+      cara: [...document.querySelectorAll(".pf-cara:checked")].map(c => c.value),
+      foto1: _projectPhotos[1]?.url || _projectPhotos[1]?._preview || "",
+      foto2: _projectPhotos[2]?.url || _projectPhotos[2]?._preview || "",
+    };
+    sessionStorage.setItem("_pf_draft", JSON.stringify(state));
+  } catch(_) {}
+}
+
+function restoreProjectFormState() {
+  try {
+    const raw = sessionStorage.getItem("_pf_draft");
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (!s.nama && !s.developer) return false;
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    set("project-form-id", s.id);
+    set("pf-nama-proyek", s.nama);
+    set("pf-nama-developer", s.developer);
+    set("pf-tipe", s.tipe);
+    set("pf-harga", s.harga);
+    set("pf-deskripsi", s.deskripsi);
+    set("pf-notes", s.notes);
+    document.querySelectorAll(".pf-cara").forEach(cb => { cb.checked = s.cara?.includes(cb.value); });
+    if (s.foto1) setProjectPhotoPreview(1, s.foto1);
+    if (s.foto2) setProjectPhotoPreview(2, s.foto2);
+    return true;
+  } catch(_) { return false; }
+}
+
 function triggerProjectPhotoUpload(slot) {
   _projectPhotoSlot = slot;
   const input = document.getElementById('pf-photo-input');
