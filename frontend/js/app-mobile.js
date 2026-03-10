@@ -2082,7 +2082,7 @@ async function submitAddTask() {
 async function navigateTo(page) {
   document.querySelectorAll('.page').forEach(p => { p.style.display='none'; });
   const target = document.getElementById(`page-${page}`);
-  if (target) { target.style.display = 'block'; target.scrollTop = 0; window.scrollTo(0,0); }
+  if (target) { target.style.display = 'block'; target.scrollTop = 0; window.scrollTo(0,0); document.querySelector('main')?.scrollTo(0,0); }
 
   document.querySelectorAll('.nav-btn').forEach(b => {
     b.className = b.id === `nav-${page}` ? 'nav-btn active' : 'nav-btn';
