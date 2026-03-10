@@ -2218,6 +2218,9 @@ async function loadMemberPage() {
   } catch(e) {
     container.innerHTML = `<div style="text-align:center;padding:40px;color:rgba(239,68,68,0.7);font-size:13px">Gagal memuat data kantor</div>`;
   }
+  setTimeout(() => {
+    document.querySelector('main')?.scrollTo(0, 0);
+  }, 50);
 }
 
 function renderOffices(offices) {
