@@ -156,7 +156,8 @@ class ProjectsService {
     if (!project) throw new Error('Proyek tidak ditemukan');
 
     const refCode = this._makeRefCode(agentUser.id, projectId);
-    const appUrl  = process.env.APP_URL || 'https://your-crm.app';
+    const noWa    = (agentUser.No_WA || '').replace(/[^0-9]/g, '');
+    const waUrl   = noWa ? `https://wa.me/${noWa}` : '';
     const now     = new Date().toISOString();
 
     const refObj = {
@@ -166,7 +167,7 @@ class ProjectsService {
       Agen_ID:      agentUser.id,
       Agen_Nama:    agentUser.nama || '',
       Ref_Code:     refCode,
-      Short_URL:    `${appUrl}/p/${project.Kode_Proyek}?r=${refCode}`,
+      Short_URL:    waUrl,
       Click_Count:  '0',
       Last_Click_At:'',
       Created_At:   now,
