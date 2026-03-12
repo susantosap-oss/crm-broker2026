@@ -2227,15 +2227,22 @@ async function loadMemberPage() {
 function renderOffices(offices) {
   const container = document.getElementById('member-container');
   if (!container) return;
-  if (!offices.length) {
+  // Sembunyikan kantor "Administrator" (nama_kantor = "0" atau kosong) dari role agen
+  const role = STATE.user?.role;
+  const filtered = offices.filter(o => {
+    const raw = o.nama_kantor?.replace(/^MANSION\s*:\s*/i,'').trim();
+    const isAdmin = !raw || raw === '0' || raw.toLowerCase() === 'administrator';
+    return !(isAdmin && role === 'agen');
+  });
+  if (!filtered.length) {
     container.innerHTML = `<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3);font-size:13px">Belum ada data kantor</div>`;
     return;
   }
-  container.innerHTML = offices.map(office => officeCard(office)).join('');
+  container.innerHTML = filtered.map(office => officeCard(office)).join('');
 }
 
 function officeCard(office) {
-  const namaBesar = office.nama_kantor.replace(/^MANSION\s*:\s*/i,'').trim() || 'Kantor Pusat';
+  const namaBesar = office.nama_kantor.replace(/^MANSION\s*:\s*/i,'').trim() || 'Administrator';
   const totalMember = office.members.length;
   const aktif = office.members.filter(m => m.status === 'Aktif').length;
 
@@ -2801,8 +2808,8 @@ async function loadTeamPage() {
 
             <!-- Leads stats per agent -->
             <div style="font-size:11px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Leads Anggota</div>
-            ${(team.member_ids || []).map(agentId => {
-              const ls = leadMap[agentId] || { agen_nama: agentId, total: 0, hot: 0, deal: 0 };
+${(team.member_ids || []).map((agentId, idx) => {
+const namaAsli = (team.member_names && team.member_names[idx]) ? team.member_names[idx] : agentId; const ls = leadMap[agentId] || { agen_nama: namaAsli, total: 0, hot: 0, deal: 0 };
               const li = listMap[agentId] || { total: 0 };
               return `
               <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:4px">
