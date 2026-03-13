@@ -224,7 +224,6 @@ async function loadCloudinaryConfig() {
     if (res.cloudName) {
       window._CLOUD_NAME = res.cloudName;
       window._UPLOAD_PRESET = res.uploadPreset || 'crm_unsigned';
-      STATE.cloudinaryConfig = { cloudName: res.cloudName, uploadPreset: res.uploadPreset || 'crm_unsigned' };
     }
   } catch (_) {}
 }
@@ -594,6 +593,7 @@ async function openListingDetail(id) {
       <span style="padding:5px 10px;border-radius:8px;background:rgba(43,123,255,0.12);color:#60a5fa;font-size:11px;font-weight:600">${escapeHtml(listing.Tipe_Properti||'—')}</span>
       <span style="padding:5px 10px;border-radius:8px;background:rgba(34,197,94,0.12);color:#4ade80;font-size:11px;font-weight:600">${escapeHtml(listing.Status_Transaksi||'—')}</span>
       <span style="padding:5px 10px;border-radius:8px;background:rgba(212,168,83,0.12);color:#D4A853;font-size:11px;font-weight:700">${harga}</span>
+      ${listing.Harga_Permeter ? `<span style="padding:5px 10px;border-radius:8px;background:rgba(212,168,83,0.07);color:#D4A853;font-size:11px;font-weight:600;border:1px solid rgba(212,168,83,0.25)">${listing.Harga_Permeter_Format || formatRupiah(listing.Harga_Permeter)}/m²</span>` : ''}
     </div>
 
     <!-- Location -->
@@ -712,8 +712,8 @@ function _buildShareText(listing) {
   const _px     = (re) => { const m = _desc.match(re); return m ? m[1] : ''; };
   const _lt     = listing.Luas_Tanah    || _px(/LT[:\s]*(\d+)/i);
   const _lb     = listing.Luas_Bangunan || _px(/LB[:\s]*(\d+)/i);
-  const _kt     = listing.Kamar_Tidur   || _px(/(\d+)\s*KT/i);
-  const _km     = listing.Kamar_Mandi   || _px(/(\d+)\s*KM/i);
+  const _kt     = listing.Kamar_Tidur   || _px(/(\d+(?:[+\-]\d+)?)\s*KT/i);
+  const _km     = listing.Kamar_Mandi   || _px(/(\d+(?:[+\-]\d+)?)\s*KM/i);
   const _srt    = listing.Sertifikat    || _px(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i);
   
   const spek    = [
@@ -733,6 +733,7 @@ function _buildShareText(listing) {
     `_${listing.Tipe_Properti || ''} - ${listing.Status_Transaksi || ''}_\n\n` + 
     `📍 *Lokasi* : ${lokasi || '-'}\n` +
     `💰 *Harga* : *${harga}*\n` + 
+    (listing.Harga_Permeter ? `📐 *Harga/m²* : ${listing.Harga_Permeter_Format || formatRupiah(listing.Harga_Permeter)}\n` : '') +
     (spek ? `🏠 *Spek* : ${spek}\n` : '') +
     (listing.Kode_Listing ? `🆔 *Kode* : ${listing.Kode_Listing}\n` : '') +
     `\n${deskripsi}\n\n` +
@@ -815,8 +816,8 @@ function shareListingWACatalog(listingId) {
   const _spekCat = [
     (listing.Luas_Tanah    || _p2(/LT[:\s]*(\d+)/i))  ? `LT ${listing.Luas_Tanah || _p2(/LT[:\s]*(\d+)/i)} m2` : '',
     (listing.Luas_Bangunan || _p2(/LB[:\s]*(\d+)/i))  ? `LB ${listing.Luas_Bangunan || _p2(/LB[:\s]*(\d+)/i)} m2` : '',
-    (listing.Kamar_Tidur   || _p2(/(\d+)\s*KT/i))     ? `${listing.Kamar_Tidur || _p2(/(\d+)\s*KT/i)} KT` : '',
-    (listing.Kamar_Mandi   || _p2(/(\d+)\s*KM/i))     ? `${listing.Kamar_Mandi || _p2(/(\d+)\s*KM/i)} KM` : '',
+    (listing.Kamar_Tidur   || _p2(/(\d+(?:[+\-]\d+)?)\s*KT/i))     ? `${listing.Kamar_Tidur || _p2(/(\d+(?:[+\-]\d+)?)\s*KT/i)} KT` : '',
+    (listing.Kamar_Mandi   || _p2(/(\d+(?:[+\-]\d+)?)\s*KM/i))     ? `${listing.Kamar_Mandi || _p2(/(\d+(?:[+\-]\d+)?)\s*KM/i)} KM` : '',
     listing.Sertifikat || _p2(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i) || '',
   ].filter(Boolean).join(' / ');
   
@@ -1887,12 +1888,17 @@ let _editListingId = null;
 function resetListingModal() {
   _editListingId = null;
   ['add-tipe','add-transaksi','add-judul','add-kota','add-kecamatan',
-   'add-harga','add-deskripsi','add-caption'].forEach(id => {
+   'add-harga','add-harga-permeter','add-deskripsi','add-caption'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
   const prevGrid = document.getElementById('photo-preview-grid');
   if (prevGrid) prevGrid.innerHTML = '';
+  // Clear harga previews
+  ['add-harga-preview','add-harga-pm-preview'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '';
+  });
   // Reset photo inputs
   ['add-photos','add-photo2','add-photo3'].forEach(id => {
     const el = document.getElementById(id);
@@ -1931,6 +1937,12 @@ function openEditListing(listingId) {
   setVal('add-kota',       l.Kota              || '');
   setVal('add-kecamatan',  l.Kecamatan         || '');
   setVal('add-harga',      l.Harga             || '');
+  setVal('add-harga-permeter', l.Harga_Permeter || '');
+  // Trigger preview
+  const hEl = document.getElementById('add-harga');
+  const pmEl = document.getElementById('add-harga-permeter');
+  if (hEl)  previewHargaFormat(hEl, 'add-harga-preview');
+  if (pmEl) previewHargaFormat(pmEl, 'add-harga-pm-preview');
   setVal('add-deskripsi',  l.Deskripsi         || '');
   setVal('add-caption',    l.Caption_Sosmed    || '');
 
@@ -1959,7 +1971,9 @@ async function submitAddListing() {
   const transaksi = getVal('add-transaksi');
   const judul     = getVal('add-judul').trim();
   const kota      = getVal('add-kota').trim();
-  const harga     = getVal('add-harga');
+  // Strip non-digits — no rounding, exact value
+  const harga     = getVal('add-harga').replace(/\D/g, '');
+  const hargaPM   = getVal('add-harga-permeter').replace(/\D/g, '');
 
   if (!tipe || !transaksi || !judul || !kota || !harga) {
     showToast('Lengkapi field wajib (*)', 'error'); return;
@@ -1977,6 +1991,10 @@ async function submitAddListing() {
   formData.append('Deskripsi',        getVal('add-deskripsi'));
   formData.append('Caption_Sosmed',   getVal('add-caption'));
   formData.append('Harga_Format',     formatRupiah(harga));
+  if (hargaPM) {
+    formData.append('Harga_Permeter', hargaPM);
+    formData.append('Harga_Permeter_Format', formatRupiah(hargaPM));
+  }
   if (!isEdit) formData.append('Status_Listing', 'Aktif');
 
 
@@ -2227,22 +2245,15 @@ async function loadMemberPage() {
 function renderOffices(offices) {
   const container = document.getElementById('member-container');
   if (!container) return;
-  // Sembunyikan kantor "Administrator" (nama_kantor = "0" atau kosong) dari role agen
-  const role = STATE.user?.role;
-  const filtered = offices.filter(o => {
-    const raw = o.nama_kantor?.replace(/^MANSION\s*:\s*/i,'').trim();
-    const isAdmin = !raw || raw === '0' || raw.toLowerCase() === 'administrator';
-    return !(isAdmin && role === 'agen');
-  });
-  if (!filtered.length) {
+  if (!offices.length) {
     container.innerHTML = `<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3);font-size:13px">Belum ada data kantor</div>`;
     return;
   }
-  container.innerHTML = filtered.map(office => officeCard(office)).join('');
+  container.innerHTML = offices.map(office => officeCard(office)).join('');
 }
 
 function officeCard(office) {
-  const namaBesar = office.nama_kantor.replace(/^MANSION\s*:\s*/i,'').trim() || 'Administrator';
+  const namaBesar = office.nama_kantor.replace(/^MANSION\s*:\s*/i,'').trim() || 'Kantor Pusat';
   const totalMember = office.members.length;
   const aktif = office.members.filter(m => m.status === 'Aktif').length;
 
@@ -2362,26 +2373,6 @@ async function showApp() {
   applyProfileToUI();
   requestNotifPermission();
   await loadFavourites();
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      // Simpan state form jika modal sedang terbuka
-      const modal = document.getElementById('modal-project-form');
-      if (modal && modal.style.display !== 'none') {
-        saveProjectFormState();
-        sessionStorage.setItem('_pf_modal_open', '1');
-      }
-    } else {
-      // App kembali - restore modal jika sebelumnya terbuka
-      setTimeout(() => {
-        const shouldReopen = sessionStorage.getItem('_pf_modal_open');
-        const hasDraft = sessionStorage.getItem('_pf_draft');
-        if (shouldReopen && hasDraft) {
-          sessionStorage.removeItem('_pf_modal_open');
-          openAddProject();
-        }
-      }, 300);
-    }
-  });
   loadCloudinaryConfig().then(() => {});
   checkAdminMenu();
   setTimeout(() => navigateTo('dashboard'), 100);
@@ -2808,8 +2799,8 @@ async function loadTeamPage() {
 
             <!-- Leads stats per agent -->
             <div style="font-size:11px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Leads Anggota</div>
-${(team.member_ids || []).map((agentId, idx) => {
-const namaAsli = (team.member_names && team.member_names[idx]) ? team.member_names[idx] : agentId; const ls = leadMap[agentId] || { agen_nama: namaAsli, total: 0, hot: 0, deal: 0 };
+            ${(team.member_ids || []).map(agentId => {
+              const ls = leadMap[agentId] || { agen_nama: agentId, total: 0, hot: 0, deal: 0 };
               const li = listMap[agentId] || { total: 0 };
               return `
               <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:4px">
@@ -3358,7 +3349,6 @@ async function regenerateProjectCaption() {
 // ─────────────────────────────────────────────────────────
 function openAddProject() {
   _projectPhotos = { 1: { url: '', cloudId: '' }, 2: { url: '', cloudId: '' } };
-  setTimeout(() => { const r = restoreProjectFormState(); if (r) showToast('📋 Draft dipulihkan', 'info'); }, 150);
   document.getElementById('project-form-id').value    = '';
   document.getElementById('project-form-title').textContent = '⭐ Tambah Proyek Primary';
   document.getElementById('project-form-btn-text').textContent = '💾 Simpan Proyek';
@@ -3422,6 +3412,23 @@ function formatHargaInput(el) {
   else preview.textContent = `≈ Rp ${num.toLocaleString('id-ID')}`;
 }
 
+// Preview harga format untuk field add-harga & add-harga-permeter (tanpa pembulatan)
+function previewHargaFormat(el, previewId) {
+  const raw = el.value.replace(/[^0-9]/g, '');
+  // Jangan ubah nilai input — tulis ulang hanya digits (tidak ada pembulatan)
+  // Preserve posisi cursor
+  const pos = el.selectionStart - (el.value.length - raw.length);
+  el.value = raw;
+  try { el.setSelectionRange(pos, pos); } catch(_) {}
+  const preview = document.getElementById(previewId);
+  if (!preview) return;
+  const num = parseInt(raw) || 0;
+  if (!num) { preview.textContent = ''; return; }
+  if (num >= 1_000_000_000) preview.textContent = `Rp ${(num / 1_000_000_000).toFixed(2).replace(/\.?0+$/, '')} M`;
+  else if (num >= 1_000_000) preview.textContent = `Rp ${(num / 1_000_000).toFixed(0)} Juta`;
+  else preview.textContent = `Rp ${num.toLocaleString('id-ID')}`;
+}
+
 async function submitProjectForm() {
   const id  = document.getElementById('project-form-id').value?.trim();
   const btn = document.getElementById('project-form-btn-text');
@@ -3455,8 +3462,6 @@ async function submitProjectForm() {
       res = await API.post('/projects', body);
     }
     closeModal('modal-project-form');
-    sessionStorage.removeItem('_pf_draft');
-    sessionStorage.removeItem('_pf_modal_open');
     showToast(res.message || '✅ Proyek disimpan!', 'success');
     await fetchProjects(true);
   } catch (e) {
@@ -3526,47 +3531,6 @@ async function deleteCurrentProject() {
 // ─────────────────────────────────────────────────────────
 // FOTO UPLOAD
 // ─────────────────────────────────────────────────────────
-
-// ── Project Form State Persistence ──
-function saveProjectFormState() {
-  try {
-    const state = {
-      id: document.getElementById("project-form-id")?.value || "",
-      nama: document.getElementById("pf-nama-proyek")?.value || "",
-      developer: document.getElementById("pf-nama-developer")?.value || "",
-      tipe: document.getElementById("pf-tipe")?.value || "",
-      harga: document.getElementById("pf-harga")?.value || "",
-      deskripsi: document.getElementById("pf-deskripsi")?.value || "",
-      notes: document.getElementById("pf-notes")?.value || "",
-      cara: [...document.querySelectorAll(".pf-cara:checked")].map(c => c.value),
-      foto1: _projectPhotos[1]?.url || _projectPhotos[1]?._preview || "",
-      foto2: _projectPhotos[2]?.url || _projectPhotos[2]?._preview || "",
-    };
-    sessionStorage.setItem("_pf_draft", JSON.stringify(state));
-  } catch(_) {}
-}
-
-function restoreProjectFormState() {
-  try {
-    const raw = sessionStorage.getItem("_pf_draft");
-    if (!raw) return false;
-    const s = JSON.parse(raw);
-    if (!s.nama && !s.developer) return false;
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-    set("project-form-id", s.id);
-    set("pf-nama-proyek", s.nama);
-    set("pf-nama-developer", s.developer);
-    set("pf-tipe", s.tipe);
-    set("pf-harga", s.harga);
-    set("pf-deskripsi", s.deskripsi);
-    set("pf-notes", s.notes);
-    document.querySelectorAll(".pf-cara").forEach(cb => { cb.checked = s.cara?.includes(cb.value); });
-    if (s.foto1) setProjectPhotoPreview(1, s.foto1);
-    if (s.foto2) setProjectPhotoPreview(2, s.foto2);
-    return true;
-  } catch(_) { return false; }
-}
-
 function triggerProjectPhotoUpload(slot) {
   _projectPhotoSlot = slot;
   const input = document.getElementById('pf-photo-input');

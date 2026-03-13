@@ -508,7 +508,18 @@
         <div><label class="form-label">Kota *</label><input id="add-kota" type="text" placeholder="Surabaya" class="form-input"/></div>
         <div><label class="form-label">Area</label><input id="add-kecamatan" type="text" placeholder="Wonokromo / Rungkut / Citraland" class="form-input"/></div>
       </div>
-      <div><label class="form-label">Harga (Rp) *</label><input id="add-harga" type="number" placeholder="750000000" class="form-input"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label class="form-label">Harga Total (Rp) *</label>
+          <input id="add-harga" type="text" inputmode="numeric" placeholder="750000000" class="form-input" oninput="previewHargaFormat(this,'add-harga-preview')"/>
+          <span id="add-harga-preview" style="font-size:10px;color:#D4A853;margin-top:3px;display:block;min-height:14px"></span>
+        </div>
+        <div>
+          <label class="form-label">Harga/m² (Rp)</label>
+          <input id="add-harga-permeter" type="text" inputmode="numeric" placeholder="8500000" class="form-input" oninput="previewHargaFormat(this,'add-harga-pm-preview')"/>
+          <span id="add-harga-pm-preview" style="font-size:10px;color:#D4A853;margin-top:3px;display:block;min-height:14px"></span>
+        </div>
+      </div>
       <div>
         <label class="form-label">Deskripsi</label>
         <textarea id="add-deskripsi" rows="4" class="form-input" style="resize:none" placeholder="LT 120m² / LB 90m² / 3KT 2KM / SHM / 2 Lantai / ROW 8m / Hadap Timur / Semi Furnished / bebas banjir dekat tol..."></textarea>
@@ -1018,7 +1029,7 @@
             style="flex:1;background:#D4A853;color:#0D1526;border:none;padding:14px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer">
             <span id="project-form-btn-text">💾 Simpan Proyek</span>
           </button>
-          <button onclick="closeModal('modal-project-form');sessionStorage.removeItem('_pf_draft');sessionStorage.removeItem('_pf_modal_open')"
+          <button onclick="closeModal('modal-project-form')"
             style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);padding:14px 20px;border-radius:12px;font-size:14px;cursor:pointer">
             Batal
           </button>
@@ -1030,7 +1041,6 @@
 
   
   <div id="modal-project-detail" class="modal-overlay" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.85);overflow-y:auto">
-    <button onclick="closeModal('modal-project-detail')" style="position:fixed;top:20px;right:20px;width:38px;height:38px;background:#0D1526;border:1.5px solid rgba(255,255,255,0.3);border-radius:50%;color:#fff;cursor:pointer;font-size:20px;font-weight:700;z-index:201;display:flex;align-items:center;justify-content:center">✕</button>
     <div style="background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:20px;max-width:540px;margin:16px auto;overflow:hidden">
 
       <!-- Close -->
@@ -1043,6 +1053,8 @@
           <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(13,21,38,0.9) 0%, transparent 50%)"></div>
           <div id="pd-status-badge" style="position:absolute;top:12px;left:12px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700"></div>
         </div>
+        <button onclick="closeModal('modal-project-detail')"
+          style="position:absolute;top:12px;right:12px;width:32px;height:32px;background:rgba(0,0,0,0.5);border:none;border-radius:50%;color:#fff;cursor:pointer;font-size:16px;z-index:10">✕</button>
       </div>
 
       <div style="padding:20px">
@@ -1098,23 +1110,8 @@
 
         </div>
 
-        <!-- Generate Shortlink -->
-        <button onclick="generateProjectShortlink()"
-          style="width:100%;background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.25);color:#D4A853;padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px">
-          <i class="fa-solid fa-link"></i> Generate Shortlink Saya
-        </button>
-
-        <!-- Shortlink result -->
-        <div id="pd-shortlink-box" style="display:none;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;margin-bottom:10px">
-          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0 0 6px">Link kamu untuk dibagikan:</p>
-          <div style="display:flex;align-items:center;gap:8px">
-            <code id="pd-shortlink-url" style="color:#D4A853;font-size:12px;flex:1;word-break:break-all"></code>
-            <button onclick="copyProjectShortlink()"
-              style="background:rgba(212,168,83,0.15);border:none;color:#D4A853;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap">
-              📋 Salin
-            </button>
-          </div>
-        </div>
+        <!-- Shortlink box (hidden, kept for reference) -->
+        <div id="pd-shortlink-box" style="display:none"></div>
 
         <!-- Referral leaderboard (principal only) -->
         <div id="pd-referral-section" style="display:none;margin-bottom:10px">

@@ -52,6 +52,8 @@ const COLUMNS = {
     'Caption_Sosmed',     // I
     'Harga',              // J
     'Harga_Format',       // K
+    'Harga_Permeter',     // K2 ★ Harga per m2
+    'Harga_Permeter_Format', // K3 ★ Format harga per m2
     'Alamat',             // L
     'Kecamatan',          // M
     'Kota',               // N

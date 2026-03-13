@@ -14,7 +14,11 @@ const { authMiddleware } = require('../middleware/auth.middleware');
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 30,                          // ★ FIX: naik dari 10→30 (support shared WiFi kantor)
+  keyGenerator: (req) => {          // ★ FIX: rate-limit per email bukan per IP
+    return (req.body?.email || '').toLowerCase().trim() || req.ip;
+  },
+  skipSuccessfulRequests: true,     // ★ FIX: login sukses tidak dihitung
   message: { success: false, message: 'Terlalu banyak percobaan login. Coba lagi dalam 15 menit.' },
   standardHeaders: true,
   legacyHeaders: false,

@@ -22,8 +22,8 @@ class CaptionService {
     const spek = {
       lt:        listing.Luas_Tanah    || this._extract(deskripsi, /LT[:\s]+(\d+)/i) || '',
       lb:        listing.Luas_Bangunan || this._extract(deskripsi, /LB[:\s]+(\d+)/i) || '',
-      kt:        listing.Kamar_Tidur   || this._extract(deskripsi, /(\d+)\s*KT/i)    || '',
-      km:        listing.Kamar_Mandi   || this._extract(deskripsi, /(\d+)\s*KM/i)    || '',
+      kt:        listing.Kamar_Tidur   || this._extract(deskripsi, /(\d+(?:[+\-]\d+)?)\s*KT/i)    || '',
+      km:        listing.Kamar_Mandi   || this._extract(deskripsi, /(\d+(?:[+\-]\d+)?)\s*KM/i)    || '',
       garasi:    listing.Garasi        || this._extract(deskripsi, /garasi[:\s]+([^\n,/]+)/i) || '',
       sertifikat:listing.Sertifikat    || this._extract(deskripsi, /(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i) || '',
       lantai:    listing.Lantai        || this._extract(deskripsi, /(\d+)\s*[Ll]antai/i) || '',

@@ -23,3 +23,7 @@ __pycache__/
 .cloudshell_last_opened
 .DS_Store
 .env.yaml
+backend/oauth-client.json
+backend/sa-key.json
+_backup_v6_*/
+apply_fixes_v6.py

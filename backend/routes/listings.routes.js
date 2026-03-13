@@ -180,14 +180,15 @@ router.get('/pdf', async (req, res) => {
       const col1 = 40, col2 = 300, colW = 240;
       const fields = [
         ['Lokasi',    [l.Kecamatan, l.Kota].filter(Boolean).join(', ') || '—'],
+        ...(l.Harga_Permeter ? [['Harga/m²', l.Harga_Permeter_Format || `Rp ${parseInt(l.Harga_Permeter).toLocaleString('id-ID')}/m²`]] : []),
         // parse dari deskripsi sbg fallback (kolom sheet mungkin kosong)
         ...((() => {
           const raw = l.Deskripsi || '';
           const px  = (re) => { const m = raw.match(re); return m ? m[1] : ''; };
           const lt  = l.Luas_Tanah    || px(/LT[:\s]*(\d+)/i);
           const lb  = l.Luas_Bangunan || px(/LB[:\s]*(\d+)/i);
-          const kt  = l.Kamar_Tidur   || px(/(\d+)\s*KT/i);
-          const km  = l.Kamar_Mandi   || px(/(\d+)\s*KM/i);
+          const kt  = l.Kamar_Tidur   || px(/(\d+(?:[+\-]\d+)?)\s*KT/i);
+          const km  = l.Kamar_Mandi   || px(/(\d+(?:[+\-]\d+)?)\s*KM/i);
           const srt = l.Sertifikat    || px(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i);
           return [
                     // parse spek dari deskripsi sbg fallback
@@ -196,8 +197,8 @@ router.get('/pdf', async (req, res) => {
           const px  = (re) => { const m = raw.match(re); return m ? m[1] : ''; };
           const lt  = l.Luas_Tanah    || px(/LT[:\s]*(\d+)/i);
           const lb  = l.Luas_Bangunan || px(/LB[:\s]*(\d+)/i);
-          const kt  = l.Kamar_Tidur   || px(/(\d+)\s*KT/i);
-          const km  = l.Kamar_Mandi   || px(/(\d+)\s*KM/i);
+          const kt  = l.Kamar_Tidur   || px(/(\d+(?:[+\-]\d+)?)\s*KT/i);
+          const km  = l.Kamar_Mandi   || px(/(\d+(?:[+\-]\d+)?)\s*KM/i);
           const srt = l.Sertifikat    || px(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i);
           return [
                     // parse spek dari deskripsi sbg fallback
@@ -206,8 +207,8 @@ router.get('/pdf', async (req, res) => {
           const px  = (re) => { const m = raw.match(re); return m ? m[1] : ''; };
           const lt  = l.Luas_Tanah    || px(/LT[:\s]*(\d+)/i);
           const lb  = l.Luas_Bangunan || px(/LB[:\s]*(\d+)/i);
-          const kt  = l.Kamar_Tidur   || px(/(\d+)\s*KT/i);
-          const km  = l.Kamar_Mandi   || px(/(\d+)\s*KM/i);
+          const kt  = l.Kamar_Tidur   || px(/(\d+(?:[+\-]\d+)?)\s*KT/i);
+          const km  = l.Kamar_Mandi   || px(/(\d+(?:[+\-]\d+)?)\s*KM/i);
           const srt = l.Sertifikat    || px(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i);
           return [
             ['Luas Tanah',    lt  ? `${lt} m2`  : 'N/A'],
