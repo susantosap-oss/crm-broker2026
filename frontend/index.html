@@ -563,14 +563,22 @@
       <div><label class="form-label">Nama Lengkap *</label><input id="lead-nama" type="text" placeholder="Budi Santoso" class="form-input"/></div>
       <div><label class="form-label">Nomor WhatsApp *</label><div style="position:relative"><span style="position:absolute;left:16px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.4);font-size:13px">+62</span><input id="lead-wa" type="tel" placeholder="812 3456 7890" class="form-input" style="padding-left:48px"/></div></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label class="form-label">Sumber</label><select id="lead-sumber" class="form-input"><option>Instagram</option><option>TikTok</option><option>Facebook</option><option>Website</option><option>Referral</option><option>WhatsApp</option><option>Offline</option></select></div>
+        <div><label class="form-label">Sumber</label><select id="lead-sumber" class="form-input" onchange="toggleLeadKeterangan(this.value)"><option>Instagram</option><option>TikTok</option><option>Facebook</option><option>Website</option><option>Referral</option><option>WhatsApp</option><option>Offline</option><option>Portal Prop</option></select></div>
+        <div id="lead-keterangan-wrap"><label class="form-label">Keterangan</label><input id="lead-keterangan" type="text" class="form-input" placeholder="Nama portal / sumber offline..." disabled style="opacity:0.4;cursor:not-allowed"/></div>
         <div><label class="form-label">Skor</label><select id="lead-score" class="form-input"><option value="Hot">🔥 Hot</option><option value="Warm" selected>☀️ Warm</option><option value="Cold">❄️ Cold</option></select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label class="form-label">Tipe Properti</label><select id="lead-tipe-prop" class="form-input"><option value="Primary">🏗 Primary</option><option value="Secondary">🏠 Secondary</option></select></div>
         <div><label class="form-label">Jenis</label><select id="lead-jenis" class="form-input"><option value="Beli">💰 Beli</option><option value="Sewa">🔑 Sewa</option></select></div>
       </div>
-      <div><label class="form-label">Properti Diminati</label><input id="lead-minat" type="text" placeholder="Rumah 3KT Surabaya Selatan" class="form-input"/></div>
+      <div>
+  <label class="form-label">Properti Diminati</label>
+  <div style="display:flex;gap:8px">
+    <input id="lead-minat" type="text" placeholder="Ketik atau pilih dari listing..." class="form-input" style="flex:1"/>
+    <button type="button" onclick="openPropertiPicker()" style="background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.3);color:#D4A853;border-radius:10px;padding:0 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">📋 Pilih</button>
+  </div>
+</div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label class="form-label">Budget Min</label><input id="lead-budget-min" type="number" placeholder="500000000" class="form-input"/></div>
         <div><label class="form-label">Budget Max</label><input id="lead-budget-max" type="number" placeholder="1000000000" class="form-input"/></div>
@@ -1189,5 +1197,22 @@
       </div>
     </div>
   </div>
+
+
+<!-- Properti Picker Modal - standalone -->
+<div id="properti-picker-overlay" class="hidden" onclick="closePropertiPicker()" style="position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.7)"></div>
+<div id="properti-picker-modal" class="hidden" style="position:fixed;bottom:0;left:0;right:0;z-index:201;background:#141E35;border-radius:20px 20px 0 0;padding:20px;max-height:80vh;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <h3 style="color:#fff;font-size:15px;font-weight:700;margin:0">Pilih Properti</h3>
+    <button onclick="closePropertiPicker()" style="width:28px;height:28px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <input id="properti-picker-search" type="text" placeholder="Cari judul, lokasi, kode..."
+    class="form-input" style="margin-bottom:12px" oninput="filterPropertiPicker(this.value)"/>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <button onclick="setPropertiTab('listing')" id="ptab-listing" style="flex:1;padding:7px;border-radius:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:rgba(212,168,83,0.2);color:#D4A853">🏠 Listing</button>
+    <button onclick="setPropertiTab('primary')" id="ptab-primary" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,0.5)">🏗️ Primary</button>
+  </div>
+  <div id="properti-picker-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px"></div>
+</div>
 
 </body></html>

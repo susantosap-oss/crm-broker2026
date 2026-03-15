@@ -542,7 +542,10 @@ function renderListingsGrid(listings) {
             </div>
           </div>
           <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:5px">${escapeHtml(l.Kode_Listing||'')} · ${escapeHtml(l.Kota||'')}${(_listingTab==='all' && l.Agen_Nama) ? ' · <span style="color:#D4A853">'+escapeHtml(l.Agen_Nama)+'</span>' : ''}</div>
-          <div style="font-size:14px;font-weight:700;color:#D4A853">${harga}</div>
+          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+            <div style="font-size:14px;font-weight:700;color:#D4A853">${harga}</div>
+            ${l.Harga_Permeter ? `<div style="font-size:10px;color:rgba(212,168,83,0.7);font-weight:600">${l.Harga_Permeter_Format || formatRupiah(l.Harga_Permeter)}/m²</div>` : ''}
+          </div>
           <div style="display:flex;gap:8px;margin-top:3px">
             ${l.Luas_Tanah ? `<span style="font-size:9px;color:rgba(255,255,255,0.3)">LT ${l.Luas_Tanah}m²</span>` : ''}
             ${l.Kamar_Tidur ? `<span style="font-size:9px;color:rgba(255,255,255,0.3)">🛏 ${l.Kamar_Tidur}KT</span>` : ''}
@@ -2038,6 +2041,134 @@ async function submitAddListing() {
   }
 }
 
+
+// ── Properti Picker for Add Lead ─────────────────────────
+let _propertiPickerTab = 'listing';
+let _pickerItems = [];
+
+async function openPropertiPicker() {
+  _propertiPickerTab = 'listing';
+  const overlay = document.getElementById('properti-picker-overlay');
+  const modal = document.getElementById('properti-picker-modal');
+  overlay.classList.remove('hidden');
+  modal.classList.remove('hidden');
+  modal.style.display = 'flex';
+  document.getElementById('properti-picker-search').value = '';
+
+  // Load data kalau belum ada
+  if (!_allListings.length) {
+    try {
+      const res = await API.get('/listings');
+      _allListings = res.data || [];
+    } catch(e) {}
+  }
+  if (!_projectsData.length) {
+    try {
+      const res = await API.get('/projects');
+      _projectsData = res.data || [];
+    } catch(e) {}
+  }
+
+  setPropertiTab('listing');
+}
+
+function closePropertiPicker() {
+  const overlay = document.getElementById('properti-picker-overlay');
+  const modal = document.getElementById('properti-picker-modal');
+  overlay.classList.add('hidden');
+  modal.classList.add('hidden');
+  modal.style.display = 'none';
+}
+
+function setPropertiTab(tab) {
+  _propertiPickerTab = tab;
+  const btnListing = document.getElementById('ptab-listing');
+  const btnPrimary = document.getElementById('ptab-primary');
+  if (btnListing) {
+    btnListing.style.background = tab==='listing' ? 'rgba(212,168,83,0.2)' : 'transparent';
+    btnListing.style.color = tab==='listing' ? '#D4A853' : 'rgba(255,255,255,0.5)';
+    btnListing.style.border = tab==='listing' ? 'none' : '1px solid rgba(255,255,255,0.1)';
+  }
+  if (btnPrimary) {
+    btnPrimary.style.background = tab==='primary' ? 'rgba(212,168,83,0.2)' : 'transparent';
+    btnPrimary.style.color = tab==='primary' ? '#D4A853' : 'rgba(255,255,255,0.5)';
+    btnPrimary.style.border = tab==='primary' ? 'none' : '1px solid rgba(255,255,255,0.1)';
+  }
+  filterPropertiPicker(document.getElementById('properti-picker-search')?.value || '');
+}
+
+function filterPropertiPicker(q) {
+  const list = document.getElementById('properti-picker-list');
+  if (!list) return;
+  const query = q.toLowerCase();
+
+  let items = [];
+  if (_propertiPickerTab === 'listing') {
+    items = (_allListings || [])
+      .filter(l => ['Aktif'].includes(l.Status_Listing))
+      .filter(l => !query || 
+        (l.Judul||'').toLowerCase().includes(query) ||
+        (l.Kota||'').toLowerCase().includes(query) ||
+        (l.Kecamatan||'').toLowerCase().includes(query) ||
+        (l.Kode_Listing||'').toLowerCase().includes(query))
+      .map(l => ({
+        label: l.Judul || '—',
+        sub: `${l.Kode_Listing||''} · ${l.Kecamatan||''}, ${l.Kota||''} · ${l.Harga_Format||formatRupiah(l.Harga)}`,
+        value: `${l.Judul} (${l.Kode_Listing||l.ID})`
+      }));
+  } else {
+    items = (_projectsData || [])
+      .filter(p => !query ||
+        (p.Nama_Project||'').toLowerCase().includes(query) ||
+        (p.Lokasi||'').toLowerCase().includes(query) ||
+        (p.Tipe_Properti||'').toLowerCase().includes(query))
+      .map(p => ({
+        label: p.Nama_Project || '—',
+        sub: `${p.Tipe_Properti||''} · ${p.Lokasi||''} · ${p.Harga_Format||'On Request'}`,
+        value: `${p.Nama_Project} (Primary)`
+      }));
+  }
+
+  if (!items.length) {
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:rgba(255,255,255,0.3);font-size:12px">Tidak ada properti ditemukan</div>';
+    return;
+  }
+
+  list.innerHTML = items.map((item, idx) => `
+    <div data-picker-idx="${idx}"
+      style="background:#1C2D52;border-radius:10px;padding:12px;cursor:pointer;border:1px solid transparent"
+      onmouseenter="this.style.borderColor='rgba(212,168,83,0.3)'" onmouseleave="this.style.borderColor='transparent'">
+      <div style="font-size:13px;font-weight:600;color:#fff">${escapeHtml(item.label)}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${escapeHtml(item.sub)}</div>
+    </div>
+  `).join('');
+
+  _pickerItems = items;
+  list.querySelectorAll('[data-picker-idx]').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.pickerIdx);
+      selectProperti(_pickerItems[idx].value);
+    });
+  });
+}
+
+function selectProperti(value) {
+  const input = document.getElementById('lead-minat');
+  if (input) input.value = value;
+  closePropertiPicker();
+}
+// ─────────────────────────────────────────────────────────
+
+function toggleLeadKeterangan(sumber) {
+  const input = document.getElementById('lead-keterangan');
+  if (!input) return;
+  const aktif = ['Portal Prop', 'Offline'].includes(sumber);
+  input.disabled = !aktif;
+  input.style.opacity = aktif ? '1' : '0.4';
+  input.style.cursor = aktif ? 'text' : 'not-allowed';
+  if (!aktif) input.value = '';
+}
+
 async function submitAddLead() {
   const nama = getVal('lead-nama').trim();
   const wa   = getVal('lead-wa').trim();
@@ -2052,6 +2183,7 @@ async function submitAddLead() {
     Nama:              nama,
     No_WA:             noWa,
     Sumber:            getVal('lead-sumber') || 'Direct',
+    Keterangan:        getVal('lead-keterangan') || 'False',
     Score:             getVal('lead-score') || 'Warm',
     Tipe_Properti:     getVal('lead-tipe-prop') || 'Secondary',
     Jenis:             getVal('lead-jenis') || 'Beli',
@@ -2474,8 +2606,14 @@ function openWA(noWa) {
 function formatRupiah(num) {
   if (!num) return '';
   const n = parseInt(num);
-  if (n >= 1_000_000_000) return `Rp ${(n/1_000_000_000).toFixed(n%1_000_000_000===0?0:1)} M`;
-  if (n >= 1_000_000)     return `Rp ${(n/1_000_000).toFixed(n%1_000_000===0?0:0)} Jt`;
+  if (n >= 1_000_000_000) {
+    const v = parseFloat((n/1_000_000_000).toFixed(3));
+    return `Rp ${v.toLocaleString('id-ID', {maximumFractionDigits:3})} M`;
+  }
+  if (n >= 1_000_000) {
+    const v = parseFloat((n/1_000_000).toFixed(3));
+    return `Rp ${v.toLocaleString('id-ID', {maximumFractionDigits:3})} Jt`;
+  }
   return `Rp ${n.toLocaleString('id-ID')}`;
 }
 
@@ -2759,15 +2897,21 @@ async function loadTeamPage() {
   const role = STATE.user?.role;
 
   try {
-    const [teamsRes, leadsStatsRes, listingStatsRes] = await Promise.allSettled([
+    const [teamsRes, leadsStatsRes, listingStatsRes, agentsRes] = await Promise.allSettled([
       API.get('/teams'),
       API.get('/leads/stats/by-agent'),
       API.get('/listings/stats/by-agent'),
+      API.get('/agents'),
     ]);
 
     const teams = teamsRes.status === 'fulfilled' ? (teamsRes.value?.data || []) : [];
     const leadsStats = leadsStatsRes.status === 'fulfilled' ? (leadsStatsRes.value?.data || []) : [];
     const listingStats = listingStatsRes.status === 'fulfilled' ? (listingStatsRes.value?.data || []) : [];
+    const agentsList = agentsRes.status === 'fulfilled' ? (agentsRes.value?.data || []) : [];
+
+    // Build name map: agentId → Nama
+    const nameMap = {};
+    agentsList.forEach(a => { if(a.ID) nameMap[a.ID] = a.Nama; if(a.id) nameMap[a.id] = a.Nama; });
 
     // Build lead & listing maps by agent
     const leadMap = {};
@@ -2800,7 +2944,7 @@ async function loadTeamPage() {
             <!-- Leads stats per agent -->
             <div style="font-size:11px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Leads Anggota</div>
             ${(team.member_ids || []).map(agentId => {
-              const ls = leadMap[agentId] || { agen_nama: agentId, total: 0, hot: 0, deal: 0 };
+              const ls = leadMap[agentId] || { agen_nama: nameMap[agentId] || '(Akun Dihapus)', total: 0, hot: 0, deal: 0 };
               const li = listMap[agentId] || { total: 0 };
               return `
               <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:4px">
