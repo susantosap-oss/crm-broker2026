@@ -16,6 +16,9 @@
  * ROLES: superadmin | principal | business_manager | agen | admin
  */
 
+const NodeCache = require('node-cache');
+const _sheetsCache = new NodeCache({ stdTTL: 30, checkperiod: 60 });
+
 const { google } = require('googleapis');
 
 // ── Sheet Tab Names ────────────────────────────────────────

@@ -7,9 +7,11 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
-const cors    = require('cors');
-const helmet  = require('helmet');
-const morgan  = require('morgan');
+const cors        = require('cors');
+const helmet      = require('helmet');
+const morgan      = require('morgan');
+const compression = require('compression');
+const rateLimit   = require('express-rate-limit');
 const path    = require('path');
 
 const app  = express();
@@ -17,6 +19,17 @@ const PORT = process.env.PORT || 3000;
 
 // ── Middleware ─────────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false }));
+app.use(compression());
+
+// General rate limit: 200 req/menit per IP
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Terlalu banyak request, coba lagi dalam 1 menit' }
+});
+app.use('/api/', generalLimiter);
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
     ? [process.env.APP_URL, process.env.WEBSITE_URL]

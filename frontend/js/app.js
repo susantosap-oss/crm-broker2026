@@ -125,6 +125,7 @@ function togglePasswordVisibility() {
 function togglePassword() { togglePasswordVisibility(); }
 
 function doLogout() {
+  if (STATE._notifInterval) { clearInterval(STATE._notifInterval); STATE._notifInterval = null; }
   localStorage.removeItem('crm_token');
   localStorage.removeItem('crm_user');
   localStorage.removeItem('crm_login_at');

@@ -2514,7 +2514,7 @@ async function showApp() {
     laporanCard.style.display = 'block';
   }
   // Polling notifikasi setiap 60 detik
-  setInterval(() => { if (STATE.token) API.get('/notifications/unread-count').then(r => updateNotifBadge(r.count||0)).catch(()=>{}); }, 60000);
+  STATE._notifInterval = setInterval(() => { if (STATE.token) API.get('/notifications/unread-count').then(r => updateNotifBadge(r.count||0)).catch(()=>{}); }, 60000);
 }
 
 // ─────────────────────────────────────────────────────────

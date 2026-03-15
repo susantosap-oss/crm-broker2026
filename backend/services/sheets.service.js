@@ -9,6 +9,23 @@ const { getSheetsClient, getGoogleAuth, SPREADSHEET_ID, SHEETS } = require('../c
 const { google } = require('googleapis');
 const NodeCache = require('node-cache');
 
+async function withRetry(fn, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try { return await fn(); }
+    catch (err) {
+      const isQuota = err?.code === 429 || err?.status === 429 ||
+        (err?.message||'').includes('quota') || (err?.message||'').includes('rate');
+      if (isQuota && i < maxRetries - 1) {
+        const wait = (i + 1) * 2000;
+        console.warn(`[Sheets] Quota hit, retry ${i+1}/${maxRetries} in ${wait}ms`);
+        await new Promise(r => setTimeout(r, wait));
+      } else throw err;
+    }
+  }
+}
+
+
+
 // Cache instance (TTL dari env)
 const cache = new NodeCache({
   stdTTL: parseInt(process.env.CACHE_TTL || process.env.CACHE_TTL_LISTINGS || 30),
