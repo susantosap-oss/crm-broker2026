@@ -27,6 +27,24 @@ class ProjectsService {
     if (filters.status)          projects = projects.filter(p => p.Status === filters.status);
     if (filters.tipe)            projects = projects.filter(p => p.Tipe_Properti === filters.tipe);
     if (filters.created_by_id)   projects = projects.filter(p => p.Created_By_ID === filters.created_by_id);
+
+    // Filter koordinator — proyek tanpa koordinator (legacy) tetap tampil untuk semua koordinator
+    if (filters.koordinator_id)  projects = projects.filter(p =>
+      !p.Koordinator_ID ||                              // legacy: belum ada koordinator → tampil semua
+      p.Koordinator_ID  === filters.koordinator_id ||
+      p.Koordinator2_ID === filters.koordinator_id
+    );
+
+    // Filter Status_Project — kosong dianggap Aktif (legacy data)
+    if (filters.status_project) {
+      projects = projects.filter(p => {
+        const sp = p.Status_Project || 'Aktif'; // kosong = Aktif
+        if (filters.status_project_include_empty) {
+          return sp === filters.status_project;
+        }
+        return sp === filters.status_project;
+      });
+    }
     if (filters.search) {
       const q = filters.search.toLowerCase();
       projects = projects.filter(p =>

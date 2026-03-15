@@ -298,11 +298,9 @@ const COLUMNS = {
     'Created_At',     // R
     'Updated_At',     // S
     'Notes',          // T
-    'Koordinator_ID',    // U  ★ ID koordinator 1
-    'Koordinator_Nama',  // V  ★ Nama koordinator 1
+    'Koordinator_ID',    // U  ★ ID koordinator penanggung jawab proyek
+    'Koordinator_Nama',  // V  ★ Nama koordinator
     'Status_Project',    // W  ★ Pending|Aktif|Nonaktif
-    'Koordinator2_ID',   // X  ★ ID koordinator 2 (tandem)
-    'Koordinator2_Nama', // Y  ★ Nama koordinator 2 (tandem)
   ],
 
   // ★ PRIMARY — Shortlink tracking per agen

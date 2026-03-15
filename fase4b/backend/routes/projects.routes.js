@@ -45,12 +45,17 @@ router.get('/', async (req, res) => {
     if (status) filters.status = status;
     if (tipe)   filters.tipe   = tipe;
 
-    // Agen hanya lihat yang Publish
+    // Agen hanya lihat yang Publish & Aktif (atau Status_Project kosong = legacy = Aktif)
     if (req.user.role === 'agen') {
-      filters.status = 'Publish';
+      filters.status         = 'Publish';
+      filters.status_project = 'Aktif';
+      filters.status_project_include_empty = true;
     }
 
-    // Koordinator: lihat semua proyek (tidak difilter by koordinator_id)
+    // Koordinator hanya lihat proyek miliknya sendiri
+    if (req.user.role === 'koordinator') {
+      filters.koordinator_id = req.user.id;
+    }
 
     const projects = await projectsService.getAll(filters);
     res.json({ success: true, data: projects, count: projects.length });

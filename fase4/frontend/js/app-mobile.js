@@ -3978,7 +3978,7 @@ function _renderKoordinatorStats(container, projects) {
 
   container.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <h3 style="color:rgba(255,255,255,0.65);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em">⭐ Daftar Primary Aktif</h3>
+      <h3 style="color:rgba(255,255,255,0.65);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em">⭐ Proyek Saya</h3>
       <button onclick="navigateTo('primary')" style="color:rgba(212,168,83,0.8);font-size:11px;background:none;border:none;cursor:pointer">Kelola →</button>
     </div>
 

@@ -27,6 +27,11 @@ class ProjectsService {
     if (filters.status)          projects = projects.filter(p => p.Status === filters.status);
     if (filters.tipe)            projects = projects.filter(p => p.Tipe_Properti === filters.tipe);
     if (filters.created_by_id)   projects = projects.filter(p => p.Created_By_ID === filters.created_by_id);
+    if (filters.koordinator_id)  projects = projects.filter(p =>
+      p.Koordinator_ID === filters.koordinator_id ||
+      p.Koordinator2_ID === filters.koordinator_id
+    );
+    if (filters.status_project)  projects = projects.filter(p => p.Status_Project === filters.status_project);
     if (filters.search) {
       const q = filters.search.toLowerCase();
       projects = projects.filter(p =>
