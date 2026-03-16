@@ -55,142 +55,6 @@ router.get('/export/csv', async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-
-// GET /leads/export/csv
-router.get('/export/csv', async (req, res) => {
-  try {
-    const rows = await sheetsService.getRange(SHEETS.LEADS);
-    const [, ...data] = rows;
-    let leads = data.map(rowToLead).filter(l => l.ID);
-    const { role, id } = req.user;
-    if (role === 'agen' || role === 'koordinator') {
-      leads = leads.filter(l => l.Agen_ID === id);
-    } else if (role === 'admin') {
-      return res.status(403).json({ success: false, message: 'Akses ditolak' });
-    }
-    const esc = (v) => { const s = String(v||'').replace(/"/g,'""'); return /[,"\n]/.test(s)?`"${s}"`:s; };
-    const lines = [['Nama','No WA','Tipe Properti','Transaksi'].join(',')];
-    for (const l of leads) {
-      const tipe = l.Minat_Tipe || l.Closing_Tipe || l.Tipe_Properti || '';
-      const trx  = l.Jenis || l.Status_Transaksi || '';
-      lines.push([esc(l.Nama), esc(l.No_WA), esc(tipe), esc(trx)].join(','));
-    }
-    const date  = new Date().toISOString().slice(0,10);
-    const fname = role === 'superadmin' ? `leads-all-${date}.csv` : `leads-saya-${date}.csv`;
-    res.setHeader('Content-Type','text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition',`attachment; filename="${fname}"`);
-    res.send('\uFEFF' + lines.join('\r\n'));
-  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// GET /leads/export/csv
-router.get('/export/csv', async (req, res) => {
-  try {
-    const rows = await sheetsService.getRange(SHEETS.LEADS);
-    const [, ...data] = rows;
-    let leads = data.map(rowToLead).filter(l => l.ID);
-    const { role, id } = req.user;
-    if (role === 'agen' || role === 'koordinator') {
-      leads = leads.filter(l => l.Agen_ID === id);
-    } else if (role === 'admin') {
-      return res.status(403).json({ success: false, message: 'Akses ditolak' });
-    }
-    const esc = (v) => { const s = String(v||'').replace(/"/g,'""'); return /[,"\n]/.test(s)?`"${s}"`:s; };
-    const lines = [['Nama','No WA','Tipe Properti','Transaksi'].join(',')];
-    for (const l of leads) {
-      const tipe = l.Minat_Tipe || l.Closing_Tipe || l.Tipe_Properti || '';
-      const trx  = l.Jenis || l.Status_Transaksi || '';
-      lines.push([esc(l.Nama), esc(l.No_WA), esc(tipe), esc(trx)].join(','));
-    }
-    const date  = new Date().toISOString().slice(0,10);
-    const fname = role === 'superadmin' ? `leads-all-${date}.csv` : `leads-saya-${date}.csv`;
-    res.setHeader('Content-Type','text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition',`attachment; filename="${fname}"`);
-    res.send('\uFEFF' + lines.join('\r\n'));
-  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// GET /leads/export/csv
-router.get('/export/csv', async (req, res) => {
-  try {
-    const rows = await sheetsService.getRange(SHEETS.LEADS);
-    const [, ...data] = rows;
-    let leads = data.map(rowToLead).filter(l => l.ID);
-    const { role, id } = req.user;
-    if (role === 'agen' || role === 'koordinator') {
-      leads = leads.filter(l => l.Agen_ID === id);
-    } else if (role === 'admin') {
-      return res.status(403).json({ success: false, message: 'Akses ditolak' });
-    }
-    const esc = (v) => { const s = String(v||'').replace(/"/g,'""'); return /[,"\n]/.test(s)?`"${s}"`:s; };
-    const lines = [['Nama','No WA','Tipe Properti','Transaksi'].join(',')];
-    for (const l of leads) {
-      const tipe = l.Minat_Tipe || l.Closing_Tipe || l.Tipe_Properti || '';
-      const trx  = l.Jenis || l.Status_Transaksi || '';
-      lines.push([esc(l.Nama), esc(l.No_WA), esc(tipe), esc(trx)].join(','));
-    }
-    const date  = new Date().toISOString().slice(0,10);
-    const fname = role === 'superadmin' ? `leads-all-${date}.csv` : `leads-saya-${date}.csv`;
-    res.setHeader('Content-Type','text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition',`attachment; filename="${fname}"`);
-    res.send('\uFEFF' + lines.join('\r\n'));
-  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// GET /leads/export/csv
-router.get('/export/csv', async (req, res) => {
-  try {
-    const rows = await sheetsService.getRange(SHEETS.LEADS);
-    const [, ...data] = rows;
-    let leads = data.map(rowToLead).filter(l => l.ID);
-    const { role, id } = req.user;
-    if (role === 'agen' || role === 'koordinator') {
-      leads = leads.filter(l => l.Agen_ID === id);
-    } else if (role === 'admin') {
-      return res.status(403).json({ success: false, message: 'Akses ditolak' });
-    }
-    const esc = (v) => { const s = String(v||'').replace(/"/g,'""'); return /[,"\n]/.test(s)?`"${s}"`:s; };
-    const lines = [['Nama','No WA','Tipe Properti','Transaksi'].join(',')];
-    for (const l of leads) {
-      const tipe = l.Minat_Tipe || l.Closing_Tipe || l.Tipe_Properti || '';
-      const trx  = l.Jenis || l.Status_Transaksi || '';
-      lines.push([esc(l.Nama), esc(l.No_WA), esc(tipe), esc(trx)].join(','));
-    }
-    const date  = new Date().toISOString().slice(0,10);
-    const fname = role === 'superadmin' ? `leads-all-${date}.csv` : `leads-saya-${date}.csv`;
-    res.setHeader('Content-Type','text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition',`attachment; filename="${fname}"`);
-    res.send('\uFEFF' + lines.join('\r\n'));
-  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// GET /leads/export/csv
-router.get('/export/csv', async (req, res) => {
-  try {
-    const rows = await sheetsService.getRange(SHEETS.LEADS);
-    const [, ...data] = rows;
-    let leads = data.map(rowToLead).filter(l => l.ID);
-    const { role, id } = req.user;
-    if (role === 'agen' || role === 'koordinator') {
-      leads = leads.filter(l => l.Agen_ID === id);
-    } else if (role === 'admin') {
-      return res.status(403).json({ success: false, message: 'Akses ditolak' });
-    }
-    const esc = (v) => { const s = String(v||'').replace(/"/g,'""'); return /[,"\n]/.test(s)?`"${s}"`:s; };
-    const lines = [['Nama','No WA','Tipe Properti','Transaksi'].join(',')];
-    for (const l of leads) {
-      const tipe = l.Minat_Tipe || l.Closing_Tipe || l.Tipe_Properti || '';
-      const trx  = l.Jenis || l.Status_Transaksi || '';
-      lines.push([esc(l.Nama), esc(l.No_WA), esc(tipe), esc(trx)].join(','));
-    }
-    const date  = new Date().toISOString().slice(0,10);
-    const fname = role === 'superadmin' ? `leads-all-${date}.csv` : `leads-saya-${date}.csv`;
-    res.setHeader('Content-Type','text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition',`attachment; filename="${fname}"`);
-    res.send('\uFEFF' + lines.join('\r\n'));
-  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
 // GET /leads
 router.get('/', async (req, res) => {
   try {
@@ -249,6 +113,40 @@ router.get('/', async (req, res) => {
     if (req.query.limit)  leads = leads.slice(0, parseInt(req.query.limit));
 
     res.json({ success: true, data: leads, count: leads.length });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// GET /leads/stats/by-agent — untuk Principal & BM
+router.get('/stats/by-agent', async (req, res) => {
+  try {
+    const { role, id, team_id } = req.user;
+    if (!['principal', 'business_manager', 'admin', 'superadmin'].includes(role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak' });
+    }
+
+    const rows = await sheetsService.getRange(SHEETS.LEADS);
+    const [, ...data] = rows;
+    let leads = data.map(rowToLead).filter(l => l.ID);
+
+    if (role === 'business_manager' && team_id) {
+      leads = leads.filter(l => l.Team_ID === team_id);
+    } else if (role === 'principal') {
+      const myTeams = await getMyTeamIds(id);
+      if (myTeams.length > 0) leads = leads.filter(l => myTeams.includes(l.Team_ID));
+    }
+
+    // Group by agen
+    const byAgent = {};
+    leads.forEach(l => {
+      const key = l.Agen_ID;
+      if (!byAgent[key]) byAgent[key] = { agen_id: key, agen_nama: l.Agen_Nama, total: 0, hot: 0, deal: 0, baru: 0 };
+      byAgent[key].total++;
+      if (l.Score === 'Hot') byAgent[key].hot++;
+      if (l.Status_Lead === 'Deal') byAgent[key].deal++;
+      if (l.Status_Lead === 'Baru') byAgent[key].baru++;
+    });
+
+    res.json({ success: true, data: Object.values(byAgent), total: leads.length });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -360,40 +258,6 @@ router.put('/:id', async (req, res) => {
     const row = COLUMNS.LEADS.map(col => merged[col] || '');
     await sheetsService.updateRow(SHEETS.LEADS, result.rowIndex, row);
     res.json({ success: true, message: 'Lead berhasil diupdate' });
-  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// GET /leads/stats/by-agent — untuk Principal & BM
-router.get('/stats/by-agent', async (req, res) => {
-  try {
-    const { role, id, team_id } = req.user;
-    if (!['principal', 'business_manager', 'admin', 'superadmin'].includes(role)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak' });
-    }
-
-    const rows = await sheetsService.getRange(SHEETS.LEADS);
-    const [, ...data] = rows;
-    let leads = data.map(rowToLead).filter(l => l.ID);
-
-    if (role === 'business_manager' && team_id) {
-      leads = leads.filter(l => l.Team_ID === team_id);
-    } else if (role === 'principal') {
-      const myTeams = await getMyTeamIds(id);
-      if (myTeams.length > 0) leads = leads.filter(l => myTeams.includes(l.Team_ID));
-    }
-
-    // Group by agen
-    const byAgent = {};
-    leads.forEach(l => {
-      const key = l.Agen_ID;
-      if (!byAgent[key]) byAgent[key] = { agen_id: key, agen_nama: l.Agen_Nama, total: 0, hot: 0, deal: 0, baru: 0 };
-      byAgent[key].total++;
-      if (l.Score === 'Hot') byAgent[key].hot++;
-      if (l.Status_Lead === 'Deal') byAgent[key].deal++;
-      if (l.Status_Lead === 'Baru') byAgent[key].baru++;
-    });
-
-    res.json({ success: true, data: Object.values(byAgent), total: leads.length });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
