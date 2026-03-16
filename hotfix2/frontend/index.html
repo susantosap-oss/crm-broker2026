@@ -80,22 +80,6 @@
       margin-left: auto !important;
       margin-right: auto !important;
     }
-    /* Fix select dropdown dark theme */
-    select {
-      background-color: #131F38 !important;
-      color: #ffffff !important;
-      border-color: rgba(255,255,255,0.12) !important;
-      -webkit-appearance: none;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23D4A853' d='M5 7L0 2h10z'/%3E%3C/svg%3E") !important;
-      background-repeat: no-repeat !important;
-      background-position: right 10px center !important;
-      padding-right: 30px !important;
-    }
-    select option {
-      background-color: #131F38 !important;
-      color: #ffffff !important;
-    }
   </style>
 </head>
 <body class="min-h-screen overflow-x-hidden">
@@ -296,7 +280,6 @@
         <button onclick="setLeadFilter('Hot',this)" data-filter="Hot" class="chip">🔥 Hot</button>
         <button onclick="setLeadFilter('Warm',this)" data-filter="Warm" class="chip">☀️ Warm</button>
         <button onclick="setLeadFilter('Cold',this)" data-filter="Cold" class="chip">❄️ Cold</button>
-        <button id="leads-tab-mine" onclick="setLeadFilter('mine',this)" data-filter="mine" class="chip" style="display:none">👤 Leads Saya</button>
       
           <button onclick="exportLeadsCSV()" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-file-csv"></i> Export CSV</button></div>
       <div id="leads-list" style="display:flex;flex-direction:column;gap:8px">
@@ -346,36 +329,20 @@
       <input id="primary-search" type="text" placeholder="🔍 Cari proyek / developer..."
         oninput="filterProjects(this.value)"
         style="flex:1;min-width:180px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 14px;color:#fff;font-size:13px;outline:none"/>
-      <!-- Custom dropdown Tipe -->
-      <div style="position:relative" id="wrap-filter-tipe">
-        <button onclick="togglePrimaryDropdown('tipe')"
-          style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;min-width:130px;justify-content:space-between">
-          <span id="primary-filter-tipe-label">Semua Tipe</span>
-          <i class="fa-solid fa-chevron-down" style="font-size:10px;color:#D4A853"></i>
-        </button>
-        <input type="hidden" id="primary-filter-tipe" value=""/>
-        <div id="primary-dropdown-tipe" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#131F38;border:1px solid rgba(212,168,83,0.25);border-radius:10px;z-index:999;min-width:140px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
-          <div onclick="setPrimaryFilter('tipe',''      ,'Semua Tipe')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(212,168,83,0.1)'" onmouseleave="this.style.background=''">Semua Tipe</div>
-          <div onclick="setPrimaryFilter('tipe','Rumah' ,'Rumah')"      style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(212,168,83,0.1)'" onmouseleave="this.style.background=''">🏡 Rumah</div>
-          <div onclick="setPrimaryFilter('tipe','Ruko'  ,'Ruko')"       style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(212,168,83,0.1)'" onmouseleave="this.style.background=''">🏪 Ruko</div>
-          <div onclick="setPrimaryFilter('tipe','Apartemen','Apartemen')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(212,168,83,0.1)'" onmouseleave="this.style.background=''">🏢 Apartemen</div>
-          <div onclick="setPrimaryFilter('tipe','Gudang','Gudang')"     style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(212,168,83,0.1)'" onmouseleave="this.style.background=''">🏭 Gudang</div>
-        </div>
-      </div>
-      <!-- Custom dropdown Status -->
-      <div style="position:relative;display:none" id="wrap-filter-status">
-        <button onclick="togglePrimaryDropdown('status')"
-          style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between">
-          <span id="primary-filter-status-label">Semua Status</span>
-          <i class="fa-solid fa-chevron-down" style="font-size:10px;color:#D4A853"></i>
-        </button>
-        <input type="hidden" id="primary-filter-status" value=""/>
-        <div id="primary-dropdown-status" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#131F38;border:1px solid rgba(212,168,83,0.25);border-radius:10px;z-index:999;min-width:150px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
-          <div onclick="setPrimaryFilter('status',''       ,'Semua Status')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(212,168,83,0.1)'" onmouseleave="this.style.background=''">Semua Status</div>
-          <div onclick="setPrimaryFilter('status','Publish','Publish')"      style="padding:10px 14px;color:#4ade80;font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(212,168,83,0.1)'" onmouseleave="this.style.background=''">● Publish</div>
-          <div onclick="setPrimaryFilter('status','Draft'  ,'Draft')"        style="padding:10px 14px;color:#94a3b8;font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(212,168,83,0.1)'" onmouseleave="this.style.background=''">● Draft</div>
-        </div>
-      </div>
+      <select id="primary-filter-tipe" onchange="filterProjects()"
+        style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;cursor:pointer">
+        <option value="">Semua Tipe</option>
+        <option value="Rumah">Rumah</option>
+        <option value="Ruko">Ruko</option>
+        <option value="Apartemen">Apartemen</option>
+        <option value="Gudang">Gudang</option>
+      </select>
+      <select id="primary-filter-status" onchange="filterProjects()"
+        style="display:none;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;cursor:pointer">
+        <option value="">Semua Status</option>
+        <option value="Publish">Publish</option>
+        <option value="Draft">Draft</option>
+      </select>
     </div>
 
     <!-- Grid VCard -->
@@ -451,7 +418,7 @@
           <span>Primary</span>
           <span style="margin-left:auto;font-size:10px;background:rgba(212,168,83,0.2);color:#D4A853;padding:2px 7px;border-radius:20px;font-weight:700">NEW</span>
         </a>
-      <button id="sb-leads" onclick="navigateTo('leads');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-users" style="color:#a855f7;width:16px;text-align:center"></i><span>Manajemen Leads</span></button>
+      <button onclick="navigateTo('leads');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-users" style="color:#a855f7;width:16px;text-align:center"></i><span>Manajemen Leads</span></button>
       <button onclick="navigateTo('tasks');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-calendar-check" style="color:#22C55E;width:16px;text-align:center"></i><span>Jadwal & Tasks</span></button>
       <button onclick="openSettings();closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-gear" style="color:rgba(255,255,255,0.4);width:16px;text-align:center"></i><span>Pengaturan Profil</span></button>
       <button onclick="openKomisiForm();closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-money-bill-wave" style="color:#D4A853;width:16px;text-align:center"></i><span>Request Komisi</span></button>

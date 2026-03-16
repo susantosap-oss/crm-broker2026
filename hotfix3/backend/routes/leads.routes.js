@@ -35,9 +35,9 @@ router.get('/export/csv', async (req, res) => {
     const [, ...data] = rows;
     let leads = data.map(rowToLead).filter(l => l.ID);
     const { role, id } = req.user;
-    if (role === 'agen' || role === 'koordinator') {
+    if (role === 'agen') {
       leads = leads.filter(l => l.Agen_ID === id);
-    } else if (role === 'admin') {
+    } else if (role !== 'superadmin') {
       return res.status(403).json({ success: false, message: 'Akses ditolak' });
     }
     const esc = (v) => { const s = String(v||'').replace(/"/g,'""'); return /[,"\n]/.test(s)?`"${s}"`:s; };
@@ -63,9 +63,9 @@ router.get('/export/csv', async (req, res) => {
     const [, ...data] = rows;
     let leads = data.map(rowToLead).filter(l => l.ID);
     const { role, id } = req.user;
-    if (role === 'agen' || role === 'koordinator') {
+    if (role === 'agen') {
       leads = leads.filter(l => l.Agen_ID === id);
-    } else if (role === 'admin') {
+    } else if (role !== 'superadmin') {
       return res.status(403).json({ success: false, message: 'Akses ditolak' });
     }
     const esc = (v) => { const s = String(v||'').replace(/"/g,'""'); return /[,"\n]/.test(s)?`"${s}"`:s; };
@@ -90,9 +90,9 @@ router.get('/export/csv', async (req, res) => {
     const [, ...data] = rows;
     let leads = data.map(rowToLead).filter(l => l.ID);
     const { role, id } = req.user;
-    if (role === 'agen' || role === 'koordinator') {
+    if (role === 'agen') {
       leads = leads.filter(l => l.Agen_ID === id);
-    } else if (role === 'admin') {
+    } else if (role !== 'superadmin') {
       return res.status(403).json({ success: false, message: 'Akses ditolak' });
     }
     const esc = (v) => { const s = String(v||'').replace(/"/g,'""'); return /[,"\n]/.test(s)?`"${s}"`:s; };
@@ -117,9 +117,9 @@ router.get('/export/csv', async (req, res) => {
     const [, ...data] = rows;
     let leads = data.map(rowToLead).filter(l => l.ID);
     const { role, id } = req.user;
-    if (role === 'agen' || role === 'koordinator') {
+    if (role === 'agen') {
       leads = leads.filter(l => l.Agen_ID === id);
-    } else if (role === 'admin') {
+    } else if (role !== 'superadmin') {
       return res.status(403).json({ success: false, message: 'Akses ditolak' });
     }
     const esc = (v) => { const s = String(v||'').replace(/"/g,'""'); return /[,"\n]/.test(s)?`"${s}"`:s; };
@@ -144,9 +144,9 @@ router.get('/export/csv', async (req, res) => {
     const [, ...data] = rows;
     let leads = data.map(rowToLead).filter(l => l.ID);
     const { role, id } = req.user;
-    if (role === 'agen' || role === 'koordinator') {
+    if (role === 'agen') {
       leads = leads.filter(l => l.Agen_ID === id);
-    } else if (role === 'admin') {
+    } else if (role !== 'superadmin') {
       return res.status(403).json({ success: false, message: 'Akses ditolak' });
     }
     const esc = (v) => { const s = String(v||'').replace(/"/g,'""'); return /[,"\n]/.test(s)?`"${s}"`:s; };
@@ -171,9 +171,9 @@ router.get('/export/csv', async (req, res) => {
     const [, ...data] = rows;
     let leads = data.map(rowToLead).filter(l => l.ID);
     const { role, id } = req.user;
-    if (role === 'agen' || role === 'koordinator') {
+    if (role === 'agen') {
       leads = leads.filter(l => l.Agen_ID === id);
-    } else if (role === 'admin') {
+    } else if (role !== 'superadmin') {
       return res.status(403).json({ success: false, message: 'Akses ditolak' });
     }
     const esc = (v) => { const s = String(v||'').replace(/"/g,'""'); return /[,"\n]/.test(s)?`"${s}"`:s; };
@@ -309,7 +309,7 @@ router.patch('/:id', async (req, res) => {
     const existing = rowToLead(result.data);
 
     // Agen hanya bisa edit leads sendiri
-    if (['agen','koordinator'].includes(req.user.role) && existing.Agen_ID !== req.user.id) {
+    if (req.user.role === 'agen' && existing.Agen_ID !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Akses ditolak' });
     }
 

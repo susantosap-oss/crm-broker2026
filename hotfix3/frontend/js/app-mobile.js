@@ -1842,13 +1842,7 @@ async function loadLeads() {
   list.innerHTML = '<div class="skeleton" style="height:76px;border-radius:14px"></div>'.repeat(3);
 
   try {
-    let params = '';
-    if (_leadFilter === 'mine') {
-      // Leads Saya — filter by agen_id sendiri
-      params = `?agen_id=${STATE.user?.id}`;
-    } else if (_leadFilter !== 'all') {
-      params = `?score=${_leadFilter}`;
-    }
+    const params = _leadFilter !== 'all' ? `?score=${_leadFilter}` : '';
     const res = await API.get(`/leads${params}`);
     STATE.leads = res.data || [];
     renderLeadsList(STATE.leads);
@@ -2261,24 +2255,8 @@ async function navigateTo(page) {
   if (np) np.style.display = 'none';
 
   if (page === 'dashboard') await loadDashboard();
-  // Reset lead filter saat keluar dari leads
-  if (page !== 'leads' && _leadFilter === 'mine') {
-    _leadFilter = 'all';
-  }
   if (page === 'listings')  await loadListings();
-  if (page === 'leads') {
-    // Tampilkan tab Leads Saya untuk principal & superadmin
-    const mineTab = document.getElementById('leads-tab-mine');
-    if (mineTab) {
-      const showMine = ['principal','superadmin','business_manager'].includes(STATE.user?.role);
-      if (showMine) {
-        mineTab.style.removeProperty('display');
-      } else {
-        mineTab.style.display = 'none';
-      }
-    }
-    await loadLeads();
-  }
+  if (page === 'leads')     await loadLeads();
   if (page === 'tasks')     await loadTasks();
   if (page === 'team')      await loadTeamPage();
   if (page === 'primary')   await loadPrimaryPage();
@@ -3184,45 +3162,6 @@ let _korCandidates = [];        // cache kandidat koordinator
 // ─────────────────────────────────────────────────────────
 // LOAD PAGE
 // ─────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────
-// PRIMARY CUSTOM DROPDOWN
-// ─────────────────────────────────────────────────────────
-function togglePrimaryDropdown(type) {
-  const dd = document.getElementById(`primary-dropdown-${type}`);
-  if (!dd) return;
-  const isOpen = dd.style.display !== 'none';
-  // Tutup semua dulu
-  ['tipe','status'].forEach(t => {
-    const el = document.getElementById(`primary-dropdown-${t}`);
-    if (el) el.style.display = 'none';
-  });
-  if (!isOpen) dd.style.display = 'block';
-}
-
-function setPrimaryFilter(type, value, label) {
-  const input = document.getElementById(`primary-filter-${type}`);
-  const labelEl = document.getElementById(`primary-filter-${type}-label`);
-  const dd = document.getElementById(`primary-dropdown-${type}`);
-  if (input) input.value = value;
-  if (labelEl) {
-    labelEl.textContent = label;
-    labelEl.style.color = value ? '#D4A853' : '#fff';
-  }
-  if (dd) dd.style.display = 'none';
-  filterProjects();
-}
-
-// Tutup dropdown kalau klik di luar
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('#wrap-filter-tipe') && !e.target.closest('#wrap-filter-status')) {
-    ['tipe','status'].forEach(t => {
-      const el = document.getElementById(`primary-dropdown-${t}`);
-      if (el) el.style.display = 'none';
-    });
-  }
-});
-
 async function loadPrimaryPage() {
   const role      = STATE.user?.role;
   const canManage = MANAGE_ROLES_PRIMARY.includes(role);
@@ -3231,8 +3170,8 @@ async function loadPrimaryPage() {
   const addBtn = document.getElementById('btn-add-project');
   if (addBtn) addBtn.style.display = canManage ? 'flex' : 'none';
 
-  const filterStatusWrap = document.getElementById('wrap-filter-status');
-  if (filterStatusWrap) filterStatusWrap.style.display = canFilter ? '' : 'none';
+  const filterStatus = document.getElementById('primary-filter-status');
+  if (filterStatus) filterStatus.style.display = canFilter ? '' : 'none';
 
   await fetchProjects();
 }
@@ -4140,9 +4079,11 @@ function _renderKoordinatorStats(container, projects) {
     <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden">
       ${projects.slice(0, 5).map((p, i) => {
         const spColor = p.Status_Project === 'Pending' ? '#fbbf24' : p.Status_Project === 'Nonaktif' ? '#f87171' : '#4ade80';
+        const tipeEmoji = { Rumah: '🏡', Ruko: '🏪', Apartemen: '🏢', Gudang: '🏭' }[p.Tipe_Properti] || '🏠';
         return `<div onclick="navigateTo('primary')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;${i < Math.min(projects.length,5)-1 ? 'border-bottom:1px solid rgba(255,255,255,0.05)' : ''};cursor:pointer"
           onmouseenter="this.style.background='rgba(255,255,255,0.03)'"
           onmouseleave="this.style.background=''">
+          <span style="font-size:20px">${tipeEmoji}</span>
           <div style="flex:1;min-width:0">
             <p style="color:#fff;font-size:13px;font-weight:600;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(p.Nama_Proyek)}</p>
             <p style="color:rgba(255,255,255,0.35);font-size:11px;margin:2px 0 0">${escapeHtml(p.Nama_Developer)} · ${escapeHtml(p.Harga_Format || 'On Request')}</p>

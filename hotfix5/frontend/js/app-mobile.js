@@ -2270,12 +2270,7 @@ async function navigateTo(page) {
     // Tampilkan tab Leads Saya untuk principal & superadmin
     const mineTab = document.getElementById('leads-tab-mine');
     if (mineTab) {
-      const showMine = ['principal','superadmin','business_manager'].includes(STATE.user?.role);
-      if (showMine) {
-        mineTab.style.removeProperty('display');
-      } else {
-        mineTab.style.display = 'none';
-      }
+      mineTab.style.display = ['principal','superadmin','business_manager'].includes(STATE.user?.role) ? '' : 'none';
     }
     await loadLeads();
   }
@@ -3184,45 +3179,6 @@ let _korCandidates = [];        // cache kandidat koordinator
 // ─────────────────────────────────────────────────────────
 // LOAD PAGE
 // ─────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────
-// PRIMARY CUSTOM DROPDOWN
-// ─────────────────────────────────────────────────────────
-function togglePrimaryDropdown(type) {
-  const dd = document.getElementById(`primary-dropdown-${type}`);
-  if (!dd) return;
-  const isOpen = dd.style.display !== 'none';
-  // Tutup semua dulu
-  ['tipe','status'].forEach(t => {
-    const el = document.getElementById(`primary-dropdown-${t}`);
-    if (el) el.style.display = 'none';
-  });
-  if (!isOpen) dd.style.display = 'block';
-}
-
-function setPrimaryFilter(type, value, label) {
-  const input = document.getElementById(`primary-filter-${type}`);
-  const labelEl = document.getElementById(`primary-filter-${type}-label`);
-  const dd = document.getElementById(`primary-dropdown-${type}`);
-  if (input) input.value = value;
-  if (labelEl) {
-    labelEl.textContent = label;
-    labelEl.style.color = value ? '#D4A853' : '#fff';
-  }
-  if (dd) dd.style.display = 'none';
-  filterProjects();
-}
-
-// Tutup dropdown kalau klik di luar
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('#wrap-filter-tipe') && !e.target.closest('#wrap-filter-status')) {
-    ['tipe','status'].forEach(t => {
-      const el = document.getElementById(`primary-dropdown-${t}`);
-      if (el) el.style.display = 'none';
-    });
-  }
-});
-
 async function loadPrimaryPage() {
   const role      = STATE.user?.role;
   const canManage = MANAGE_ROLES_PRIMARY.includes(role);
@@ -3231,8 +3187,8 @@ async function loadPrimaryPage() {
   const addBtn = document.getElementById('btn-add-project');
   if (addBtn) addBtn.style.display = canManage ? 'flex' : 'none';
 
-  const filterStatusWrap = document.getElementById('wrap-filter-status');
-  if (filterStatusWrap) filterStatusWrap.style.display = canFilter ? '' : 'none';
+  const filterStatus = document.getElementById('primary-filter-status');
+  if (filterStatus) filterStatus.style.display = canFilter ? '' : 'none';
 
   await fetchProjects();
 }

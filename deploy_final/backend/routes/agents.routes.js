@@ -182,23 +182,7 @@ router.get('/offices', async (req, res) => {
         join_date:     a.Join_Date     || '',
       });
     });
-
-    // Rename Kantor Pusat → Administrator
-    const PUSAT_KEY = 'MANSION : Kantor Pusat';
-    if (map[PUSAT_KEY]) {
-      map[PUSAT_KEY].nama_kantor = 'Administrator';
-      map['Administrator'] = map[PUSAT_KEY];
-      delete map[PUSAT_KEY];
-    }
-
-    let offices = Object.values(map).sort((a, b) => a.nama_kantor.localeCompare(b.nama_kantor));
-
-    // Sembunyikan grup Administrator untuk role agen/koordinator/business_manager
-    const { role } = req.user;
-    if (['agen', 'koordinator', 'business_manager'].includes(role)) {
-      offices = offices.filter(o => o.nama_kantor !== 'Administrator');
-    }
-
+    const offices = Object.values(map).sort((a, b) => a.nama_kantor.localeCompare(b.nama_kantor));
     res.json({ success: true, data: offices });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
