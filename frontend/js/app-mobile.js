@@ -2558,6 +2558,17 @@ async function showApp() {
   setEl('hero-name', (_profileData.nama || nama || 'Agen').split(' ')[0]);
 
   applyProfileToUI();
+
+  // Fetch foto_url terbaru dari /agents/me (tidak blok UI)
+  API.get('/agents/me').then(function(res) {
+    var fotoUrl = res.data && (res.data.Foto_URL || res.data.foto_url || '');
+    if (fotoUrl && typeof _profileData !== 'undefined') {
+      _profileData.photoUrl = fotoUrl;
+      if (typeof saveProfileToStorage === 'function') saveProfileToStorage();
+      applyProfileToUI();
+    }
+  }).catch(function() {});
+
   requestNotifPermission();
   await loadFavourites();
   loadCloudinaryConfig().then(() => {});
@@ -2796,6 +2807,7 @@ function openEditUser(id) {
   setVal('eu-kantor', (u.Nama_Kantor||'').replace(/^MANSION\s*:\s*/i,'').trim());
   setVal('eu-password', '');
   setVal('eu-telegram', u.Telegram_ID||'');
+  setVal('eu-lsp', u.Nomer_LSP||'');
   setVal('eu-role', u.Role||'agen');
   setVal('eu-status', u.Status||'Aktif');
   openModal('modal-edit-user');
@@ -2811,6 +2823,7 @@ async function submitEditUser() {
     Nama_Kantor: getVal('eu-kantor').trim() ? `MANSION : ${getVal('eu-kantor').trim()}` : '',
     Status: getVal('eu-status'),
     Telegram_ID: getVal('eu-telegram').trim(),
+    Nomer_LSP: getVal('eu-lsp').trim(),
   };
   const newPass = getVal('eu-password').trim();
   if (newPass) payload.newPassword = newPass;
@@ -2835,6 +2848,7 @@ async function submitAddUser() {
     Nama_Kantor: getVal('nu-kantor').trim() ? `MANSION : ${getVal('nu-kantor').trim()}` : '',
     Status: getVal('nu-status'),
     Telegram_ID: getVal('nu-telegram').trim(),
+    Nomer_LSP: getVal('nu-lsp').trim(),
   };
   try {
     const btn = document.querySelector('#user-tab-add .btn-gold');
@@ -2843,7 +2857,7 @@ async function submitAddUser() {
     showToast(`✅ User ${nama} berhasil ditambahkan!`, 'success');
     setUserTab('list');
     loadUserList();
-    ['nu-nama','nu-email','nu-password','nu-wa','nu-telegram','nu-kantor'].forEach(id => setVal(id,''));
+    ['nu-nama','nu-email','nu-password','nu-wa','nu-telegram','nu-kantor','nu-lsp'].forEach(id => setVal(id,''));
   } catch (e) {
     showToast('Gagal: ' + e.message, 'error');
   } finally {

@@ -58,6 +58,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       no_wa:       agentObj.No_WA          || '',
       no_wa_biz:   agentObj.No_WA_Business || '',
       nama_kantor: agentObj.Nama_Kantor    || '',
+      foto_url:    agentObj.Foto_URL       || '',
     };
 
     const token = jwt.sign(user, process.env.JWT_SECRET, {

@@ -97,33 +97,34 @@ const COLUMNS = {
     'No_WA',              // D
     'Email',              // E
     'Sumber',             // F
-    'Minat_Tipe',         // G
-    'Properti_Diminati',  // H
-    'Budget_Min',         // I
-    'Budget_Max',         // J
-    'Lokasi_Preferred',   // K
-    'Status_Lead',        // L
-    'Agen_ID',            // M
-    'Agen_Nama',          // N
-    'Last_Contact',       // O
-    'Next_Follow_Up',     // P
-    'Notes',              // Q
-    'Score',              // R
-    'Created_At',         // S
-    'Updated_At',         // T
-    'Tipe_Properti',      // U
-    'Jenis',              // V
-    'Catatan',            // W
-    'Last_Activity_Date', // X
-    'Catatan_Out',        // Y
-    'Is_Buyer_Request',   // Z  ★ NEW (TRUE/FALSE)
-    'Team_ID',            // AA ★ NEW
-    'Closing_Tipe',       // AB  Secondary | Primary
-    'Closing_Listing_ID', // AC  ID listing sendiri (Secondary-own)
-    'Closing_Listing_Nama', // AD  Nama listing untuk display
-    'Closing_Cobroke',    // AE  Detail listing cobroke / brand lain
-    'Closing_Proyek',     // AF  Nama proyek (Primary)
-    'Tanggal_Dihubungi',  // AG  ★ Timestamp pertama kali agen hubungi lead
+    'Keterangan',         // G
+    'Minat_Tipe',         // H
+    'Properti_Diminati',  // I
+    'Budget_Min',         // J
+    'Budget_Max',         // K
+    'Lokasi_Preferred',   // L
+    'Status_Lead',        // M
+    'Agen_ID',            // N
+    'Agen_Nama',          // O
+    'Last_Contact',       // P
+    'Next_Follow_Up',     // Q
+    'Notes',              // R
+    'Score',              // S
+    'Created_At',         // T
+    'Updated_At',         // U
+    'Tipe_Properti',      // V
+    'Jenis',              // W
+    'Catatan',            // X
+    'Last_Activity_Date', // Y
+    'Catatan_Out',        // Z
+    'Is_Buyer_Request',   // AA (TRUE/FALSE)
+    'Team_ID',            // AB
+    'Closing_Tipe',       // AC  Secondary | Primary
+    'Closing_Listing_ID', // AD  ID listing sendiri (Secondary-own)
+    'Closing_Listing_Nama', // AE  Nama listing untuk display
+    'Closing_Cobroke',    // AF  Detail listing cobroke / brand lain
+    'Closing_Proyek',     // AG  Nama proyek (Primary)
+    'Tanggal_Dihubungi',  // AH  Timestamp pertama kali agen hubungi lead
   ],
 
   AGENTS: [
@@ -146,6 +147,7 @@ const COLUMNS = {
     'No_WA_Business',     // Q  ★ WA Business number
     'Nama_Kantor',        // R  ★ Nama kantor (format: MANSION : {nama})
     'Parent_Kantor',      // S  ★ Kantor induk (e.g. MANSION : Citraland untuk Malang)
+    'Nomer_LSP',          // T  ★ Nomor Lembaga Sertifikasi Profesi
   ],
 
   // ★ NEW SHEET

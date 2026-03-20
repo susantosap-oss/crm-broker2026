@@ -112,7 +112,7 @@ router.get('/by-role/:role', requireMinRole('admin'), async (req, res) => {
 // POST /agents — buat user baru
 router.post('/', requireMinRole('admin'), async (req, res) => {
   try {
-    const { Nama, Email, Password, No_WA, Role, Status, Telegram_ID, Team_ID } = req.body;
+    const { Nama, Email, Password, No_WA, Role, Status, Telegram_ID, Team_ID, Nomer_LSP } = req.body;
     if (!Nama || !Email || !Password)
       return res.status(400).json({ success: false, message: 'Nama, Email, Password wajib' });
 
@@ -144,6 +144,7 @@ router.post('/', requireMinRole('admin'), async (req, res) => {
       if (col === 'Status')        return Status || 'Aktif';
       if (col === 'Telegram_ID')   return Telegram_ID || '';
       if (col === 'Team_ID')       return Team_ID || '';
+      if (col === 'Nomer_LSP')     return Nomer_LSP || '';
       if (col === 'Join_Date')     return now.substring(0,10);
       if (col === 'Created_At')    return now;
       if (col === 'Updated_At')    return now;
