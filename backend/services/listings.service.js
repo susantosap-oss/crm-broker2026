@@ -67,7 +67,7 @@ class ListingsService {
       Caption_Sosmed: captionSosmed,
       Agen_ID: agentData.id,
       Agen_Nama: agentData.nama,
-      Tampilkan_di_Web: payload.Tampilkan_di_Web || 'FALSE',
+      Tampilkan_di_Web: payload.Tampilkan_di_Web || 'TRUE',
       Views_Count: '0',
       Created_At: now,
       Updated_At: now,

@@ -25,6 +25,21 @@ let _profileData = {
   _pendingLogoFile: null,
 };
 
+// ── CRA Badge — set of agent names that have Nomer_LSP ──────
+let _craNames = new Set(); // populated after login via /agents
+function craHTML(name) {
+  if (!name) return escapeHtml(name || '');
+  const isCRA = _craNames.has(name.trim());
+  return escapeHtml(name) + (isCRA ? ', CRA' : '') +
+    (isCRA ? ' <span title="CRA Verified" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#2563EB;flex-shrink:0;vertical-align:middle;margin-left:2px"><i class="fa-solid fa-check" style="color:#fff;font-size:7px"></i></span>' : '');
+}
+async function _loadCraNames() {
+  try {
+    const res = await API.get('/agents');
+    _craNames = new Set((res.data || []).filter(a => a.Nomer_LSP).map(a => (a.Nama || '').trim()));
+  } catch (_) {}
+}
+
 function loadProfileFromStorage() {
   try {
     const saved = localStorage.getItem('crm_profile');
@@ -541,7 +556,7 @@ function renderListingsGrid(listings) {
               </button>
             </div>
           </div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:5px">${escapeHtml(l.Kode_Listing||'')} · ${escapeHtml(l.Kota||'')}${(_listingTab==='all' && l.Agen_Nama) ? ' · <span style="color:#D4A853">'+escapeHtml(l.Agen_Nama)+'</span>' : ''}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:5px">${escapeHtml(l.Kode_Listing||'')} · ${escapeHtml(l.Kota||'')}${(_listingTab==='all' && l.Agen_Nama) ? ' · <span style="color:#D4A853">'+craHTML(l.Agen_Nama)+'</span>' : ''}</div>
           <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
             <div style="font-size:14px;font-weight:700;color:#D4A853">${harga}</div>
             ${l.Harga_Permeter ? `<div style="font-size:10px;color:rgba(212,168,83,0.7);font-weight:600">${l.Harga_Permeter_Format || formatRupiah(l.Harga_Permeter)}/m²</div>` : ''}
@@ -1236,7 +1251,7 @@ async function loadAdminDashboard() {
             : top3.map((a, i) => `
               <div style="display:flex;align-items:center;gap:10px;padding:8px 0;${i < top3.length-1?'border-bottom:1px solid rgba(255,255,255,0.05)':''}">
                 <span style="font-size:20px;width:28px;text-align:center">${medals[i]}</span>
-                <span style="flex:1;font-size:13px;font-weight:600;color:#fff">${escapeHtml(a.nama)}</span>
+                <span style="flex:1;font-size:13px;font-weight:600;color:#fff">${craHTML(a.nama)}</span>
                 <span style="font-size:13px;font-weight:700;color:#D4A853">${a.count} listing</span>
               </div>
             `).join('')
@@ -1881,7 +1896,7 @@ function renderLeadsList(leads) {
           </div>
           <div style="font-size:11px;color:rgba(255,255,255,0.4)">${escapeHtml(l.Sumber||'')}${l.Tipe_Properti?' · '+escapeHtml(l.Tipe_Properti):''}</div>
           <div style="font-size:10px;color:rgba(255,255,255,0.25);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${escapeHtml(l.Properti_Diminati||l.Minat_Tipe||'')}</div>
-          ${(['principal','superadmin'].includes(STATE.user?.role) && l.Agen_Nama) ? `<div style="font-size:10px;color:#D4A853;margin-top:3px;display:flex;align-items:center;gap:3px"><i class="fa-solid fa-user-tie" style="font-size:9px"></i> ${escapeHtml(l.Agen_Nama)}</div>` : ''}
+          ${(['principal','superadmin'].includes(STATE.user?.role) && l.Agen_Nama) ? `<div style="font-size:10px;color:#D4A853;margin-top:3px;display:flex;align-items:center;gap:3px"><i class="fa-solid fa-user-tie" style="font-size:9px"></i> ${craHTML(l.Agen_Nama)}</div>` : ''}
         </div>
         ${['principal','business_manager'].includes(STATE.user?.role)
           ? `<div style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-solid fa-lock" style="color:rgba(255,255,255,0.2);font-size:12px"></i></div>`
@@ -2252,7 +2267,7 @@ async function navigateTo(page) {
     b.className = b.id === `nav-${page}` ? 'nav-btn active' : 'nav-btn';
   });
 
-  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Jadwal & Tasks', member:'Member Kantor', primary:'Primary' };
+  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Jadwal & Tasks', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti' };
   setEl('page-title', titles[page] || page);
   STATE.currentPage = page;
 
@@ -2260,6 +2275,7 @@ async function navigateTo(page) {
   const np = document.getElementById('notif-panel');
   if (np) np.style.display = 'none';
 
+  if (page === 'calculator') { if (typeof initCalcPage === 'function') initCalcPage(); return; }
   if (page === 'dashboard') await loadDashboard();
   // Reset lead filter saat keluar dari leads
   if (page !== 'leads' && _leadFilter === 'mine') {
@@ -2483,7 +2499,10 @@ function memberRow(m) {
     <div style="display:flex;align-items:center;gap:12px;padding:10px 6px;border-top:1px solid rgba(255,255,255,0.04)">
       <div style="width:40px;height:40px;border-radius:50%;background:#1C2D52;border:2px solid rgba(212,168,83,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden">${foto}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(m.nama||'—')}</div>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(m.nama||'—')}${m.nomer_lsp ? ', CRA' : ''}</span>
+          ${m.nomer_lsp ? `<span title="CRA Verified" style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#2563EB;flex-shrink:0"><i class="fa-solid fa-check" style="color:#fff;font-size:7px"></i></span>` : ''}
+        </div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
           <span style="font-size:10px;color:rgba(255,255,255,0.35)">${roleLabel}</span>
           <span style="font-size:8px;color:${statusColor}">● ${escapeHtml(m.status||'')}</span>
@@ -2558,6 +2577,9 @@ async function showApp() {
   setEl('hero-name', (_profileData.nama || nama || 'Agen').split(' ')[0]);
 
   applyProfileToUI();
+
+  // Pre-load CRA names set (tidak blok UI)
+  _loadCraNames();
 
   // Fetch foto_url terbaru dari /agents/me (tidak blok UI)
   API.get('/agents/me').then(function(res) {
@@ -2779,12 +2801,16 @@ async function loadUserList() {
           ${escapeHtml((u.Nama||'U').charAt(0).toUpperCase())}
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:#fff">${escapeHtml(u.Nama||'—')}</div>
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:600;color:#fff">${escapeHtml(u.Nama||'—')}${u.Nomer_LSP ? ', CRA' : ''}</span>
+            ${u.Nomer_LSP ? `<span title="CRA Verified — LSP: ${escapeHtml(u.Nomer_LSP)}" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#2563EB;flex-shrink:0;cursor:default"><i class="fa-solid fa-check" style="color:#fff;font-size:8px"></i></span>` : ''}
+          </div>
           <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px">${escapeHtml(u.Email||'')}</div>
-          <div style="display:flex;gap:6px;margin-top:4px">
+          <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
             <span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${roleColor[u.Role]||'#6B7280'}18;color:${roleColor[u.Role]||'#6B7280'};font-weight:600">${{ superadmin:'Super Admin', principal:'Principal', business_manager:'Business Mgr', admin:'Admin', agen:'Agen', koordinator:'Koordinator' }[u.Role] || u.Role || 'agen'}</span>
             <span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${statusColor[u.Status]||'#6B7280'}18;color:${statusColor[u.Status]||'#6B7280'};font-weight:600">● ${u.Status||'Aktif'}</span>
             ${u.Telegram_ID ? '<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(43,123,255,0.12);color:#60a5fa">TG ✓</span>' : ''}
+            ${u.Nomer_LSP ? `<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(37,99,235,0.12);color:#60a5fa;font-weight:600">LSP ✓</span>` : ''}
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
@@ -3013,7 +3039,7 @@ async function loadTeamPage() {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
               <div>
                 <div style="font-size:14px;font-weight:700;color:#fff">${escapeHtml(team.Nama_Team)}</div>
-                <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">BM: ${escapeHtml(team.BM_Nama||'-')}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">BM: ${craHTML(team.BM_Nama||'-')}</div>
               </div>
               ${(role === 'principal' || role === 'superadmin' || role === 'admin') ? `
               <div style="display:flex;gap:6px">
@@ -3029,7 +3055,7 @@ async function loadTeamPage() {
               const li = listMap[agentId] || { total: 0 };
               return `
               <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:4px">
-                <span style="font-size:12px;color:rgba(255,255,255,0.7)">${escapeHtml(ls.agen_nama||agentId)}</span>
+                <span style="font-size:12px;color:rgba(255,255,255,0.7)">${craHTML(ls.agen_nama||agentId)}</span>
                 <div style="display:flex;gap:12px">
                   <span style="font-size:11px;color:rgba(255,255,255,0.4)">🏠 ${li.total}</span>
                   <span style="font-size:11px;color:#A855F7">Leads: ${ls.total}</span>
@@ -3338,7 +3364,7 @@ function buildProjectCard(p) {
         <div>
           <p style="color:#fff;font-size:14px;font-weight:700;margin:0">${escapeHtml(p.Harga_Format || 'On Request')}</p>
           <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:2px 0 0">${tipeEmoji} ${escapeHtml(p.Tipe_Properti)} · ${escapeHtml(cara)}</p>
-          ${korNama ? `<p style="color:rgba(212,168,83,0.7);font-size:10px;margin:3px 0 0"><i class="fa-solid fa-user-tie" style="font-size:9px;margin-right:3px"></i>${escapeHtml(korNama)}</p>` : ''}
+          ${korNama ? `<p style="color:rgba(212,168,83,0.7);font-size:10px;margin:3px 0 0"><i class="fa-solid fa-user-tie" style="font-size:9px;margin-right:3px"></i>${[p.Koordinator_Nama, p.Koordinator2_Nama].filter(Boolean).map(n => craHTML(n)).join(' & ')}</p>` : ''}
         </div>
         <div style="background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:6px 12px;font-size:12px;color:#D4A853;font-weight:600">
           Detail →
@@ -3446,8 +3472,10 @@ async function openProjectDetail(id) {
   const korSection = document.getElementById('pd-koordinator-section');
   const hasKor = project.Koordinator_ID || project.Koordinator2_ID;
   if (korSection) korSection.style.display = (hasKor || canManageNoKor) ? '' : 'none';
-  setEl('pd-kor1-nama', project.Koordinator_Nama  || '(belum ada)');
-  setEl('pd-kor2-nama', project.Koordinator2_Nama || '(belum ada)');
+  const _kor1El = document.getElementById('pd-kor1-nama');
+  const _kor2El = document.getElementById('pd-kor2-nama');
+  if (_kor1El) _kor1El.innerHTML = craHTML(project.Koordinator_Nama  || '(belum ada)');
+  if (_kor2El) _kor2El.innerHTML = craHTML(project.Koordinator2_Nama || '(belum ada)');
   const kor1Btn = document.getElementById('pd-kor1-btn');
   const kor2Btn = document.getElementById('pd-kor2-btn');
   if (kor1Btn) kor1Btn.style.display = canManageNoKor ? '' : 'none';
@@ -3554,7 +3582,7 @@ async function loadReferralStats() {
           <div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:space-between;gap:8px">
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:11px;color:#D4A853;font-weight:700;min-width:20px">#${i + 1}</span>
-              <span style="color:#fff;font-size:13px">${escapeHtml(r.Agen_Nama || r.Agen_ID)}</span>
+              <span style="color:#fff;font-size:13px">${craHTML(r.Agen_Nama || r.Agen_ID)}</span>
             </div>
             <span style="color:#D4A853;font-size:14px;font-weight:700">${r.Click_Count || 0}</span>
           </div>`).join('')}
@@ -4355,7 +4383,7 @@ async function loadProjectHits() {
             ${escapeHtml((a.agen_nama||'?')[0].toUpperCase())}
           </div>
           <div style="flex:1;min-width:0">
-            <p style="color:#fff;font-size:13px;font-weight:600;margin:0">${escapeHtml(a.agen_nama)}</p>
+            <p style="color:#fff;font-size:13px;font-weight:600;margin:0">${craHTML(a.agen_nama)}</p>
             <p style="color:rgba(255,255,255,0.35);font-size:11px;margin:2px 0 0">${plats} · terakhir ${_timeAgo(a.last_share)}</p>
           </div>
           <span style="font-size:14px;font-weight:800;color:#D4A853">${a.total}</span>

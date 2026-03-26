@@ -97,6 +97,15 @@
       color: #ffffff !important;
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    /* Slider thumb styling for calculators */
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#D4A853;border:2px solid #080E1A;cursor:pointer;transition:transform 0.15s}
+    input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
+    input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#D4A853;border:2px solid #080E1A;cursor:pointer}
+    input[type=range]{-webkit-appearance:none;appearance:none;outline:none}
+  </style>
 </head>
 <body class="min-h-screen overflow-x-hidden">
 
@@ -405,6 +414,275 @@
       </div>
     </div>
   </div>
+
+  <!-- CALCULATOR PAGE -->
+  <div id="page-calculator" class="page">
+    <div style="padding:20px 16px 12px">
+      <h2 style="font-family:'DM Serif Display',serif;font-size:22px;color:#fff;margin-bottom:4px">Kalkulator Properti</h2>
+      <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:16px">Simulasi KPR &amp; Penilaian Appraisal</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button id="calc-tab-kpr" onclick="switchCalcTab('kpr')" style="padding:11px;border-radius:12px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#D4A853;color:#0D1526">
+          <i class="fa-solid fa-house-chimney" style="margin-right:6px"></i>KPR
+        </button>
+        <button id="calc-tab-appraisal" onclick="switchCalcTab('appraisal')" style="padding:11px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1)">
+          <i class="fa-solid fa-scale-balanced" style="margin-right:6px"></i>Appraisal
+        </button>
+      </div>
+    </div>
+
+    <!-- KPR Section -->
+    <div id="calc-kpr" style="padding:0 16px 100px">
+      <!-- Financing type tabs -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px">
+        <button id="kpr-tab-konven" onclick="switchKprTab('konven')" style="padding:10px 6px;border-radius:12px;border:none;cursor:pointer;font-size:11px;font-weight:600;background:#D4A853;color:#0D1526;display:flex;flex-direction:column;align-items:center;gap:2px">
+          <span style="font-size:16px">🏦</span><span>Konvensional</span><span style="font-size:10px;opacity:0.7">Anuitas</span>
+        </button>
+        <button id="kpr-tab-syariah" onclick="switchKprTab('syariah')" style="padding:10px 6px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:11px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.5);display:flex;flex-direction:column;align-items:center;gap:2px">
+          <span style="font-size:16px">☪️</span><span>Syariah</span><span style="font-size:10px;opacity:0.7">Murabahah</span>
+        </button>
+        <button id="kpr-tab-kmg" onclick="switchKprTab('kmg')" style="padding:10px 6px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:11px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.5);display:flex;flex-direction:column;align-items:center;gap:2px">
+          <span style="font-size:16px">💰</span><span>KMG</span><span style="font-size:10px;opacity:0.7">Multiguna</span>
+        </button>
+        <button id="kpr-tab-takeover" onclick="switchKprTab('takeover')" style="padding:10px 6px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:11px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.5);display:flex;flex-direction:column;align-items:center;gap:2px">
+          <span style="font-size:16px">🔄</span><span>Take Over</span><span style="font-size:10px;opacity:0.7">Alih KPR</span>
+        </button>
+      </div>
+
+      <!-- Normal form (konven/syariah/kmg) -->
+      <div id="kpr-form-normal" class="card" style="margin-bottom:14px;display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label class="form-label">Harga Properti</label>
+          <div style="position:relative">
+            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.4);font-size:12px;font-weight:700">Rp</span>
+            <input id="kpr-harga" type="text" inputmode="numeric" class="form-input" style="padding-left:38px" placeholder="800.000.000"
+              oninput="this.value=this.value.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); updateKprPlafon()"/>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <label class="form-label" style="margin-bottom:0">Uang Muka (DP)</label>
+            <span id="kpr-dp-pct" style="font-size:11px;font-weight:700;background:rgba(212,168,83,0.15);color:#D4A853;padding:2px 8px;border-radius:20px">0%</span>
+          </div>
+          <div style="position:relative">
+            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.4);font-size:12px;font-weight:700">Rp</span>
+            <input id="kpr-dp" type="text" inputmode="numeric" class="form-input" style="padding-left:38px" placeholder="160.000.000"
+              oninput="this.value=this.value.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); updateKprPlafon()"/>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button onclick="setKprDpPct(10)" style="flex:1;padding:7px 0;font-size:11px;font-weight:600;border-radius:8px;background:#131F38;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.55);cursor:pointer">10%</button>
+            <button onclick="setKprDpPct(20)" style="flex:1;padding:7px 0;font-size:11px;font-weight:600;border-radius:8px;background:#131F38;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.55);cursor:pointer">20%</button>
+            <button onclick="setKprDpPct(30)" style="flex:1;padding:7px 0;font-size:11px;font-weight:600;border-radius:8px;background:#131F38;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.55);cursor:pointer">30%</button>
+            <button onclick="setKprDpPct(40)" style="flex:1;padding:7px 0;font-size:11px;font-weight:600;border-radius:8px;background:#131F38;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.55);cursor:pointer">40%</button>
+          </div>
+        </div>
+        <div id="kpr-plafon-display" style="display:none;background:#131F38;border-radius:12px;padding:10px 14px">
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:13px;color:rgba(255,255,255,0.55)">Plafon KPR</span>
+            <span id="kpr-plafon-val" style="font-weight:700;color:#D4A853;font-size:13px">-</span>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <label class="form-label" style="margin-bottom:0">Tenor</label>
+            <span id="kpr-tenor-display" style="font-weight:700;color:#D4A853;font-size:14px">20 tahun</span>
+          </div>
+          <input id="kpr-tenor" type="range" min="1" max="30" value="20" style="width:100%;height:4px;border-radius:2px;cursor:pointer"
+            oninput="document.getElementById('kpr-tenor-display').textContent=this.value+' tahun';updateSliderGradient('kpr-tenor',1,30)"/>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">1 thn</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">30 thn</span>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <label id="kpr-bunga-label" class="form-label" style="margin-bottom:0">Bunga / Tahun</label>
+            <span id="kpr-bunga-display" style="font-weight:700;color:#D4A853;font-size:14px">7.50%</span>
+          </div>
+          <input id="kpr-bunga" type="range" min="1" max="15" step="0.25" value="7.5" style="width:100%;height:4px;border-radius:2px;cursor:pointer"
+            oninput="document.getElementById('kpr-bunga-display').textContent=parseFloat(this.value).toFixed(2)+'%';updateSliderGradient('kpr-bunga',1,15)"/>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">1%</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">15%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Take Over form -->
+      <div id="kpr-form-takeover" class="card" style="margin-bottom:14px;display:none;flex-direction:column;gap:14px">
+        <div>
+          <label class="form-label">Sisa Pokok KPR Saat Ini</label>
+          <div style="position:relative">
+            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.4);font-size:12px;font-weight:700">Rp</span>
+            <input id="kpr-sisa-pokok" type="text" inputmode="numeric" class="form-input" style="padding-left:38px" placeholder="300.000.000"
+              oninput="this.value=this.value.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.')"/>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <label class="form-label" style="margin-bottom:0">Tenor Sisa</label>
+            <span id="kpr-tenor-sisa-display" style="font-weight:700;color:#D4A853;font-size:14px">10 tahun</span>
+          </div>
+          <input id="kpr-tenor-sisa" type="range" min="1" max="25" value="10" style="width:100%;height:4px;border-radius:2px;cursor:pointer"
+            oninput="document.getElementById('kpr-tenor-sisa-display').textContent=this.value+' tahun';updateSliderGradient('kpr-tenor-sisa',1,25)"/>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">1 thn</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">25 thn</span>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <label class="form-label" style="margin-bottom:0">Bunga Bank Baru</label>
+            <span id="kpr-bunga-baru-display" style="font-weight:700;color:#D4A853;font-size:14px">7.50%</span>
+          </div>
+          <input id="kpr-bunga-baru" type="range" min="1" max="15" step="0.25" value="7.5" style="width:100%;height:4px;border-radius:2px;cursor:pointer"
+            oninput="document.getElementById('kpr-bunga-baru-display').textContent=parseFloat(this.value).toFixed(2)+'%';updateSliderGradient('kpr-bunga-baru',1,15)"/>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">1%</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">15%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bank presets -->
+      <div class="card" style="margin-bottom:14px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Acuan Bank</p>
+        <div id="kpr-banks-list" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
+      </div>
+
+      <button onclick="hitungKPR()" class="btn-gold" style="width:100%;font-size:14px;padding:15px;border-radius:14px;margin-bottom:14px">
+        <i class="fa-solid fa-calculator" style="margin-right:8px"></i>Hitung Simulasi KPR
+      </button>
+
+      <div id="kpr-result" style="display:none"></div>
+
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:10px;background:#131F38;border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.06)">
+          <span style="font-size:15px;flex-shrink:0">⚠️</span>
+          <p style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.5;margin:0">Hasil perhitungan bersifat estimasi. Angka final ditentukan oleh kebijakan bank.</p>
+        </div>
+        <div style="display:flex;gap:10px;background:#131F38;border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.06)">
+          <span style="font-size:15px;flex-shrink:0">💵</span>
+          <p style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.5;margin:0">Biaya-biaya (~10%) wajib disiapkan tunai sebelum akad kredit ditandatangani.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Appraisal Section -->
+    <div id="calc-appraisal" style="display:none;padding:0 16px 100px">
+      <div class="card" style="margin-bottom:14px;display:flex;flex-direction:column;gap:14px">
+
+        <div>
+          <label class="form-label">Nama Pemilik Properti</label>
+          <input id="apr-nama-pemilik" type="text" class="form-input" placeholder="Contoh: Budi Santoso"/>
+        </div>
+
+        <div>
+          <label class="form-label">Alamat Properti</label>
+          <textarea id="apr-alamat" class="form-input" rows="2" placeholder="Contoh: Jl. Raya Darmo No. 10, Surabaya" style="resize:none;line-height:1.5"></textarea>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label class="form-label">Tipe Properti</label>
+            <select id="apr-tipe" class="form-input" onchange="updateAprFormVisibility()">
+              <option value="rumah">Rumah</option>
+              <option value="tanah">Tanah</option>
+              <option value="ruko">Ruko</option>
+              <option value="apartemen">Apartemen</option>
+              <option value="gudang">Gudang</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Transaksi</label>
+            <select id="apr-transaksi" class="form-input">
+              <option value="jual">Jual</option>
+              <option value="sewa">Sewa</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="apr-section-tanah">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label class="form-label">Luas Tanah (m²)</label>
+              <input id="apr-luas-tanah" type="number" inputmode="numeric" class="form-input" placeholder="100" min="0"/>
+            </div>
+            <div>
+              <label class="form-label">Harga Tanah/m²</label>
+              <input id="apr-harga-tanah" type="number" inputmode="numeric" class="form-input" placeholder="5000000" min="0"/>
+            </div>
+          </div>
+        </div>
+
+        <div id="apr-section-bangunan">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label class="form-label">Luas Bangunan (m²)</label>
+              <input id="apr-luas-bangunan" type="number" inputmode="numeric" class="form-input" placeholder="80" min="0"/>
+            </div>
+            <div>
+              <label class="form-label">Harga Bangunan/m²</label>
+              <input id="apr-harga-bangunan" type="number" inputmode="numeric" class="form-input" placeholder="3000000" min="0"/>
+            </div>
+          </div>
+        </div>
+
+        <div id="apr-section-pasar" style="display:none">
+          <label class="form-label">Harga Pasar/m² (Apartemen)</label>
+          <input id="apr-harga-pasar" type="number" inputmode="numeric" class="form-input" placeholder="15000000" min="0"/>
+        </div>
+
+        <div>
+          <label class="form-label">Skor Lokasi (1–5)</label>
+          <div style="display:flex;gap:6px">
+            <button id="apr-lokasi-btn-1" onclick="setAprLokasiScore(1)" style="flex:1;padding:8px 0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:#131F38;color:rgba(255,255,255,0.55)">1</button>
+            <button id="apr-lokasi-btn-2" onclick="setAprLokasiScore(2)" style="flex:1;padding:8px 0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:#131F38;color:rgba(255,255,255,0.55)">2</button>
+            <button id="apr-lokasi-btn-3" onclick="setAprLokasiScore(3)" style="flex:1;padding:8px 0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:#D4A853;color:#0D1526">3</button>
+            <button id="apr-lokasi-btn-4" onclick="setAprLokasiScore(4)" style="flex:1;padding:8px 0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:#131F38;color:rgba(255,255,255,0.55)">4</button>
+            <button id="apr-lokasi-btn-5" onclick="setAprLokasiScore(5)" style="flex:1;padding:8px 0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:#131F38;color:rgba(255,255,255,0.55)">5</button>
+          </div>
+          <input type="hidden" id="apr-lokasi" value="3"/>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">Terpencil</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">Sangat Strategis</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label class="form-label">Fee Agen (%)</label>
+            <input id="apr-fee" type="number" class="form-input" placeholder="2.5" min="0" max="10" step="0.5" value="2.5"/>
+          </div>
+          <div>
+            <label class="form-label">Tahun Bangun</label>
+            <input id="apr-tahun" type="number" inputmode="numeric" class="form-input" placeholder="2010" min="1900" max="2030"/>
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">Jenis Sertifikat</label>
+          <select id="apr-sertifikat" class="form-input">
+            <option value="SHM">SHM</option>
+            <option value="SHGB">SHGB</option>
+            <option value="AJB">AJB</option>
+            <option value="SHSRS">SHSRS</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+        </div>
+      </div>
+
+      <button onclick="hitungAppraisalCRM()" class="btn-gold" style="width:100%;font-size:14px;padding:15px;border-radius:14px;margin-bottom:14px">
+        <i class="fa-solid fa-scale-balanced" style="margin-right:8px"></i>Hitung Appraisal
+      </button>
+
+      <div id="apr-result" style="display:none"></div>
+
+      <div style="margin-top:14px;display:flex;gap:10px;background:#131F38;border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.06)">
+        <span style="font-size:15px;flex-shrink:0">💡</span>
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.5;margin:0">Hasil appraisal bersifat estimasi internal. Nilai final harus dikonfirmasi oleh appraisal resmi bersertifikat.</p>
+      </div>
+    </div>
+  </div>
   </main>
 
   <!-- BOTTOM NAV -->
@@ -412,13 +690,14 @@
     <div style="display:flex;align-items:center;height:56px;max-width:520px;margin:0 auto">
       <button class="nav-btn active" id="nav-dashboard" onclick="navigateTo('dashboard')"><i class="fa-solid fa-chart-pie"></i><span>Dashboard</span></button>
       <button class="nav-btn" id="nav-listings" onclick="navigateTo('listings')"><i class="fa-solid fa-building"></i><span>Listing</span></button>
+      <button class="nav-btn" id="nav-calculator" onclick="navigateTo('calculator')"><i class="fa-solid fa-calculator"></i><span>Kalkulator</span></button>
       <button class="nav-btn" id="nav-primary" onclick="navigateTo('primary')" style="display:none"><i class="fa-solid fa-star"></i><span>Primary</span></button>
-      <button class="nav-btn" id="nav-team" onclick="navigateTo('team')" style="display:none"><i class="fa-solid fa-users-gear"></i><span>Tim</span></button>
-      <div style="flex:1;display:flex;justify-content:center;position:relative">
-        <button onclick="openQuickAdd()" style="width:52px;height:52px;border-radius:50%;background:#D4A853;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(212,168,83,0.35);position:absolute;bottom:6px" onmousedown="this.style.transform='scale(0.92)'" onmouseup="this.style.transform='scale(1)'">
+      <div style="flex:1;position:relative;min-width:0">
+        <button onclick="openQuickAdd()" style="width:52px;height:52px;border-radius:50%;background:#D4A853;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(212,168,83,0.35);position:absolute;bottom:6px;left:50%;transform:translateX(-50%)" onmousedown="this.style.transform='translateX(-50%) scale(0.92)'" onmouseup="this.style.transform='translateX(-50%) scale(1)'">
           <i class="fa-solid fa-plus" style="color:#0D1526;font-size:20px"></i>
         </button>
       </div>
+      <button class="nav-btn" id="nav-team" onclick="navigateTo('team')" style="display:none"><i class="fa-solid fa-users-gear"></i><span>Tim</span></button>
       <button class="nav-btn" id="nav-member" onclick="navigateTo('member')"><i class="fa-solid fa-building-user"></i><span>Member</span></button>
       <button class="nav-btn" id="nav-leads" onclick="navigateTo('leads')"><i class="fa-solid fa-users"></i><span>Leads</span></button>
       <button class="nav-btn" id="nav-tasks" onclick="navigateTo('tasks')"><i class="fa-solid fa-calendar-check"></i><span>Jadwal</span></button>
@@ -453,6 +732,14 @@
         </a>
       <button id="sb-leads" onclick="navigateTo('leads');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-users" style="color:#a855f7;width:16px;text-align:center"></i><span>Manajemen Leads</span></button>
       <button onclick="navigateTo('tasks');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-calendar-check" style="color:#22C55E;width:16px;text-align:center"></i><span>Jadwal & Tasks</span></button>
+      <button onclick="navigateTo('calculator');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'">
+        <i class="fa-solid fa-calculator" style="color:#D4A853;width:16px;text-align:center"></i>
+        <span>Kalkulator</span>
+        <span style="margin-left:auto;display:flex;gap:4px">
+          <span style="font-size:9px;background:rgba(43,123,255,0.2);color:#60a5fa;padding:1px 6px;border-radius:20px;font-weight:700">KPR</span>
+          <span style="font-size:9px;background:rgba(212,168,83,0.15);color:#D4A853;padding:1px 6px;border-radius:20px;font-weight:700">APR</span>
+        </span>
+      </button>
       <button onclick="openSettings();closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-gear" style="color:rgba(255,255,255,0.4);width:16px;text-align:center"></i><span>Pengaturan Profil</span></button>
       <button onclick="openKomisiForm();closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-money-bill-wave" style="color:#D4A853;width:16px;text-align:center"></i><span>Request Komisi</span></button>
       <button id="sidebar-team-mgmt" onclick="navigateTo('team');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-people-group" style="color:#a78bfa;width:16px;text-align:center"></i><span>Manajemen Tim</span></button>
@@ -747,6 +1034,7 @@
           <div><label class="form-label">Status</label><select id="nu-status" class="form-input"><option value="Aktif">Aktif</option><option value="Cuti">Cuti</option><option value="Nonaktif">Nonaktif</option></select></div>
         </div>
         <div><label class="form-label">Telegram ID <span style="color:rgba(255,255,255,0.3)">(opsional)</span></label><input id="nu-telegram" type="text" class="form-input" placeholder="Dari /myid di bot Telegram"/></div>
+        <div><label class="form-label">Nomer LSP <span style="color:rgba(255,255,255,0.3)">(opsional)</span></label><input id="nu-lsp" type="text" class="form-input" placeholder="Nomor Lembaga Sertifikasi Profesi"/></div>
         <div>
           <label class="form-label">Nama Kantor</label>
           <div style="display:flex;align-items:center;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;overflow:hidden">
@@ -773,6 +1061,7 @@
       <div><label class="form-label">No. WhatsApp</label><input id="eu-wa" type="tel" class="form-input"/></div>
       <div><label class="form-label">Password Baru <span style="color:rgba(255,255,255,0.3)">(kosongkan jika tidak diubah)</span></label><input id="eu-password" type="password" class="form-input" placeholder="Password baru..."/></div>
       <div><label class="form-label">Telegram ID</label><input id="eu-telegram" type="text" class="form-input" placeholder="ID dari /myid bot"/></div>
+      <div><label class="form-label">Nomer LSP <span style="color:rgba(255,255,255,0.3)">(opsional)</span></label><input id="eu-lsp" type="text" class="form-input" placeholder="Nomor Lembaga Sertifikasi Profesi"/></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div><label class="form-label">Role</label><select id="eu-role" class="form-input">
               <option value="agen">Agen</option>
@@ -1387,4 +1676,547 @@
     </div>
   </div>
 
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CALCULATOR — KPR & APPRAISAL
+// ═══════════════════════════════════════════════════════════
+const KPR_BANKS = [
+  {nama:'BTN',     tipe:'konven',  bunga:7.50, maxTenor:30},
+  {nama:'BCA',     tipe:'konven',  bunga:7.75, maxTenor:25},
+  {nama:'Mandiri', tipe:'konven',  bunga:7.50, maxTenor:30},
+  {nama:'BRI',     tipe:'konven',  bunga:7.25, maxTenor:30},
+  {nama:'BSI',     tipe:'syariah', bunga:8.00, maxTenor:30},
+  {nama:'BNI Syr', tipe:'syariah', bunga:8.50, maxTenor:25},
+  {nama:'BTN KMG', tipe:'kmg',     bunga:9.50, maxTenor:15},
+];
+let _kprTab = 'konven';
+
+function kprFmtRp(n) {
+  if (!n || isNaN(n)) return 'Rp 0';
+  if (n >= 1e9) return 'Rp ' + (n/1e9).toFixed(2).replace(/\.?0+$/,'') + ' M';
+  if (n >= 1e6) return 'Rp ' + (n/1e6).toFixed(1).replace('.0','') + ' Jt';
+  return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+}
+function kprFmtRpFull(n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
+
+function initCalcPage() {
+  renderKprBanks();
+  updateSliderGradient('kpr-tenor', 1, 30);
+  updateSliderGradient('kpr-bunga', 1, 15);
+  updateSliderGradient('kpr-tenor-sisa', 1, 25);
+  updateSliderGradient('kpr-bunga-baru', 1, 15);
+}
+
+function switchCalcTab(tab) {
+  document.getElementById('calc-kpr').style.display = tab === 'kpr' ? 'block' : 'none';
+  document.getElementById('calc-appraisal').style.display = tab === 'appraisal' ? 'block' : 'none';
+  const kprBtn = document.getElementById('calc-tab-kpr');
+  const aprBtn = document.getElementById('calc-tab-appraisal');
+  if (tab === 'kpr') {
+    kprBtn.style.background='#D4A853'; kprBtn.style.color='#0D1526'; kprBtn.style.border='none';
+    aprBtn.style.background='#131F38'; aprBtn.style.color='rgba(255,255,255,0.6)'; aprBtn.style.border='1px solid rgba(255,255,255,0.1)';
+  } else {
+    aprBtn.style.background='#D4A853'; aprBtn.style.color='#0D1526'; aprBtn.style.border='none';
+    kprBtn.style.background='#131F38'; kprBtn.style.color='rgba(255,255,255,0.6)'; kprBtn.style.border='1px solid rgba(255,255,255,0.1)';
+  }
+}
+
+// ── KPR ─────────────────────────────────────────────────
+function switchKprTab(tab) {
+  _kprTab = tab;
+  ['konven','syariah','kmg','takeover'].forEach(t => {
+    const btn = document.getElementById('kpr-tab-' + t);
+    if (!btn) return;
+    if (t === tab) { btn.style.background='#D4A853'; btn.style.color='#0D1526'; btn.style.border='none'; }
+    else { btn.style.background='#131F38'; btn.style.color='rgba(255,255,255,0.5)'; btn.style.border='1px solid rgba(255,255,255,0.1)'; }
+  });
+  const normalForm = document.getElementById('kpr-form-normal');
+  const takeoverForm = document.getElementById('kpr-form-takeover');
+  if (normalForm) normalForm.style.display = tab === 'takeover' ? 'none' : 'flex';
+  if (takeoverForm) takeoverForm.style.display = tab === 'takeover' ? 'flex' : 'none';
+  const bungaLabel = document.getElementById('kpr-bunga-label');
+  if (bungaLabel) bungaLabel.textContent = tab === 'syariah' ? 'Margin / Tahun' : 'Bunga / Tahun';
+  renderKprBanks();
+  const resultEl = document.getElementById('kpr-result');
+  if (resultEl) resultEl.style.display = 'none';
+}
+
+function renderKprBanks() {
+  const container = document.getElementById('kpr-banks-list');
+  if (!container) return;
+  const filtered = KPR_BANKS.filter(b =>
+    _kprTab === 'syariah' ? b.tipe === 'syariah' :
+    _kprTab === 'kmg' ? true : b.tipe === 'konven'
+  );
+  container.innerHTML = filtered.map(b =>
+    `<button onclick="applyKprBank(${b.bunga},${b.maxTenor})" style="padding:8px 6px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:#131F38;cursor:pointer;text-align:left">
+      <div style="font-size:12px;font-weight:700;color:#D4A853">${b.nama}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4)">${b.bunga}%</div>
+    </button>`
+  ).join('');
+}
+
+function applyKprBank(bunga, maxTenor) {
+  if (_kprTab === 'takeover') {
+    const el = document.getElementById('kpr-bunga-baru');
+    if (el) { el.value = bunga; document.getElementById('kpr-bunga-baru-display').textContent = bunga.toFixed(2)+'%'; updateSliderGradient('kpr-bunga-baru',1,15); }
+  } else {
+    const bungaEl = document.getElementById('kpr-bunga');
+    if (bungaEl) { bungaEl.value = bunga; document.getElementById('kpr-bunga-display').textContent = bunga.toFixed(2)+'%'; updateSliderGradient('kpr-bunga',1,15); }
+    const tenorEl = document.getElementById('kpr-tenor');
+    if (tenorEl && Number(tenorEl.value) > maxTenor) {
+      tenorEl.value = maxTenor;
+      document.getElementById('kpr-tenor-display').textContent = maxTenor + ' tahun';
+      updateSliderGradient('kpr-tenor',1,30);
+    }
+  }
+}
+
+function updateSliderGradient(id, min, max) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const pct = ((el.value - min) / (max - min)) * 100;
+  el.style.background = `linear-gradient(to right,#D4A853 0%,#D4A853 ${pct}%,rgba(255,255,255,0.1) ${pct}%,rgba(255,255,255,0.1) 100%)`;
+}
+
+function setKprDpPct(pct) {
+  const harga = parseFloat((document.getElementById('kpr-harga')?.value || '').replace(/\D/g,'')) || 0;
+  const dp = Math.round(harga * pct / 100);
+  const dpEl = document.getElementById('kpr-dp');
+  if (dpEl) dpEl.value = dp.toLocaleString('id-ID');
+  updateKprPlafon();
+}
+
+function updateKprPlafon() {
+  const harga = parseFloat((document.getElementById('kpr-harga')?.value || '').replace(/\D/g,'')) || 0;
+  const dp = parseFloat((document.getElementById('kpr-dp')?.value || '').replace(/\D/g,'')) || 0;
+  const plafon = Math.max(0, harga - dp);
+  const dpPct = harga > 0 ? Math.round((dp/harga)*100) : 0;
+  const dpPctEl = document.getElementById('kpr-dp-pct');
+  if (dpPctEl) dpPctEl.textContent = dpPct + '%';
+  const plafonEl = document.getElementById('kpr-plafon-display');
+  const plafonVal = document.getElementById('kpr-plafon-val');
+  if (plafonEl) plafonEl.style.display = plafon > 0 ? 'block' : 'none';
+  if (plafonVal) plafonVal.textContent = kprFmtRpFull(plafon);
+}
+
+function hitungKPR() {
+  let cicilan, plafonUsed, tenorUsed, bungaUsed;
+  if (_kprTab === 'takeover') {
+    plafonUsed = parseFloat((document.getElementById('kpr-sisa-pokok')?.value || '').replace(/\D/g,'')) || 0;
+    tenorUsed  = parseInt(document.getElementById('kpr-tenor-sisa')?.value) || 10;
+    bungaUsed  = parseFloat(document.getElementById('kpr-bunga-baru')?.value) || 7.5;
+    if (plafonUsed <= 0) { showToast('Isi sisa pokok KPR terlebih dahulu', 'error'); return; }
+    const i = (bungaUsed/100)/12; const n = tenorUsed*12;
+    cicilan = Math.round((plafonUsed * i) / (1 - Math.pow(1+i,-n)));
+  } else {
+    const harga = parseFloat((document.getElementById('kpr-harga')?.value || '').replace(/\D/g,'')) || 0;
+    const dp    = parseFloat((document.getElementById('kpr-dp')?.value || '').replace(/\D/g,'')) || 0;
+    plafonUsed  = Math.max(0, harga - dp);
+    tenorUsed   = parseInt(document.getElementById('kpr-tenor')?.value) || 20;
+    bungaUsed   = parseFloat(document.getElementById('kpr-bunga')?.value) || 7.5;
+    if (plafonUsed <= 0) { showToast('Isi harga properti dan uang muka terlebih dahulu', 'error'); return; }
+    if (_kprTab === 'syariah') {
+      const totalMargin = plafonUsed * (bungaUsed/100) * tenorUsed;
+      cicilan = Math.round((plafonUsed + totalMargin) / (tenorUsed * 12));
+    } else {
+      const i = (bungaUsed/100)/12; const n = tenorUsed*12;
+      cicilan = Math.round((plafonUsed * i) / (1 - Math.pow(1+i,-n)));
+    }
+  }
+
+  const totalKredit    = cicilan * tenorUsed * 12;
+  const biayaProvisi   = Math.round(plafonUsed * 0.010);
+  const biayaAdmin     = Math.round(plafonUsed * 0.005);
+  const biayaNotaris   = Math.round(plafonUsed * 0.020);
+  const biayaBPHTB     = Math.round(plafonUsed * 0.030);
+  const biayaAsuransi  = Math.round(plafonUsed * 0.035);
+  const totalBiaya     = biayaProvisi + biayaAdmin + biayaNotaris + biayaBPHTB + biayaAsuransi;
+
+  let amorRows = '';
+  let sisa = plafonUsed;
+  const bungaBln = bungaUsed / 100 / 12;
+  for (let i = 1; i <= tenorUsed * 12; i++) {
+    const bungaAmt = _kprTab === 'syariah'
+      ? Math.round((totalKredit - plafonUsed) / (tenorUsed * 12))
+      : Math.round(sisa * bungaBln);
+    const pokokAmt = cicilan - bungaAmt;
+    sisa -= pokokAmt;
+    amorRows += `<tr style="background:${i%2===0?'#0D1526':'#131F38'}">
+      <td style="padding:5px 8px;color:rgba(255,255,255,0.4)">${i}</td>
+      <td style="padding:5px 8px;text-align:right;font-weight:600;color:#D4A853">${kprFmtRp(cicilan)}</td>
+      <td style="padding:5px 8px;text-align:right;color:#4ade80">${kprFmtRp(pokokAmt)}</td>
+      <td style="padding:5px 8px;text-align:right;color:#f87171">${kprFmtRp(bungaAmt)}</td>
+      <td style="padding:5px 8px;text-align:right;color:rgba(255,255,255,0.4)">${kprFmtRp(Math.max(0,sisa))}</td>
+    </tr>`;
+  }
+  const marginLabel = _kprTab === 'syariah' ? 'Margin' : 'Bunga';
+
+  const resultEl = document.getElementById('kpr-result');
+  resultEl.innerHTML = `
+    <div style="background:linear-gradient(135deg,#1C2D52,#131F38);border-radius:18px;padding:20px;margin-bottom:12px;border:1px solid rgba(212,168,83,0.2)">
+      <p style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:4px">Cicilan per Bulan</p>
+      <p style="font-size:32px;font-weight:700;color:#D4A853;margin-bottom:8px">${kprFmtRpFull(cicilan)}</p>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📅 ${tenorUsed} thn (${tenorUsed*12} bln)</span>
+        <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📊 ${bungaUsed.toFixed(2)}%/thn</span>
+        ${_kprTab==='syariah'?'<span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">☪️ Murabahah</span>':''}
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Total Kredit (via Cicilan)</p>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;color:rgba(255,255,255,0.55)">Plafon KPR (Pokok)</span><span style="font-weight:600;color:#fff">${kprFmtRpFull(plafonUsed)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px;color:rgba(255,255,255,0.55)">Total ${marginLabel}</span><span style="font-weight:600;color:#f87171">${kprFmtRpFull(totalKredit-plafonUsed)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07)"><span style="font-weight:700;color:#fff">Subtotal Kredit</span><span style="font-weight:700;color:#2B7BFF;font-size:15px">${kprFmtRpFull(totalKredit)}</span></div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Biaya Cash di Depan ⚡</p>
+      ${[['Biaya Provisi (~1%)',biayaProvisi],['Biaya Admin (~0.5%)',biayaAdmin],['Biaya Notaris & PPAT (~2%)',biayaNotaris],['BPHTB + AJB (~3%)',biayaBPHTB],['Asuransi Jiwa + Kebakaran (~3.5%)',biayaAsuransi]].map(([l,v])=>`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;color:rgba(255,255,255,0.5)">${l}</span><span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.8)">${kprFmtRp(v)}</span></div>`).join('')}
+      <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:4px;border-top:1px solid rgba(255,255,255,0.07)"><span style="font-weight:700;color:#fff">Subtotal Biaya</span><span style="font-weight:700;color:#D4A853;font-size:15px">${kprFmtRpFull(totalBiaya)}</span></div>
+    </div>
+    <div style="background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(212,168,83,0.05));border:1px solid rgba(212,168,83,0.25);border-radius:18px;padding:16px 20px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <div><p style="font-size:12px;color:rgba(255,255,255,0.5);margin:0 0 2px">Total Keseluruhan</p><p style="font-size:11px;color:rgba(255,255,255,0.35);margin:0">Kredit + Biaya Cash</p></div>
+      <p style="font-size:22px;font-weight:700;color:#D4A853;margin:0">${kprFmtRpFull(totalKredit+totalBiaya)}</p>
+    </div>
+    <div class="card">
+      <button onclick="toggleKprAmor()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:none;border:none;cursor:pointer;padding:0">
+        <span style="font-weight:600;color:#fff;font-size:13px">📋 Tabel Amortisasi per Bulan</span>
+        <i id="kpr-amor-icon" class="fa-solid fa-chevron-down" style="color:#D4A853;font-size:12px;transition:transform 0.2s"></i>
+      </button>
+      <div id="kpr-amor-table" style="display:none;margin-top:12px;overflow-x:auto;max-height:260px;overflow-y:auto;border-radius:10px">
+        <table style="width:100%;font-size:11px;border-collapse:collapse">
+          <thead><tr style="background:#D4A853;color:#0D1526;position:sticky;top:0">
+            <th style="padding:8px;text-align:left">Bln</th>
+            <th style="padding:8px;text-align:right">Angsuran</th>
+            <th style="padding:8px;text-align:right">Pokok</th>
+            <th style="padding:8px;text-align:right">${marginLabel}</th>
+            <th style="padding:8px;text-align:right">Sisa</th>
+          </tr></thead>
+          <tbody>${amorRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  resultEl.style.display = 'block';
+  setTimeout(() => resultEl.scrollIntoView({behavior:'smooth', block:'start'}), 50);
+}
+
+function toggleKprAmor() {
+  const el = document.getElementById('kpr-amor-table');
+  const icon = document.getElementById('kpr-amor-icon');
+  const open = el.style.display === 'none';
+  el.style.display = open ? 'block' : 'none';
+  if (icon) icon.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+// ── APPRAISAL ────────────────────────────────────────────
+function updateAprFormVisibility() {
+  const tipe = (document.getElementById('apr-tipe')?.value || '').toLowerCase();
+  const isApartemen = tipe === 'apartemen';
+  const isTanah = tipe === 'tanah';
+  document.getElementById('apr-section-tanah').style.display = !isApartemen ? 'block' : 'none';
+  document.getElementById('apr-section-bangunan').style.display = !isTanah ? 'block' : 'none';
+  document.getElementById('apr-section-pasar').style.display = isApartemen ? 'block' : 'none';
+}
+
+function setAprLokasiScore(score) {
+  const hiddenEl = document.getElementById('apr-lokasi');
+  if (hiddenEl) hiddenEl.value = score;
+  for (let i = 1; i <= 5; i++) {
+    const btn = document.getElementById('apr-lokasi-btn-' + i);
+    if (!btn) continue;
+    if (i === score) { btn.style.background='#D4A853'; btn.style.color='#0D1526'; btn.style.border='none'; }
+    else { btn.style.background='#131F38'; btn.style.color='rgba(255,255,255,0.55)'; btn.style.border='1px solid rgba(255,255,255,0.12)'; }
+  }
+}
+
+let _aprLastResult = null;
+
+function hitungAppraisalCRM() {
+  const tipe = (document.getElementById('apr-tipe')?.value || '').toLowerCase();
+  const transaksi = (document.getElementById('apr-transaksi')?.value || 'jual').toLowerCase();
+  const luasTanah   = parseFloat(document.getElementById('apr-luas-tanah')?.value) || 0;
+  const luasBangunan= parseFloat(document.getElementById('apr-luas-bangunan')?.value) || 0;
+  const hargaTanah  = parseFloat(document.getElementById('apr-harga-tanah')?.value) || 0;
+  const hargaBangunan=parseFloat(document.getElementById('apr-harga-bangunan')?.value) || 0;
+  const hargaPasarM2= parseFloat(document.getElementById('apr-harga-pasar')?.value) || 0;
+  const lokasiScore = parseInt(document.getElementById('apr-lokasi')?.value) || 3;
+  const feeAgen     = parseFloat(document.getElementById('apr-fee')?.value) || 0;
+  const tahunBangun = document.getElementById('apr-tahun')?.value || '';
+  const namaPemilik = (document.getElementById('apr-nama-pemilik')?.value || '').trim();
+  const alamat      = (document.getElementById('apr-alamat')?.value || '').trim();
+
+  const koefMap = {1:1.0, 2:1.1, 3:1.2, 4:1.35, 5:1.5};
+  const koef = koefMap[lokasiScore] || 1.2;
+
+  let hargaWajarDasar = 0;
+  if (tipe === 'tanah') hargaWajarDasar = luasTanah * hargaTanah;
+  else if (tipe === 'apartemen') hargaWajarDasar = luasBangunan * (hargaPasarM2 > 0 ? hargaPasarM2 : hargaBangunan);
+  else hargaWajarDasar = (luasTanah * hargaTanah) + (luasBangunan * hargaBangunan);
+
+  if (hargaWajarDasar <= 0) { showToast('Isi data luas dan harga properti terlebih dahulu', 'error'); return; }
+
+  const fmtRp = n => 'Rp ' + Math.round(n).toLocaleString('id-ID');
+  const usiaB = tahunBangun ? (new Date().getFullYear() - Number(tahunBangun)) : null;
+  const hargaWajarMax = (tipe === 'apartemen') ? hargaWajarDasar : Math.round(hargaWajarDasar * koef);
+
+  const infoBlock = (namaPemilik || alamat) ? `
+    <div style="background:#131F38;border-radius:14px;padding:12px 16px;margin-bottom:12px;border:1px solid rgba(212,168,83,0.2)">
+      <p style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Data Properti</p>
+      ${namaPemilik ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:${alamat?'6px':'0'}"><i class="fa-solid fa-user" style="color:#D4A853;font-size:11px;width:14px"></i><span style="font-size:13px;font-weight:600;color:#fff">${namaPemilik}</span></div>` : ''}
+      ${alamat ? `<div style="display:flex;align-items:flex-start;gap:8px"><i class="fa-solid fa-location-dot" style="color:rgba(212,168,83,0.6);font-size:11px;width:14px;margin-top:2px"></i><span style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.4">${alamat}</span></div>` : ''}
+    </div>` : '';
+
+  let html = '';
+  if (transaksi === 'jual') {
+    const biayaAgen = Math.round((feeAgen/100) * hargaWajarMax);
+    const biayaPph  = Math.round(0.025 * hargaWajarMax);
+    const biayaLain = Math.round(0.01  * hargaWajarMax);
+    const totalBiaya = biayaAgen + biayaPph + biayaLain;
+    const estimasiJual = Math.round(hargaWajarMax + totalBiaya);
+    const nettPenjual  = Math.round(hargaWajarMax - totalBiaya);
+    html = `
+      <div style="background:linear-gradient(135deg,#1C2D52,#131F38);border-radius:18px;padding:20px;border:1px solid rgba(212,168,83,0.2);margin-bottom:12px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Estimasi Harga Jual</p>
+        <p style="font-size:28px;font-weight:700;color:#D4A853;margin-bottom:8px">${fmtRp(estimasiJual)}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📍 Lokasi ${lokasiScore}/5 (×${koef})</span>
+          ${usiaB!==null?`<span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">🏗️ Usia ${usiaB} tahun</span>`:''}
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Rincian Penilaian</p>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)"><span style="font-size:13px;color:rgba(255,255,255,0.55)">Harga Wajar Dasar</span><span style="font-weight:600;color:#fff">${fmtRp(hargaWajarDasar)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0"><span style="font-size:13px;color:rgba(255,255,255,0.55)">Harga Wajar Max (×${koef})</span><span style="font-weight:600;color:#fff">${fmtRp(hargaWajarMax)}</span></div>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Rincian Biaya</p>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:rgba(255,255,255,0.5)">Fee Agen (${feeAgen}%)</span><span style="font-size:12px;font-weight:600;color:#D4A853">${fmtRp(biayaAgen)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:rgba(255,255,255,0.5)">PPh (2.5%)</span><span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.7)">${fmtRp(biayaPph)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:rgba(255,255,255,0.5)">Biaya Lain-lain (1%)</span><span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.7)">${fmtRp(biayaLain)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:4px;border-top:1px solid rgba(255,255,255,0.07)"><span style="font-weight:700;color:#fff">Total Biaya</span><span style="font-weight:700;color:#f87171;font-size:15px">${fmtRp(totalBiaya)}</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:14px;text-align:center">
+          <p style="font-size:11px;color:rgba(74,222,128,0.7);margin:0 0 6px">Nett Penjual</p>
+          <p style="font-size:14px;font-weight:700;color:#4ade80;margin:0">${fmtRp(nettPenjual)}</p>
+        </div>
+        <div style="background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.2);border-radius:14px;padding:14px;text-align:center">
+          <p style="font-size:11px;color:rgba(212,168,83,0.7);margin:0 0 6px">Estimasi Jual</p>
+          <p style="font-size:14px;font-weight:700;color:#D4A853;margin:0">${fmtRp(estimasiJual)}</p>
+        </div>
+      </div>`;
+  } else {
+    const sewaPctMap = {rumah:0.03, ruko:0.035, apartemen:0.07, gudang:0.05, tanah:0.02};
+    const sewaPct = sewaPctMap[tipe] || 0.03;
+    const nilaiSewa  = Math.round(hargaWajarMax * sewaPct);
+    const biayaAgen  = Math.round((feeAgen/100) * nilaiSewa);
+    const biayaPph   = Math.round(0.10 * nilaiSewa);
+    const totalBiaya = biayaAgen + biayaPph;
+    const estimasiSewa = Math.round(nilaiSewa + totalBiaya);
+    const nettPenjual  = Math.round(nilaiSewa - totalBiaya);
+    html = `
+      <div style="background:linear-gradient(135deg,#1C2D52,#131F38);border-radius:18px;padding:20px;border:1px solid rgba(212,168,83,0.2);margin-bottom:12px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Estimasi Harga Sewa / Tahun</p>
+        <p style="font-size:28px;font-weight:700;color:#D4A853;margin-bottom:8px">${fmtRp(estimasiSewa)}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📍 Lokasi ${lokasiScore}/5 (×${koef})</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📊 Yield ${(sewaPct*100)}%/thn</span>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Rincian Penilaian</p>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)"><span style="font-size:13px;color:rgba(255,255,255,0.55)">Harga Wajar Dasar</span><span style="font-weight:600;color:#fff">${fmtRp(hargaWajarDasar)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)"><span style="font-size:13px;color:rgba(255,255,255,0.55)">Harga Wajar Max (×${koef})</span><span style="font-weight:600;color:#fff">${fmtRp(hargaWajarMax)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0"><span style="font-size:13px;color:rgba(255,255,255,0.55)">Nilai Sewa (${(sewaPct*100)}%/thn)</span><span style="font-weight:600;color:#fff">${fmtRp(nilaiSewa)}</span></div>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Rincian Biaya</p>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:rgba(255,255,255,0.5)">Fee Agen (${feeAgen}%)</span><span style="font-size:12px;font-weight:600;color:#D4A853">${fmtRp(biayaAgen)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:rgba(255,255,255,0.5)">PPh (10% dari nilai sewa)</span><span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.7)">${fmtRp(biayaPph)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:4px;border-top:1px solid rgba(255,255,255,0.07)"><span style="font-weight:700;color:#fff">Total Biaya</span><span style="font-weight:700;color:#f87171;font-size:15px">${fmtRp(totalBiaya)}</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:14px;text-align:center">
+          <p style="font-size:11px;color:rgba(74,222,128,0.7);margin:0 0 6px">Nett Pemilik</p>
+          <p style="font-size:14px;font-weight:700;color:#4ade80;margin:0">${fmtRp(nettPenjual)}</p>
+        </div>
+        <div style="background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.2);border-radius:14px;padding:14px;text-align:center">
+          <p style="font-size:11px;color:rgba(212,168,83,0.7);margin:0 0 6px">Estimasi Sewa/Thn</p>
+          <p style="font-size:14px;font-weight:700;color:#D4A853;margin:0">${fmtRp(estimasiSewa)}</p>
+        </div>
+      </div>`;
+  }
+
+  // Save global result for export
+  const sertifikat = document.getElementById('apr-sertifikat')?.value || '';
+  _aprLastResult = {
+    tipe, transaksi, namaPemilik, alamat, sertifikat,
+    luasTanah, luasBangunan, hargaTanah, hargaBangunan, hargaPasarM2,
+    lokasiScore, koef, feeAgen, usiaB, hargaWajarDasar, hargaWajarMax,
+    tanggal: new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),
+    fmtRp,
+  };
+  if (transaksi === 'jual') {
+    const bA = Math.round((feeAgen/100)*hargaWajarMax), bP = Math.round(0.025*hargaWajarMax), bL = Math.round(0.01*hargaWajarMax);
+    Object.assign(_aprLastResult, { biayaAgen:bA, biayaPph:bP, biayaLain:bL, totalBiaya:bA+bP+bL, estimasi:Math.round(hargaWajarMax+bA+bP+bL), nett:Math.round(hargaWajarMax-bA-bP-bL) });
+  } else {
+    const sewaPctMap = {rumah:0.03,ruko:0.035,apartemen:0.07,gudang:0.05,tanah:0.02};
+    const sp = sewaPctMap[tipe]||0.03, ns = Math.round(hargaWajarMax*sp);
+    const bA = Math.round((feeAgen/100)*ns), bP = Math.round(0.10*ns);
+    Object.assign(_aprLastResult, { sewaPct:sp, nilaiSewa:ns, biayaAgen:bA, biayaPph:bP, totalBiaya:bA+bP, estimasi:Math.round(ns+bA+bP), nett:Math.round(ns-bA-bP) });
+  }
+
+  // Add save buttons to result
+  const saveBar = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+      <button onclick="saveApraisalResult('pdf')" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;background:#D4A853;color:#0D1526;font-size:13px;font-weight:700;border:none;cursor:pointer">
+        <i class="fa-solid fa-file-pdf"></i> Simpan PDF
+      </button>
+      <button onclick="saveApraisalResult('png')" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;background:#131F38;color:#fff;font-size:13px;font-weight:700;border:1px solid rgba(255,255,255,0.15);cursor:pointer">
+        <i class="fa-solid fa-image"></i> Simpan PNG
+      </button>
+    </div>`;
+
+  const resultEl = document.getElementById('apr-result');
+  resultEl.innerHTML = infoBlock + html + saveBar;
+  resultEl.style.display = 'block';
+  setTimeout(() => resultEl.scrollIntoView({behavior:'smooth', block:'start'}), 50);
+}
+
+// ── APPRAISAL EXPORT ────────────────────────────────────
+async function saveApraisalResult(type) {
+  const r = _aprLastResult;
+  if (!r) return;
+  const fmtRp = r.fmtRp;
+  const isJual = r.transaksi === 'jual';
+  const tipeCap = r.tipe.charAt(0).toUpperCase() + r.tipe.slice(1);
+
+  // Build print card HTML
+  const printHtml = `
+    <div id="apr-print-card" style="width:700px;background:#fff;padding:40px;font-family:'DM Sans',Arial,sans-serif;color:#111;box-sizing:border-box">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #D4A853;margin-bottom:20px">
+        <div>
+          <div style="font-size:22px;font-weight:700;color:#080E1A;letter-spacing:0.5px">MANSION REALTY</div>
+          <div style="font-size:11px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-top:2px">Laporan Estimasi Appraisal Properti</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:#888">Tanggal</div>
+          <div style="font-size:13px;font-weight:600;color:#333">${r.tanggal}</div>
+        </div>
+      </div>
+
+      <!-- Info Properti -->
+      <div style="background:#f8f6f0;border-radius:10px;padding:16px 20px;margin-bottom:20px;border-left:4px solid #D4A853">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Informasi Properti</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          ${r.namaPemilik ? `<tr><td style="padding:4px 0;color:#666;width:140px">Nama Pemilik</td><td style="padding:4px 0;font-weight:600">: ${r.namaPemilik}</td></tr>` : ''}
+          ${r.alamat ? `<tr><td style="padding:4px 0;color:#666;vertical-align:top">Alamat</td><td style="padding:4px 0;font-weight:600">: ${r.alamat}</td></tr>` : ''}
+          <tr><td style="padding:4px 0;color:#666">Tipe Properti</td><td style="padding:4px 0;font-weight:600">: ${tipeCap}</td></tr>
+          <tr><td style="padding:4px 0;color:#666">Jenis Transaksi</td><td style="padding:4px 0;font-weight:600">: ${isJual ? 'Jual' : 'Sewa'}</td></tr>
+          <tr><td style="padding:4px 0;color:#666">Sertifikat</td><td style="padding:4px 0;font-weight:600">: ${r.sertifikat || '-'}</td></tr>
+          ${r.luasTanah ? `<tr><td style="padding:4px 0;color:#666">Luas Tanah</td><td style="padding:4px 0;font-weight:600">: ${r.luasTanah} m²</td></tr>` : ''}
+          ${r.luasBangunan ? `<tr><td style="padding:4px 0;color:#666">Luas Bangunan</td><td style="padding:4px 0;font-weight:600">: ${r.luasBangunan} m²</td></tr>` : ''}
+          ${r.usiaB !== null ? `<tr><td style="padding:4px 0;color:#666">Usia Bangunan</td><td style="padding:4px 0;font-weight:600">: ±${r.usiaB} tahun</td></tr>` : ''}
+          <tr><td style="padding:4px 0;color:#666">Skor Lokasi</td><td style="padding:4px 0;font-weight:600">: ${r.lokasiScore}/5 (koefisien ×${r.koef})</td></tr>
+          <tr><td style="padding:4px 0;color:#666">Fee Agen</td><td style="padding:4px 0;font-weight:600">: ${r.feeAgen}%</td></tr>
+        </table>
+      </div>
+
+      <!-- Penilaian -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Hasil Penilaian</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <tr style="background:#f5f5f5"><td style="padding:8px 12px;border:1px solid #e5e5e5">Harga Wajar Dasar</td><td style="padding:8px 12px;border:1px solid #e5e5e5;text-align:right;font-weight:600">${fmtRp(r.hargaWajarDasar)}</td></tr>
+          <tr><td style="padding:8px 12px;border:1px solid #e5e5e5">Harga Wajar Max (×${r.koef})</td><td style="padding:8px 12px;border:1px solid #e5e5e5;text-align:right;font-weight:600">${fmtRp(r.hargaWajarMax)}</td></tr>
+          ${!isJual ? `<tr style="background:#f5f5f5"><td style="padding:8px 12px;border:1px solid #e5e5e5">Nilai Sewa (${(r.sewaPct*100)}%/tahun)</td><td style="padding:8px 12px;border:1px solid #e5e5e5;text-align:right;font-weight:600">${fmtRp(r.nilaiSewa)}</td></tr>` : ''}
+        </table>
+      </div>
+
+      <!-- Biaya -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Rincian Biaya</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <tr style="background:#f5f5f5"><td style="padding:8px 12px;border:1px solid #e5e5e5">Fee Agen (${r.feeAgen}%)</td><td style="padding:8px 12px;border:1px solid #e5e5e5;text-align:right">${fmtRp(r.biayaAgen)}</td></tr>
+          <tr><td style="padding:8px 12px;border:1px solid #e5e5e5">PPh ${isJual ? '(2.5%)' : '(10% dari nilai sewa)'}</td><td style="padding:8px 12px;border:1px solid #e5e5e5;text-align:right">${fmtRp(r.biayaPph)}</td></tr>
+          ${isJual ? `<tr style="background:#f5f5f5"><td style="padding:8px 12px;border:1px solid #e5e5e5">Biaya Lain-lain (1%)</td><td style="padding:8px 12px;border:1px solid #e5e5e5;text-align:right">${fmtRp(r.biayaLain)}</td></tr>` : ''}
+          <tr style="background:#080E1A"><td style="padding:9px 12px;border:1px solid #080E1A;color:#fff;font-weight:700">Total Biaya</td><td style="padding:9px 12px;border:1px solid #080E1A;text-align:right;color:#D4A853;font-weight:700">${fmtRp(r.totalBiaya)}</td></tr>
+        </table>
+      </div>
+
+      <!-- Ringkasan -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:11px;color:#16a34a;margin-bottom:4px">Nett ${isJual?'Penjual':'Pemilik'}</div>
+          <div style="font-size:16px;font-weight:700;color:#15803d">${fmtRp(r.nett)}</div>
+        </div>
+        <div style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:11px;color:#b45309;margin-bottom:4px">${isJual?'Estimasi Harga Jual':'Estimasi Harga Sewa/Thn'}</div>
+          <div style="font-size:16px;font-weight:700;color:#D4A853">${fmtRp(r.estimasi)}</div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="border-top:1px solid #e5e5e5;padding-top:14px;font-size:10px;color:#aaa;text-align:center;line-height:1.6">
+        Laporan ini bersifat estimasi internal dan tidak dapat dijadikan dokumen appraisal resmi.<br/>
+        Nilai final harus dikonfirmasi oleh appraisal bersertifikat. &copy; Mansion Realty ${new Date().getFullYear()}
+      </div>
+    </div>`;
+
+  // Append to body (off-screen), capture, then remove
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:fixed;top:-9999px;left:0;z-index:-1;';
+  wrapper.innerHTML = printHtml;
+  document.body.appendChild(wrapper);
+  const printEl = wrapper.firstElementChild;
+
+  const saveBtn = document.querySelectorAll('[onclick^="saveApraisalResult"]');
+  saveBtn.forEach(b => { b.disabled = true; b.style.opacity = '0.6'; });
+
+  try {
+    const canvas = await html2canvas(printEl, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+
+    if (type === 'png') {
+      const link = document.createElement('a');
+      const namePart = r.namaPemilik ? r.namaPemilik.replace(/\s+/g,'_') : 'Properti';
+      link.download = `Appraisal_${namePart}_${r.tanggal.replace(/\s/g,'_')}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } else {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgData = canvas.toDataURL('image/jpeg', 0.97);
+      const imgH = (canvas.height * pageW) / canvas.width;
+      if (imgH <= pageH) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, pageW, imgH);
+      } else {
+        // Multi-page if content is tall
+        let posY = 0;
+        while (posY < imgH) {
+          if (posY > 0) pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', 0, -posY, pageW, imgH);
+          posY += pageH;
+        }
+      }
+      const namePart = r.namaPemilik ? r.namaPemilik.replace(/\s+/g,'_') : 'Properti';
+      pdf.save(`Appraisal_${namePart}_${r.tanggal.replace(/\s/g,'_')}.pdf`);
+    }
+    showToast(`Berhasil disimpan sebagai ${type.toUpperCase()}!`, 'success');
+  } catch(e) {
+    showToast('Gagal menyimpan: ' + e.message, 'error');
+  } finally {
+    document.body.removeChild(wrapper);
+    saveBtn.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+  }
+}
+</script>
 </body></html>

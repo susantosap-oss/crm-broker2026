@@ -1,0 +1,440 @@
+// =====================================================
+// APLIKASI KALKULATOR APPRAISAL - VERSION 6.5 PATCH FINAL
+// Mansion Properti
+// =====================================================
+
+// ---------------- CONFIG ----------------
+const LOGIN_SHEET_ID = "1Y6J1b2mgzoEsmp0SUnqpGu-loTfmCw-ZhkMrfRd0jNA";
+const LOGIN_SHEET_NAME = "BrokerDB";
+
+// ---------------- UTILITIES ----------------
+function getLoginSheet() {
+  const ss = SpreadsheetApp.openById(LOGIN_SHEET_ID);
+  return ss.getSheetByName(LOGIN_SHEET_NAME);
+}
+
+function getLogoBase64() {
+  try {
+    const fileId = "1QIrqodxzP9igDpcVqCw-KGzBEx6CIpFj"; 
+    const file = DriveApp.getFileById(fileId);
+    const blob = file.getBlob();
+    return Utilities.base64Encode(blob.getBytes());
+  } catch (err) {
+    Logger.log("Logo gagal di-load: " + err);
+    return null;
+  }
+}
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+// ---------------- LOGIN ----------------
+function checkLogin(email){
+  try{
+    email = (email || '').toString().trim();
+    if(!email) return { success:false, message:'Email kosong.' };
+
+    const sheet = getLoginSheet();
+    if(!sheet) return { success:false, message:'Sheet BrokerDB tidak ditemukan.' };
+
+    const last = sheet.getLastRow();
+    if(last < 2) return { success:false, message:'Tidak ada data broker.' };
+
+    const rows = sheet.getRange(2,1,last-1,2).getValues();
+    const map = {};
+    rows.forEach(r => {
+      const em = (r[0]||'').toString().toLowerCase();
+      const nm = (r[1]||'');
+      if (em) map[em] = nm;
+    });
+
+    const eLow = email.toLowerCase();
+    if (map[eLow]) return { success:true, email:eLow, nama:map[eLow] };
+
+    return { success:false, message:'Email tidak terdaftar.' };
+
+  } catch(err){
+    Logger.log('checkLogin error: ' + err);
+    return { success:false, message:'Server error saat login.' };
+  }
+}
+
+// ---------------- SHOW APPRAISAL PAGE ----------------
+function showAppraisalPage(email, nama) {
+  const tpl = HtmlService.createTemplateFromFile('index');
+  tpl.email = email || '';
+  tpl.nama = nama || '';
+  tpl.logoBase64 = getLogoBase64();
+  return tpl.evaluate().getContent();
+}
+
+// ---------------- LOGIN & RENDER ----------------
+function loginAndShowAppraisal(email){
+  const loginRes = checkLogin(email);
+  if(loginRes.success){
+    const htmlContent = showAppraisalPage(loginRes.email, loginRes.nama);
+    return { success:true, html: htmlContent };
+  } else {
+    return loginRes;
+  }
+}
+
+// ---------------- WEB ENTRY ----------------
+function doGet(e) {
+ const tpl = HtmlService.createTemplateFromFile('login');
+ tpl.logoBase64 = getLogoBase64();
+ return tpl.evaluate()
+       .setTitle('Mansion Properti - Login')
+     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+ }
+
+function doPost(e) {
+  try {
+    const body = e.postData && e.postData.contents
+      ? JSON.parse(e.postData.contents)
+      : {};
+
+    const result = hitungAppraisal(body);
+
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+
+// ---------------- Logo Utility ----------------
+function getLogoBase64() {
+  try {
+    const fileId = "1QIrqodxzP9igDpcVqCw-KGzBEx6CIpFj"; // ID file logo di Drive
+    const file = DriveApp.getFileById(fileId);
+    const blob = file.getBlob();
+    return Utilities.base64Encode(blob.getBytes());
+  } catch (err) {
+    Logger.log("Logo gagal di-load: " + err);
+    return null; // fallback jika gagal
+  }
+}
+
+
+// ---------------- LOGIN CHECK ----------------
+function checkLogin(email){
+  try{
+    email = (email || '').toString().trim();
+    if(!email) return { success:false, message:'Email kosong.' };
+
+    const sheet = getLoginSheet();
+    if(!sheet) return { success:false, message:'Sheet BrokerDB tidak ditemukan.' };
+
+    const last = sheet.getLastRow();
+    if(last < 2) return { success:false, message:'Tidak ada data broker.' };
+
+    const rows = sheet.getRange(2,1,last-1,2).getValues();
+    const map = {};
+    rows.forEach(r => {
+      const em = (r[0]||'').toString().toLowerCase();
+      const nm = (r[1]||'');
+      if (em) map[em] = nm;
+    });
+
+    const eLow = email.toLowerCase();
+    if (map[eLow]) return { success:true, email:eLow, nama:map[eLow] };
+
+    return { success:false, message:'Email tidak terdaftar.' };
+
+  } catch(err){
+    Logger.log('checkLogin error: ' + err);
+    return { success:false, message:'Server error saat login.' };
+  }
+}
+
+function showAppraisalPage(email, nama) {
+  const tpl = HtmlService.createTemplateFromFile('index');
+  tpl.email = email || '';
+  tpl.nama = nama || '';
+  tpl.logoBase64 = getLogoBase64();
+  return tpl.evaluate().getContent();
+  
+}
+/**
+}
+ /**
+ * hitungAppraisal v6.6 (PDF-compatible)
+ */
+// ========================
+// 1. Hitung Appraisal
+// ========================
+function hitungAppraisal(form) {
+  try {
+    if (!form || typeof form !== 'object') return { error: 'Form data tidak valid.' };
+
+    const get = (keys, def) => {
+      for (let k of keys) if (form[k] !== undefined && form[k] !== null) return form[k];
+      return def;
+    };
+
+    const alamat_properti = get(['alamat_properti','alamat_properti'], '');
+    const tipe_properti_raw = String(get(['tipe_properti','tipeProperti'], '') || '');
+    const tipe_transaksi_raw = String(get(['tipe_transaksi','tipeTransaksi'], 'Jual') || 'Jual');
+    const luas_tanah = parseFloat(get(['luas_tanah','luasTanah'], 0)) || 0;
+    const luas_bangunan = parseFloat(get(['luas_bangunan','luasBangunan'], 0)) || 0;
+    const harga_tanah = parseFloat(get(['harga_tanah','hargaTanah'], 0)) || 0;
+    const harga_bangunan = parseFloat(get(['harga_bangunan','hargaBangunan'], 0)) || 0;
+    const hargaPasarPerM2 = parseFloat(get(['harga_pasar','harga_pasar_per_m2','hargaPasarPerM2'], 0)) || 0;
+    const lokasi_score = Math.min(Math.max(parseFloat(get(['skor_lokasi','lokasiScore'], 3)) || 3, 1), 5);
+    const feeAgenPct = parseFloat(get(['fee_agen','feeAgen','fee_agen_pct','feeAgenPct'], 0)) || 0;
+    const tahun_bangun = get(['tahun_bangun','tahunBangun'], '') || '';
+    
+    const tipe_properti = tipe_properti_raw.toString();
+    const tipe_transaksi = tipe_transaksi_raw.toString().toLowerCase();
+    
+   
+
+    function mapKoefLokasi(score) {
+      const map = { 1:1.0, 2:1.1, 3:1.2, 4:1.35, 5:1.5 };
+      return map[score] || 1;
+    }
+    const koefLokasi = mapKoefLokasi(lokasi_score);
+
+    let hargaWajarDasar = 0;
+    if (/tanah/i.test(tipe_properti)) hargaWajarDasar = luas_tanah * harga_tanah;
+    else if (/apartemen/i.test(tipe_properti)) hargaWajarDasar = luas_bangunan * (hargaPasarPerM2>0 ? hargaPasarPerM2 : harga_bangunan);
+    else hargaWajarDasar = (luas_tanah*harga_tanah)+(luas_bangunan*harga_bangunan);
+
+    const result = {
+      nama_broker: get(['nama_broker','namaBroker'], '') || '',
+      email: get(['email'], '') || '',
+      alamat_properti,
+      tipe_properti,
+      tipe_transaksi,
+      luas_tanah,
+      luas_bangunan,
+      tahun_bangun: tahun_bangun || '',
+      usia_bangunan: tahun_bangun ? (new Date().getFullYear() - Number(tahun_bangun)) : '',
+      lokasi_score,
+      koef_lokasi: koefLokasi,
+      harga_wajar_dasar: hargaWajarDasar
+    };
+
+    // === Tambahkan Sertifikat ===
+    const sertifikat = get(['sertifikat'], '');
+    result.sertifikat = sertifikat;
+
+    let hargaWajarMax = hargaWajarDasar;
+    let biayaAgen=0, biayaPph=0, biayaLain=0, totalBiaya=0, estimasiHargaJual=0, nettPenjualan=0, nilaiSewa=0;
+
+    if (/apartemen/i.test(tipe_properti) && tipe_transaksi==='jual') {
+      const dasarM2 = (hargaPasarPerM2>0 ? hargaPasarPerM2 : harga_bangunan);
+      const hargaWajarDasar_Apt = Math.round(dasarM2*luas_bangunan);
+      const totalBiayaPct = feeAgenPct + 2.5 + 1;
+      const totalBiaya_Apt = Math.round((totalBiayaPct/100)*hargaWajarDasar_Apt);
+      const hargaWajarMax_Apt = hargaWajarDasar_Apt;
+      const estimasiHargaJual_Apt = hargaWajarMax_Apt;
+      const biayaAgen_Apt = Math.round((feeAgenPct/100)*hargaWajarDasar_Apt);
+      const biayaPph_Apt = Math.round(0.025*hargaWajarDasar_Apt);
+      const biayaLain_Apt = Math.round(0.01*hargaWajarDasar_Apt);
+      const nettPenjualan_Apt = hargaWajarDasar_Apt - totalBiaya_Apt;
+
+      result.harga_wajar_dasar = hargaWajarDasar_Apt;
+      result.harga_wajar_max = hargaWajarMax_Apt;
+      result.estimasi_harga_jual = estimasiHargaJual_Apt;
+      result.biaya_agen = biayaAgen_Apt;
+      result.biaya_pph = biayaPph_Apt;
+      result.biaya_lain = biayaLain_Apt;
+      result.total_biaya = totalBiaya_Apt;
+      result.nett_penjualan = nettPenjualan_Apt;
+      result.fee_agen_pct = feeAgenPct;
+
+      // formatted
+      const formatRupiah = (num)=> 'Rp ' + Number(num).toLocaleString('id-ID');
+      result.harga_wajar_dasar_str = formatRupiah(hargaWajarDasar_Apt);
+      result.harga_wajar_max_str = formatRupiah(hargaWajarMax_Apt);
+      result.estimasi_harga_jual_str = formatRupiah(estimasiHargaJual_Apt);
+      result.biaya_agen_str = formatRupiah(biayaAgen_Apt);
+      result.biaya_pph_str = formatRupiah(biayaPph_Apt);
+      result.biaya_lain_str = formatRupiah(biayaLain_Apt);
+      result.total_biaya_str = formatRupiah(totalBiaya_Apt);
+      result.nett_penjualan_str = formatRupiah(nettPenjualan_Apt);
+
+      result.generatedAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd MMMM yyyy HH:mm');
+      return result;
+    }
+
+    if(tipe_transaksi==='jual' && !/apartemen/i.test(tipe_properti)){
+      hargaWajarMax = Math.round(hargaWajarDasar * koefLokasi);
+      totalBiaya = Math.round(((feeAgenPct+2.5+1)/100)*hargaWajarMax);
+      biayaAgen = Math.round((feeAgenPct/100)*hargaWajarMax);
+      biayaPph = Math.round(0.025*hargaWajarMax);
+      biayaLain = Math.round(0.01*hargaWajarMax);
+      estimasiHargaJual = Math.round(hargaWajarMax+totalBiaya);
+      nettPenjualan = Math.round(hargaWajarMax-totalBiaya);
+
+      result.harga_wajar_max = hargaWajarMax;
+      result.estimasi_harga_jual = estimasiHargaJual;
+      result.biaya_agen = biayaAgen;
+      result.biaya_pph = biayaPph;
+      result.biaya_lain = biayaLain;
+      result.total_biaya = totalBiaya;
+      result.nett_penjualan = nettPenjualan;
+      result.fee_agen_pct = feeAgenPct;
+
+      const formatRupiah = (num)=> 'Rp ' + Number(num).toLocaleString('id-ID');
+      result.harga_wajar_dasar_str = formatRupiah(hargaWajarDasar);
+      result.harga_wajar_max_str = formatRupiah(hargaWajarMax);
+      result.estimasi_harga_jual_str = formatRupiah(estimasiHargaJual);
+      result.biaya_agen_str = formatRupiah(biayaAgen);
+      result.biaya_pph_str = formatRupiah(biayaPph);
+      result.biaya_lain_str = formatRupiah(biayaLain);
+      result.total_biaya_str = formatRupiah(totalBiaya);
+      result.nett_penjualan_str = formatRupiah(nettPenjualan);
+
+      result.generatedAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd MMMM yyyy HH:mm');
+      return result;
+    }
+
+    // Logika sewa
+    // ganti disini untuk % sewa tahunan 
+    const sewaPctMap = { 'rumah': 0.03, 'ruko': 0.035, 'apartemen': 0.07, 'gudang': 0.05, 'tanah': 0.02 };
+    const sewaPct = sewaPctMap[tipe_properti.toLowerCase()] || 0;
+    nilaiSewa = Math.round(hargaWajarMax*sewaPct);
+    biayaAgen = Math.round((feeAgenPct/100)*nilaiSewa);
+    biayaPph = (String(get(['jenis_pph','jenisPph'], '')).toLowerCase()==='perorangan')?0:Math.round(0.10*nilaiSewa);
+    totalBiaya = biayaAgen+biayaPph;
+    estimasiHargaJual = Math.round(nilaiSewa+totalBiaya);
+    nettPenjualan = Math.round(nilaiSewa-totalBiaya);
+
+    result.nilai_sewa = nilaiSewa;
+    result.estimasi_harga_sewa = estimasiHargaJual;
+    result.biaya_agen = biayaAgen;
+    result.biaya_pph = biayaPph;
+    result.total_biaya = totalBiaya;
+    result.nett_penjualan = nettPenjualan;
+    result.sewa_pct = sewaPct;
+    result.fee_agen_pct = feeAgenPct;
+
+    const formatRupiah = (num)=> 'Rp ' + Number(num).toLocaleString('id-ID');
+    result.harga_wajar_dasar_str = formatRupiah(hargaWajarDasar);
+    result.harga_wajar_max_str = formatRupiah(hargaWajarMax);
+    result.estimasi_harga_jual_str = formatRupiah(estimasiHargaJual);
+    result.nilai_sewa_str = formatRupiah(nilaiSewa);
+    result.biaya_agen_str = formatRupiah(biayaAgen);
+    result.biaya_pph_str = formatRupiah(biayaPph);
+    result.total_biaya_str = formatRupiah(totalBiaya);
+    result.nett_penjualan_str = formatRupiah(nettPenjualan);
+    result.generatedAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd MMMM yyyy HH:mm');
+    return result;
+    
+
+  } catch(err){
+    Logger.log('hitungAppraisal error: '+err);
+    return { error: err.toString() };
+  }
+}
+
+// ========================
+// 2. Generate PDF
+// ========================
+function generateAppraisalPdf(data, lang = 'id', sendEmail = false) {
+  try {
+    if(!data) throw new Error("Data appraisal kosong.");
+    data.tanggal = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy");
+
+
+    // Sanitasi dan fallback formatting
+    const safeStr = (val)=> val!==undefined && val!==null? val.toString() : '-';
+
+    data.harga_wajar_max_str   = safeStr(data.harga_wajar_max_str   || formatRupiah(data.harga_wajar_max   || 0));
+    data.harga_wajar_dasar_str = safeStr(data.harga_wajar_dasar_str || formatRupiah(data.harga_wajar_dasar || 0));
+    data.estimasi_harga_jual_str = safeStr(data.estimasi_harga_jual_str || formatRupiah(data.estimasi_harga_jual || 0));
+    data.biaya_agen_str = safeStr(data.biaya_agen_str || formatRupiah(data.biaya_agen || 0));
+    data.total_biaya_str = safeStr(data.total_biaya_str || formatRupiah(data.total_biaya || 0));
+    data.nett_penjualan_str = safeStr(data.nett_penjualan_str || formatRupiah(data.nett_penjualan || 0));
+    data.fee_agen_pct = data.fee_agen_pct !== undefined ? data.fee_agen_pct : 0;
+
+    // Insert tambahan bahasa ke template
+    data.lang = lang;
+
+    // Load template HTML
+   // Pilih template berdasarkan bahasa
+      const templateName = (lang === 'en') ? 'pdf_template_en' : 'pdf_template_id';
+      const tpl = HtmlService.createTemplateFromFile(templateName);
+
+    tpl.data = data;
+
+    // Render HTML
+    const html = tpl.evaluate().getContent();
+
+    // ==========================
+// Convert HTML → PDF
+// ==========================
+
+// Format tanggal ddMMyy
+const dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "ddMMyy");
+
+// Singkatkan alamat jika terlalu panjang
+let alamatShort = (data.alamat_properti || data.alamat || "Properti").toString().trim();
+if (alamatShort.length > 40) {
+  alamatShort = alamatShort.substring(0, 40) + "...";
+}
+
+// Susun nama file final
+const newFileName = sanitizeFilename(
+  (data.nama_broker || "Broker") + " - " +
+  (data.tipe_transaksi || "Transaksi") + " - " +
+  alamatShort + " - " +
+  dateStr +
+  (lang === 'en' ? "_EN" : "_ID") +
+  ".pdf"
+);
+
+// Buat PDF blob
+const blob = Utilities
+  .newBlob(html, "text/html", "appraisal.html")
+  .getAs("application/pdf")
+  .setName(newFileName);
+
+
+    // Folder utama
+    let masterIter = DriveApp.getFoldersByName("Laporan Apraisal Mansion");
+    const masterFolder = masterIter.hasNext() ? masterIter.next() : DriveApp.createFolder("Laporan Apraisal Mansion");
+
+    // Subfolder tanggal
+    const todayStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yy");
+    let folderIter = masterFolder.getFoldersByName("Laporan Apraisal " + todayStr);
+    const subFolder = folderIter.hasNext() ? folderIter.next() : masterFolder.createFolder("Laporan Apraisal " + todayStr);
+
+    // Simpan file
+    const file = subFolder.createFile(blob);
+
+    // Email jika diminta
+    if (sendEmail && data.email) {
+      try {
+        MailApp.sendEmail({
+          to: data.email,
+          subject: (lang === 'en' ? "Property Appraisal Report - " : "Laporan Appraisal Properti - ") + safeStr(data.alamat_properti),
+          body: lang === 'en'
+            ? "Here is your attached property appraisal report."
+            : "Berikut terlampir laporan appraisal properti Anda.",
+          attachments: [file.getAs(MimeType.PDF)]
+        });
+      } catch(e) { Logger.log("Email gagal dikirim: " + e); }
+    }
+
+    // Return link PDF
+    return { url: file.getUrl(), name: file.getName() };
+
+  } catch(e) {
+    Logger.log("generateAppraisalPdf error: " + e);
+    throw new Error("Gagal membuat PDF: " + e.message);
+  }
+}
+
+function sanitizeFilename(name){ return name.replace(/[\\\/\:\*\?\"\<\>\|]/g,"_"); }
+function formatRupiah(num){ if(isNaN(num)) num=0; return 'Rp '+Number(num).toLocaleString('id-ID'); }
+
