@@ -165,7 +165,7 @@ function showApp() {
     if (el) el.innerHTML = '';
   });
 
-  const { nama, role, email, foto_url } = STATE.user;
+  const { nama, role, email } = STATE.user;
   const initial = (nama || 'A').charAt(0).toUpperCase();
 
   // Topbar
@@ -183,20 +183,6 @@ function showApp() {
   setText('sidebar-avatar', initial);
   setText('sidebar-name', nama || 'Agen');
   setText('sidebar-role', role || 'agen');
-
-  // Load profile photo dari localStorage dulu, lalu fetch fresh dari backend
-  if (typeof loadProfileFromStorage === 'function') loadProfileFromStorage();
-  if (typeof applyProfileToUI === 'function') applyProfileToUI();
-
-  // Fetch foto_url terbaru dari /agents/me (tidak blok UI)
-  API.get('/agents/me').then(function(res) {
-    var fotoUrl = res.data && (res.data.Foto_URL || res.data.foto_url || '');
-    if (fotoUrl && typeof _profileData !== 'undefined') {
-      _profileData.photoUrl = fotoUrl;
-      if (typeof saveProfileToStorage === 'function') saveProfileToStorage();
-      if (typeof applyProfileToUI === 'function') applyProfileToUI();
-    }
-  }).catch(function() {});
 
   navigateTo('dashboard');
 }

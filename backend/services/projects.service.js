@@ -113,6 +113,16 @@ class ProjectsService {
       updated.Cara_Bayar = updated.Cara_Bayar.join(',');
     }
 
+    // Normalize Cloudinary_IDs array → JSON string (agar tidak rusak di Sheets)
+    if (Array.isArray(updated.Cloudinary_IDs)) {
+      // Jika array baru kosong, pertahankan nilai existing dari spreadsheet
+      if (updated.Cloudinary_IDs.length === 0) {
+        updated.Cloudinary_IDs = existing.Cloudinary_IDs || '[]';
+      } else {
+        updated.Cloudinary_IDs = JSON.stringify(updated.Cloudinary_IDs);
+      }
+    }
+
     // Re-format harga jika berubah
     if (data.Harga_Mulai !== undefined) {
       updated.Harga_Mulai  = String(data.Harga_Mulai).replace(/[^0-9]/g, '');

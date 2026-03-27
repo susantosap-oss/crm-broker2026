@@ -3771,6 +3771,10 @@ function editCurrentProject() {
   setProjectPhotoPreview(1, p.Foto_1_URL || '');
   setProjectPhotoPreview(2, p.Foto_2_URL || '');
 
+  // Reset koordinator wrap (hidden saat edit — koordinator diatur via modal terpisah)
+  const korWrap = document.getElementById('pf-koordinator-wrap');
+  if (korWrap) korWrap.style.display = 'none';
+
   openModal('modal-project-form');
 }
 
@@ -3839,6 +3843,13 @@ async function submitProjectForm() {
     let res;
     if (id) {
       res = await API.put('/projects/' + id, body);
+      // Langsung update local cache agar card ter-refresh tanpa menunggu fetchProjects
+      if (res.data) {
+        const idx = _projectsData.findIndex(p => p.ID === id);
+        if (idx !== -1) _projectsData[idx] = res.data;
+        else _projectsData.unshift(res.data);
+        renderProjectGrid(_projectsData);
+      }
     } else {
       res = await API.post('/projects', body);
     }
