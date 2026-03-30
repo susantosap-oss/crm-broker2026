@@ -905,6 +905,39 @@
   </div>
 </div>
 
+<!-- MODAL DUPLIKAT LISTING -->
+<div id="modal-duplicate-listing" class="modal-overlay" style="z-index:1100">
+  <div class="modal-sheet" style="max-height:85vh">
+    <div class="mheader">
+      <div class="drag-handle"></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:12px;background:rgba(234,179,8,0.15);display:flex;align-items:center;justify-content:center">
+          <i class="fa-solid fa-triangle-exclamation" style="color:#EAB308;font-size:16px"></i>
+        </div>
+        <div>
+          <h3 style="font-size:15px;font-weight:700;color:#fff;margin:0">Listing Kembar Terdeteksi</h3>
+          <p style="font-size:11px;color:rgba(255,255,255,0.45);margin:0">Listing di bawah ini mungkin sama dengan yang Anda input</p>
+        </div>
+      </div>
+    </div>
+    <div class="mbody">
+      <div id="duplicate-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:12px 14px;border:1px solid rgba(255,255,255,0.06);margin-bottom:16px">
+        <p style="font-size:12px;color:rgba(255,255,255,0.55);margin:0;line-height:1.6">
+          <i class="fa-solid fa-info-circle" style="color:#D4A853;margin-right:6px"></i>
+          Jika ini listing yang sama, pilih <strong style="color:#fff">Gabung ke Listing Ini</strong> untuk terdaftar sebagai Co-Own. Anda tidak perlu input ulang — data listing sudah tersedia.
+        </p>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="closeDuplicateModal()" class="btn-ghost" style="flex:1">Batal</button>
+        <button onclick="forceCreateListing()" class="btn-ghost" style="flex:1;border-color:rgba(255,255,255,0.2)">
+          <i class="fa-solid fa-plus" style="margin-right:6px"></i>Tetap Buat Baru
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ADD LEAD (PR 14) -->
 <div id="modal-add-lead" class="modal-overlay">
   <div class="modal-sheet">

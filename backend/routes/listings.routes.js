@@ -339,7 +339,7 @@ router.patch('/:id', upload.array('photos', 3), async (req, res) => {
       );
     }
 
-    const updated = await listingsService.update(req.params.id, updateData);
+    const updated = await listingsService.update(req.params.id, updateData, req.user);
     res.json({ success: true, data: updated, message: 'Listing berhasil diupdate' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -369,7 +369,7 @@ router.put('/:id', upload.array('photos', 3), async (req, res) => {
       );
     }
 
-    const updated = await listingsService.update(req.params.id, updateData);
+    const updated = await listingsService.update(req.params.id, updateData, req.user);
     res.json({ success: true, data: updated, message: 'Listing berhasil diupdate' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

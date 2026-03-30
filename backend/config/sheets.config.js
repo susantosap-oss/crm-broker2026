@@ -38,7 +38,8 @@ const SHEETS = {
   FAVOURITES:      'FAVOURITES',
   PROJECTS:      'PROJECTS',
   PROJECT_REFS:  'PROJECT_REFS',
-  SHARE_LOG:     'SHARE_LOG',
+  SHARE_LOG:       'SHARE_LOG',
+  LISTING_AGENTS:  'LISTING_AGENTS',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -333,6 +334,18 @@ const COLUMNS = {
     'Konten_Nama',    // G  Judul listing / Nama proyek
     'Platform',       // H  wa | wa_business | instagram | tiktok | facebook
     'Koordinator_ID', // I  ID koordinator proyek (kalau tipe=project)
+  ],
+
+  // ★ LISTING_AGENTS — Junction table: Co-Ownership listing
+  LISTING_AGENTS: [
+    'ID',           // A  UUID row
+    'Listing_ID',   // B  FK ke LISTING
+    'Agen_ID',      // C  FK ke AGENTS
+    'Agen_Nama',    // D  denormalized
+    'Role',         // E  'owner' | 'co_own'
+    'Joined_At',    // F  ISO timestamp
+    'Added_By',     // G  'system' (duplicate detection) | agent_id (principal reassign)
+    'Notes',        // H  opsional: "Promoted from co_own by Principal [X]"
   ],
 
   PIPELINE_STAGES: [

@@ -526,6 +526,7 @@ function renderListingsGrid(listings) {
                   style="background:${statusColor}cc">${escHtml(l.Status_Listing || '')}</span>
             <span class="text-xs px-2 py-1 rounded-lg font-medium text-white"
                   style="background:rgba(0,0,0,.5)">${escHtml(l.Tipe_Properti || '')}</span>
+            ${l._isCoOwn ? `<span class="text-xs px-2 py-1 rounded-lg font-semibold" style="background:rgba(139,92,246,0.85);color:#fff"><i class="fa-solid fa-link-simple" style="margin-right:3px;font-size:9px"></i>Co-Own</span>` : ''}
           </div>
           ${l.Tampilkan_di_Web === 'TRUE' ? `<div class="absolute top-3 right-3 w-7 h-7 rounded-lg bg-crm-blue flex items-center justify-center" title="Tampil di website"><i class="fa-solid fa-globe text-white text-xs"></i></div>` : ''}
         </div>
@@ -1196,6 +1197,20 @@ async function sendWaMessage() {
 }
 
 // ── SUBMIT FORMS ──────────────────────────────────────────
+// ── State sementara untuk pending listing submission ──────────────────────
+let _pendingListingPayload = null;
+
+// ── Parse LT/LB/KT dari teks deskripsi (sama seperti logic backend PDF) ──
+function parseDeskripsi(text) {
+  if (!text) return {};
+  const px = (re) => { const m = text.match(re); return m ? m[1] : ''; };
+  return {
+    Luas_Tanah:    px(/LT[:\s]*(\d+)/i),
+    Luas_Bangunan: px(/LB[:\s]*(\d+)/i),
+    Kamar_Tidur:   px(/(\d+(?:[+\-]\d+)?)\s*KT/i),
+  };
+}
+
 async function submitAddListing() {
   const payload = {
     Judul           : document.getElementById('add-judul')?.value?.trim(),
@@ -1212,11 +1227,47 @@ async function submitAddListing() {
     showToast('Isi judul, tipe, dan jenis transaksi', 'error'); return;
   }
 
-  const photoInput = document.getElementById('add-photos');
-  const hasPhotos = photoInput?.files?.length > 0;
+  // ── Cek duplikat sebelum simpan (hanya jika Kecamatan & Kota diisi) ───
+  if (payload.Kecamatan && payload.Kota) {
+    const btn = document.getElementById('listing-submit-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Cek duplikat...'; }
 
-  const btn = document.querySelector('#modal-add-listing .btn-gold');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Menyimpan...'; }
+    try {
+      const parsed = parseDeskripsi(payload.Deskripsi);
+      const checkPayload = {
+        Kecamatan:     payload.Kecamatan,
+        Kota:          payload.Kota,
+        Harga:         payload.Harga,
+        Luas_Tanah:    parsed.Luas_Tanah,
+        Luas_Bangunan: parsed.Luas_Bangunan,
+        Kamar_Tidur:   parsed.Kamar_Tidur,
+      };
+      const res = await API.post('/listing-agents/check-duplicate', checkPayload);
+      if (res.duplicates && res.duplicates.length > 0) {
+        // Simpan payload ke state, tampilkan modal duplikat
+        _pendingListingPayload = payload;
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan'; }
+        showDuplicateModal(res.duplicates);
+        return; // Stop — tunggu keputusan agen
+      }
+    } catch (e) {
+      // Jika cek duplikat gagal, lanjut simpan biasa (jangan blok agen)
+      console.warn('[DUPLICATE CHECK]', e.message);
+    }
+
+    const btn2 = document.getElementById('listing-submit-btn');
+    if (btn2) { btn2.disabled = false; btn2.innerHTML = '<i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan'; }
+  }
+
+  await _doCreateListing(payload);
+}
+
+async function _doCreateListing(payload) {
+  const photoInput = document.getElementById('add-photos');
+  const hasPhotos  = photoInput?.files?.length > 0;
+
+  const btn = document.getElementById('listing-submit-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Menyimpan...'; }
 
   try {
     if (hasPhotos) {
@@ -1227,15 +1278,91 @@ async function submitAddListing() {
     } else {
       await API.post('/listings', payload);
     }
-    showToast('✅ Listing berhasil ditambahkan!', 'success');
+    showToast('Listing berhasil ditambahkan!', 'success');
     resetListingModal();
-    // Refresh data & clear server cache
     await API.post('/dashboard/cache/clear');
     if (STATE.currentPage === 'listings') await loadListings();
     if (STATE.currentPage === 'dashboard') await loadDashboard();
   } catch (e) {
     showToast('Gagal: ' + e.message, 'error');
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan'; }
+  }
+}
+
+// ── Tampilkan modal duplikat dengan daftar kandidat ───────────────────────
+function showDuplicateModal(duplicates) {
+  const list = document.getElementById('duplicate-list');
+  if (!list) return;
+
+  list.innerHTML = duplicates.slice(0, 3).map(d => `
+    <div style="background:#131F38;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.07)">
+      <div style="display:flex;gap:10px;padding:12px">
+        ${d.foto_utama
+          ? `<img src="${escHtml(d.foto_utama)}" style="width:70px;height:70px;border-radius:10px;object-fit:cover;flex-shrink:0"/>`
+          : `<div style="width:70px;height:70px;border-radius:10px;background:#0D1526;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-solid fa-building" style="color:rgba(255,255,255,0.2)"></i></div>`
+        }
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <span style="font-size:10px;font-weight:700;color:#D4A853;letter-spacing:0.05em">${escHtml(d.kode)}</span>
+            <span style="font-size:10px;background:rgba(234,179,8,0.15);color:#EAB308;border-radius:6px;padding:1px 7px;font-weight:600">Score: ${d.score}/100</span>
+          </div>
+          <p style="font-size:13px;font-weight:600;color:#fff;margin:0 0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.judul)}</p>
+          <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:0 0 2px"><i class="fa-solid fa-location-dot" style="color:#D4A853;margin-right:4px"></i>${escHtml(d.kecamatan)}, ${escHtml(d.kota)}</p>
+          <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:0"><i class="fa-solid fa-user" style="margin-right:4px"></i>${escHtml(d.agen_nama)}</p>
+        </div>
+      </div>
+      <div style="padding:0 12px 12px">
+        <div style="display:flex;gap:6px;font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:10px">
+          ${d.breakdown.alamat >= 30 ? '<span style="background:rgba(34,197,94,0.1);color:#22C55E;border-radius:6px;padding:2px 7px">Alamat mirip</span>' : ''}
+          ${d.breakdown.lt_lb >= 20  ? '<span style="background:rgba(34,197,94,0.1);color:#22C55E;border-radius:6px;padding:2px 7px">LT/LB sama</span>' : ''}
+          ${d.breakdown.harga >= 8   ? '<span style="background:rgba(34,197,94,0.1);color:#22C55E;border-radius:6px;padding:2px 7px">Harga mirip</span>' : ''}
+          ${d.breakdown.kt >= 10     ? '<span style="background:rgba(34,197,94,0.1);color:#22C55E;border-radius:6px;padding:2px 7px">KT sama</span>' : ''}
+        </div>
+        <button onclick="joinExistingListing('${escHtml(d.id)}','${escHtml(d.kode)}')"
+          style="width:100%;padding:9px;background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);border-radius:10px;color:#A78BFA;font-size:13px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-link-simple" style="margin-right:6px"></i>Gabung ke Listing Ini
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('modal-duplicate-listing').style.display = 'flex';
+}
+
+function closeDuplicateModal() {
+  document.getElementById('modal-duplicate-listing').style.display = 'none';
+  _pendingListingPayload = null;
+}
+
+// Tetap buat listing baru meski ada duplikat
+async function forceCreateListing() {
+  const payload = _pendingListingPayload;
+  _pendingListingPayload = null;
+  document.getElementById('modal-duplicate-listing').style.display = 'none';
+  if (payload) await _doCreateListing(payload);
+}
+
+// Gabung sebagai Co-Own ke listing yang sudah ada
+async function joinExistingListing(listingId, kode) {
+  try {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Bergabung...';
+
+    await API.post(`/listing-agents/${listingId}/join`);
+
+    document.getElementById('modal-duplicate-listing').style.display = 'none';
+    _pendingListingPayload = null;
+    resetListingModal();
+
+    showToast(`Berhasil bergabung sebagai Co-Own di ${kode}`, 'success');
+    if (STATE.currentPage === 'listings') await loadListings();
+  } catch (e) {
+    showToast('Gagal bergabung: ' + e.message, 'error');
+    if (event.currentTarget) {
+      event.currentTarget.disabled = false;
+      event.currentTarget.innerHTML = '<i class="fa-solid fa-link-simple" style="margin-right:6px"></i>Gabung ke Listing Ini';
+    }
   }
 }
 

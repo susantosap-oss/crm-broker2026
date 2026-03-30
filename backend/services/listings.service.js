@@ -11,6 +11,11 @@ const captionService = require('./caption.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 const { v4: uuidv4 } = require('uuid');
 
+// Lazy require untuk hindari circular dependency
+function getNotifyCoOwns() {
+  return require('../routes/listing_agents.routes').notifyCoOwns;
+}
+
 class ListingsService {
   // ── Get All Listings ──────────────────────────────────────
   async getAll(filters = {}) {
@@ -78,7 +83,7 @@ class ListingsService {
   }
 
   // ── Update Listing ────────────────────────────────────────
-  async update(id, payload) {
+  async update(id, payload, updaterData = null) {
     const existing = await sheetsService.findRowById(SHEETS.LISTING, id);
     if (!existing) throw new Error('Listing tidak ditemukan');
 
@@ -86,6 +91,24 @@ class ListingsService {
     const row = this._buildRow(merged);
 
     await sheetsService.updateRow(SHEETS.LISTING, existing.rowIndex, row);
+
+    // Kirim notif ke Co-Own jika ada updater info (bukan update internal seperti views/caption)
+    if (updaterData?.id && updaterData?.nama) {
+      try {
+        const notifyCoOwns = getNotifyCoOwns();
+        await notifyCoOwns(
+          id,
+          'listing_updated',
+          'Listing Diperbarui',
+          `Owner telah memperbarui listing ${merged.Kode_Listing} (${merged.Judul})`,
+          updaterData.id,
+          updaterData.nama
+        );
+      } catch (e) {
+        console.error('[NOTIF UPDATE ERROR]', e.message);
+      }
+    }
+
     return merged;
   }
 

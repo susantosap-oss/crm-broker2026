@@ -60,6 +60,7 @@ app.use('/api/v1/komisi',        require('./routes/komisi.routes'));
 app.use('/api/v1/projects',  require('./routes/projects.routes'));
 app.use('/api/v1/laporan',       require('./routes/laporan.routes'));
 app.use('/api/v1/share-log',     require('./routes/share-log.routes'));
+app.use('/api/v1/listing-agents', require('./routes/listing_agents.routes'));
 
 // Config endpoints
 app.get('/api/v1/config/cloudinary', (req, res) => {
@@ -140,12 +141,13 @@ async function migrateHeaders() {
 
   // Ensure new sheets have headers
   for (const { sheet, cols } of [
-    { sheet: SHEETS.TEAMS,          cols: COLUMNS.TEAMS },
-    { sheet: SHEETS.NOTIFICATIONS,  cols: COLUMNS.NOTIFICATIONS },
-    { sheet: SHEETS.KOMISI_REQUEST, cols: COLUMNS.KOMISI_REQUEST },
+    { sheet: SHEETS.TEAMS,           cols: COLUMNS.TEAMS },
+    { sheet: SHEETS.NOTIFICATIONS,   cols: COLUMNS.NOTIFICATIONS },
+    { sheet: SHEETS.KOMISI_REQUEST,  cols: COLUMNS.KOMISI_REQUEST },
     { sheet: SHEETS.LAPORAN_HARIAN,  cols: COLUMNS.LAPORAN_HARIAN },
-    { sheet: SHEETS.PROJECTS,      cols: COLUMNS.PROJECTS },
-    { sheet: SHEETS.PROJECT_REFS,  cols: COLUMNS.PROJECT_REFS },
+    { sheet: SHEETS.PROJECTS,        cols: COLUMNS.PROJECTS },
+    { sheet: SHEETS.PROJECT_REFS,    cols: COLUMNS.PROJECT_REFS },
+    { sheet: SHEETS.LISTING_AGENTS,  cols: COLUMNS.LISTING_AGENTS },
   ]) {
     try {
       const rows = await sheetsService.getRange(sheet);
