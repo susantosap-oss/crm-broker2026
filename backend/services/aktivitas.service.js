@@ -20,11 +20,12 @@ class AktivitasService {
    * @param {string} [opts.week_start] - filter range awal
    * @param {string} [opts.week_end]   - filter range akhir
    */
-  async getAll({ agen_id, tanggal, week_start, week_end } = {}) {
+  async getAll({ agen_id, agenIds, tanggal, week_start, week_end } = {}) {
     const rows = await sheetsService.getAllAsObjects(SHEETS.AKTIVITAS_HARIAN, COLUMNS.AKTIVITAS_HARIAN);
     let data = rows.filter(r => r.ID);
 
     if (agen_id)               data = data.filter(r => r.Agen_ID === agen_id);
+    if (agenIds)               data = data.filter(r => agenIds.includes(r.Agen_ID));
     if (tanggal)               data = data.filter(r => r.Tanggal === tanggal);
     if (week_start && week_end) data = data.filter(r => r.Tanggal >= week_start && r.Tanggal <= week_end);
 

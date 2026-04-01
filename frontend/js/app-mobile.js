@@ -1777,6 +1777,7 @@ function renderUpcomingTasks(tasks) {
 // ─────────────────────────────────────────────────────────
 let _aktMainTab     = 'jadwal';   // 'jadwal' | 'aktivitas'
 let _aktCurrentDate = '';         // YYYY-MM-DD, default: today
+let _aktSubTab      = 'saya';     // 'saya' | 'tim'
 
 function setMainAktivitasTab(tab) {
   _aktMainTab = tab;
@@ -1794,14 +1795,44 @@ function setMainAktivitasTab(tab) {
   if (sJ) sJ.style.display = isJadwal ? 'block' : 'none';
   if (sA) sA.style.display = isJadwal ? 'none' : 'block';
 
-  if (!isJadwal) loadAktivitasHarian();
+  if (!isJadwal) {
+    // Tampilkan sub-tab Saya|Tim hanya untuk role yang bisa lihat tim
+    const canSeeTim = ['business_manager', 'principal', 'kantor', 'superadmin'].includes(STATE.user?.role);
+    const subContainer = document.getElementById('akt-subtab-container');
+    if (subContainer) subContainer.style.display = canSeeTim ? 'flex' : 'none';
+
+    // Load sesuai sub-tab aktif (atau reset ke saya jika tidak bisa lihat tim)
+    if (_aktSubTab === 'tim' && canSeeTim) loadAktivitasTim();
+    else { _aktSubTab = 'saya'; loadAktivitasHarian(); }
+  }
+}
+
+function setAktSubTab(tab) {
+  _aktSubTab = tab;
+  const isTim = tab === 'tim';
+
+  // Toggle sub-tab buttons
+  const btnS = document.getElementById('akt-sub-saya');
+  const btnT = document.getElementById('akt-sub-tim');
+  if (btnS) { btnS.style.background = isTim ? 'transparent' : 'rgba(212,168,83,0.2)'; btnS.style.color = isTim ? 'rgba(255,255,255,0.4)' : '#D4A853'; }
+  if (btnT) { btnT.style.background = isTim ? 'rgba(212,168,83,0.2)' : 'transparent'; btnT.style.color = isTim ? '#D4A853' : 'rgba(255,255,255,0.4)'; }
+
+  // Toggle sub-sections
+  const sS = document.getElementById('sek-akt-saya');
+  const sT = document.getElementById('sek-akt-tim');
+  if (sS) sS.style.display = isTim ? 'none' : 'block';
+  if (sT) sT.style.display = isTim ? 'block' : 'none';
+
+  if (isTim) loadAktivitasTim();
+  else loadAktivitasHarian();
 }
 
 function navigateAktivitasDate(delta) {
   const d = _aktCurrentDate ? new Date(_aktCurrentDate) : new Date();
   d.setDate(d.getDate() + delta);
   _aktCurrentDate = d.toISOString().slice(0, 10);
-  loadAktivitasHarian();
+  if (_aktSubTab === 'tim') loadAktivitasTim();
+  else loadAktivitasHarian();
 }
 
 async function loadAktivitasHarian() {
@@ -1878,6 +1909,85 @@ function renderAktivitasHarian(data) {
   }).join('');
 }
 
+async function loadAktivitasTim() {
+  if (!_aktCurrentDate) _aktCurrentDate = new Date().toISOString().slice(0, 10);
+
+  // Update date label (sama seperti loadAktivitasHarian)
+  const dateObj   = new Date(_aktCurrentDate + 'T00:00:00');
+  const today     = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const tomorrow  = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const labelMap  = { [today]: 'Hari Ini', [yesterday]: 'Kemarin', [tomorrow]: 'Besok' };
+  const dayLabel  = labelMap[_aktCurrentDate] || dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+  const subLabel  = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  const labelEl = document.getElementById('aktivitas-date-label');
+  const subEl   = document.getElementById('aktivitas-date-sub');
+  if (labelEl) labelEl.textContent = dayLabel;
+  if (subEl)   subEl.textContent   = _aktCurrentDate === today ? subLabel : '';
+
+  const list = document.getElementById('aktivitas-tim-list');
+  if (!list) return;
+  list.innerHTML = '<div class="skeleton" style="height:64px;border-radius:12px"></div>'.repeat(2);
+
+  try {
+    const res  = await API.get(`/aktivitas/tim?tanggal=${_aktCurrentDate}`);
+    const data = res.data || [];
+    renderAktivitasTim(data);
+  } catch (e) {
+    list.innerHTML = `<div style="text-align:center;padding:30px;color:rgba(239,68,68,0.7);font-size:13px">Gagal memuat aktivitas tim</div>`;
+  }
+}
+
+function renderAktivitasTim(data) {
+  const list = document.getElementById('aktivitas-tim-list');
+  if (!list) return;
+
+  if (!data.length) {
+    list.innerHTML = `
+      <div style="text-align:center;padding:40px;color:rgba(255,255,255,0.25)">
+        <i class="fa-solid fa-users" style="font-size:32px;margin-bottom:12px;opacity:0.4"></i>
+        <p style="font-size:13px;margin:0">Belum ada aktivitas tim hari ini</p>
+      </div>`;
+    return;
+  }
+
+  // Group by agen
+  const byAgen = {};
+  data.forEach(item => {
+    const key = item.Agen_ID || 'unknown';
+    if (!byAgen[key]) byAgen[key] = { nama: item.Agen_Nama || '?', items: [] };
+    byAgen[key].items.push(item);
+  });
+
+  const isManager = ['superadmin','principal','kantor','admin','business_manager'].includes(STATE.user?.role);
+
+  list.innerHTML = Object.values(byAgen).map(group => {
+    const initial = group.nama.charAt(0).toUpperCase();
+    const aktivitasHtml = group.items.map(item => {
+      const timeStr = item.Created_At ? new Date(item.Created_At).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
+      return `
+        <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start">
+          <span style="font-size:11px;color:rgba(255,255,255,0.3);flex-shrink:0;padding-top:2px">${timeStr}</span>
+          <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.5;margin:0;word-break:break-word;flex:1">${escapeHtml(item.Deskripsi||'')}</p>
+        </div>`;
+    }).join('');
+
+    return `
+      <div style="background:#131F38;border:1px solid rgba(255,255,255,0.06);border-radius:14px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.05)">
+          <div style="width:32px;height:32px;border-radius:50%;background:rgba(212,168,83,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <span style="font-size:13px;font-weight:700;color:#D4A853">${escapeHtml(initial)}</span>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:#fff">${escapeHtml(group.nama)}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.3)">${group.items.length} aktivitas</div>
+          </div>
+        </div>
+        <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px">${aktivitasHtml}</div>
+      </div>`;
+  }).join('');
+}
+
 async function submitAddAktivitas() {
   const deskripsi = document.getElementById('ak-deskripsi')?.value?.trim();
   const tanggal   = document.getElementById('ak-tanggal')?.value || new Date().toISOString().slice(0, 10);
@@ -1892,7 +2002,7 @@ async function submitAddAktivitas() {
     showToast('✅ Aktivitas berhasil disimpan', 'success');
     closeModal('modal-add-aktivitas');
     document.getElementById('ak-deskripsi').value = '';
-    // Jika sedang di tab aktivitas dengan tanggal yg sama, reload
+    // Reload saya tab jika tanggal cocok
     if (_aktMainTab === 'aktivitas' && _aktCurrentDate === tanggal) loadAktivitasHarian();
   } catch (e) {
     showToast('Gagal menyimpan: ' + e.message, 'error');

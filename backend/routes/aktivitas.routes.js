@@ -10,8 +10,51 @@ const express  = require('express');
 const router   = express.Router();
 const { authMiddleware } = require('../middleware/auth.middleware');
 const service  = require('../services/aktivitas.service');
+const sheetsService = require('../services/sheets.service');
+const { SHEETS, COLUMNS } = require('../config/sheets.config');
 
 router.use(authMiddleware);
+
+// GET /aktivitas/tim — aktivitas tim untuk BM / Principal / Kantor
+// Query: tanggal=YYYY-MM-DD | week_start=YYYY-MM-DD&week_end=YYYY-MM-DD
+router.get('/tim', async (req, res) => {
+  try {
+    const { role, id } = req.user;
+    const { tanggal, week_start, week_end } = req.query;
+
+    if (!['business_manager', 'principal', 'kantor', 'superadmin'].includes(role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak' });
+    }
+
+    let agenIds = null; // null = semua (kantor / superadmin lihat semua)
+
+    if (role === 'business_manager' || role === 'principal') {
+      const rows = await sheetsService.getRange(SHEETS.TEAMS);
+      if (rows.length < 2) return res.json({ success: true, data: [] });
+
+      const [, ...teamRows] = rows;
+      const myTeams = teamRows
+        .map(row => COLUMNS.TEAMS.reduce((o, c, i) => { o[c] = row[i] || ''; return o; }, {}))
+        .filter(t => t.Team_ID && t.Status === 'Aktif')
+        .filter(t => role === 'business_manager' ? t.BM_ID === id : t.Principal_ID === id);
+
+      if (myTeams.length === 0) return res.json({ success: true, data: [] });
+
+      const idSet = new Set();
+      myTeams.forEach(t => {
+        try { JSON.parse(t.Member_IDs || '[]').forEach(mid => idSet.add(mid)); } catch {}
+        if (t.BM_ID) idSet.add(t.BM_ID);
+      });
+      agenIds = [...idSet];
+      if (agenIds.length === 0) return res.json({ success: true, data: [] });
+    }
+
+    const data = await service.getAll({ agenIds, tanggal, week_start, week_end });
+    res.json({ success: true, data });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
 
 // GET /aktivitas
 // Query: tanggal=YYYY-MM-DD | week_start=YYYY-MM-DD&week_end=YYYY-MM-DD | agen_id=xxx

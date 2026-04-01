@@ -348,8 +348,8 @@
 
     <!-- ── SECTION: AKTIVITAS HARIAN ── -->
     <div id="section-aktivitas" style="display:none">
-      <!-- Date Navigator -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <!-- Date Navigator (shared untuk Saya & Tim) -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <button onclick="navigateAktivitasDate(-1)" style="width:36px;height:36px;border-radius:50%;background:#131F38;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);cursor:pointer;font-size:14px">
           <i class="fa-solid fa-chevron-left"></i>
         </button>
@@ -361,16 +361,37 @@
           <i class="fa-solid fa-chevron-right"></i>
         </button>
       </div>
-      <!-- Tombol tambah aktivitas -->
-      <button onclick="openModal('modal-add-aktivitas')"
-        style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:rgba(212,168,83,0.12);border:1px dashed rgba(212,168,83,0.4);border-radius:12px;color:#D4A853;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px"
-        onmouseenter="this.style.background='rgba(212,168,83,0.2)'" onmouseleave="this.style.background='rgba(212,168,83,0.12)'">
-        <i class="fa-solid fa-plus-circle"></i> Tambah Aktivitas Hari Ini
-      </button>
-      <!-- List aktivitas -->
-      <div id="aktivitas-list" style="display:flex;flex-direction:column;gap:8px">
-        <div class="skeleton" style="height:64px;border-radius:12px"></div>
-        <div class="skeleton" style="height:64px;border-radius:12px"></div>
+      <!-- Sub-tabs: Saya | Tim (hanya tampil untuk BM / Principal / Kantor, diatur via JS) -->
+      <div id="akt-subtab-container" style="display:none;flex-direction:row;gap:4px;background:#131F38;border-radius:12px;padding:3px;margin-bottom:12px">
+        <button id="akt-sub-saya" onclick="setAktSubTab('saya')"
+          style="flex:1;padding:8px;border-radius:9px;background:rgba(212,168,83,0.2);color:#D4A853;font-size:12px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+          <i class="fa-solid fa-user"></i> Saya
+        </button>
+        <button id="akt-sub-tim" onclick="setAktSubTab('tim')"
+          style="flex:1;padding:8px;border-radius:9px;background:transparent;color:rgba(255,255,255,0.4);font-size:12px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+          <i class="fa-solid fa-users"></i> Tim
+        </button>
+      </div>
+      <!-- Sub-section: Saya -->
+      <div id="sek-akt-saya">
+        <!-- Tombol tambah aktivitas -->
+        <button onclick="openModal('modal-add-aktivitas')"
+          style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:rgba(212,168,83,0.12);border:1px dashed rgba(212,168,83,0.4);border-radius:12px;color:#D4A853;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px"
+          onmouseenter="this.style.background='rgba(212,168,83,0.2)'" onmouseleave="this.style.background='rgba(212,168,83,0.12)'">
+          <i class="fa-solid fa-plus-circle"></i> Tambah Aktivitas Hari Ini
+        </button>
+        <!-- List aktivitas sendiri -->
+        <div id="aktivitas-list" style="display:flex;flex-direction:column;gap:8px">
+          <div class="skeleton" style="height:64px;border-radius:12px"></div>
+          <div class="skeleton" style="height:64px;border-radius:12px"></div>
+        </div>
+      </div>
+      <!-- Sub-section: Tim -->
+      <div id="sek-akt-tim" style="display:none">
+        <div id="aktivitas-tim-list" style="display:flex;flex-direction:column;gap:12px">
+          <div class="skeleton" style="height:64px;border-radius:12px"></div>
+          <div class="skeleton" style="height:64px;border-radius:12px"></div>
+        </div>
       </div>
     </div>
 
