@@ -125,6 +125,31 @@ class SheetsService {
     }
   }
 
+  // ── Ensure Sheet Tab Exists (buat jika belum ada) ─────────
+  async ensureSheet(sheetName, headers = []) {
+    try {
+      const authClient = await getGoogleAuth().getClient();
+      const sheetsApi  = google.sheets({ version: 'v4', auth: authClient });
+      const meta = await sheetsApi.spreadsheets.get({ spreadsheetId: this.spreadsheetId });
+      const exists = meta.data.sheets.some(s => s.properties.title === sheetName);
+      if (!exists) {
+        await sheetsApi.spreadsheets.batchUpdate({
+          spreadsheetId: this.spreadsheetId,
+          requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] },
+        });
+        console.log(`✅ [Sheets] Tab "${sheetName}" berhasil dibuat`);
+        if (headers.length) {
+          await this.updateRow(sheetName, 1, headers);
+          console.log(`✅ [Sheets] Headers "${sheetName}" berhasil diisi`);
+        }
+      }
+      return true;
+    } catch (e) {
+      console.warn(`[Sheets] ensureSheet "${sheetName}" gagal:`, e.message);
+      return false;
+    }
+  }
+
   async deleteRow(sheetName, rowIndex) {
     const authClient = await getGoogleAuth().getClient();
     const sheetsApi = google.sheets({ version: 'v4', auth: authClient });

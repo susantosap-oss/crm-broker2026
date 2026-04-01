@@ -140,18 +140,21 @@ async function migrateHeaders() {
     }
   }
 
-  // Ensure new sheets have headers
+  // Ensure new sheets exist (buat tab + headers jika belum ada)
   for (const { sheet, cols } of [
-    { sheet: SHEETS.TEAMS,           cols: COLUMNS.TEAMS },
-    { sheet: SHEETS.NOTIFICATIONS,   cols: COLUMNS.NOTIFICATIONS },
-    { sheet: SHEETS.KOMISI_REQUEST,  cols: COLUMNS.KOMISI_REQUEST },
-    { sheet: SHEETS.LAPORAN_HARIAN,  cols: COLUMNS.LAPORAN_HARIAN },
-    { sheet: SHEETS.PROJECTS,        cols: COLUMNS.PROJECTS },
-    { sheet: SHEETS.PROJECT_REFS,    cols: COLUMNS.PROJECT_REFS },
-    { sheet: SHEETS.LISTING_AGENTS,  cols: COLUMNS.LISTING_AGENTS },
+    { sheet: SHEETS.TEAMS,            cols: COLUMNS.TEAMS },
+    { sheet: SHEETS.NOTIFICATIONS,    cols: COLUMNS.NOTIFICATIONS },
+    { sheet: SHEETS.KOMISI_REQUEST,   cols: COLUMNS.KOMISI_REQUEST },
+    { sheet: SHEETS.LAPORAN_HARIAN,   cols: COLUMNS.LAPORAN_HARIAN },
+    { sheet: SHEETS.PROJECTS,         cols: COLUMNS.PROJECTS },
+    { sheet: SHEETS.PROJECT_REFS,     cols: COLUMNS.PROJECT_REFS },
+    { sheet: SHEETS.LISTING_AGENTS,   cols: COLUMNS.LISTING_AGENTS },
     { sheet: SHEETS.AKTIVITAS_HARIAN, cols: COLUMNS.AKTIVITAS_HARIAN },
   ]) {
     try {
+      // Pastikan tab ada di spreadsheet (buat jika belum)
+      await sheetsService.ensureSheet(sheet, cols);
+      // Jika tab sudah ada tapi headers kosong, isi headers
       const rows = await sheetsService.getRange(sheet);
       if (!rows?.[0] || rows[0].length === 0) {
         await sheetsService.updateRow(sheet, 1, cols);
