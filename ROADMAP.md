@@ -7,8 +7,8 @@
 
 ## FITUR 1 — AKTIVITAS HARIAN & ROLE KANTOR ✅ DONE
 
-**Deploy:** `crm-broker-properti-00215-6q4` · asia-southeast1
-**Commit:** `5f5d870`
+**Deploy:** `crm-broker-properti-00216-7sl` · asia-southeast1
+**Commit terakhir:** `7aa1d4a`
 
 ### Yang sudah dikerjakan:
 - Sheet baru `AKTIVITAS_HARIAN` (auto-create saat startup via `ensureSheet()`)
@@ -19,6 +19,7 @@
 - Aktivitas Harian: navigasi per hari ← →, input via modal + FAB
 - Manajemen User: role "Kantor" tersedia di form Add/Edit
 - **web-mansion2026:** scoring P8 Aktivitas Harian (10 poin/aktivitas, editable di Admin Dashboard)
+- **Tab Tim** — BM lihat aktivitas anggota timnya, Principal/Kantor lihat seluruh tim kantor (sub-tab Saya | Tim, grouped by agen)
 
 ---
 
