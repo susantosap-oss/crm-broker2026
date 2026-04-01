@@ -17,7 +17,7 @@ const { authMiddleware, requireRole, requireMinRole } = require('../middleware/a
 const sheetsService = require('../services/sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 
-const VALID_ROLES = ['superadmin', 'principal', 'business_manager', 'admin', 'agen', 'koordinator'];
+const VALID_ROLES = ['superadmin', 'principal', 'kantor', 'business_manager', 'admin', 'agen', 'koordinator'];
 
 function rowToAgent(row, headers) {
   const cols = headers || COLUMNS.AGENTS;
@@ -121,8 +121,8 @@ router.post('/', requireMinRole('admin'), async (req, res) => {
     if (!VALID_ROLES.includes(targetRole))
       return res.status(400).json({ success: false, message: `Role tidak valid. Pilihan: ${VALID_ROLES.join(', ')}` });
 
-    // Hanya superadmin yang bisa buat principal ke atas
-    if (['principal', 'superadmin'].includes(targetRole) && req.user.role !== 'superadmin')
+    // Hanya superadmin yang bisa buat principal/kantor ke atas
+    if (['principal', 'kantor', 'superadmin'].includes(targetRole) && req.user.role !== 'superadmin')
       return res.status(403).json({ success: false, message: 'Hanya superadmin yang bisa membuat role ini' });
 
     const rows = await sheetsService.getRange(SHEETS.AGENTS);
@@ -169,6 +169,7 @@ router.get('/offices', async (req, res) => {
     const map = {};
     agents.forEach(a => {
       if (a.Status === 'Nonaktif') return;
+      if (a.Role === 'kantor') return; // Role kantor tidak ditampilkan di Member (seperti admin)
       const kantor = a.Nama_Kantor || 'MANSION : Kantor Pusat';
       if (!map[kantor]) map[kantor] = { nama_kantor: kantor, members: [] };
       map[kantor].members.push({

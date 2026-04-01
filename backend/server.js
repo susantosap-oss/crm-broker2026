@@ -61,6 +61,7 @@ app.use('/api/v1/projects',  require('./routes/projects.routes'));
 app.use('/api/v1/laporan',       require('./routes/laporan.routes'));
 app.use('/api/v1/share-log',     require('./routes/share-log.routes'));
 app.use('/api/v1/listing-agents', require('./routes/listing_agents.routes'));
+app.use('/api/v1/aktivitas',      require('./routes/aktivitas.routes'));
 
 // Config endpoints
 app.get('/api/v1/config/cloudinary', (req, res) => {
@@ -148,6 +149,7 @@ async function migrateHeaders() {
     { sheet: SHEETS.PROJECTS,        cols: COLUMNS.PROJECTS },
     { sheet: SHEETS.PROJECT_REFS,    cols: COLUMNS.PROJECT_REFS },
     { sheet: SHEETS.LISTING_AGENTS,  cols: COLUMNS.LISTING_AGENTS },
+    { sheet: SHEETS.AKTIVITAS_HARIAN, cols: COLUMNS.AKTIVITAS_HARIAN },
   ]) {
     try {
       const rows = await sheetsService.getRange(sheet);
@@ -165,7 +167,7 @@ async function migrateHeaders() {
 app.listen(PORT, () => {
   console.log(`\n🏢 CRM Broker Properti v2.0`);
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`👥 Roles: superadmin | principal | business_manager | admin | agen`);
+  console.log(`👥 Roles: superadmin | principal | kantor | business_manager | admin | agen`);
   console.log(`📊 Google Sheets SSoT connected\n`);
 
   // Jalankan migrasi di background — tidak blocking startup Cloud Run

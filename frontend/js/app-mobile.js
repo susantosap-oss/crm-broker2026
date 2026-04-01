@@ -1773,6 +1773,146 @@ function renderUpcomingTasks(tasks) {
 // ─────────────────────────────────────────────────────────
 // TASKS PAGE
 // ─────────────────────────────────────────────────────────
+// AKTIVITAS HARIAN
+// ─────────────────────────────────────────────────────────
+let _aktMainTab     = 'jadwal';   // 'jadwal' | 'aktivitas'
+let _aktCurrentDate = '';         // YYYY-MM-DD, default: today
+
+function setMainAktivitasTab(tab) {
+  _aktMainTab = tab;
+  const isJadwal = tab === 'jadwal';
+
+  // Toggle main tab buttons
+  const btnJ = document.getElementById('main-tab-jadwal');
+  const btnA = document.getElementById('main-tab-aktivitas');
+  if (btnJ) { btnJ.style.background = isJadwal ? 'rgba(212,168,83,0.2)' : 'transparent'; btnJ.style.color = isJadwal ? '#D4A853' : 'rgba(255,255,255,0.4)'; }
+  if (btnA) { btnA.style.background = isJadwal ? 'transparent' : 'rgba(212,168,83,0.2)'; btnA.style.color = isJadwal ? 'rgba(255,255,255,0.4)' : '#D4A853'; }
+
+  // Toggle sections
+  const sJ = document.getElementById('section-jadwal');
+  const sA = document.getElementById('section-aktivitas');
+  if (sJ) sJ.style.display = isJadwal ? 'block' : 'none';
+  if (sA) sA.style.display = isJadwal ? 'none' : 'block';
+
+  if (!isJadwal) loadAktivitasHarian();
+}
+
+function navigateAktivitasDate(delta) {
+  const d = _aktCurrentDate ? new Date(_aktCurrentDate) : new Date();
+  d.setDate(d.getDate() + delta);
+  _aktCurrentDate = d.toISOString().slice(0, 10);
+  loadAktivitasHarian();
+}
+
+async function loadAktivitasHarian() {
+  if (!_aktCurrentDate) _aktCurrentDate = new Date().toISOString().slice(0, 10);
+
+  // Update date label
+  const dateObj  = new Date(_aktCurrentDate + 'T00:00:00');
+  const today    = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const tomorrow  = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+  const labelMap = { [today]: 'Hari Ini', [yesterday]: 'Kemarin', [tomorrow]: 'Besok' };
+  const dayLabel = labelMap[_aktCurrentDate] || dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+  const subLabel = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const labelEl = document.getElementById('aktivitas-date-label');
+  const subEl   = document.getElementById('aktivitas-date-sub');
+  if (labelEl) labelEl.textContent = dayLabel;
+  if (subEl)   subEl.textContent   = _aktCurrentDate === today ? subLabel : '';
+
+  const list = document.getElementById('aktivitas-list');
+  if (!list) return;
+  list.innerHTML = '<div class="skeleton" style="height:64px;border-radius:12px"></div>'.repeat(2);
+
+  try {
+    const res  = await API.get(`/aktivitas?tanggal=${_aktCurrentDate}`);
+    const data = res.data || [];
+    renderAktivitasHarian(data);
+  } catch (e) {
+    list.innerHTML = `<div style="text-align:center;padding:30px;color:rgba(239,68,68,0.7);font-size:13px">Gagal memuat aktivitas</div>`;
+  }
+}
+
+function renderAktivitasHarian(data) {
+  const list = document.getElementById('aktivitas-list');
+  if (!list) return;
+
+  if (!data.length) {
+    list.innerHTML = `
+      <div style="text-align:center;padding:40px;color:rgba(255,255,255,0.25)">
+        <i class="fa-solid fa-clipboard" style="font-size:32px;margin-bottom:12px;opacity:0.4"></i>
+        <p style="font-size:13px;margin:0">Belum ada aktivitas hari ini</p>
+        <p style="font-size:11px;margin:6px 0 0;opacity:0.6">Tap tombol di atas untuk menambahkan</p>
+      </div>`;
+    return;
+  }
+
+  const isManager = ['superadmin','principal','kantor','admin','business_manager'].includes(STATE.user?.role);
+
+  list.innerHTML = data.map(item => {
+    const timeStr = item.Created_At ? new Date(item.Created_At).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
+    const isOwn   = item.Agen_ID === STATE.user?.id;
+    const canDel  = isOwn || isManager;
+
+    return `
+      <div style="background:#131F38;border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:14px 16px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:28px;height:28px;border-radius:50%;background:rgba(212,168,83,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <span style="font-size:12px;font-weight:700;color:#D4A853">${escapeHtml((item.Agen_Nama||'?').charAt(0).toUpperCase())}</span>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.85)">${escapeHtml(item.Agen_Nama||'')}</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.3)">${timeStr}</div>
+            </div>
+          </div>
+          ${canDel ? `<button onclick="deleteAktivitas('${escapeHtml(item.ID)}')"
+            style="width:26px;height:26px;border-radius:50%;background:rgba(239,68,68,0.08);border:none;color:rgba(239,68,68,0.5);cursor:pointer;font-size:11px;flex-shrink:0"
+            onmouseenter="this.style.background='rgba(239,68,68,0.2)'" onmouseleave="this.style.background='rgba(239,68,68,0.08)'">
+            <i class="fa-solid fa-trash-alt"></i></button>` : ''}
+        </div>
+        <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.6;margin:0;word-break:break-word">${escapeHtml(item.Deskripsi||'')}</p>
+      </div>`;
+  }).join('');
+}
+
+async function submitAddAktivitas() {
+  const deskripsi = document.getElementById('ak-deskripsi')?.value?.trim();
+  const tanggal   = document.getElementById('ak-tanggal')?.value || new Date().toISOString().slice(0, 10);
+
+  if (!deskripsi) { showToast('Deskripsi aktivitas wajib diisi', 'error'); return; }
+
+  const btn = document.querySelector('#modal-add-aktivitas .btn-gold');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...'; }
+
+  try {
+    await API.post('/aktivitas', { deskripsi, tanggal });
+    showToast('✅ Aktivitas berhasil disimpan', 'success');
+    closeModal('modal-add-aktivitas');
+    document.getElementById('ak-deskripsi').value = '';
+    // Jika sedang di tab aktivitas dengan tanggal yg sama, reload
+    if (_aktMainTab === 'aktivitas' && _aktCurrentDate === tanggal) loadAktivitasHarian();
+  } catch (e) {
+    showToast('Gagal menyimpan: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan'; }
+  }
+}
+
+async function deleteAktivitas(id) {
+  if (!confirm('Hapus aktivitas ini?')) return;
+  try {
+    await API.delete(`/aktivitas/${id}`);
+    showToast('Aktivitas dihapus', 'success');
+    loadAktivitasHarian();
+  } catch (e) {
+    showToast('Gagal hapus: ' + e.message, 'error');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
 let _currentTaskTab = 'today';
 
 async function loadTasks() { setTaskTab(_currentTaskTab); }
@@ -2267,7 +2407,7 @@ async function navigateTo(page) {
     b.className = b.id === `nav-${page}` ? 'nav-btn active' : 'nav-btn';
   });
 
-  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Jadwal & Tasks', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti' };
+  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Aktivitas', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti' };
   setEl('page-title', titles[page] || page);
   STATE.currentPage = page;
 
@@ -2295,7 +2435,14 @@ async function navigateTo(page) {
     }
     await loadLeads();
   }
-  if (page === 'tasks')     await loadTasks();
+  if (page === 'tasks') {
+    // Init date dan main tab
+    if (!_aktCurrentDate) _aktCurrentDate = new Date().toISOString().slice(0, 10);
+    const akTanggalEl = document.getElementById('ak-tanggal');
+    if (akTanggalEl && !akTanggalEl.value) akTanggalEl.value = _aktCurrentDate;
+    setMainAktivitasTab(_aktMainTab || 'jadwal');
+    await loadTasks();
+  }
   if (page === 'team')      await loadTeamPage();
   if (page === 'primary')   await loadPrimaryPage();
   if (page === 'member')    await loadMemberPage();
@@ -2488,7 +2635,7 @@ function officeCard(office) {
 }
 
 function memberRow(m) {
-  const roleLabel = { agen:'Agen', admin:'Admin', business_manager:'BM', principal:'Principal', superadmin:'Super Admin' }[m.role] || m.role;
+  const roleLabel = { agen:'Agen', admin:'Admin', kantor:'Kantor', business_manager:'BM', principal:'Principal', superadmin:'Super Admin' }[m.role] || m.role;
   const statusColor = m.status === 'Aktif' ? '#4ade80' : m.status === 'Cuti' ? '#facc15' : '#6b7280';
   const initial = (m.nama||'?').charAt(0).toUpperCase();
   const foto = m.foto_url
@@ -2641,6 +2788,11 @@ function openModal(id) {
   const el = document.getElementById(id); if (!el) return;
   el.style.display = 'block'; el.classList.add('open');
   el.scrollTop = 0; // selalu mulai dari atas
+  // Set default date for aktivitas modal
+  if (id === 'modal-add-aktivitas') {
+    const tanggalEl = document.getElementById('ak-tanggal');
+    if (tanggalEl) tanggalEl.value = _aktCurrentDate || new Date().toISOString().slice(0, 10);
+  }
 }
 
 function closeModal(id) {
@@ -2793,7 +2945,7 @@ async function loadUserList() {
     const res = await API.get('/agents');
     _userList = res.data || [];
     if (!_userList.length) { el.innerHTML = '<p style="text-align:center;color:rgba(255,255,255,0.3);font-size:12px;padding:20px">Belum ada user</p>'; return; }
-    const roleColor = { superadmin:'#EF4444', principal:'#F97316', business_manager:'#A855F7', admin:'#D4A853', agen:'#4ade80', koordinator:'#22d3ee' };
+    const roleColor = { superadmin:'#EF4444', principal:'#F97316', kantor:'#fb923c', business_manager:'#A855F7', admin:'#D4A853', agen:'#4ade80', koordinator:'#22d3ee' };
     const statusColor = { Aktif:'#4ade80', Cuti:'#9ca3af', Nonaktif:'#ef4444' };
     el.innerHTML = _userList.map(u => `
       <div style="display:flex;align-items:center;gap:12px;background:#131F38;border-radius:14px;padding:12px 14px;border:1px solid rgba(255,255,255,0.06)">
@@ -2807,7 +2959,7 @@ async function loadUserList() {
           </div>
           <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px">${escapeHtml(u.Email||'')}</div>
           <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
-            <span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${roleColor[u.Role]||'#6B7280'}18;color:${roleColor[u.Role]||'#6B7280'};font-weight:600">${{ superadmin:'Super Admin', principal:'Principal', business_manager:'Business Mgr', admin:'Admin', agen:'Agen', koordinator:'Koordinator' }[u.Role] || u.Role || 'agen'}</span>
+            <span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${roleColor[u.Role]||'#6B7280'}18;color:${roleColor[u.Role]||'#6B7280'};font-weight:600">${{ superadmin:'Super Admin', principal:'Principal', kantor:'Kantor', business_manager:'Business Mgr', admin:'Admin', agen:'Agen', koordinator:'Koordinator' }[u.Role] || u.Role || 'agen'}</span>
             <span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${statusColor[u.Status]||'#6B7280'}18;color:${statusColor[u.Status]||'#6B7280'};font-weight:600">● ${u.Status||'Aktif'}</span>
             ${u.Telegram_ID ? '<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(43,123,255,0.12);color:#60a5fa">TG ✓</span>' : ''}
             ${u.Nomer_LSP ? `<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(37,99,235,0.12);color:#60a5fa;font-weight:600">LSP ✓</span>` : ''}
@@ -2911,30 +3063,30 @@ async function doDeleteUser(id, nama) {
 
 // Tampilkan menu Manajemen User hanya untuk admin
 function checkAdminMenu() {
-  const _pRoles = ['superadmin','principal','admin','agen','business_manager','koordinator'];
+  const _pRoles = ['superadmin','principal','kantor','admin','agen','business_manager','koordinator'];
   if (_pRoles.includes(STATE.user?.role)) {
     document.getElementById('nav-primary')?.style.removeProperty('display');
     document.getElementById('sb-primary')?.style.removeProperty('display');
   }
-  if (['superadmin','principal','admin'].includes(STATE.user?.role)) {
+  if (['superadmin','principal','kantor','admin'].includes(STATE.user?.role)) {
     const _ab = document.getElementById('btn-add-project');
     if (_ab) _ab.style.display = 'flex';
   }
   const role = STATE.user?.role;
   const btn = document.getElementById('sidebar-user-mgmt');
-  if (btn && ['admin','principal','superadmin'].includes(role)) btn.style.display = 'flex';
+  if (btn && ['admin','principal','kantor','superadmin'].includes(role)) btn.style.display = 'flex';
   const btnTeam = document.getElementById('sidebar-team-mgmt');
-  if (btnTeam && ['principal','superadmin'].includes(role)) btnTeam.style.display = 'flex';
+  if (btnTeam && ['principal','kantor','superadmin'].includes(role)) btnTeam.style.display = 'flex';
   const navTeam = document.getElementById('nav-team');
-  if (navTeam && ['principal','business_manager','superadmin'].includes(role)) navTeam.style.display = 'flex';
+  if (navTeam && ['principal','kantor','business_manager','superadmin'].includes(role)) navTeam.style.display = 'flex';
   const roleBadge = document.getElementById('sidebar-role-badge');
-  const roleLabel = { superadmin:'Super Admin', principal:'Principal', business_manager:'Business Manager', admin:'Admin', agen:'Agen', koordinator:'Koordinator' };
+  const roleLabel = { superadmin:'Super Admin', principal:'Principal', kantor:'Kantor', business_manager:'Business Manager', admin:'Admin', agen:'Agen', koordinator:'Koordinator' };
   if (roleBadge) roleBadge.textContent = roleLabel[role] || role;
 
-  // Admin tidak bisa akses Leads — sembunyikan nav & sidebar
+  // Admin & kantor tidak bisa akses Leads — sembunyikan nav & sidebar
   const navLeads = document.getElementById('nav-leads');
   const sbLeads  = document.getElementById('sb-leads');
-  if (role === 'admin') {
+  if (['admin','kantor'].includes(role)) {
     if (navLeads) navLeads.style.display = 'none';
     if (sbLeads)  sbLeads.style.display  = 'none';
   } else {

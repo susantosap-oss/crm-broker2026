@@ -23,23 +23,24 @@ const { google } = require('googleapis');
 
 // ── Sheet Tab Names ────────────────────────────────────────
 const SHEETS = {
-  LISTING:         'LISTING',
-  LEADS:           'LEADS',
-  AGENTS:          'AGENTS',
-  TEAMS:           'TEAMS',
-  NOTIFICATIONS:   'NOTIFICATIONS',
-  ACTIVITY_LOG:    'ACTIVITY_LOG',
-  WA_QUEUE:        'WA_QUEUE',
-  TASKS:           'TASKS',
-  PIPELINE_STAGES: 'PIPELINE_STAGES',
-  CONFIG:          'CONFIG',
-  KOMISI_REQUEST:  'KOMISI_REQUEST',
-  LAPORAN_HARIAN:  'LAPORAN_HARIAN',
-  FAVOURITES:      'FAVOURITES',
-  PROJECTS:      'PROJECTS',
-  PROJECT_REFS:  'PROJECT_REFS',
-  SHARE_LOG:       'SHARE_LOG',
-  LISTING_AGENTS:  'LISTING_AGENTS',
+  LISTING:           'LISTING',
+  LEADS:             'LEADS',
+  AGENTS:            'AGENTS',
+  TEAMS:             'TEAMS',
+  NOTIFICATIONS:     'NOTIFICATIONS',
+  ACTIVITY_LOG:      'ACTIVITY_LOG',
+  WA_QUEUE:          'WA_QUEUE',
+  TASKS:             'TASKS',
+  PIPELINE_STAGES:   'PIPELINE_STAGES',
+  CONFIG:            'CONFIG',
+  KOMISI_REQUEST:    'KOMISI_REQUEST',
+  LAPORAN_HARIAN:    'LAPORAN_HARIAN',
+  FAVOURITES:        'FAVOURITES',
+  PROJECTS:          'PROJECTS',
+  PROJECT_REFS:      'PROJECT_REFS',
+  SHARE_LOG:         'SHARE_LOG',
+  LISTING_AGENTS:    'LISTING_AGENTS',
+  AKTIVITAS_HARIAN:  'AKTIVITAS_HARIAN',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -134,7 +135,7 @@ const COLUMNS = {
     'Email',              // C
     'Password_Hash',      // D
     'No_WA',              // E
-    'Role',               // F  superadmin|principal|business_manager|agen|admin
+    'Role',               // F  superadmin|principal|business_manager|agen|admin|kantor
     'Status',             // G
     'Foto_URL',           // H
     'Join_Date',          // I
@@ -149,6 +150,7 @@ const COLUMNS = {
     'Nama_Kantor',        // R  ★ Nama kantor (format: MANSION : {nama})
     'Parent_Kantor',      // S  ★ Kantor induk (e.g. MANSION : Citraland untuk Malang)
     'Nomer_LSP',          // T  ★ Nomor Lembaga Sertifikasi Profesi
+    'Aktivitas_Count',    // U  ★ Jumlah aktivitas harian (untuk scoring)
   ],
 
   // ★ NEW SHEET
@@ -348,6 +350,16 @@ const COLUMNS = {
     'Notes',        // H  opsional: "Promoted from co_own by Principal [X]"
   ],
 
+  // ★ AKTIVITAS HARIAN — Input harian agen
+  AKTIVITAS_HARIAN: [
+    'ID',           // A  UUID
+    'Tanggal',      // B  YYYY-MM-DD
+    'Agen_ID',      // C  FK ke AGENTS
+    'Agen_Nama',    // D  denormalized
+    'Deskripsi',    // E  teks aktivitas harian
+    'Created_At',   // F  ISO timestamp
+  ],
+
   PIPELINE_STAGES: [
     'Stage_ID',
     'Kode',
@@ -369,6 +381,7 @@ const COLUMNS = {
 const ROLES = {
   SUPERADMIN:       'superadmin',
   PRINCIPAL:        'principal',
+  KANTOR:           'kantor',           // ★ Role kantor: privilege = principal, hidden dari member
   BUSINESS_MANAGER: 'business_manager',
   AGEN:             'agen',
   ADMIN:            'admin',
@@ -379,6 +392,7 @@ const ROLES = {
 const ROLE_LEVEL = {
   superadmin:       5,
   principal:        4,
+  kantor:           4,  // ★ Sama level dengan principal; penerima webhook Meta Ads
   business_manager: 3,
   admin:            2,
   agen:             1,

@@ -317,8 +317,23 @@
     <!-- TASKS -->
     <div id="page-team" class="page" style="display:none;padding-bottom:80px"></div>
 
-  <div id="page-tasks" class="page" style="padding:16px">
-      <!-- H-2 Reminder Banner (Bug #11) -->
+  <div id="page-tasks" class="page" style="padding:16px;padding-bottom:100px">
+
+    <!-- ── Main Tab: Jadwal / Aktivitas Harian ── -->
+    <div style="display:flex;gap:4px;background:#131F38;border-radius:14px;padding:4px;margin-bottom:16px">
+      <button id="main-tab-jadwal" onclick="setMainAktivitasTab('jadwal')"
+        style="flex:1;padding:9px;border-radius:10px;background:rgba(212,168,83,0.2);color:#D4A853;font-size:12px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+        <i class="fa-solid fa-calendar-check"></i> Jadwal
+      </button>
+      <button id="main-tab-aktivitas" onclick="setMainAktivitasTab('aktivitas')"
+        style="flex:1;padding:9px;border-radius:10px;background:transparent;color:rgba(255,255,255,0.4);font-size:12px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+        <i class="fa-solid fa-pencil-alt"></i> Aktivitas Harian
+      </button>
+    </div>
+
+    <!-- ── SECTION: JADWAL ── -->
+    <div id="section-jadwal">
+      <!-- H-2 Reminder Banner -->
       <div id="upcoming-reminder-banner" style="display:none;margin-bottom:12px"></div>
       <div style="display:flex;gap:4px;background:#131F38;border-radius:14px;padding:4px;margin-bottom:16px">
         <button onclick="setTaskTab('today',this)" data-tab="today" style="flex:1;padding:8px;border-radius:10px;background:rgba(212,168,83,0.2);color:#D4A853;font-size:11px;font-weight:600;border:none;cursor:pointer">Hari Ini</button>
@@ -330,6 +345,36 @@
         <div class="skeleton" style="height:76px;border-radius:14px"></div>
       </div>
     </div>
+
+    <!-- ── SECTION: AKTIVITAS HARIAN ── -->
+    <div id="section-aktivitas" style="display:none">
+      <!-- Date Navigator -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <button onclick="navigateAktivitasDate(-1)" style="width:36px;height:36px;border-radius:50%;background:#131F38;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);cursor:pointer;font-size:14px">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <div style="text-align:center">
+          <div id="aktivitas-date-label" style="font-size:14px;font-weight:700;color:#fff">Hari Ini</div>
+          <div id="aktivitas-date-sub" style="font-size:11px;color:rgba(255,255,255,0.4)"></div>
+        </div>
+        <button onclick="navigateAktivitasDate(+1)" style="width:36px;height:36px;border-radius:50%;background:#131F38;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);cursor:pointer;font-size:14px">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+      <!-- Tombol tambah aktivitas -->
+      <button onclick="openModal('modal-add-aktivitas')"
+        style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:rgba(212,168,83,0.12);border:1px dashed rgba(212,168,83,0.4);border-radius:12px;color:#D4A853;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px"
+        onmouseenter="this.style.background='rgba(212,168,83,0.2)'" onmouseleave="this.style.background='rgba(212,168,83,0.12)'">
+        <i class="fa-solid fa-plus-circle"></i> Tambah Aktivitas Hari Ini
+      </button>
+      <!-- List aktivitas -->
+      <div id="aktivitas-list" style="display:flex;flex-direction:column;gap:8px">
+        <div class="skeleton" style="height:64px;border-radius:12px"></div>
+        <div class="skeleton" style="height:64px;border-radius:12px"></div>
+      </div>
+    </div>
+
+  </div>
 
   <section id="page-primary" class="page" style="display:none;padding:16px;overflow-y:auto;position:relative">
 
@@ -700,7 +745,7 @@
       <button class="nav-btn" id="nav-team" onclick="navigateTo('team')" style="display:none"><i class="fa-solid fa-users-gear"></i><span>Tim</span></button>
       <button class="nav-btn" id="nav-member" onclick="navigateTo('member')"><i class="fa-solid fa-building-user"></i><span>Member</span></button>
       <button class="nav-btn" id="nav-leads" onclick="navigateTo('leads')"><i class="fa-solid fa-users"></i><span>Leads</span></button>
-      <button class="nav-btn" id="nav-tasks" onclick="navigateTo('tasks')"><i class="fa-solid fa-calendar-check"></i><span>Jadwal</span></button>
+      <button class="nav-btn" id="nav-tasks" onclick="navigateTo('tasks')"><i class="fa-solid fa-clipboard-list"></i><span>Aktivitas</span></button>
     </div>
   </nav>
 
@@ -731,7 +776,7 @@
           <span style="margin-left:auto;font-size:10px;background:rgba(212,168,83,0.2);color:#D4A853;padding:2px 7px;border-radius:20px;font-weight:700">NEW</span>
         </a>
       <button id="sb-leads" onclick="navigateTo('leads');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-users" style="color:#a855f7;width:16px;text-align:center"></i><span>Manajemen Leads</span></button>
-      <button onclick="navigateTo('tasks');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-calendar-check" style="color:#22C55E;width:16px;text-align:center"></i><span>Jadwal & Tasks</span></button>
+      <button onclick="navigateTo('tasks');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-clipboard-list" style="color:#22C55E;width:16px;text-align:center"></i><span>Aktivitas</span></button>
       <button onclick="navigateTo('calculator');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'">
         <i class="fa-solid fa-calculator" style="color:#D4A853;width:16px;text-align:center"></i>
         <span>Kalkulator</span>
@@ -768,6 +813,7 @@
         <button onclick="closeQuickAdd();openModal('modal-add-listing')" style="display:flex;flex-direction:column;align-items:center;gap:10px;background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px 12px;cursor:pointer" onmouseenter="this.style.borderColor='rgba(43,123,255,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'"><div style="width:44px;height:44px;border-radius:14px;background:rgba(43,123,255,0.12);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-house-medical" style="color:#2B7BFF;font-size:18px"></i></div><span style="font-size:12px;font-weight:600;color:#fff">Listing Baru</span></button>
         <button onclick="closeQuickAdd();openModal('modal-add-lead')" style="display:flex;flex-direction:column;align-items:center;gap:10px;background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px 12px;cursor:pointer" onmouseenter="this.style.borderColor='rgba(168,85,247,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'"><div style="width:44px;height:44px;border-radius:14px;background:rgba(168,85,247,0.12);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-user-plus" style="color:#a855f7;font-size:18px"></i></div><span style="font-size:12px;font-weight:600;color:#fff">Lead Baru</span></button>
         <button onclick="closeQuickAdd();openModal('modal-add-task');populateTaskLeadDropdown()" style="display:flex;flex-direction:column;align-items:center;gap:10px;background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px 12px;cursor:pointer" onmouseenter="this.style.borderColor='rgba(34,197,94,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'"><div style="width:44px;height:44px;border-radius:14px;background:rgba(34,197,94,0.12);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-calendar-plus" style="color:#22C55E;font-size:18px"></i></div><span style="font-size:12px;font-weight:600;color:#fff">Jadwal Visit</span></button>
+        <button onclick="closeQuickAdd();openModal('modal-add-aktivitas')" style="display:flex;flex-direction:column;align-items:center;gap:10px;background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px 12px;cursor:pointer" onmouseenter="this.style.borderColor='rgba(212,168,83,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'"><div style="width:44px;height:44px;border-radius:14px;background:rgba(212,168,83,0.12);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-pencil-alt" style="color:#D4A853;font-size:18px"></i></div><span style="font-size:12px;font-weight:600;color:#fff">Aktivitas Harian</span></button>
         <button onclick="closeQuickAdd();openKomisiForm()" style="display:flex;flex-direction:column;align-items:center;gap:10px;background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px 12px;cursor:pointer" onmouseenter="this.style.borderColor='rgba(212,168,83,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'"><div style="width:44px;height:44px;border-radius:14px;background:rgba(212,168,83,0.12);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-money-bill-wave" style="color:#D4A853;font-size:18px"></i></div><span style="font-size:12px;font-weight:600;color:#fff">Request Komisi</span></button>
       </div>
     </div>
@@ -776,6 +822,35 @@
 </div><!-- /app -->
 
 <!-- ═══ MODALS ═══ -->
+
+<!-- MODAL: TAMBAH AKTIVITAS HARIAN -->
+<div id="modal-add-aktivitas" class="modal-overlay">
+  <div class="modal-sheet" style="max-width:480px">
+    <div class="mheader">
+      <div class="drag-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff"><i class="fa-solid fa-pencil-alt" style="color:#D4A853;margin-right:8px"></i>Aktivitas Harian</h3>
+        <button onclick="closeModal('modal-add-aktivitas')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="mbody" style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label class="form-label">Tanggal</label>
+        <input id="ak-tanggal" type="date" class="form-input"/>
+      </div>
+      <div>
+        <label class="form-label">Aktivitas Harian <span style="color:rgba(255,255,255,0.3);font-size:11px">(ceritakan kegiatan hari ini)</span></label>
+        <textarea id="ak-deskripsi" class="form-input" rows="5"
+          placeholder="Contoh: Follow up 3 leads baru via WA, kunjungi unit di Citraland bersama klien A, koordinasi dengan BM untuk listing baru..."
+          style="resize:none;line-height:1.6"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;padding-top:4px">
+        <button onclick="closeModal('modal-add-aktivitas')" class="btn-ghost" style="flex:1">Batal</button>
+        <button onclick="submitAddAktivitas()" class="btn-gold" style="flex:1"><i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- LISTING DETAIL (PR 3,7) -->
 <div id="modal-listing-detail" class="modal-overlay">
@@ -1062,6 +1137,7 @@
               <option value="admin">Admin</option>
               <option value="business_manager">Business Manager</option>
               <option value="principal">Principal</option>
+              <option value="kantor">Kantor</option>
               <option value="superadmin">Super Admin</option>
             </select></div>
           <div><label class="form-label">Status</label><select id="nu-status" class="form-input"><option value="Aktif">Aktif</option><option value="Cuti">Cuti</option><option value="Nonaktif">Nonaktif</option></select></div>
@@ -1102,6 +1178,7 @@
               <option value="admin">Admin</option>
               <option value="business_manager">Business Manager</option>
               <option value="principal">Principal</option>
+              <option value="kantor">Kantor</option>
               <option value="superadmin">Super Admin</option>
             </select></div>
         <div><label class="form-label">Status</label><select id="eu-status" class="form-input"><option value="Aktif">Aktif</option><option value="Cuti">Cuti</option><option value="Nonaktif">Nonaktif</option></select></div>

@@ -70,8 +70,8 @@ const requireMinRole = (minRole) => (req, res, next) => {
 };
 
 // Helper: apakah user adalah manager level ke atas
-const isManager = (role) => ['superadmin', 'principal', 'business_manager', 'admin'].includes(role);
-const isPrincipalOrAbove = (role) => ['superadmin', 'principal'].includes(role);
+const isManager = (role) => ['superadmin', 'principal', 'kantor', 'business_manager', 'admin'].includes(role);
+const isPrincipalOrAbove = (role) => ['superadmin', 'principal', 'kantor'].includes(role);
 
 // Public API key middleware
 const publicApiKey = (req, res, next) => {
