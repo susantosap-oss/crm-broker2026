@@ -660,6 +660,9 @@ async function openListingDetail(id) {
       <button onclick="shareListingWACatalog('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-regular fa-copy" style="margin-right:6px"></i>WA Catalog
       </button>
+      <button onclick="openViGen('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
+        <i class="fa-solid fa-clapperboard" style="margin-right:6px"></i>Buat Konten Iklan (ViGen)
+      </button>
       ${listing.Agen_ID === STATE.user?.id ? `
       <button onclick="openEditListing('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:rgba(43,123,255,0.12);border:1px solid rgba(43,123,255,0.25);color:#60a5fa;font-size:13px;font-weight:600;cursor:pointer;margin-top:0">
         <i class="fa-solid fa-pen-to-square" style="margin-right:6px"></i>Edit Listing
@@ -697,6 +700,233 @@ function loadSimilarListings(current) {
     </div>
   `).join('');
 }
+
+// ══════════════════════════════════════════════════════════
+// VIGEN — Create Ads Content
+// ══════════════════════════════════════════════════════════
+
+const _viGen = {
+  listingId:   null,
+  listingTitle: null,
+  listingType: 'secondary',  // 'secondary' | 'primary'
+  mood:        'mewah',
+  duration:    30,
+};
+
+async function openViGen(listingId) {
+  const listing = _allListings.find(l => l.ID === listingId);
+  if (!listing) return;
+
+  _viGen.listingId    = listingId;
+  _viGen.listingTitle = listing.Judul || listingId;
+  _viGen.listingType  = 'secondary';
+
+  // Reset state
+  viGenSetMood('mewah');
+  viGenSetDuration(30);
+
+  const lbl = document.getElementById('vigen-listing-label');
+  if (lbl) lbl.textContent = listing.Kode_Listing ? `${listing.Kode_Listing} · ${listing.Judul || ''}` : listing.Judul || '';
+
+  const btn = document.getElementById('vigen-submit-btn');
+  if (btn) { btn.disabled = false; btn.textContent = ''; btn.innerHTML = '<i class="fa-solid fa-clapperboard" style="margin-right:8px"></i>Mulai Render Video'; }
+
+  openModal('modal-vigen');
+  _viGenLoadMedia(listingId);
+  _viGenLoadJobs(listingId);
+}
+
+// ViGen untuk Primary Project (dipanggil dari modal-project-detail)
+async function openViGenProject() {
+  const project = _projectsData.find(p => p.ID === _currentProjectId);
+  if (!project) return showToast('Data proyek tidak ditemukan', 'error');
+
+  _viGen.listingId    = _currentProjectId;
+  _viGen.listingTitle = project.Nama_Proyek || _currentProjectId;
+  _viGen.listingType  = 'primary';
+
+  // Reset state
+  viGenSetMood('mewah');
+  viGenSetDuration(30);
+
+  const lbl = document.getElementById('vigen-listing-label');
+  if (lbl) lbl.textContent = `[Primary] ${project.Kode_Proyek ? project.Kode_Proyek + ' · ' : ''}${project.Nama_Proyek || ''}`;
+
+  const btn = document.getElementById('vigen-submit-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-clapperboard" style="margin-right:8px"></i>Mulai Render Video'; }
+
+  openModal('modal-vigen');
+  _viGenLoadMedia(_currentProjectId);
+  _viGenLoadJobs(_currentProjectId);
+}
+
+function viGenSetMood(mood) {
+  _viGen.mood = mood;
+  const btnMewah = document.getElementById('vigen-mood-mewah');
+  const btnMin   = document.getElementById('vigen-mood-minimalis');
+  if (!btnMewah || !btnMin) return;
+
+  const activeStyle  = 'border:2px solid #D4A853;background:rgba(212,168,83,0.12);color:#D4A853';
+  const inactiveStyle = 'border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.6)';
+
+  btnMewah.style.cssText += mood === 'mewah' ? activeStyle : inactiveStyle;
+  btnMin.style.cssText   += mood === 'minimalis' ? activeStyle : inactiveStyle;
+
+  // Re-apply base styles explicitly
+  [btnMewah, btnMin].forEach(b => {
+    b.style.flex = '1'; b.style.padding = '12px'; b.style.borderRadius = '12px';
+    b.style.fontSize = '13px'; b.style.fontWeight = '600'; b.style.cursor = 'pointer';
+  });
+  if (mood === 'mewah') {
+    btnMewah.style.border = '2px solid #D4A853'; btnMewah.style.background = 'rgba(212,168,83,0.12)'; btnMewah.style.color = '#D4A853';
+    btnMin.style.border   = '2px solid rgba(255,255,255,0.1)'; btnMin.style.background = '#131F38'; btnMin.style.color = 'rgba(255,255,255,0.6)';
+  } else {
+    btnMin.style.border   = '2px solid #D4A853'; btnMin.style.background = 'rgba(212,168,83,0.12)'; btnMin.style.color = '#D4A853';
+    btnMewah.style.border = '2px solid rgba(255,255,255,0.1)'; btnMewah.style.background = '#131F38'; btnMewah.style.color = 'rgba(255,255,255,0.6)';
+  }
+}
+
+function viGenSetDuration(dur) {
+  _viGen.duration = dur;
+  [15, 30, 60].forEach(d => {
+    const btn = document.getElementById(`vigen-dur-${d}`);
+    if (!btn) return;
+    btn.style.border     = d === dur ? '2px solid #D4A853' : '2px solid rgba(255,255,255,0.1)';
+    btn.style.background = d === dur ? 'rgba(212,168,83,0.12)' : '#131F38';
+    btn.style.color      = d === dur ? '#D4A853' : 'rgba(255,255,255,0.6)';
+  });
+}
+
+async function _viGenLoadMedia(listingId) {
+  const el = document.getElementById('vigen-media-preview');
+  if (!el) return;
+
+  el.innerHTML = '<div class="skeleton" style="border-radius:8px;height:60px;grid-column:span 4"></div>';
+
+  try {
+    const res = await API.get(`/pa/vigen/media/${listingId}`);
+    if (!res.success) throw new Error(res.message);
+
+    const { photos = [], videos = [] } = res.data || {};
+    const total = photos.length + videos.length;
+
+    if (total === 0) {
+      el.innerHTML = `<div style="grid-column:span 4;text-align:center;padding:16px;font-size:12px;color:rgba(255,255,255,0.35)"><i class="fa-solid fa-images" style="display:block;font-size:24px;margin-bottom:6px;opacity:.4"></i>Belum ada foto/video. Upload media ke listing terlebih dahulu.</div>`;
+      return;
+    }
+
+    const photoHtml = photos.slice(0, 6).map(p => `
+      <div style="border-radius:8px;overflow:hidden;height:60px;position:relative;background:#1C2D52">
+        <img src="${escapeHtml(p.secure_url)}" loading="lazy"
+          style="width:100%;height:100%;object-fit:cover"/>
+        <div style="position:absolute;bottom:2px;left:2px;background:rgba(43,123,255,0.85);border-radius:4px;padding:1px 4px;font-size:9px;color:#fff;font-weight:600">FOTO</div>
+      </div>`).join('');
+
+    const videoHtml = videos.slice(0, 6).map(v => `
+      <div style="border-radius:8px;overflow:hidden;height:60px;position:relative;background:#1C2D52;display:flex;align-items:center;justify-content:center">
+        ${v.thumbnail_url
+          ? `<img src="${escapeHtml(v.thumbnail_url)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>`
+          : `<i class="fa-solid fa-film" style="font-size:20px;color:rgba(255,255,255,0.3)"></i>`}
+        <div style="position:absolute;bottom:2px;left:2px;background:rgba(168,85,247,0.85);border-radius:4px;padding:1px 4px;font-size:9px;color:#fff;font-weight:600">VIDEO</div>
+        ${v.duration ? `<div style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.6);border-radius:4px;padding:1px 4px;font-size:9px;color:#fff">${Math.round(v.duration)}s</div>` : ''}
+      </div>`).join('');
+
+    el.innerHTML = photoHtml + videoHtml;
+    el.style.gridTemplateColumns = `repeat(${Math.min(total, 4)}, 1fr)`;
+
+    // Info row
+    el.insertAdjacentHTML('afterend', `
+      <div id="vigen-media-info" style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:-4px">
+        ${photos.length} foto · ${videos.length} video clip akan diikutkan ke render
+      </div>`);
+
+  } catch (e) {
+    el.innerHTML = `<div style="grid-column:span 4;font-size:12px;color:rgba(239,68,68,0.8);text-align:center;padding:12px"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i>Gagal memuat media: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function _viGenLoadJobs(listingId) {
+  const el = document.getElementById('vigen-jobs-list');
+  if (!el) return;
+
+  el.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;padding:12px">Memuat riwayat…</div>';
+
+  try {
+    const res = await API.get(`/pa/vigen/jobs/${listingId}`);
+    if (!res.success) throw new Error(res.message);
+
+    const jobs = res.data || [];
+    if (jobs.length === 0) {
+      el.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;padding:16px">Belum ada riwayat render</div>';
+      return;
+    }
+
+    el.innerHTML = jobs.map(j => {
+      const statusColor = { done: '#4ade80', pending: '#facc15', rendering: '#60a5fa', failed: '#f87171' };
+      const statusLabel = { done: 'Selesai', pending: 'Menunggu', rendering: 'Proses...', failed: 'Gagal' };
+      const color = statusColor[j.status] || '#fff';
+      const label = statusLabel[j.status] || j.status;
+      const moodLabel = j.mood === 'mewah' ? '✨ Mewah' : '🎵 Minimalis';
+      const durLabel  = j.duration ? `${j.duration}s` : '';
+      const date = j.created_at ? new Date(j.created_at).toLocaleDateString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+
+      return `
+        <div style="background:#131F38;border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.06)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
+              <span style="font-size:12px;font-weight:600;color:${color}">${label}</span>
+              <span style="font-size:10px;color:rgba(255,255,255,0.35)">${moodLabel} · ${durLabel}</span>
+            </div>
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">${date}</span>
+          </div>
+          ${j.video_url ? `
+            <a href="${escapeHtml(j.video_url)}" target="_blank"
+              style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:8px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);color:#D4A853;font-size:11px;font-weight:600;text-decoration:none;margin-top:4px">
+              <i class="fa-solid fa-play"></i> Lihat / Download Video
+            </a>` : ''}
+          ${j.error ? `<div style="font-size:10px;color:rgba(239,68,68,0.7);margin-top:4px;background:rgba(239,68,68,0.07);padding:6px 8px;border-radius:6px">${escapeHtml(j.error)}</div>` : ''}
+        </div>`;
+    }).join('');
+
+  } catch (e) {
+    el.innerHTML = `<div style="font-size:12px;color:rgba(239,68,68,0.7);text-align:center;padding:12px">Gagal memuat riwayat: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function refreshViGenJobs() {
+  if (_viGen.listingId) _viGenLoadJobs(_viGen.listingId);
+}
+
+async function submitViGenRender() {
+  if (!_viGen.listingId) return;
+
+  const btn = document.getElementById('vigen-submit-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Mengirim ke engine…'; }
+
+  try {
+    const res = await API.post('/pa/vigen/render', {
+      listing_id:   _viGen.listingId,
+      listing_type: _viGen.listingType || 'secondary',
+      mood:         _viGen.mood,
+      duration:     _viGen.duration,
+    });
+
+    if (!res.success) throw new Error(res.message);
+
+    showToast(`✅ ${res.message || 'Render dimulai!'}`, 'success');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-check" style="margin-right:8px"></i>Job Dikirim — Menunggu Hasil'; btn.style.background = 'rgba(34,197,94,0.2)'; btn.style.border = '1px solid rgba(34,197,94,0.3)'; btn.style.color = '#4ade80'; }
+
+    // Refresh job list setelah 1 detik
+    setTimeout(() => _viGenLoadJobs(_viGen.listingId), 1000);
+
+  } catch (e) {
+    showToast(`❌ ${e.message}`, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-clapperboard" style="margin-right:8px"></i>Mulai Render Video'; }
+  }
+}
+
+// ── End ViGen ──────────────────────────────────────────────
 
 async function copyCaption() {
   const el = document.getElementById('ld-caption');
@@ -3203,6 +3433,13 @@ function checkAdminMenu() {
     if (navLeads) navLeads.style.removeProperty('display');
     if (sbLeads)  sbLeads.style.removeProperty('display');
   }
+
+  // ★ Personal Assistant — tampilkan untuk agen & koordinator
+  const sbPA = document.getElementById('sb-pa');
+  if (sbPA) {
+    const paRoles = ['agen', 'koordinator', 'admin', 'business_manager', 'principal', 'kantor', 'superadmin'];
+    sbPA.style.display = paRoles.includes(role) ? 'flex' : 'none';
+  }
 }
 
 
@@ -3768,6 +4005,13 @@ async function openProjectDetail(id) {
   // Reset shortlink box
   document.getElementById('pd-shortlink-box').style.display = 'none';
   document.getElementById('pd-referral-list').innerHTML = '';
+
+  // Tombol ViGen — tampil untuk koordinator dan ke atas
+  const viGenBtn = document.getElementById('pd-vigen-btn');
+  if (viGenBtn) {
+    const canVigen = ['superadmin', 'principal', 'kantor', 'admin', 'koordinator'].includes(role) || isOwnProject;
+    viGenBtn.style.display = canVigen ? '' : 'none';
+  }
 
   openModal('modal-project-detail');
 }

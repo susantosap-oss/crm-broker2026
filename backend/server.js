@@ -37,7 +37,10 @@ app.use(cors({
   credentials: true
 }));
 app.use(morgan('dev'));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, _res, buf) => { req.rawBody = buf; },  // untuk verifikasi signature Meta webhook
+}));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Static Files ───────────────────────────────────────────
@@ -62,6 +65,13 @@ app.use('/api/v1/laporan',       require('./routes/laporan.routes'));
 app.use('/api/v1/share-log',     require('./routes/share-log.routes'));
 app.use('/api/v1/listing-agents', require('./routes/listing_agents.routes'));
 app.use('/api/v1/aktivitas',      require('./routes/aktivitas.routes'));
+// ★ Fitur 2 — PA (OpenClaw) + ViGen (Video Engine)
+// PA routes: /api/v1/pa/*  |  ViGen routes: /api/v1/pa/vigen/*
+app.use('/api/v1/pa',             require('./routes/pa.routes'));
+// ★ Fitur 2 — Meta/Zapier Webhook + Config API
+// Semua rute webhook (meta, zapier, config) dihandle satu router
+const webhookRouter = require('./routes/meta-webhook.routes');
+app.use('/api/v1/webhook',        webhookRouter);
 
 // Config endpoints
 app.get('/api/v1/config/cloudinary', (req, res) => {
@@ -150,6 +160,12 @@ async function migrateHeaders() {
     { sheet: SHEETS.PROJECT_REFS,     cols: COLUMNS.PROJECT_REFS },
     { sheet: SHEETS.LISTING_AGENTS,   cols: COLUMNS.LISTING_AGENTS },
     { sheet: SHEETS.AKTIVITAS_HARIAN, cols: COLUMNS.AKTIVITAS_HARIAN },
+    // ★ Fitur 2 — PA + ViGen + Meta Ads + Webhook Config
+    { sheet: SHEETS.PA_CREDENTIALS,   cols: COLUMNS.PA_CREDENTIALS },
+    { sheet: SHEETS.PA_JOBS,          cols: COLUMNS.PA_JOBS },
+    { sheet: SHEETS.META_ADS_LOG,     cols: COLUMNS.META_ADS_LOG },
+    { sheet: SHEETS.VIGEN_JOBS,       cols: COLUMNS.VIGEN_JOBS },
+    { sheet: SHEETS.WEBHOOK_CONFIG,   cols: COLUMNS.WEBHOOK_CONFIG },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)

@@ -14,8 +14,142 @@ const listingsService = require('../services/listings.service');
 const captionService  = require('../services/caption.service');
 const cloudinaryService = require('../services/cloudinary.service');
 const multer = require('multer');
+const sheetsService = require('../services/sheets.service');
+const { SHEETS } = require('../config/sheets.config');
+const { createNotification } = require('./notifications.routes');
 
 const upload = multer({ dest: '/tmp/uploads/' });
+
+// ══════════════════════════════════════════════════════════
+// SMART LEAD MATCHING — dipanggil saat listing Aktif disimpan
+// ══════════════════════════════════════════════════════════
+
+/**
+ * Parse angka dari berbagai format: "2000000000", "2M", "2.5M", "2500", dll.
+ * Semua dinormalisasi ke satuan rupiah penuh.
+ */
+function _parseHarga(val) {
+  if (!val) return 0;
+  const s = String(val).trim().replace(/\./g, '').replace(',', '.');
+  const num = parseFloat(s.replace(/[^0-9.]/g, ''));
+  if (isNaN(num)) return 0;
+  // Deteksi satuan: M/Miliar, Jt/Juta
+  if (/m|miliar/i.test(s))      return num * 1_000_000_000;
+  if (/jt|juta|rb|ribu/i.test(s)) return num * 1_000_000;
+  return num;
+}
+
+async function matchLeadsForListing(listing) {
+  try {
+    if (!listing || listing.Status !== 'Aktif') return;
+
+    const harga = _parseHarga(listing.Harga);
+    if (!harga) return; // Tidak ada harga, skip
+
+    const listingTipe  = (listing.Tipe_Properti || '').toLowerCase();
+    const listingKota  = (listing.Kota || '').toLowerCase();
+    const listingJenis = (listing.Tipe_Transaksi || listing.Jenis || '').toLowerCase(); // Dijual / Disewakan
+
+    // Ambil semua leads aktif
+    const leads = await sheetsService.getRows(SHEETS.LEADS);
+    const CLOSED_STATUS = ['closed', 'closing', 'batal', 'tidak jadi'];
+
+    const matched = leads.filter(r => {
+      // Skip lead yang sudah closed
+      const statusLead = (r[12] || '').toLowerCase();
+      if (CLOSED_STATUS.some(s => statusLead.includes(s))) return false;
+
+      // Budget harus diset
+      const budMin = _parseHarga(r[9]);  // Budget_Min
+      const budMax = _parseHarga(r[10]); // Budget_Max
+      if (!budMin && !budMax) return false;
+
+      const effectiveMin = budMin || 0;
+      const effectiveMax = budMax || Infinity;
+
+      // Harga listing harus masuk range budget lead
+      if (harga < effectiveMin || harga > effectiveMax) return false;
+
+      // Cocokkan tipe properti (jika lead punya preferensi)
+      const minatTipe = (r[7] || '').toLowerCase(); // Minat_Tipe
+      if (minatTipe && listingTipe && !minatTipe.includes(listingTipe) && !listingTipe.includes(minatTipe)) return false;
+
+      // Cocokkan kota/lokasi (jika lead punya preferensi)
+      const lokasiPref = (r[11] || '').toLowerCase(); // Lokasi_Preferred
+      if (lokasiPref && listingKota && !lokasiPref.includes(listingKota) && !listingKota.includes(lokasiPref)) return false;
+
+      return true;
+    });
+
+    if (matched.length === 0) return;
+
+    console.log(`[LeadMatch] Listing "${listing.Judul}" (${listing.Harga}) → ${matched.length} lead cocok`);
+
+    const bot = (() => { try { return require('../telegram-bot'); } catch { return null; } })();
+
+    // Kirim notif ke setiap agen pemilik lead yang cocok
+    // Group per agen agar tidak spam notif berkali-kali ke agen yang sama
+    const byAgent = {};
+    for (const lead of matched) {
+      const agentId = lead[13] || ''; // Agen_ID
+      if (!agentId) continue;
+      if (!byAgent[agentId]) byAgent[agentId] = { agentId, agentNama: lead[14] || '', leads: [] };
+      byAgent[agentId].leads.push({ id: lead[0], nama: lead[2], budget: `${lead[9]}–${lead[10]}` });
+    }
+
+    // Ambil Telegram_ID agen dari AGENTS sheet (sekali fetch)
+    const agentRows = await sheetsService.getRows(SHEETS.AGENTS);
+    const telegramMap = {}; // agentId → telegram_id
+    for (const r of agentRows) telegramMap[r[0]] = r[13] || ''; // col N = Telegram_ID
+
+    const hargaFmt = listing.Harga_Format || `Rp ${Number(listing.Harga).toLocaleString('id-ID')}`;
+    const listingLabel = `${listing.Judul || listing.ID} · ${hargaFmt}`;
+
+    for (const { agentId, agentNama, leads: agentLeads } of Object.values(byAgent)) {
+      const leadNames = agentLeads.slice(0, 3).map(l => `• ${l.nama}`).join('\n');
+      const extraCount = agentLeads.length > 3 ? `\n_+${agentLeads.length - 3} lead lainnya_` : '';
+
+      // 1. Notif in-app CRM
+      await createNotification({
+        tipe:           'lead_match_listing',
+        judul:          '🏠 Listing Cocok dengan Lead Kamu!',
+        pesan:          `${listingLabel} — cocok dengan ${agentLeads.length} lead aktif kamu`,
+        from_user_id:   listing.Agen_ID || 'system',
+        from_user_nama: listing.Agen_Nama || 'Sistem',
+        to_user_id:     agentId,
+        to_role:        '',
+        link_type:      'listing',
+        link_id:        listing.ID,
+      });
+
+      // 2. Telegram notif
+      const tgId = telegramMap[agentId];
+      if (tgId && bot) {
+        const tgMsg = [
+          `🏠 *Listing Baru Cocok dengan Lead Kamu!*`,
+          ``,
+          `📌 *${listing.Judul || 'Listing Baru'}*`,
+          `💰 ${hargaFmt}`,
+          listingTipe  ? `🏷️ ${listing.Tipe_Properti}` : null,
+          listingKota  ? `📍 ${listing.Kota}` : null,
+          ``,
+          `*Lead yang cocok (${agentLeads.length}):*`,
+          leadNames + extraCount,
+          ``,
+          `_Segera follow up sebelum didahului agen lain! 🎯_`,
+        ].filter(l => l !== null).join('\n');
+
+        bot.sendMessage(tgId, tgMsg, { parse_mode: 'Markdown' }).catch(e =>
+          console.warn(`[LeadMatch] Telegram gagal ke agen ${agentId}:`, e.message)
+        );
+      }
+    }
+
+    console.log(`[LeadMatch] Notif terkirim ke ${Object.keys(byAgent).length} agen`);
+  } catch (e) {
+    console.error('[LeadMatch] Error:', e.message);
+  }
+}
 
 router.use(authMiddleware);
 
@@ -304,6 +438,11 @@ router.post('/', upload.array('photos', 3), async (req, res) => {
     }
 
     res.status(201).json({ success: true, data: listing, message: 'Listing berhasil ditambahkan' });
+
+    // Smart Lead Matching — non-blocking, hanya jika status Aktif
+    if (listing.Status === 'Aktif') {
+      setImmediate(() => matchLeadsForListing(listing));
+    }
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -341,6 +480,11 @@ router.patch('/:id', upload.array('photos', 3), async (req, res) => {
 
     const updated = await listingsService.update(req.params.id, updateData, req.user);
     res.json({ success: true, data: updated, message: 'Listing berhasil diupdate' });
+
+    // Smart Lead Matching — hanya jika status berubah jadi Aktif atau memang sudah Aktif
+    if (updated.Status === 'Aktif') {
+      setImmediate(() => matchLeadsForListing(updated));
+    }
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 router.put('/:id', upload.array('photos', 3), async (req, res) => {

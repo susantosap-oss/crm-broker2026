@@ -41,6 +41,12 @@ const SHEETS = {
   SHARE_LOG:         'SHARE_LOG',
   LISTING_AGENTS:    'LISTING_AGENTS',
   AKTIVITAS_HARIAN:  'AKTIVITAS_HARIAN',
+  // ★ Fitur 2 — PA + ViGen + Meta Ads
+  PA_CREDENTIALS:    'PA_CREDENTIALS',
+  PA_JOBS:           'PA_JOBS',
+  META_ADS_LOG:      'META_ADS_LOG',
+  VIGEN_JOBS:        'VIGEN_JOBS',
+  WEBHOOK_CONFIG:    'WEBHOOK_CONFIG',  // KV store konfigurasi webhook global
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -358,6 +364,85 @@ const COLUMNS = {
     'Agen_Nama',    // D  denormalized
     'Deskripsi',    // E  teks aktivitas harian
     'Created_At',   // F  ISO timestamp
+  ],
+
+  // ★ PA_CREDENTIALS — Kredensial PA per agen (enkripsi AES-256)
+  PA_CREDENTIALS: [
+    'ID',               // A  UUID
+    'Agen_ID',          // B  FK ke AGENTS
+    'IG_Username',      // C  Username Instagram
+    'IG_Password_Enc',  // D  Password IG (AES-256 encrypted)
+    'WA_Number',        // E  Nomor WA untuk blast
+    'PA_Enabled',       // F  TRUE/FALSE
+    'IG_Session_GCS',   // G  Path GCS auth state IG
+    'WA_Session_GCS',   // H  Path GCS auth state WA
+    'Created_At',       // I
+    'Updated_At',       // J
+    'Last_IG_Login',    // K  Timestamp login IG terakhir berhasil
+    'Last_WA_Login',    // L  Timestamp login WA terakhir berhasil
+    'IG_Status',        // M  active|challenge_required|not_configured
+    'WA_Status',        // N  active|qr_required|not_configured
+    'Zapier_Secret',    // O  UUID per-agen untuk Zapier webhook auth
+  ],
+
+  // ★ PA_JOBS — Tracking semua job OpenClaw
+  PA_JOBS: [
+    'ID',               // A  Job ID (UUID)
+    'Agen_ID',          // B
+    'Agen_Nama',        // C
+    'Type',             // D  ig_reels|ig_story|wa_blast
+    'Status',           // E  queued|running|completed|failed
+    'Listing_ID',       // F
+    'Listing_Title',    // G
+    'Video_URL',        // H
+    'Recipients_JSON',  // I  JSON array (untuk wa_blast)
+    'Session_Number',   // J  Sesi ke-berapa hari ini
+    'Logs',             // K  Log summary (string)
+    'Error_Msg',        // L
+    'Created_At',       // M
+    'Started_At',       // N
+    'Finished_At',      // O
+    'Triggered_By',     // P  agent_id yang trigger
+  ],
+
+  // ★ WEBHOOK_CONFIG — KV store konfigurasi webhook global (Meta vs Zapier)
+  WEBHOOK_CONFIG: [
+    'Key',          // A  e.g. webhook_type | meta_verify_token | zapier_secret | meta_page_access_token
+    'Value',        // B
+    'Updated_At',   // C
+    'Updated_By',   // D  agent_id yang terakhir update
+  ],
+
+  // ★ META_ADS_LOG — Tracking iklan Meta per listing
+  META_ADS_LOG: [
+    'ID',               // A
+    'Listing_ID',       // B
+    'Listing_Title',    // C
+    'Video_URL',        // D  URL Cloudinary
+    'Meta_Video_ID',    // E
+    'Creative_ID',      // F
+    'Ad_ID',            // G
+    'Form_ID',          // H
+    'Status',           // I  pending|active|paused|deleted
+    'Budget',           // J
+    'Created_At',       // K
+    'Created_By',       // L
+  ],
+
+  // ★ VIGEN_JOBS — Tracking render video dari my-video-app
+  VIGEN_JOBS: [
+    'ID',               // A  Job ID
+    'Listing_ID',       // B
+    'Listing_Title',    // C
+    'Status',           // D  pending|rendering|done|failed
+    'Video_URL',        // E  URL Cloudinary setelah selesai
+    'Mood',             // F  minimalis|mewah
+    'Duration_Target',  // G  15|30|60 (detik)
+    'Requested_By',     // H  agent_id
+    'Created_At',       // I
+    'Finished_At',      // J
+    'Error_Msg',        // K
+    'Callback_Received',// L  TRUE/FALSE
   ],
 
   PIPELINE_STAGES: [
