@@ -116,6 +116,34 @@ class SheetsService {
     return res.data;
   }
 
+  // ── Get Rows (skip header row, return array of arrays) ────
+  // Dipakai oleh pa.service.js, vigen.service.js
+  async getRows(sheetName) {
+    const all = await this.getRange(sheetName);
+    if (all.length < 2) return [];
+    return all.slice(1); // Skip header row 1
+  }
+
+  // ── Update Specific Cells dalam Satu Row ──────────────────
+  // updates: { colIndex: value, ... }  (0-based column index)
+  // rowIndex: 1-based (misal row 2 = rowIndex 2)
+  async updateRowCells(sheetName, rowIndex, updates) {
+    cache.del(`${sheetName}:all`);
+
+    // Ambil row data sekarang untuk isi kolom yang tidak diupdate
+    const all  = await this.getRange(sheetName);
+    const row  = all[rowIndex - 1] ? [...all[rowIndex - 1]] : [];
+
+    // Terapkan updates
+    const maxIdx = Math.max(...Object.keys(updates).map(Number));
+    while (row.length <= maxIdx) row.push('');
+    for (const [colIdx, val] of Object.entries(updates)) {
+      row[parseInt(colIdx)] = val ?? '';
+    }
+
+    await this.updateRow(sheetName, rowIndex, row);
+  }
+
   // ── Clear Cache ───────────────────────────────────────────
   clearCache(sheetName = null) {
     if (sheetName) {

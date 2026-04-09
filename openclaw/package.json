@@ -1,0 +1,18 @@
+{
+  "name": "openclaw-pa",
+  "version": "1.0.0",
+  "description": "OpenClaw Personal Assistant — Playwright Worker for Mansion Properti CRM",
+  "main": "server.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development node server.js"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^7.9.0",
+    "axios": "^1.6.7",
+    "express": "^4.18.3",
+    "playwright": "^1.42.0",
+    "uuid": "^9.0.0"
+  }
+}

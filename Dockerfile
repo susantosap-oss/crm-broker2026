@@ -1,18 +1,20 @@
 FROM node:20-slim
 
+# Install ffmpeg (untuk video compression di media upload)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copy package.json dan install dependencies
-COPY backend/package.json ./
+# Install dependencies (layer cache)
+COPY backend/package*.json ./
 RUN npm install --omit=dev
 
-# Copy backend source
+# Copy source
 COPY backend/ ./
-
-# Copy frontend static files (dibutuhkan server.js via ../frontend)
 COPY frontend/ ../frontend/
 
-# Port Cloud Run
 ENV PORT=8080
 EXPOSE 8080
 
