@@ -108,149 +108,83 @@ async function openPACredentialsSidebar() {
   const sidebar = document.createElement('div');
   sidebar.id = 'pa-credentials-sidebar';
   sidebar.innerHTML = `
-    <div class="pa-modal-overlay" onclick="closePACredentialsSidebar()"></div>
-    <div class="pa-modal-form">
-      <div class="pa-modal-form-header">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;border-radius:10px;background:rgba(212,168,83,0.15);display:flex;align-items:center;justify-content:center">
-            <i class="fa-solid fa-robot" style="color:#D4A853;font-size:15px"></i>
+    <div class="modal-sheet" style="max-width:540px" onclick="event.stopPropagation()">
+      <div class="mheader">
+        <div class="drag-handle"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <i class="fa-solid fa-robot" style="color:#D4A853;font-size:16px"></i>
+            <h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff;margin:0">Personal Assistant</h3>
           </div>
-          <div>
-            <div style="font-size:15px;font-weight:700;color:#fff">Personal Assistant</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.35)">Pengaturan PA & Webhook</div>
-          </div>
+          <button onclick="closePACredentialsSidebar()" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <button onclick="closePACredentialsSidebar()" class="pa-btn-close">✕</button>
       </div>
 
-      <div class="pa-modal-form-body">
-
-        <!-- ── APA ITU PERSONAL ASSISTANT? ── -->
-        <details style="margin-bottom:14px;border:1px solid rgba(212,168,83,0.2);border-radius:12px;overflow:hidden">
-          <summary style="padding:12px 14px;font-size:12px;font-weight:600;color:#D4A853;cursor:pointer;list-style:none;background:rgba(212,168,83,0.06);display:flex;align-items:center;justify-content:space-between">
-            <span>🤖 Apa itu Personal Assistant (PA)?</span>
-            <span style="font-size:10px;opacity:.6">tap untuk baca</span>
-          </summary>
-          <div style="padding:12px 14px;font-size:11px;color:rgba(255,255,255,0.6);line-height:1.8;background:rgba(212,168,83,0.03)">
-            <b style="color:#D4A853">PA adalah robot agen digital</b> yang bekerja otomatis di background.<br><br>
-            <b style="color:rgba(255,255,255,0.8)">Yang bisa dilakukan PA:</b><br>
-            🎬 &nbsp;Posting <b>Instagram Reels & Story</b> dari video ViGen secara terjadwal<br>
-            📲 &nbsp;<b>WA Blast</b> — kirim pesan ke daftar kontak secara otomatis<br><br>
-            <b style="color:rgba(255,255,255,0.8)">Cara kerja:</b><br>
-            PA berjalan di server (Cloud Run) terpisah — bukan di HP kamu. PA login ke akun IG/WA atas nama kamu, lalu melakukan aksi seperti manusia (gerakan mouse alami, jeda acak).<br><br>
-            <b style="color:rgba(255,255,255,0.8)">Keamanan:</b><br>
-            🔒 Password IG dienkripsi <b>AES-256-GCM</b> sebelum disimpan. Tim IT pun tidak bisa membacanya.<br>
-            🔒 Session WA disimpan di <b>Google Cloud Storage</b> khusus, bukan di server umum.
-          </div>
-        </details>
+      <div class="mbody">
 
         <!-- Status PA -->
-        <div class="pa-status-row">
-          <span>PA Status</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#131F38;border-radius:12px;padding:12px 16px;border:1px solid rgba(255,255,255,0.08)">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#fff">PA Status</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px">
+              ${creds?.pa_enabled ? '✅ Aktif — siap menerima job' : '⏸️ Nonaktif — job tidak dieksekusi'}
+            </div>
+          </div>
           <label class="pa-toggle">
             <input type="checkbox" id="pa-enabled-toggle" ${creds?.pa_enabled ? 'checked' : ''}>
             <span class="pa-toggle-slider"></span>
           </label>
         </div>
-        <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:-6px 0 12px;text-align:right;padding-right:2px">
-          ${creds?.pa_enabled
-            ? '✅ PA aktif — siap menerima job posting & blast'
-            : '⏸️ PA nonaktif — job tidak akan dieksekusi'}
-        </p>
 
         <!-- Section IG -->
-        <div class="pa-section">
-          <div class="pa-section-title">
-            📸 Instagram
-            <span class="pa-status-badge ${_statusBadgeClass(creds?.ig_status)}">
-              ${_statusLabel(creds?.ig_status)}
-            </span>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:13px;font-weight:600;color:#fff">📸 Instagram</span>
+            <span class="pa-status-badge ${_statusBadgeClass(creds?.ig_status)}">${_statusLabel(creds?.ig_status)}</span>
           </div>
-          <div class="pa-form-field">
-            <label class="pa-field-label">Username Instagram</label>
-            <input class="pa-input" id="pa-ig-username" type="text"
+          <div>
+            <label class="form-label">Username Instagram</label>
+            <input class="form-input" id="pa-ig-username" type="text"
               placeholder="contoh: agen.mansion (tanpa @)"
-              value="${creds?.ig_username || ''}">
+              value="${creds?.ig_username || ''}" autocomplete="off">
           </div>
-          <div class="pa-form-field">
-            <label class="pa-field-label">Password Instagram</label>
-            <input class="pa-input" id="pa-ig-password" type="password"
-              placeholder="Kosongkan jika tidak ingin mengubah">
-            <div class="pa-hint">🔒 Disimpan terenkripsi AES-256. Hanya dipakai saat session login expired.</div>
+          <div>
+            <label class="form-label">Password Instagram</label>
+            <input class="form-input" id="pa-ig-password" type="password"
+              placeholder="Kosongkan jika tidak ingin mengubah" autocomplete="new-password">
+            <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:6px 0 0;line-height:1.5">🔒 Disimpan terenkripsi AES-256. Hanya dipakai saat session login expired.</p>
           </div>
-          ${creds?.last_ig_login ? `<div class="pa-last-login">Login terakhir: ${_formatDate(creds.last_ig_login)}</div>` : ''}
-          <details style="margin-top:8px">
-            <summary style="font-size:10px;color:rgba(255,255,255,0.35);cursor:pointer;padding:4px 0;list-style:none">
-              ℹ️ Bagaimana PA posting Reels? (klik)
-            </summary>
-            <div style="font-size:10px;color:rgba(255,255,255,0.45);line-height:1.7;padding:6px 0 2px">
-              1. Kamu klik <b>"Buat Konten Iklan (ViGen)"</b> di halaman Listing<br>
-              2. ViGen render video listing jadi Reels vertikal 9:16<br>
-              3. Klik tombol <b>"Post ke Instagram"</b><br>
-              4. PA otomatis login IG, upload video, tambah caption + hashtag, posting<br>
-              5. Status update real-time di <b>Activity Log</b> bawah<br><br>
-              ⚠️ Gunakan akun IG yang <b>tidak memakai 2FA via HP</b> agar PA tidak terhenti saat minta OTP.
-            </div>
-          </details>
+          ${creds?.last_ig_login ? `<div style="font-size:11px;color:rgba(212,175,55,0.6)">Login terakhir: ${_formatDate(creds.last_ig_login)}</div>` : ''}
         </div>
 
         <!-- Section WA -->
-        <div class="pa-section">
-          <div class="pa-section-title">
-            📲 WhatsApp
-            <span class="pa-status-badge ${_statusBadgeClass(creds?.wa_status)}">
-              ${_statusLabel(creds?.wa_status)}
-            </span>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:13px;font-weight:600;color:#fff">📲 WhatsApp</span>
+            <span class="pa-status-badge ${_statusBadgeClass(creds?.wa_status)}">${_statusLabel(creds?.wa_status)}</span>
           </div>
-          <div class="pa-form-field">
-            <label class="pa-field-label">Nomor WhatsApp Business</label>
-            <input class="pa-input" id="pa-wa-number" type="tel"
+          <div>
+            <label class="form-label">Nomor WhatsApp Business</label>
+            <input class="form-input" id="pa-wa-number" type="tel"
               placeholder="contoh: 628123456789 (awali 62, tanpa +)"
-              value="${creds?.wa_number || ''}">
-            <div class="pa-hint">📱 Nomor ini harus aktif di WA Web. Scan QR diminta saat pertama kali atau session expired.</div>
+              value="${creds?.wa_number || ''}" autocomplete="off">
+            <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:6px 0 0;line-height:1.5">📱 Nomor harus aktif di WA Web. Scan QR diminta saat pertama kali atau session expired.</p>
           </div>
-          ${creds?.last_wa_login ? `<div class="pa-last-login">Paired terakhir: ${_formatDate(creds.last_wa_login)}</div>` : ''}
-          <details style="margin-top:8px">
-            <summary style="font-size:10px;color:rgba(255,255,255,0.35);cursor:pointer;padding:4px 0;list-style:none">
-              ℹ️ Bagaimana WA Blast bekerja? (klik)
-            </summary>
-            <div style="font-size:10px;color:rgba(255,255,255,0.45);line-height:1.7;padding:6px 0 2px">
-              1. Klik tombol <b>"WA Blast"</b> di listing, pilih template pesan & daftar kontak<br>
-              2. PA buka WA Web di server, kirim pesan satu per satu ke tiap nomor<br>
-              3. Ada <b>jeda acak 10–30 detik</b> antar pesan agar tidak terdeteksi spam<br>
-              4. Maksimal <b>5 nomor per sesi blast</b><br><br>
-              ⚠️ Jangan jalankan blast bersamaan dari banyak perangkat ke nomor yang sama — risiko banned WA.
-            </div>
-          </details>
+          ${creds?.last_wa_login ? `<div style="font-size:11px;color:rgba(212,175,55,0.6)">Paired terakhir: ${_formatDate(creds.last_wa_login)}</div>` : ''}
         </div>
 
         <!-- Batas Harian -->
-        <div class="pa-section pa-limits-section">
-          <div class="pa-section-title">📊 Batas Harian (Hari Ini)</div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px">
+          <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.7);margin-bottom:10px">📊 Batas Harian (Hari Ini)</div>
           <div class="pa-limits-grid" id="pa-limits-grid">
-            <div class="pa-limit-card">
-              <span class="pa-limit-icon">🎬</span>
-              <span class="pa-limit-label">IG Reels</span>
-              <span class="pa-limit-count" id="pa-count-ig_reels">-/5</span>
-            </div>
-            <div class="pa-limit-card">
-              <span class="pa-limit-icon">📸</span>
-              <span class="pa-limit-label">IG Story</span>
-              <span class="pa-limit-count" id="pa-count-ig_story">-/5</span>
-            </div>
-            <div class="pa-limit-card">
-              <span class="pa-limit-icon">📲</span>
-              <span class="pa-limit-label">WA Blast</span>
-              <span class="pa-limit-count" id="pa-count-wa_blast">-/2</span>
-            </div>
+            <div class="pa-limit-card"><span class="pa-limit-icon">🎬</span><span class="pa-limit-label">IG Reels</span><span class="pa-limit-count" id="pa-count-ig_reels">-/5</span></div>
+            <div class="pa-limit-card"><span class="pa-limit-icon">📸</span><span class="pa-limit-label">IG Story</span><span class="pa-limit-count" id="pa-count-ig_story">-/5</span></div>
+            <div class="pa-limit-card"><span class="pa-limit-icon">📲</span><span class="pa-limit-label">WA Blast</span><span class="pa-limit-count" id="pa-count-wa_blast">-/2</span></div>
           </div>
-          <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:8px 0 0;line-height:1.6">
-            ⚠️ Limit dipasang untuk melindungi akun dari <b style="color:rgba(255,200,100,0.7)">banned / restricted</b> oleh Instagram dan WhatsApp. Reset tiap tengah malam.
-          </p>
         </div>
 
         <!-- Save button -->
-        <button class="pa-btn-save" onclick="savePACredentials()">
+        <button class="btn-gold" style="width:100%;font-size:14px;padding:15px;border-radius:14px" onclick="savePACredentials()">
           💾 Simpan Pengaturan PA
         </button>
 
@@ -342,7 +276,7 @@ async function openPACredentialsSidebar() {
             <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;margin-bottom:10px">
               <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:0 0 6px;text-transform:uppercase;letter-spacing:.5px">Base URL CRM (domain publik)</p>
               <div style="display:flex;gap:6px">
-                <input id="wb-base-url" class="pa-input" type="url" style="flex:1;font-size:11px;margin:0"
+                <input id="wb-base-url" class="form-input" type="url" style="flex:1;font-size:11px;margin:0"
                   placeholder="https://crm.domain.com"
                   value="${wbCfg.base_url || ''}">
                 <button onclick="wbSaveBaseUrl()" style="flex-shrink:0;padding:6px 10px;border-radius:8px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:11px;cursor:pointer;white-space:nowrap">💾 Simpan</button>
@@ -465,7 +399,7 @@ async function openPACredentialsSidebar() {
             <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;margin-bottom:10px">
               <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:0 0 6px;text-transform:uppercase;letter-spacing:.5px">Base URL CRM (domain publik)</p>
               <div style="display:flex;gap:6px">
-                <input id="wb-base-url-meta" class="pa-input" type="url" style="flex:1;font-size:11px;margin:0"
+                <input id="wb-base-url-meta" class="form-input" type="url" style="flex:1;font-size:11px;margin:0"
                   placeholder="https://crm.domain.com"
                   value="${wbCfg.base_url || ''}">
                 <button onclick="wbSaveBaseUrl('meta')" style="flex-shrink:0;padding:6px 10px;border-radius:8px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:11px;cursor:pointer;white-space:nowrap">💾 Simpan</button>
@@ -497,14 +431,14 @@ async function openPACredentialsSidebar() {
               <p style="font-size:11px;color:rgba(255,255,255,0.5);margin:0 0 10px;text-transform:uppercase;letter-spacing:.5px">Pengaturan Meta App</p>
               <div style="margin-bottom:8px">
                 <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:0 0 4px">Page Access Token</p>
-                <input id="wb-meta-pat" type="password" class="pa-input" style="margin:0"
+                <input id="wb-meta-pat" type="password" class="form-input" style="margin:0"
                   placeholder="Dari Meta App → Tools → Graph API Explorer"
                   value="${wbCfg.meta_page_access_token && wbCfg.meta_page_access_token !== '••••••••' ? wbCfg.meta_page_access_token : ''}">
                 <p style="font-size:10px;color:rgba(255,255,255,0.25);margin:3px 0 0">Untuk fetch detail lead (nama/HP/email) via Graph API</p>
               </div>
               <div style="margin-bottom:10px">
                 <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:0 0 4px">App Secret</p>
-                <input id="wb-meta-secret" type="password" class="pa-input" style="margin:0"
+                <input id="wb-meta-secret" type="password" class="form-input" style="margin:0"
                   placeholder="Dari Meta App → Settings → Basic → App Secret"
                   value="${wbCfg.meta_app_secret && wbCfg.meta_app_secret !== '••••••••' ? wbCfg.meta_app_secret : ''}">
                 <p style="font-size:10px;color:rgba(255,255,255,0.25);margin:3px 0 0">Untuk verifikasi signature dari Meta (keamanan)</p>
@@ -533,16 +467,16 @@ async function openPACredentialsSidebar() {
           </div>
         </div>
 
-      </div><!-- /pa-modal-form-body -->
-    </div><!-- /pa-modal-form -->
+      </div><!-- /mbody -->
+    </div><!-- /modal-sheet -->
   `;
 
   document.body.appendChild(sidebar);
 
   // Animate in
   requestAnimationFrame(() => {
-    const form = sidebar.querySelector('.pa-modal-form');
-    if (form) { form.style.opacity = '1'; form.style.transform = 'translateY(0)'; }
+    const sheet = sidebar.querySelector('.modal-sheet');
+    if (sheet) { sheet.style.opacity = '1'; sheet.style.transform = 'translateY(0)'; }
   });
 
   // Inisialisasi panel webhook sesuai config (fromInit=true agar tidak trigger save)
@@ -559,8 +493,8 @@ async function openPACredentialsSidebar() {
 function closePACredentialsSidebar() {
   const sidebar = document.getElementById('pa-credentials-sidebar');
   if (!sidebar) return;
-  const form = sidebar.querySelector('.pa-modal-form');
-  if (form) { form.style.opacity = '0'; form.style.transform = 'translateY(16px)'; }
+  const sheet = sidebar.querySelector('.modal-sheet');
+  if (sheet) { sheet.style.opacity = '0'; sheet.style.transform = 'translateY(16px)'; }
   setTimeout(() => sidebar.remove(), 200);
 }
 
@@ -1234,31 +1168,13 @@ function _injectPAStyles() {
     /* ── PA Modal Form ───────────────────────────── */
     #pa-credentials-sidebar {
       position:fixed;inset:0;z-index:1200;
-      overflow-y:auto;-webkit-overflow-scrolling:touch;
-      padding:16px 16px 90px;
       background:rgba(0,0,0,0.75);
+      display:flex;align-items:flex-end;justify-content:center;
     }
-    .pa-modal-overlay {
-      position:fixed;inset:0;z-index:-1;
-    }
-    .pa-modal-form {
-      background:#0D1526;border:1px solid rgba(255,255,255,0.1);
-      border-radius:20px;max-width:540px;margin:0 auto;
-      overflow:hidden;
+    #pa-credentials-sidebar .modal-sheet {
       opacity:0;transform:translateY(16px);
       transition:opacity 0.2s ease,transform 0.2s ease;
     }
-    .pa-modal-form-header {
-      display:flex;align-items:center;justify-content:space-between;
-      padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);
-      background:linear-gradient(135deg,#131F38,#0D1526);
-      position:sticky;top:0;z-index:2;
-    }
-    .pa-btn-close { background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:8px }
-    .pa-btn-close:hover { background:rgba(255,255,255,0.08);color:#fff }
-    .pa-modal-form-body { padding:16px 20px;display:flex;flex-direction:column;gap:14px }
-    .pa-form-field { display:flex;flex-direction:column;gap:6px }
-    .pa-field-label { font-size:11px;font-weight:600;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.07em }
 
     /* ── Sections ───────────────────────────────── */
     .pa-section { background:rgba(255,255,255,0.04);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px }
