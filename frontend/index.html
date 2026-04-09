@@ -823,6 +823,7 @@
       <button id="sidebar-team-mgmt" onclick="navigateTo('team');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-people-group" style="color:#a78bfa;width:16px;text-align:center"></i><span>Manajemen Tim</span></button>
       <button onclick="navigateTo('member');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-building-user" style="color:#D4A853;width:16px;text-align:center"></i><span>Member Kantor</span></button>
       <button onclick="openAddPhotoModal();closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-camera-retro" style="color:#fb923c;width:16px;text-align:center"></i><span>Listing Tanpa Foto</span></button>
+      <button id="pwa-install-btn" onclick="installPWA();closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.2);cursor:pointer;color:#D4A853;font-size:13px;text-align:left;margin-top:4px"><i class="fa-solid fa-download" style="color:#D4A853;width:16px;text-align:center"></i><span>Install Aplikasi CRM</span></button>
       <button onclick="openShareLog();closeSidebar()" style="display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38'" onmouseleave="this.style.background='transparent'">
         <i class="fa-solid fa-chart-bar" style="color:#D4A853;width:16px;text-align:center"></i>
         <span>Log Share</span>
@@ -1498,6 +1499,42 @@
       if (_origUpdateUI) _origUpdateUI(role);
       if (window.initPADashboard) window.initPADashboard();
     };
+  });
+
+  // ── Service Worker & PWA Install ──
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('[CRM SW] Registered:', reg.scope))
+        .catch(err => console.warn('[CRM SW] Failed:', err));
+    });
+  }
+
+  let _pwaPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    _pwaPrompt = e;
+    // Tampilkan tombol install jika ada
+    const btn = document.getElementById('pwa-install-btn');
+    if (btn) btn.style.display = 'flex';
+  });
+
+  window.installPWA = function() {
+    if (!_pwaPrompt) return;
+    _pwaPrompt.prompt();
+    _pwaPrompt.userChoice.then(choice => {
+      if (choice.outcome === 'accepted') {
+        const btn = document.getElementById('pwa-install-btn');
+        if (btn) btn.style.display = 'none';
+      }
+      _pwaPrompt = null;
+    });
+  };
+
+  window.addEventListener('appinstalled', () => {
+    const btn = document.getElementById('pwa-install-btn');
+    if (btn) btn.style.display = 'none';
+    _pwaPrompt = null;
   });
 </script>
 

@@ -108,14 +108,22 @@ async function openPACredentialsSidebar() {
   const sidebar = document.createElement('div');
   sidebar.id = 'pa-credentials-sidebar';
   sidebar.innerHTML = `
-    <div class="pa-sidebar-overlay" onclick="closePACredentialsSidebar()"></div>
-    <div class="pa-sidebar-panel">
-      <div class="pa-sidebar-header">
-        <span>⚙️ Pengaturan Personal Assistant</span>
+    <div class="pa-modal-overlay" onclick="closePACredentialsSidebar()"></div>
+    <div class="pa-modal-form">
+      <div class="pa-modal-form-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(212,168,83,0.15);display:flex;align-items:center;justify-content:center">
+            <i class="fa-solid fa-robot" style="color:#D4A853;font-size:15px"></i>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:#fff">Personal Assistant</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.35)">Pengaturan PA & Webhook</div>
+          </div>
+        </div>
         <button onclick="closePACredentialsSidebar()" class="pa-btn-close">✕</button>
       </div>
 
-      <div class="pa-sidebar-body">
+      <div class="pa-modal-form-body">
 
         <!-- ── APA ITU PERSONAL ASSISTANT? ── -->
         <details style="margin-bottom:14px;border:1px solid rgba(212,168,83,0.2);border-radius:12px;overflow:hidden">
@@ -158,12 +166,18 @@ async function openPACredentialsSidebar() {
               ${_statusLabel(creds?.ig_status)}
             </span>
           </div>
-          <input class="pa-input" id="pa-ig-username" type="text"
-            placeholder="Username Instagram (tanpa @)"
-            value="${creds?.ig_username || ''}">
-          <input class="pa-input" id="pa-ig-password" type="password"
-            placeholder="Password (disimpan terenkripsi AES-256)">
-          <div class="pa-hint">🔒 Password dienkripsi sebelum tersimpan. Hanya digunakan saat session login expired.</div>
+          <div class="pa-form-field">
+            <label class="pa-field-label">Username Instagram</label>
+            <input class="pa-input" id="pa-ig-username" type="text"
+              placeholder="contoh: agen.mansion (tanpa @)"
+              value="${creds?.ig_username || ''}">
+          </div>
+          <div class="pa-form-field">
+            <label class="pa-field-label">Password Instagram</label>
+            <input class="pa-input" id="pa-ig-password" type="password"
+              placeholder="Kosongkan jika tidak ingin mengubah">
+            <div class="pa-hint">🔒 Disimpan terenkripsi AES-256. Hanya dipakai saat session login expired.</div>
+          </div>
           ${creds?.last_ig_login ? `<div class="pa-last-login">Login terakhir: ${_formatDate(creds.last_ig_login)}</div>` : ''}
           <details style="margin-top:8px">
             <summary style="font-size:10px;color:rgba(255,255,255,0.35);cursor:pointer;padding:4px 0;list-style:none">
@@ -188,10 +202,13 @@ async function openPACredentialsSidebar() {
               ${_statusLabel(creds?.wa_status)}
             </span>
           </div>
-          <input class="pa-input" id="pa-wa-number" type="tel"
-            placeholder="Nomor WA Business (e.g. 628123456789)"
-            value="${creds?.wa_number || ''}">
-          <div class="pa-hint">📱 Nomor ini harus aktif di WA Web. Scan QR akan diminta saat pertama kali atau session expired.</div>
+          <div class="pa-form-field">
+            <label class="pa-field-label">Nomor WhatsApp Business</label>
+            <input class="pa-input" id="pa-wa-number" type="tel"
+              placeholder="contoh: 628123456789 (awali 62, tanpa +)"
+              value="${creds?.wa_number || ''}">
+            <div class="pa-hint">📱 Nomor ini harus aktif di WA Web. Scan QR diminta saat pertama kali atau session expired.</div>
+          </div>
           ${creds?.last_wa_login ? `<div class="pa-last-login">Paired terakhir: ${_formatDate(creds.last_wa_login)}</div>` : ''}
           <details style="margin-top:8px">
             <summary style="font-size:10px;color:rgba(255,255,255,0.35);cursor:pointer;padding:4px 0;list-style:none">
@@ -516,11 +533,17 @@ async function openPACredentialsSidebar() {
           </div>
         </div>
 
-      </div>
-    </div>
+      </div><!-- /pa-modal-form-body -->
+    </div><!-- /pa-modal-form -->
   `;
 
   document.body.appendChild(sidebar);
+
+  // Animate in
+  requestAnimationFrame(() => {
+    const form = sidebar.querySelector('.pa-modal-form');
+    if (form) { form.style.opacity = '1'; form.style.transform = 'translateY(0)'; }
+  });
 
   // Inisialisasi panel webhook sesuai config (fromInit=true agar tidak trigger save)
   _wbCurrentMode = wbCfg.webhook_type || 'none';
@@ -531,19 +554,14 @@ async function openPACredentialsSidebar() {
 
   // Render existing logs
   _renderPALogsPanel();
-
-  // Animate in
-  requestAnimationFrame(() => {
-    sidebar.querySelector('.pa-sidebar-panel').style.transform = 'translateX(0)';
-  });
 }
 
 function closePACredentialsSidebar() {
   const sidebar = document.getElementById('pa-credentials-sidebar');
   if (!sidebar) return;
-  const panel = sidebar.querySelector('.pa-sidebar-panel');
-  panel.style.transform = 'translateX(100%)';
-  setTimeout(() => sidebar.remove(), 300);
+  const form = sidebar.querySelector('.pa-modal-form');
+  if (form) { form.style.opacity = '0'; form.style.transform = 'translateY(16px)'; }
+  setTimeout(() => sidebar.remove(), 200);
 }
 
 async function savePACredentials() {
@@ -1213,33 +1231,34 @@ function _injectPAStyles() {
   const style = document.createElement('style');
   style.id = 'pa-styles';
   style.textContent = `
-    /* ── Sidebar PA ─────────────────────────────── */
+    /* ── PA Modal Form ───────────────────────────── */
     #pa-credentials-sidebar {
-      position:fixed;top:0;left:0;right:0;bottom:0;
-      width:100%;height:100%;
-      z-index:1200;
+      position:fixed;inset:0;z-index:1200;
+      overflow-y:auto;-webkit-overflow-scrolling:touch;
+      padding:16px 16px 90px;
+      background:rgba(0,0,0,0.75);
     }
-    .pa-sidebar-overlay {
-      position:absolute;top:0;left:0;right:0;bottom:0;
-      width:100%;height:100%;
-      background:rgba(0,0,0,0.6);
+    .pa-modal-overlay {
+      position:fixed;inset:0;z-index:-1;
     }
-    .pa-sidebar-panel {
-      position:absolute;right:0;top:0;
-      width:340px;max-width:95vw;height:100%;
-      background:#0f1923;border-left:1px solid rgba(212,175,55,0.2);
-      display:flex;flex-direction:column;
-      transform:translateX(100%);transition:transform 0.3s ease;
+    .pa-modal-form {
+      background:#0D1526;border:1px solid rgba(255,255,255,0.1);
+      border-radius:20px;max-width:540px;margin:0 auto;
       overflow:hidden;
+      opacity:0;transform:translateY(16px);
+      transition:opacity 0.2s ease,transform 0.2s ease;
     }
-    .pa-sidebar-header {
-      flex-shrink:0;
+    .pa-modal-form-header {
       display:flex;align-items:center;justify-content:space-between;
-      padding:16px;border-bottom:1px solid rgba(255,255,255,0.1);
-      font-size:14px;font-weight:600;color:#d4af37;
+      padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);
+      background:linear-gradient(135deg,#131F38,#0D1526);
+      position:sticky;top:0;z-index:2;
     }
-    .pa-btn-close { background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer }
-    .pa-sidebar-body { flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;display:flex;flex-direction:column;gap:12px }
+    .pa-btn-close { background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:8px }
+    .pa-btn-close:hover { background:rgba(255,255,255,0.08);color:#fff }
+    .pa-modal-form-body { padding:16px 20px;display:flex;flex-direction:column;gap:14px }
+    .pa-form-field { display:flex;flex-direction:column;gap:6px }
+    .pa-field-label { font-size:11px;font-weight:600;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.07em }
 
     /* ── Sections ───────────────────────────────── */
     .pa-section { background:rgba(255,255,255,0.04);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px }
@@ -1290,7 +1309,7 @@ function _injectPAStyles() {
     .pa-limit-count { font-size:13px;font-weight:700;color:#4ade80 }
 
     /* ── Logs Panel ─────────────────────────────── */
-    .pa-logs-panel { max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:6px }
+    .pa-logs-panel { max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-bottom:4px }
     .pa-log-empty { font-size:12px;color:rgba(255,255,255,0.3);text-align:center;padding:20px }
     .pa-log-item { display:flex;gap:8px;padding:8px;background:rgba(255,255,255,0.04);border-radius:6px;align-items:flex-start }
     .pa-log-item.pa-log-error { background:rgba(239,68,68,0.08);border-left:2px solid #ef4444 }
