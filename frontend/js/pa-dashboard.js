@@ -107,6 +107,9 @@ async function openPACredentialsSidebar() {
 
   const sidebar = document.createElement('div');
   sidebar.id = 'pa-credentials-sidebar';
+  sidebar.className = 'modal-overlay open';
+  sidebar.style.zIndex = '1200';
+  sidebar.onclick = closePACredentialsSidebar;
   sidebar.innerHTML = `
     <div class="modal-sheet" style="max-width:540px" onclick="event.stopPropagation()">
       <div class="mheader">
@@ -1165,12 +1168,7 @@ function _injectPAStyles() {
   const style = document.createElement('style');
   style.id = 'pa-styles';
   style.textContent = `
-    /* ── PA Modal Form ───────────────────────────── */
-    #pa-credentials-sidebar {
-      position:fixed;inset:0;z-index:1200;
-      background:rgba(0,0,0,0.75);
-      display:flex;align-items:flex-end;justify-content:center;
-    }
+    /* ── PA Modal Sheet animation ────────────────── */
     #pa-credentials-sidebar .modal-sheet {
       opacity:0;transform:translateY(16px);
       transition:opacity 0.2s ease,transform 0.2s ease;
