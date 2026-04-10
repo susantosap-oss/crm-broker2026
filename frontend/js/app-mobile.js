@@ -947,15 +947,27 @@ async function saveCaption(listingId) {
 // ── Share WA helpers ──────────────────────────────────────
 let _shareWAListingId = null;
 
+function _makeSlug(text, id) {
+  return text.toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim() + '-' + id.slice(-6);
+}
+
+const SITE_URL = 'https://www.mansionpro.id';
+
 function _buildShareText(listing) {
   const harga     = listing.Harga_Format || formatRupiah(listing.Harga);
   const agentNama  = STATE.user?.nama || listing.Agen_Nama || '';
   const agentWA    = STATE.user?.no_wa    || STATE.user?.No_WA    || '';
   const agentWABiz = STATE.user?.no_wa_biz || '';
+  const agentId    = STATE.user?.id || listing.Agen_ID || '';
   const waClean    = agentWA.replace(/\D/g, '');
   const waBizClean = agentWABiz.replace(/\D/g, '');
   const lokasi    = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ');
-    // Parse spek dari deskripsi (fallback untuk listing lama)
+
+  // Parse spek dari deskripsi (fallback untuk listing lama)
   const _desc   = listing.Deskripsi || '';
   const _px     = (re) => { const m = _desc.match(re); return m ? m[1] : ''; };
   const _lt     = listing.Luas_Tanah    || _px(/LT[:\s]*(\d+)/i);
@@ -963,7 +975,7 @@ function _buildShareText(listing) {
   const _kt     = listing.Kamar_Tidur   || _px(/(\d+(?:[+\-]\d+)?)\s*KT/i);
   const _km     = listing.Kamar_Mandi   || _px(/(\d+(?:[+\-]\d+)?)\s*KM/i);
   const _srt    = listing.Sertifikat    || _px(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i);
-  
+
   const spek    = [
     _lt  ? `LT ${_lt} m2`  : '',
     _lb  ? `LB ${_lb} m2`  : '',
@@ -971,25 +983,34 @@ function _buildShareText(listing) {
     _km  ? `${_km} KM`     : '',
     _srt ? _srt            : '',
   ].filter(Boolean).join(' / ');
+
   // Strip hashtag dari deskripsi
   const rawDesk = (listing.Deskripsi || '').replace(/#\w+/g, '').replace(/\s{2,}/g, ' ').trim();
   const deskripsi = rawDesk
     ? '\n' + rawDesk.substring(0, 300) + (rawDesk.length > 300 ? '...' : '')
     : '';
+
+  // URL listing & page agen
+  const listingSlug = _makeSlug(listing.Judul || '', listing.ID || '');
+  const listingUrl  = `${SITE_URL}/listings/${listingSlug}`;
+  const agentUrl    = agentId ? `${SITE_URL}/agents/${agentId}` : '';
+
   return (
-    `*${(listing.Judul || 'Properti Dijual').toUpperCase().trim()}*\n` + 
-    `_${listing.Tipe_Properti || ''} - ${listing.Status_Transaksi || ''}_\n\n` + 
+    `*${(listing.Judul || 'Properti Dijual').toUpperCase().trim()}*\n` +
+    `_${listing.Tipe_Properti || ''} - ${listing.Status_Transaksi || ''}_\n\n` +
     `📍 *Lokasi* : ${lokasi || '-'}\n` +
-    `💰 *Harga* : *${harga}*\n` + 
+    `💰 *Harga* : *${harga}*\n` +
     (listing.Harga_Permeter ? `📐 *Harga/m²* : ${listing.Harga_Permeter_Format || formatRupiah(listing.Harga_Permeter)}\n` : '') +
     (spek ? `🏠 *Spek* : ${spek}\n` : '') +
     (listing.Kode_Listing ? `🆔 *Kode* : ${listing.Kode_Listing}\n` : '') +
     `\n${deskripsi}\n\n` +
+    `🔗 *Detail Lengkap:*\n${listingUrl}\n\n` +
     `*Hubungi Agen:*\n` +
     `👤 ${agentNama}\n` +
-    (waClean    ? `📱 : +${waClean}\n` : '') + 
-    (waBizClean ? `💼 : +${waBizClean}\n` : '')
-);
+    (waClean    ? `📱 : +${waClean}\n` : '') +
+    (waBizClean ? `💼 : +${waBizClean}\n` : '') +
+    (agentUrl   ? `🪪 Profil Agen: ${agentUrl}\n` : '')
+  );
 }
 
 function openShareWAPicker(listingId) {
@@ -4106,22 +4127,27 @@ async function shareProjectWA() {
   const project = _projectsData.find(p => p.ID === _currentProjectId);
   if (!project) return;
 
-  let shortUrl = '';
-  try {
-    const r = await API.get('/projects/' + _currentProjectId + '/shortlink');
-    shortUrl = r.data?.Short_URL || '';
-  } catch (_) {}
-
   const tipeEmoji = { Rumah: '🏡', Ruko: '🏪', Apartemen: '🏢', Gudang: '🏭' }[project.Tipe_Properti] || '🏠';
   const cara      = (project.Cara_Bayar || '').replace(/,/g, ', ');
+  const agentNama = STATE.user?.nama || '';
+  const agentWA   = (STATE.user?.no_wa || STATE.user?.No_WA || '').replace(/\D/g, '');
+  const agentId   = STATE.user?.id || '';
+
+  // URL project & page agen
+  const projectSlug = _makeSlug(project.Nama_Proyek || '', project.ID || '');
+  const projectUrl  = `${SITE_URL}/projects/${projectSlug}`;
+  const agentUrl    = agentId ? `${SITE_URL}/agents/${agentId}` : '';
 
   const text = `${tipeEmoji} *${project.Nama_Proyek}*\n`
     + `Developer: *${project.Nama_Developer}*\n`
     + `Tipe: ${project.Tipe_Properti} | Mulai *${project.Harga_Format || 'On Request'}*\n`
     + `💳 ${cara}\n\n`
     + (project.Deskripsi ? project.Deskripsi.slice(0, 250) + (project.Deskripsi.length > 250 ? '...' : '') + '\n\n' : '')
-    + (shortUrl ? `🔗 Info lengkap: ${shortUrl}\n\n` : '')
-    + `📞 Hubungi saya untuk info & jadwal survei!`;
+    + `🔗 *Detail Lengkap:*\n${projectUrl}\n\n`
+    + `*Hubungi Agen:*\n`
+    + `👤 ${agentNama}\n`
+    + (agentWA   ? `📱 : +${agentWA}\n` : '')
+    + (agentUrl  ? `🪪 Profil Agen: ${agentUrl}\n` : '');
 
   window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
 

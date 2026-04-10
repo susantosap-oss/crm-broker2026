@@ -1200,7 +1200,7 @@ async function sendWaMessage() {
 // ── State sementara untuk pending listing submission ──────────────────────
 let _pendingListingPayload = null;
 
-// ── Parse LT/LB/KT dari teks deskripsi (sama seperti logic backend PDF) ──
+// ── Parse LT/LB/KT/KM/Garasi dari teks deskripsi (sama seperti logic backend PDF) ──
 function parseDeskripsi(text) {
   if (!text) return {};
   const px = (re) => { const m = text.match(re); return m ? m[1] : ''; };
@@ -1208,6 +1208,8 @@ function parseDeskripsi(text) {
     Luas_Tanah:    px(/LT[:\s]*(\d+)/i),
     Luas_Bangunan: px(/LB[:\s]*(\d+)/i),
     Kamar_Tidur:   px(/(\d+(?:[+\-]\d+)?)\s*KT/i),
+    Kamar_Mandi:   px(/(\d+(?:[+\-]\d+)?)\s*KM/i),
+    Garasi:        px(/garasi[:\s]+([^\n,/]+)/i),
   };
 }
 
@@ -1227,20 +1229,27 @@ async function submitAddListing() {
     showToast('Isi judul, tipe, dan jenis transaksi', 'error'); return;
   }
 
+  // ── Parse spesifikasi dari deskripsi dan masukkan ke payload ───────────
+  const parsed = parseDeskripsi(payload.Deskripsi);
+  if (parsed.Luas_Tanah)    payload.Luas_Tanah    = parsed.Luas_Tanah;
+  if (parsed.Luas_Bangunan) payload.Luas_Bangunan = parsed.Luas_Bangunan;
+  if (parsed.Kamar_Tidur)   payload.Kamar_Tidur   = parsed.Kamar_Tidur;
+  if (parsed.Kamar_Mandi)   payload.Kamar_Mandi   = parsed.Kamar_Mandi;
+  if (parsed.Garasi)        payload.Garasi        = parsed.Garasi;
+
   // ── Cek duplikat sebelum simpan (hanya jika Kecamatan & Kota diisi) ───
   if (payload.Kecamatan && payload.Kota) {
     const btn = document.getElementById('listing-submit-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Cek duplikat...'; }
 
     try {
-      const parsed = parseDeskripsi(payload.Deskripsi);
       const checkPayload = {
         Kecamatan:     payload.Kecamatan,
         Kota:          payload.Kota,
         Harga:         payload.Harga,
-        Luas_Tanah:    parsed.Luas_Tanah,
-        Luas_Bangunan: parsed.Luas_Bangunan,
-        Kamar_Tidur:   parsed.Kamar_Tidur,
+        Luas_Tanah:    payload.Luas_Tanah,
+        Luas_Bangunan: payload.Luas_Bangunan,
+        Kamar_Tidur:   payload.Kamar_Tidur,
       };
       const res = await API.post('/listing-agents/check-duplicate', checkPayload);
       if (res.duplicates && res.duplicates.length > 0) {
