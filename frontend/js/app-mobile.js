@@ -5050,3 +5050,5 @@ async function exportLeadsCSV() {
     showToast('✅ CSV berhasil didownload!', 'success');
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
+// ── Expose showToast untuk pa-dashboard.js ──────────────
+window.showToast = showToast;

@@ -11,7 +11,7 @@ python3 apply_patches.py || exit 1
 echo ""
 echo "🚀 [2/2] Deploy..."
 gcloud run deploy crm-broker-properti \
-  --source . --region asia-southeast1 --project crm-broker2026 \
+  --source . --region asia-southeast2 --project crm-broker2026 \
   --allow-unauthenticated \
   --service-account crm-sheets-sa@crm-broker2026.iam.gserviceaccount.com \
   --memory 512Mi --env-vars-file .env.yaml --clear-base-image

@@ -1776,3 +1776,8 @@ document.addEventListener('click', (e) => {
     closeFab();
   }
 });
+
+// ── Expose globals untuk pa-dashboard.js & modul lain ────
+// const tidak otomatis jadi window.X — harus di-assign manual
+window.API   = API;
+window.STATE = STATE;
