@@ -957,7 +957,7 @@ function _makeSlug(text, id) {
 
 const SITE_URL = 'https://www.mansionpro.id';
 
-function _buildShareText(listing) {
+function _buildShareText(listing, isOwnerOrCoOwner = false) {
   const harga     = listing.Harga_Format || formatRupiah(listing.Harga);
   const agentNama  = STATE.user?.nama || listing.Agen_Nama || '';
   const agentKantor = (STATE.user?.nama_kantor || '').replace(/^MANSION\s*:\s*/i, 'Mansion ').trim();
@@ -1006,7 +1006,7 @@ function _buildShareText(listing) {
     (spek ? `🏠 *Spek* : ${spek}\n` : '') +
     (listing.Kode_Listing ? `🆔 *Kode* : ${listing.Kode_Listing}\n` : '') +
     `\n${deskripsi}\n\n` +
-    `🔗 *Detail Lengkap:*\n${listingUrl}\n\n` +
+    (isOwnerOrCoOwner ? `🔗 *Detail Lengkap:*\n${listingUrl}\n\n` : '') +
     `*Hubungi Agen:*\n` +
     `👤 ${agentNama}\n` +
     (agentKantor ? `🏢 ${agentKantor}\n` : '') +
@@ -1053,11 +1053,26 @@ function openShareWAPicker(listingId) {
   }, 100);
 }
 
-function doShareWA(type) {
+async function doShareWA(type) {
   document.getElementById('wa-picker-popup')?.remove();
   const listing = _allListings.find(l => l.ID === _shareWAListingId);
   if (!listing) return;
-  const text    = _buildShareText(listing);
+
+  // Cek apakah user adalah owner atau co-owner listing ini
+  let isOwnerOrCoOwner = listing.Agen_ID === STATE.user?.id;
+  if (!isOwnerOrCoOwner && STATE.user?.id) {
+    try {
+      const r = await fetch(`/api/v1/listing_agents/${listing.ID}/agents`, {
+        headers: { 'Authorization': `Bearer ${STATE.token}` }
+      });
+      if (r.ok) {
+        const d = await r.json();
+        isOwnerOrCoOwner = (d.data || []).some(a => a.Agen_ID === STATE.user.id);
+      }
+    } catch (_) {}
+  }
+
+  const text    = _buildShareText(listing, isOwnerOrCoOwner);
   const encoded = encodeURIComponent(text);
 
   const platform = type === 'wab' ? 'wa_business' : 'wa';
