@@ -960,6 +960,7 @@ const SITE_URL = 'https://www.mansionpro.id';
 function _buildShareText(listing) {
   const harga     = listing.Harga_Format || formatRupiah(listing.Harga);
   const agentNama  = STATE.user?.nama || listing.Agen_Nama || '';
+  const agentKantor = (STATE.user?.nama_kantor || '').replace(/^MANSION\s*:\s*/i, 'Mansion ').trim();
   const agentWA    = STATE.user?.no_wa    || STATE.user?.No_WA    || '';
   const agentWABiz = STATE.user?.no_wa_biz || '';
   const agentId    = STATE.user?.id || listing.Agen_ID || '';
@@ -993,7 +994,8 @@ function _buildShareText(listing) {
   // URL listing & page agen
   const listingSlug = _makeSlug(listing.Judul || '', listing.ID || '');
   const listingUrl  = `${SITE_URL}/listings/${listingSlug}`;
-  const agentUrl    = agentId ? `${SITE_URL}/agents/${agentId}` : '';
+  const agentSlug   = agentNama.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-').trim();
+  const agentUrl    = agentId ? `${SITE_URL}/agents/${agentSlug}` : '';
 
   return (
     `*${(listing.Judul || 'Properti Dijual').toUpperCase().trim()}*\n` +
@@ -1007,6 +1009,7 @@ function _buildShareText(listing) {
     `🔗 *Detail Lengkap:*\n${listingUrl}\n\n` +
     `*Hubungi Agen:*\n` +
     `👤 ${agentNama}\n` +
+    (agentKantor ? `🏢 ${agentKantor}\n` : '') +
     (waClean    ? `📱 : +${waClean}\n` : '') +
     (waBizClean ? `💼 : +${waBizClean}\n` : '') +
     (agentUrl   ? `🪪 Profil Agen: ${agentUrl}\n` : '')
@@ -3089,13 +3092,23 @@ async function showApp() {
   // Pre-load CRA names set (tidak blok UI)
   _loadCraNames();
 
-  // Fetch foto_url terbaru dari /agents/me (tidak blok UI)
+  // Fetch data terbaru dari /agents/me (tidak blok UI)
   API.get('/agents/me').then(function(res) {
-    var fotoUrl = res.data && (res.data.Foto_URL || res.data.foto_url || '');
+    if (!res.data) return;
+    // Sync foto_url
+    var fotoUrl = res.data.Foto_URL || res.data.foto_url || '';
     if (fotoUrl && typeof _profileData !== 'undefined') {
       _profileData.photoUrl = fotoUrl;
       if (typeof saveProfileToStorage === 'function') saveProfileToStorage();
       applyProfileToUI();
+    }
+    // Sync nama_kantor ke STATE.user agar share WA pakai data terbaru
+    if (STATE.user) {
+      const kantor = res.data.Nama_Kantor || res.data.nama_kantor || '';
+      if (kantor) {
+        STATE.user.nama_kantor = kantor;
+        localStorage.setItem('crm_user', JSON.stringify(STATE.user));
+      }
     }
   }).catch(function() {});
 
@@ -4120,25 +4133,23 @@ async function loadReferralStats() {
 }
 
 // ─────────────────────────────────────────────────────────
-// SHARE WA
+// SHARE WA — PROJECT (dengan picker WA / WA Business)
 // ─────────────────────────────────────────────────────────
-async function shareProjectWA() {
-  if (!_currentProjectId) return;
-  const project = _projectsData.find(p => p.ID === _currentProjectId);
-  if (!project) return;
-
+function _buildProjectShareText(project) {
   const tipeEmoji = { Rumah: '🏡', Ruko: '🏪', Apartemen: '🏢', Gudang: '🏭' }[project.Tipe_Properti] || '🏠';
-  const cara      = (project.Cara_Bayar || '').replace(/,/g, ', ');
-  const agentNama = STATE.user?.nama || '';
-  const agentWA   = (STATE.user?.no_wa || STATE.user?.No_WA || '').replace(/\D/g, '');
-  const agentId   = STATE.user?.id || '';
+  const cara        = (project.Cara_Bayar || '').replace(/,/g, ', ');
+  const agentNama   = STATE.user?.nama || '';
+  const agentKantor = (STATE.user?.nama_kantor || '').replace(/^MANSION\s*:\s*/i, 'Mansion ').trim();
+  const agentWA     = (STATE.user?.no_wa || STATE.user?.No_WA || '').replace(/\D/g, '');
+  const agentWABiz  = (STATE.user?.no_wa_biz || '').replace(/\D/g, '');
+  const agentId     = STATE.user?.id || '';
 
-  // URL project & page agen
   const projectSlug = _makeSlug(project.Nama_Proyek || '', project.ID || '');
   const projectUrl  = `${SITE_URL}/projects/${projectSlug}`;
-  const agentUrl    = agentId ? `${SITE_URL}/agents/${agentId}` : '';
+  const agentSlug   = agentNama.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-').trim();
+  const agentUrl    = agentId ? `${SITE_URL}/agents/${agentSlug}` : '';
 
-  const text = `${tipeEmoji} *${project.Nama_Proyek}*\n`
+  return `${tipeEmoji} *${project.Nama_Proyek}*\n`
     + `Developer: *${project.Nama_Developer}*\n`
     + `Tipe: ${project.Tipe_Properti} | Mulai *${project.Harga_Format || 'On Request'}*\n`
     + `💳 ${cara}\n\n`
@@ -4146,14 +4157,70 @@ async function shareProjectWA() {
     + `🔗 *Detail Lengkap:*\n${projectUrl}\n\n`
     + `*Hubungi Agen:*\n`
     + `👤 ${agentNama}\n`
-    + (agentWA   ? `📱 : +${agentWA}\n` : '')
-    + (agentUrl  ? `🪪 Profil Agen: ${agentUrl}\n` : '');
-
-  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
-
-  // Log share project WA
-  _logShare('project', project.ID, project.Nama_Proyek || '', 'wa', project.Koordinator_ID || '');
+    + (agentKantor ? `🏢 ${agentKantor}\n` : '')
+    + (agentWA    ? `📱 : +${agentWA}\n` : '')
+    + (agentWABiz ? `💼 : +${agentWABiz}\n` : '')
+    + (agentUrl   ? `🪪 Profil Agen: ${agentUrl}\n` : '');
 }
+
+function openShareProjectWAPicker() {
+  const existing = document.getElementById('wa-project-picker-popup');
+  if (existing) { existing.remove(); return; }
+
+  const popup = document.createElement('div');
+  popup.id = 'wa-project-picker-popup';
+  popup.style.cssText = `
+    position:fixed;bottom:160px;left:50%;transform:translateX(-50%);
+    background:#141E35;border:1px solid rgba(212,168,83,0.4);border-radius:16px;
+    padding:16px;z-index:9999;width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  `;
+  popup.innerHTML = `
+    <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:12px;text-align:center">Pilih aplikasi WhatsApp</div>
+    <button onclick="doShareProjectWA('wa')" style="width:100%;padding:13px;border-radius:12px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#4ade80;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="fa-brands fa-whatsapp" style="font-size:18px"></i> WhatsApp
+    </button>
+    <button onclick="doShareProjectWA('wab')" style="width:100%;padding:13px;border-radius:12px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);color:#25d366;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="fa-brands fa-whatsapp" style="font-size:18px"></i> WA Business
+    </button>
+    <button onclick="document.getElementById('wa-project-picker-popup')?.remove()" style="width:100%;padding:8px;margin-top:8px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer">Batal</button>
+  `;
+
+  document.body.appendChild(popup);
+
+  setTimeout(() => {
+    document.addEventListener('click', function handler(e) {
+      if (!popup.contains(e.target)) {
+        popup.remove();
+        document.removeEventListener('click', handler);
+      }
+    });
+  }, 100);
+}
+
+function doShareProjectWA(type) {
+  document.getElementById('wa-project-picker-popup')?.remove();
+  if (!_currentProjectId) return;
+  const project = _projectsData.find(p => p.ID === _currentProjectId);
+  if (!project) return;
+
+  const text    = _buildProjectShareText(project);
+  const encoded = encodeURIComponent(text);
+  const platform = type === 'wab' ? 'wa_business' : 'wa';
+
+  if (type === 'wab') {
+    const isAndroid = /android/i.test(navigator.userAgent);
+    if (isAndroid) {
+      window.open(`intent://send?text=${encoded}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`, '_blank');
+    }
+  } else {
+    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+  }
+
+  _logShare('project', project.ID, project.Nama_Proyek || '', platform, project.Koordinator_ID || '');
+}
+
+// backward compat — dipanggil dari tempat lain jika ada
+async function shareProjectWA() { openShareProjectWAPicker(); }
 
 // ─────────────────────────────────────────────────────────
 // SIAPKAN KONTEN (sosmed bundle)
