@@ -1012,7 +1012,7 @@ function _buildShareText(listing, isOwnerOrCoOwner = false) {
     (agentKantor ? `🏢 ${agentKantor}\n` : '') +
     (waClean    ? `📱 : +${waClean}\n` : '') +
     (waBizClean ? `💼 : +${waBizClean}\n` : '') +
-    (agentUrl   ? `🪪 Profil Agen: ${agentUrl}\n` : '')
+    (agentUrl   ? `🌐 Profil Agen: ${agentUrl}\n` : '')
   );
 }
 
@@ -4175,7 +4175,7 @@ function _buildProjectShareText(project) {
     + (agentKantor ? `🏢 ${agentKantor}\n` : '')
     + (agentWA    ? `📱 : +${agentWA}\n` : '')
     + (agentWABiz ? `💼 : +${agentWABiz}\n` : '')
-    + (agentUrl   ? `🪪 Profil Agen: ${agentUrl}\n` : '');
+    + (agentUrl   ? `🌐 Profil Agen: ${agentUrl}\n` : '');
 }
 
 function openShareProjectWAPicker() {
