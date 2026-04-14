@@ -4375,7 +4375,7 @@ async function regenerateProjectCaption() {
 // FORM: TAMBAH / EDIT
 // ─────────────────────────────────────────────────────────
 function openAddProject() {
-  _projectPhotos = { 1: { url: '', cloudId: '' }, 2: { url: '', cloudId: '' } };
+  _projectPhotos = { 1: { url: '', cloudId: '' }, 2: { url: '', cloudId: '' }, 3: { url: '', cloudId: '' }, 4: { url: '', cloudId: '' } };
   document.getElementById('project-form-id').value    = '';
   document.getElementById('project-form-title').textContent = '⭐ Tambah Proyek Primary';
   document.getElementById('project-form-btn-text').textContent = '💾 Simpan Proyek';
@@ -4389,6 +4389,8 @@ function openAddProject() {
   document.querySelectorAll('.pf-cara').forEach(cb => cb.checked = false);
   resetProjectPhotoPreview(1);
   resetProjectPhotoPreview(2);
+  resetProjectPhotoPreview(3);
+  resetProjectPhotoPreview(4);
 
   // Koordinator field: auto-fill untuk role koordinator
   const role = STATE.user?.role;
@@ -4755,16 +4757,20 @@ function resetProjectPhotoPreview(slot) {
 }
 
 async function uploadPendingProjectPhotos() {
-  // Pastikan cloudinaryConfig tersedia — fetch ulang jika belum ada
-  if (!STATE.cloudinaryConfig?.cloudName) {
+  // Gunakan window._CLOUD_NAME yang sudah diload saat startup (loadCloudinaryConfig)
+  // Jika belum ada, fetch ulang
+  if (!window._CLOUD_NAME) {
     try {
       const cfg = await API.get('/config/cloudinary');
-      STATE.cloudinaryConfig = cfg;
+      if (cfg.cloudName) {
+        window._CLOUD_NAME    = cfg.cloudName;
+        window._UPLOAD_PRESET = cfg.uploadPreset || 'crm_unsigned';
+      }
     } catch (_) { /* lanjut, akan fallback ke URL lama */ }
   }
 
-  const cloudName    = STATE.cloudinaryConfig?.cloudName;
-  const uploadPreset = STATE.cloudinaryConfig?.uploadPreset || 'crm_unsigned';
+  const cloudName    = window._CLOUD_NAME;
+  const uploadPreset = window._UPLOAD_PRESET || 'crm_unsigned';
 
   for (const slot of [1, 2, 3, 4]) {
     const photo = _projectPhotos[slot];
