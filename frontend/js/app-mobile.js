@@ -663,6 +663,29 @@ async function openListingDetail(id) {
       <button onclick="openViGen('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-solid fa-clapperboard" style="margin-right:6px"></i>Buat Konten Iklan (ViGen)
       </button>
+
+      <!-- OpenClaw Personal Assistant -->
+      ${STATE.user ? `
+      <div style="width:100%;padding:12px 0 4px;border-top:1px solid rgba(255,255,255,0.07)">
+        <div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;font-weight:600">
+          <i class="fa-solid fa-robot" style="margin-right:4px"></i>Personal Assistant (OpenClaw)
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <button onclick="openWABlastModal('${escapeHtml(id)}')"
+            style="padding:11px 4px;border-radius:12px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3">
+            <div style="font-size:16px;margin-bottom:3px">📲</div>WA Blast
+          </button>
+          <button onclick="openIGPostModal('${escapeHtml(id)}','ig_reels')"
+            style="padding:11px 4px;border-radius:12px;background:rgba(225,48,108,0.12);border:1px solid rgba(225,48,108,0.25);color:#f472b6;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3">
+            <div style="font-size:16px;margin-bottom:3px">🎬</div>IG Reels
+          </button>
+          <button onclick="openIGPostModal('${escapeHtml(id)}','ig_story')"
+            style="padding:11px 4px;border-radius:12px;background:rgba(225,48,108,0.12);border:1px solid rgba(225,48,108,0.25);color:#f472b6;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3">
+            <div style="font-size:16px;margin-bottom:3px">📸</div>IG Story
+          </button>
+        </div>
+      </div>` : ''}
+
       ${listing.Agen_ID === STATE.user?.id ? `
       <button onclick="openEditListing('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:rgba(43,123,255,0.12);border:1px solid rgba(43,123,255,0.25);color:#60a5fa;font-size:13px;font-weight:600;cursor:pointer;margin-top:0">
         <i class="fa-solid fa-pen-to-square" style="margin-right:6px"></i>Edit Listing
@@ -3977,6 +4000,16 @@ async function openProjectDetail(id) {
     if (project.Foto_2_URL) { foto2.src = project.Foto_2_URL; foto2.style.display = ''; }
     else { foto2.style.display = 'none'; }
   }
+  const foto3 = document.getElementById('pd-foto3-thumb');
+  if (foto3) {
+    if (project.Foto_3_URL) { foto3.src = project.Foto_3_URL; foto3.style.display = ''; }
+    else { foto3.style.display = 'none'; }
+  }
+  const foto4 = document.getElementById('pd-foto4-thumb');
+  if (foto4) {
+    if (project.Foto_4_URL) { foto4.src = project.Foto_4_URL; foto4.style.display = ''; }
+    else { foto4.style.display = 'none'; }
+  }
 
   // Admin actions visibility
   const role          = STATE.user?.role;
@@ -4062,6 +4095,10 @@ async function openProjectDetail(id) {
     viGenBtn.style.display = canVigen ? '' : 'none';
   }
 
+  // Seksi PA OpenClaw — tampil untuk semua user yang sudah login
+  const paSection = document.getElementById('pd-pa-section');
+  if (paSection) paSection.style.display = STATE.user ? '' : 'none';
+
   openModal('modal-project-detail');
 }
 
@@ -4072,14 +4109,28 @@ async function loadProjectById(id) {
   } catch { return null; }
 }
 
-function toggleDetailPhoto() {
+function toggleDetailPhoto(fotoNum) {
   const f1 = document.getElementById('pd-foto1');
-  const f2 = document.getElementById('pd-foto2-thumb');
-  if (!f1 || !f2) return;
+  if (!f1) return;
   const project = _projectsData.find(p => p.ID === _currentProjectId);
-  if (!project?.Foto_2_URL) return;
+  if (!project) return;
+  const urls = [
+    project.Foto_1_URL || '',
+    project.Foto_2_URL || '',
+    project.Foto_3_URL || '',
+    project.Foto_4_URL || '',
+  ];
+  // If called with a specific foto number (1-4), switch to that photo
+  if (fotoNum >= 1 && fotoNum <= 4 && urls[fotoNum - 1]) {
+    f1.src = urls[fotoNum - 1];
+    return;
+  }
+  // Fallback: cycle to next available photo
   const cur = f1.src;
-  f1.src = cur === project.Foto_1_URL ? project.Foto_2_URL : project.Foto_1_URL;
+  const available = urls.filter(Boolean);
+  if (available.length < 2) return;
+  const idx = available.indexOf(cur);
+  f1.src = available[(idx + 1) % available.length];
 }
 
 // ─────────────────────────────────────────────────────────
@@ -4381,9 +4432,13 @@ function editCurrentProject() {
   _projectPhotos = {
     1: { url: p.Foto_1_URL || '', cloudId: '' },
     2: { url: p.Foto_2_URL || '', cloudId: '' },
+    3: { url: p.Foto_3_URL || '', cloudId: '' },
+    4: { url: p.Foto_4_URL || '', cloudId: '' },
   };
   setProjectPhotoPreview(1, p.Foto_1_URL || '');
   setProjectPhotoPreview(2, p.Foto_2_URL || '');
+  setProjectPhotoPreview(3, p.Foto_3_URL || '');
+  setProjectPhotoPreview(4, p.Foto_4_URL || '');
 
   // Reset koordinator wrap (hidden saat edit — koordinator diatur via modal terpisah)
   const korWrap = document.getElementById('pf-koordinator-wrap');
@@ -4450,7 +4505,9 @@ async function submitProjectForm() {
 
   body.Foto_1_URL     = _projectPhotos[1].url || '';
   body.Foto_2_URL     = _projectPhotos[2].url || '';
-  body.Cloudinary_IDs = [_projectPhotos[1].cloudId, _projectPhotos[2].cloudId].filter(Boolean);
+  body.Foto_3_URL     = _projectPhotos[3]?.url || '';
+  body.Foto_4_URL     = _projectPhotos[4]?.url || '';
+  body.Cloudinary_IDs = [_projectPhotos[1].cloudId, _projectPhotos[2].cloudId, _projectPhotos[3]?.cloudId, _projectPhotos[4]?.cloudId].filter(Boolean);
 
   try {
     if (btn) btn.textContent = '⏳ Menyimpan...';
@@ -4668,10 +4725,11 @@ function handleProjectPhotoSelect(event) {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  const slot = _projectPhotoSlot;
-  const reader = new FileReader();
+  const slot        = _projectPhotoSlot;
+  const existingUrl = _projectPhotos[slot]?.url || '';   // simpan URL lama sebagai fallback
+  const reader      = new FileReader();
   reader.onload = (e) => {
-    _projectPhotos[slot] = { url: '', cloudId: '', _file: file, _preview: e.target.result };
+    _projectPhotos[slot] = { url: '', cloudId: '', _file: file, _preview: e.target.result, _existingUrl: existingUrl };
     setProjectPhotoPreview(slot, e.target.result);
   };
   reader.readAsDataURL(file);
@@ -4697,16 +4755,28 @@ function resetProjectPhotoPreview(slot) {
 }
 
 async function uploadPendingProjectPhotos() {
-  const cloudName   = STATE.cloudinaryConfig?.cloudName;
-  const uploadPreset = STATE.cloudinaryConfig?.uploadPreset || 'crm_unsigned';
-  if (!cloudName) return;
+  // Pastikan cloudinaryConfig tersedia — fetch ulang jika belum ada
+  if (!STATE.cloudinaryConfig?.cloudName) {
+    try {
+      const cfg = await API.get('/config/cloudinary');
+      STATE.cloudinaryConfig = cfg;
+    } catch (_) { /* lanjut, akan fallback ke URL lama */ }
+  }
 
-  for (const slot of [1, 2]) {
+  const cloudName    = STATE.cloudinaryConfig?.cloudName;
+  const uploadPreset = STATE.cloudinaryConfig?.uploadPreset || 'crm_unsigned';
+
+  for (const slot of [1, 2, 3, 4]) {
     const photo = _projectPhotos[slot];
-    if (!photo._file) {
-      // Keep existing URL as-is
+    if (!photo?._file) continue;   // tidak ada file baru — pertahankan url yg ada
+
+    if (!cloudName) {
+      // Config masih tidak ada — batalkan upload, kembalikan URL lama
+      _projectPhotos[slot] = { url: photo._existingUrl || '', cloudId: '' };
+      showToast(`Konfigurasi upload tidak ditemukan. Foto ${slot} tidak berubah.`, 'error');
       continue;
     }
+
     try {
       showToast(`Mengupload foto ${slot}...`, 'info');
       const formData = new FormData();
@@ -4714,12 +4784,15 @@ async function uploadPendingProjectPhotos() {
       formData.append('upload_preset', uploadPreset);
       formData.append('folder', 'crm_projects');
 
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      const res  = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: 'POST', body: formData,
       });
       const data = await res.json();
+      if (!data.secure_url) throw new Error(data.error?.message || 'Upload gagal');
       _projectPhotos[slot] = { url: data.secure_url, cloudId: data.public_id };
     } catch (e) {
+      // Upload gagal — kembalikan URL lama agar tidak overwrite dengan string kosong
+      _projectPhotos[slot] = { url: photo._existingUrl || '', cloudId: '' };
       showToast(`Gagal upload foto ${slot}: ${e.message}`, 'error');
     }
   }

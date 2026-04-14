@@ -1623,29 +1623,49 @@
             placeholder="LT: 72 m²&#10;LB: 60 m²&#10;3 KT, 2 KM&#10;✅ Lokasi strategis&#10;✅ One gate system&#10;✅ Dekat tol"></textarea>
         </div>
 
-        <!-- Foto Upload (max 2) -->
+        <!-- Foto Upload (max 4) -->
         <div style="margin-bottom:16px">
-          <label class="form-label">Foto Proyek <span style="color:rgba(255,255,255,0.4);font-size:11px">(max 2 foto)</span></label>
+          <label class="form-label">Foto Proyek <span style="color:rgba(255,255,255,0.4);font-size:11px">(max 4 foto)</span></label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
 
             <!-- Foto 1 -->
             <div id="pf-foto1-container" onclick="triggerProjectPhotoUpload(1)"
-              style="height:120px;border:2px dashed rgba(212,168,83,0.4);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative;overflow:hidden;transition:all 0.2s">
+              style="height:110px;border:2px dashed rgba(212,168,83,0.4);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden;transition:all 0.2s">
               <img id="pf-foto1-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
-              <i class="fa-solid fa-image" style="font-size:22px;color:#D4A853;position:relative;z-index:1"></i>
-              <span style="font-size:11px;color:rgba(255,255,255,0.4);position:relative;z-index:1">Foto Utama</span>
+              <i class="fa-solid fa-image" style="font-size:20px;color:#D4A853;position:relative;z-index:1"></i>
+              <span style="font-size:10px;color:rgba(255,255,255,0.4);position:relative;z-index:1">Foto Utama</span>
               <button id="pf-foto1-del" onclick="event.stopPropagation();clearProjectPhoto(1)"
-                style="display:none;position:absolute;top:6px;right:6px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:12px">✕</button>
+                style="display:none;position:absolute;top:6px;right:6px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px">✕</button>
             </div>
 
             <!-- Foto 2 -->
             <div id="pf-foto2-container" onclick="triggerProjectPhotoUpload(2)"
-              style="height:120px;border:2px dashed rgba(255,255,255,0.1);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative;overflow:hidden;transition:all 0.2s">
+              style="height:110px;border:2px dashed rgba(255,255,255,0.1);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden;transition:all 0.2s">
               <img id="pf-foto2-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
-              <i class="fa-solid fa-image" style="font-size:22px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
-              <span style="font-size:11px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto Kedua</span>
+              <i class="fa-solid fa-image" style="font-size:20px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
+              <span style="font-size:10px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto 2</span>
               <button id="pf-foto2-del" onclick="event.stopPropagation();clearProjectPhoto(2)"
-                style="display:none;position:absolute;top:6px;right:6px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:12px">✕</button>
+                style="display:none;position:absolute;top:6px;right:6px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px">✕</button>
+            </div>
+
+            <!-- Foto 3 -->
+            <div id="pf-foto3-container" onclick="triggerProjectPhotoUpload(3)"
+              style="height:110px;border:2px dashed rgba(255,255,255,0.1);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden;transition:all 0.2s">
+              <img id="pf-foto3-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
+              <i class="fa-solid fa-image" style="font-size:20px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
+              <span style="font-size:10px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto 3</span>
+              <button id="pf-foto3-del" onclick="event.stopPropagation();clearProjectPhoto(3)"
+                style="display:none;position:absolute;top:6px;right:6px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px">✕</button>
+            </div>
+
+            <!-- Foto 4 -->
+            <div id="pf-foto4-container" onclick="triggerProjectPhotoUpload(4)"
+              style="height:110px;border:2px dashed rgba(255,255,255,0.1);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden;transition:all 0.2s">
+              <img id="pf-foto4-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
+              <i class="fa-solid fa-image" style="font-size:20px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
+              <span style="font-size:10px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto 4</span>
+              <button id="pf-foto4-del" onclick="event.stopPropagation();clearProjectPhoto(4)"
+                style="display:none;position:absolute;top:6px;right:6px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px">✕</button>
             </div>
 
           </div>
@@ -1690,9 +1710,18 @@
       <div style="position:relative">
         <div id="pd-foto-container" style="height:220px;background:#131F38;position:relative;overflow:hidden">
           <img id="pd-foto1" src="" alt="" style="width:100%;height:100%;object-fit:cover"/>
-          <img id="pd-foto2-thumb" src="" alt=""
-            style="position:absolute;bottom:10px;right:10px;width:70px;height:70px;border-radius:10px;object-fit:cover;border:2px solid rgba(255,255,255,0.2);display:none;cursor:pointer"
-            onclick="toggleDetailPhoto()"/>
+          <!-- Thumbnail strip: foto 2, 3, 4 -->
+          <div style="position:absolute;bottom:10px;right:10px;display:flex;gap:6px;align-items:flex-end">
+            <img id="pd-foto4-thumb" src="" alt=""
+              style="width:58px;height:58px;border-radius:8px;object-fit:cover;border:2px solid rgba(255,255,255,0.2);display:none;cursor:pointer"
+              onclick="toggleDetailPhoto(4)"/>
+            <img id="pd-foto3-thumb" src="" alt=""
+              style="width:58px;height:58px;border-radius:8px;object-fit:cover;border:2px solid rgba(255,255,255,0.2);display:none;cursor:pointer"
+              onclick="toggleDetailPhoto(3)"/>
+            <img id="pd-foto2-thumb" src="" alt=""
+              style="width:58px;height:58px;border-radius:8px;object-fit:cover;border:2px solid rgba(255,255,255,0.2);display:none;cursor:pointer"
+              onclick="toggleDetailPhoto(2)"/>
+          </div>
           <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(13,21,38,0.9) 0%, transparent 50%)"></div>
           <div id="pd-status-badge" style="position:absolute;top:12px;left:12px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700"></div>
           <div id="pd-status-project-badge" style="position:absolute;top:12px;left:80px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;display:none"></div>
@@ -1794,6 +1823,27 @@
           style="display:none;width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px">
           <i class="fa-solid fa-clapperboard" style="margin-right:6px"></i>Buat Konten Iklan (ViGen)
         </button>
+
+        <!-- PA OpenClaw Section (koordinator dan ke atas) -->
+        <div id="pd-pa-section" style="display:none;margin-bottom:10px">
+          <div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;font-weight:600">
+            <i class="fa-solid fa-robot" style="margin-right:4px"></i>Personal Assistant (OpenClaw)
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <button onclick="openProjectWABlastModal()"
+              style="padding:11px 4px;border-radius:12px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3">
+              <div style="font-size:16px;margin-bottom:3px">📲</div>WA Blast
+            </button>
+            <button onclick="openProjectIGPostModal('ig_reels')"
+              style="padding:11px 4px;border-radius:12px;background:rgba(225,48,108,0.12);border:1px solid rgba(225,48,108,0.25);color:#f472b6;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3">
+              <div style="font-size:16px;margin-bottom:3px">🎬</div>IG Reels
+            </button>
+            <button onclick="openProjectIGPostModal('ig_story')"
+              style="padding:11px 4px;border-radius:12px;background:rgba(225,48,108,0.12);border:1px solid rgba(225,48,108,0.25);color:#f472b6;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3">
+              <div style="font-size:16px;margin-bottom:3px">📸</div>IG Story
+            </button>
+          </div>
+        </div>
 
         <!-- Shortlink box (hidden, kept for reference) -->
         <div id="pd-shortlink-box" style="display:none"></div>

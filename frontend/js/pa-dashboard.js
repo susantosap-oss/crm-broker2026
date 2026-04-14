@@ -24,6 +24,9 @@ let _sseConnection = null;
 let _paLogs        = [];      // Buffer logs untuk tampilkan di UI
 const MAX_LOGS     = 50;
 
+// IG Post Queue — antrian batch posting IG
+let _igQueue = [];            // [{ listingId, title, type, url, file, mediaType, caption }]
+
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
@@ -921,8 +924,13 @@ async function submitViGenRender(listingId) {
 // MODAL WA BLAST
 // ═══════════════════════════════════════════════════════════
 
-function openWABlastModal(listingId, listingTitle, videoUrl) {
+function openWABlastModal(listingId) {
   document.getElementById('pa-wa-modal')?.remove();
+
+  const listing = (window._allListings || []).find(l => l.ID === listingId);
+  const project = (window._projectsData || []).find(p => p.ID === listingId);
+  const title   = listing?.Judul || project?.Nama_Proyek || listingId;
+  const escapedId = listingId.replace(/'/g, "\\'");
 
   const modal = document.createElement('div');
   modal.id = 'pa-wa-modal';
@@ -930,63 +938,107 @@ function openWABlastModal(listingId, listingTitle, videoUrl) {
   modal.innerHTML = `
     <div class="pa-modal-box">
       <div class="pa-modal-header">
-        <span>📲 WA Blast Personal Assistant</span>
+        <span>📲 WA Blast via PA</span>
         <button onclick="document.getElementById('pa-wa-modal').remove()">✕</button>
       </div>
       <div class="pa-modal-body">
 
+        <div style="background:#1C2D52;border-radius:10px;padding:10px 12px;font-size:13px;color:#fff;font-weight:600">
+          ${title.replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+        </div>
+
         <div class="pa-info-box">
-          ⚡ PA akan mengirim pesan ke <strong>maks 5 nomor/sesi</strong>, <strong>2 sesi/hari</strong>. PA akan mengetik pesan secara alami (3–7 detik) agar terlihat human-like.
+          ⚡ PA mengetik pesan seperti manusia (3–7 dtk/pesan). Delay antar pengiriman <strong>20–60 dtk</strong> (anti-ban).<br>
+          Maks <strong>5 nomor / sesi</strong> · <strong>2 sesi / hari</strong>.
         </div>
 
         <div class="pa-form-group">
           <label>Sesi ke- (hari ini)</label>
           <select class="pa-select" id="wa-session-number">
-            <option value="1">Sesi 1 (Nomor 1–5)</option>
-            <option value="2">Sesi 2 (Nomor 6–10)</option>
+            <option value="1">Sesi 1 (slot 1–5)</option>
+            <option value="2">Sesi 2 (slot 6–10)</option>
           </select>
         </div>
 
         <div class="pa-form-group">
-          <label>Nomor Tujuan (maks 5, satu per baris)</label>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label style="margin:0">Nomor / Grup Tujuan</label>
+            <span id="wa-selected-count" style="font-size:11px;color:#94a3b8;font-weight:600;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:10px">0 / 5 dipilih</span>
+          </div>
           <div id="wa-recipient-list">
             ${[1,2,3,4,5].map(i => `
-              <div class="wa-recipient-row">
-                <input class="pa-input wa-nomor" type="tel" placeholder="628xxx... atau Nama Grup">
-                <select class="pa-select-sm wa-type">
+              <div class="wa-recipient-row" style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+                <input type="checkbox" class="wa-nomor-check" onchange="_updateWACounter()"
+                  style="width:18px;height:18px;flex-shrink:0;cursor:pointer;accent-color:#4ade80">
+                <input class="pa-input wa-nomor" type="tel"
+                  placeholder="628xxx... atau nama grup WA"
+                  style="flex:1;margin:0;font-size:12px;padding:7px 10px"
+                  oninput="_autoCheckWA(this)">
+                <select class="pa-select-sm wa-type" style="width:82px;flex-shrink:0">
                   <option value="personal">Personal</option>
                   <option value="group">Grup WA</option>
                 </select>
               </div>
             `).join('')}
           </div>
+          <div class="pa-hint">Centang nomor yang ingin dikirim. Nomor format 628xxx (tanpa +).</div>
         </div>
 
         <div class="pa-form-group">
           <label>Preview Pesan</label>
           <textarea class="pa-textarea" id="wa-message-preview" rows="5"
-            placeholder="Pesan akan otomatis diisi dengan info listing..."></textarea>
-          <div class="pa-hint">Pesan dapat diedit. {nama_listing}, {harga}, {lokasi} akan otomatis diganti.</div>
+            placeholder="Pesan akan otomatis diisi dari data properti..."></textarea>
+          <div class="pa-hint">Bisa diedit sebelum dikirim.</div>
         </div>
 
-        <button class="pa-btn-primary" onclick="submitWABlast('${listingId}')">
-          📲 Mulai WA Blast via PA
+        <button class="pa-btn-primary" onclick="submitWABlast('${escapedId}')">
+          📲 Kirim via PA
         </button>
       </div>
     </div>
   `;
 
   document.body.appendChild(modal);
-
-  // Auto-fill pesan template
+  _updateWACounter();
   _loadWATemplate(listingId);
+}
+
+function _autoCheckWA(input) {
+  const row   = input.closest('.wa-recipient-row');
+  const check = row?.querySelector('.wa-nomor-check');
+  if (check) check.checked = !!input.value.trim();
+  _updateWACounter();
+}
+
+function _updateWACounter() {
+  const checks  = document.querySelectorAll('#pa-wa-modal .wa-nomor-check');
+  const count   = [...checks].filter(c => c.checked).length;
+  const el      = document.getElementById('wa-selected-count');
+  if (el) {
+    el.textContent = `${count} / 5 dipilih`;
+    el.style.color = count > 0 ? '#4ade80' : '#94a3b8';
+  }
 }
 
 async function _loadWATemplate(listingId) {
   const textarea = document.getElementById('wa-message-preview');
   if (!textarea) return;
 
-  textarea.value = `Halo! 👋\n\nKami ingin menawarkan properti eksklusif dari MANSION Realty:\n\n🏠 [Judul Listing]\n💰 [Harga]\n📍 [Lokasi]\n\nProperti ini sangat strategis dan harga sangat kompetitif. Apakah Anda tertarik untuk mengetahui lebih lanjut?\n\nSalam,\nTim MANSION Realty`;
+  const listing = (window._allListings || []).find(l => l.ID === listingId);
+  const project = (window._projectsData || []).find(p => p.ID === listingId);
+
+  if (listing) {
+    const harga  = listing.Harga_Format || (listing.Harga ? 'Rp\u00a0' + Number(listing.Harga).toLocaleString('id-ID') : 'Hubungi Agen');
+    const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ') || '—';
+    const agen   = (window.STATE?.user?.nama || listing.Agen_Nama || 'Tim MANSION Realty').split(' ').slice(0,2).join(' ');
+    textarea.value = `Halo! 👋\n\nSaya ingin menawarkan properti eksklusif:\n\n🏠 *${listing.Judul || 'Properti'}*\n💰 ${harga}\n📍 ${lokasi}\n\nProperti ini sangat strategis. Apakah Anda tertarik mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
+  } else if (project) {
+    const harga = project.Harga_Format || project.Harga_Mulai || 'On Request';
+    const agen  = (window.STATE?.user?.nama || 'Tim MANSION Realty').split(' ').slice(0,2).join(' ');
+    textarea.value = `Halo! 👋\n\nSaya ingin menawarkan proyek properti eksklusif:\n\n🏗️ *${project.Nama_Proyek || 'Proyek'}*\n💰 Mulai dari ${harga}\n\nProyek ini sangat strategis dan menawarkan berbagai pilihan unit. Apakah Anda tertarik mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
+  } else {
+    textarea.value = `Halo! 👋\n\nSaya ingin menawarkan properti eksklusif dari MANSION Realty.\n\nApakah Anda tertarik untuk mengetahui lebih lanjut?\n\nSalam,\nTim MANSION Realty`;
+  }
 }
 
 async function submitWABlast(listingId) {
@@ -995,21 +1047,22 @@ async function submitWABlast(listingId) {
 
   if (!message) { _showPAToast('Pesan tidak boleh kosong', 'error'); return; }
 
-  // Kumpulkan recipients
+  // Kumpulkan hanya baris yang di-centang
   const recipients = [];
-  const nomorInputs = document.querySelectorAll('.wa-nomor');
-  const typeSelects = document.querySelectorAll('.wa-type');
-  nomorInputs.forEach((input, idx) => {
-    const nomor = input.value.trim();
-    if (!nomor) return;
-    recipients.push({
-      nomor,
-      type: typeSelects[idx]?.value || 'personal',
-    });
+  document.querySelectorAll('#pa-wa-modal .wa-recipient-row').forEach(row => {
+    const check = row.querySelector('.wa-nomor-check');
+    const input = row.querySelector('.wa-nomor');
+    const sel   = row.querySelector('.wa-type');
+    if (!check?.checked || !input?.value.trim()) return;
+    recipients.push({ nomor: input.value.trim(), type: sel?.value || 'personal' });
   });
 
   if (recipients.length === 0) {
-    _showPAToast('Tambahkan minimal 1 nomor tujuan', 'error');
+    _showPAToast('Centang minimal 1 nomor tujuan', 'error');
+    return;
+  }
+  if (recipients.length > 5) {
+    _showPAToast('Maksimal 5 nomor per sesi', 'error');
     return;
   }
 
@@ -1018,19 +1071,356 @@ async function submitWABlast(listingId) {
 
   try {
     await window.API.post('/pa/trigger', {
-      type:            'wa_blast',
-      listing_id:      listingId,
+      type:             'wa_blast',
+      listing_id:       listingId,
       recipients,
       message_template: message,
-      session_number:  sessionNumber,
+      session_number:   sessionNumber,
     });
 
     document.getElementById('pa-wa-modal')?.remove();
-    _showPAToast('✅ WA Blast diterima PA! Proses akan berjalan di background.', 'success');
+    _showPAToast(`✅ WA Blast ke ${recipients.length} nomor diterima PA! Proses berjalan di background.`, 'success');
   } catch (e) {
-    if (btn) { btn.disabled = false; btn.textContent = '📲 Mulai WA Blast via PA'; }
+    if (btn) { btn.disabled = false; btn.textContent = '📲 Kirim via PA'; }
     _showPAToast(`❌ ${e.message}`, 'error');
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODAL IG POST (Reels / Story) — QUEUE SYSTEM
+// ═══════════════════════════════════════════════════════════
+
+function openIGPostModal(listingId, type) {
+  document.getElementById('pa-ig-modal')?.remove();
+
+  const listing = (window._allListings || []).find(l => l.ID === listingId);
+  const project = (window._projectsData || []).find(p => p.ID === listingId);
+  const title   = listing?.Judul || project?.Nama_Proyek || listingId;
+  const caption = (listing?.Caption_Sosmed || listing?.Caption || project?.Deskripsi || '').slice(0, 2200);
+
+  const typeLabel = type === 'ig_reels' ? 'Instagram Reels' : 'Instagram Story';
+  const typeIcon  = type === 'ig_reels' ? '🎬' : '📸';
+  const mediaHint = type === 'ig_story'
+    ? 'Story: video ≤15 dtk (9:16) · atau gambar JPG/PNG (rasio 9:16 optimal)'
+    : 'Reels: video MP4 ≤90 dtk (9:16) · gambar juga didukung';
+
+  const escapedId    = listingId.replace(/'/g, "\\'");
+  const escapedType  = type.replace(/'/g, "\\'");
+  const escapedTitle = title.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const escapedCaption = caption
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  const queueBadge = _igQueue.length > 0
+    ? `<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(225,48,108,0.12);border:1px solid rgba(225,48,108,0.3);border-radius:10px;padding:8px 12px;font-size:12px;color:#f472b6;font-weight:600">
+        <span>⏳ Queue aktif: <strong>${_igQueue.length} post</strong> menunggu</span>
+        <button onclick="_showIGQueuePanel()" style="background:none;border:none;color:#f472b6;font-size:11px;cursor:pointer;text-decoration:underline;padding:0">Lihat ›</button>
+       </div>` : '';
+
+  const modal = document.createElement('div');
+  modal.id = 'pa-ig-modal';
+  modal.className = 'pa-modal-backdrop';
+  modal.innerHTML = `
+    <div class="pa-modal-box">
+      <div class="pa-modal-header">
+        <span>${typeIcon} ${typeLabel} via PA</span>
+        <button onclick="document.getElementById('pa-ig-modal').remove()">✕</button>
+      </div>
+      <div class="pa-modal-body">
+
+        ${queueBadge}
+
+        <div class="pa-info-box">
+          ⚡ Tambah beberapa listing ke <strong>Queue</strong>, lalu jalankan sekaligus. PA akan post secara berurutan dengan metode anti-bot.
+        </div>
+
+        <div style="background:#1C2D52;border-radius:10px;padding:10px 12px;font-size:13px;color:#fff;font-weight:600">
+          ${escapedTitle}
+        </div>
+
+        <div class="pa-form-group">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <label style="margin:0">Media <span style="color:#f87171">*</span></label>
+            <div style="display:flex;gap:4px">
+              <button id="ig-tab-url" onclick="_igSwitchTab('url')"
+                style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:rgba(225,48,108,0.2);border:1px solid rgba(225,48,108,0.4);color:#f472b6">
+                🔗 URL
+              </button>
+              <button id="ig-tab-file" onclick="_igSwitchTab('file')"
+                style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:#131F38;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4)">
+                📁 Upload
+              </button>
+            </div>
+          </div>
+
+          <div id="ig-tab-url-content">
+            <input class="pa-input" id="ig-media-url" type="url"
+              placeholder="https://... (video MP4, gambar JPG/PNG, hasil ViGen, dll)">
+          </div>
+          <div id="ig-tab-file-content" style="display:none">
+            <label for="ig-media-file"
+              style="display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed rgba(225,48,108,0.35);border-radius:12px;padding:18px 12px;cursor:pointer;gap:5px;background:rgba(225,48,108,0.04)">
+              <span style="font-size:22px">📁</span>
+              <span style="font-size:12px;color:#94a3b8">Klik untuk pilih file</span>
+              <span id="ig-file-name" style="font-size:11px;color:#f472b6;max-width:240px;text-align:center;word-break:break-all"></span>
+            </label>
+            <input type="file" id="ig-media-file"
+              accept="image/jpeg,image/jpg,image/png,image/webp,video/mp4,video/quicktime"
+              style="display:none" onchange="_igFileSelected(this)">
+          </div>
+          <div class="pa-hint" style="margin-top:5px">${mediaHint}</div>
+        </div>
+
+        <div class="pa-form-group">
+          <label>Caption Instagram</label>
+          <textarea class="pa-textarea" id="ig-caption-input" rows="4"
+            placeholder="Caption, hashtag, emoji...">${escapedCaption}</textarea>
+          <div class="pa-hint">Maks 2.200 karakter.</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="pa-btn-secondary" onclick="addToIGQueue('${escapedId}','${escapedType}')">
+            ➕ Tambah ke Queue
+          </button>
+          <button class="pa-btn-primary" onclick="addToIGQueueAndShow('${escapedId}','${escapedType}')">
+            ${typeIcon} Lanjut &amp; Jalankan
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+}
+
+function _igSwitchTab(tab) {
+  const urlBtn  = document.getElementById('ig-tab-url');
+  const fileBtn = document.getElementById('ig-tab-file');
+  const urlDiv  = document.getElementById('ig-tab-url-content');
+  const fileDiv = document.getElementById('ig-tab-file-content');
+  if (!urlBtn || !fileBtn) return;
+
+  if (tab === 'url') {
+    urlBtn.style.cssText  = 'padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:rgba(225,48,108,0.2);border:1px solid rgba(225,48,108,0.4);color:#f472b6';
+    fileBtn.style.cssText = 'padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:#131F38;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4)';
+    urlDiv.style.display  = '';
+    fileDiv.style.display = 'none';
+  } else {
+    fileBtn.style.cssText = 'padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:rgba(225,48,108,0.2);border:1px solid rgba(225,48,108,0.4);color:#f472b6';
+    urlBtn.style.cssText  = 'padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:#131F38;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4)';
+    urlDiv.style.display  = 'none';
+    fileDiv.style.display = '';
+  }
+}
+
+function _igFileSelected(input) {
+  const file   = input.files?.[0];
+  const nameEl = document.getElementById('ig-file-name');
+  if (nameEl && file) {
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    nameEl.textContent = `${file.name} (${sizeMB} MB)`;
+  }
+}
+
+function _igGetMediaInput() {
+  const fileDiv  = document.getElementById('ig-tab-file-content');
+  const isFile   = fileDiv && fileDiv.style.display !== 'none';
+
+  if (isFile) {
+    const file = document.getElementById('ig-media-file')?.files?.[0];
+    if (!file) return { error: 'Pilih file media terlebih dahulu' };
+    return { file, mediaType: file.type.startsWith('video/') ? 'video' : 'image' };
+  } else {
+    const url = document.getElementById('ig-media-url')?.value?.trim();
+    if (!url) return { error: 'URL media wajib diisi' };
+    const ext = url.split('?')[0].split('.').pop().toLowerCase();
+    return { url, mediaType: ['mp4','mov','webm','avi'].includes(ext) ? 'video' : 'image' };
+  }
+}
+
+function addToIGQueue(listingId, type) {
+  const media = _igGetMediaInput();
+  if (media.error) { _showPAToast(media.error, 'error'); return; }
+
+  const caption = document.getElementById('ig-caption-input')?.value?.trim() || '';
+  const listing = (window._allListings || []).find(l => l.ID === listingId);
+  const project = (window._projectsData || []).find(p => p.ID === listingId);
+  const title   = listing?.Judul || project?.Nama_Proyek || listingId;
+
+  _igQueue.push({ listingId, title, type, caption, ...media });
+  document.getElementById('pa-ig-modal')?.remove();
+  _renderIGQueueBadge();
+  _showPAToast(`➕ Ditambahkan ke queue! Total: ${_igQueue.length} post.`, 'success');
+}
+
+function addToIGQueueAndShow(listingId, type) {
+  const media = _igGetMediaInput();
+  if (media.error) { _showPAToast(media.error, 'error'); return; }
+
+  const caption = document.getElementById('ig-caption-input')?.value?.trim() || '';
+  const listing = (window._allListings || []).find(l => l.ID === listingId);
+  const project = (window._projectsData || []).find(p => p.ID === listingId);
+  const title   = listing?.Judul || project?.Nama_Proyek || listingId;
+
+  _igQueue.push({ listingId, title, type, caption, ...media });
+  document.getElementById('pa-ig-modal')?.remove();
+  _renderIGQueueBadge();
+  _showIGQueuePanel();
+}
+
+// ── Queue Badge (floating pill) ────────────────────────────
+function _renderIGQueueBadge() {
+  let badge = document.getElementById('pa-ig-queue-badge');
+  if (_igQueue.length === 0) { badge?.remove(); return; }
+
+  if (!badge) {
+    badge = document.createElement('div');
+    badge.id = 'pa-ig-queue-badge';
+    badge.onclick = _showIGQueuePanel;
+    document.body.appendChild(badge);
+  }
+  badge.style.cssText = 'position:fixed;bottom:76px;right:14px;z-index:9990;background:linear-gradient(135deg,rgba(225,48,108,0.92),rgba(168,36,80,0.92));border-radius:28px;padding:9px 16px;display:flex;align-items:center;gap:7px;cursor:pointer;box-shadow:0 4px 20px rgba(225,48,108,0.45);font-size:13px;font-weight:700;color:#fff;backdrop-filter:blur(8px);user-select:none';
+  badge.innerHTML = `⏳ Queue IG <span style="background:rgba(255,255,255,0.2);border-radius:12px;padding:1px 8px;font-size:15px;margin:0 2px">${_igQueue.length}</span> post ›`;
+}
+
+// ── Queue Panel (list + run) ────────────────────────────────
+function _showIGQueuePanel() {
+  document.getElementById('pa-ig-queue-panel')?.remove();
+
+  const items = _igQueue.map((q, i) => {
+    const isFile = !!q.file;
+    const mediaLabel = q.mediaType === 'video'
+      ? (isFile ? '🎥 video (lokal)' : '🎥 video (URL)')
+      : (isFile ? '🖼️ gambar (lokal)' : '🖼️ gambar (URL)');
+    return `
+      <div style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:#131F38;border-radius:10px">
+        <span style="font-size:18px;flex-shrink:0">${q.type === 'ig_reels' ? '🎬' : '📸'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            ${q.title.replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+          </div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px">
+            ${q.type === 'ig_reels' ? 'Reels' : 'Story'} · ${mediaLabel}
+          </div>
+        </div>
+        <button onclick="_removeFromIGQueue(${i})"
+          style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.25);color:#f87171;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;flex-shrink:0">✕</button>
+      </div>`;
+  }).join('');
+
+  const panel = document.createElement('div');
+  panel.id = 'pa-ig-queue-panel';
+  panel.className = 'pa-modal-backdrop';
+  panel.innerHTML = `
+    <div class="pa-modal-box">
+      <div class="pa-modal-header">
+        <span>⏳ IG Post Queue — ${_igQueue.length} post</span>
+        <button onclick="document.getElementById('pa-ig-queue-panel').remove()">✕</button>
+      </div>
+      <div class="pa-modal-body">
+
+        <div style="display:flex;flex-direction:column;gap:7px">
+          ${items}
+        </div>
+
+        <div class="pa-info-box">
+          PA akan memproses <strong>${_igQueue.length} post</strong> secara berurutan menggunakan metode anti-bot. Tambah lagi atau langsung jalankan.
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="pa-btn-secondary" onclick="document.getElementById('pa-ig-queue-panel').remove()">
+            ➕ Tambah Lagi
+          </button>
+          <button class="pa-btn-primary" id="pa-queue-run-btn" onclick="submitIGQueue()">
+            ▶ Jalankan (${_igQueue.length})
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+  document.body.appendChild(panel);
+}
+
+function _removeFromIGQueue(index) {
+  _igQueue.splice(index, 1);
+  _renderIGQueueBadge();
+  if (_igQueue.length === 0) {
+    document.getElementById('pa-ig-queue-panel')?.remove();
+    _showPAToast('Queue dikosongkan', 'success');
+  } else {
+    _showIGQueuePanel();
+  }
+}
+
+async function submitIGQueue() {
+  if (_igQueue.length === 0) return;
+
+  const btn = document.getElementById('pa-queue-run-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Memproses...'; }
+
+  const total = _igQueue.length;
+  let success = 0;
+  let failed  = 0;
+  const token = localStorage.getItem('crm_token') || localStorage.getItem('token');
+
+  for (let i = 0; i < total; i++) {
+    const item = _igQueue[i];
+    if (btn) btn.textContent = `⏳ ${i + 1} / ${total}...`;
+
+    try {
+      let mediaUrl = item.url;
+
+      // Upload file lokal ke Cloudinary via CRM jika ada
+      if (item.file) {
+        const fd = new FormData();
+        fd.append('files', item.file);
+        const up = await fetch(`/api/v1/media/upload/photos/${item.listingId}`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+        const upData = await up.json();
+        if (!upData.success) throw new Error(upData.message || 'Upload gagal');
+        mediaUrl = upData.url || upData.urls?.[0];
+      }
+
+      await window.API.post('/pa/trigger', {
+        type:             item.type,
+        listing_id:       item.listingId,
+        video_url:        mediaUrl,
+        media_type:       item.mediaType,
+        caption_override: item.caption || undefined,
+      });
+      success++;
+    } catch (e) {
+      failed++;
+      console.error(`[IGQueue] job ${i + 1} gagal:`, e.message);
+    }
+  }
+
+  _igQueue = [];
+  _renderIGQueueBadge();
+  document.getElementById('pa-ig-queue-panel')?.remove();
+
+  if (failed === 0) {
+    _showPAToast(`✅ ${total} post IG berhasil dikirim ke PA! Pantau progress di Activity Log.`, 'success');
+  } else {
+    _showPAToast(`⚠️ ${success} berhasil · ${failed} gagal. Cek Activity Log untuk detail.`, 'error');
+  }
+}
+
+// ── Wrapper Project Detail ─────────────────────────────────
+function openProjectIGPostModal(type) {
+  const projectId = window._currentProjectId;
+  if (!projectId) { _showPAToast('Tidak ada proyek aktif', 'error'); return; }
+  openIGPostModal(projectId, type);
+}
+
+function openProjectWABlastModal() {
+  const projectId = window._currentProjectId;
+  if (!projectId) { _showPAToast('Tidak ada proyek aktif', 'error'); return; }
+  openWABlastModal(projectId);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1214,6 +1604,11 @@ function _injectPAStyles() {
     }
     .pa-btn-save:hover,.pa-btn-primary:hover { opacity:0.9 }
     .pa-btn-save:disabled,.pa-btn-primary:disabled { opacity:0.5;cursor:not-allowed }
+    .pa-btn-secondary {
+      width:100%;padding:12px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;
+      background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.8);
+    }
+    .pa-btn-secondary:hover { background:rgba(255,255,255,0.1) }
 
     /* ── Limits Grid ────────────────────────────── */
     .pa-limits-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:8px }

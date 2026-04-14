@@ -315,6 +315,8 @@ const COLUMNS = {
     'Status_Project',    // W  ★ Pending|Aktif|Nonaktif
     'Koordinator2_ID',   // X  ★ ID koordinator 2 (tandem)
     'Koordinator2_Nama', // Y  ★ Nama koordinator 2 (tandem)
+    'Foto_3_URL',        // Z  ★ Foto ketiga
+    'Foto_4_URL',        // AA ★ Foto keempat
   ],
 
   // ★ PRIMARY — Shortlink tracking per agen
