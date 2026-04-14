@@ -18,7 +18,8 @@
   <link rel="apple-touch-icon" href="/assets/icons/icon-192.png"/>
   <style>
     *{-webkit-tap-highlight-color:transparent}
-    body{font-family:'DM Sans',system-ui,sans-serif;background:#080E1A;color:#fff}
+    html{overflow-x:hidden}
+    body{font-family:'DM Sans',system-ui,sans-serif;background:#080E1A;color:#fff;overflow-x:hidden}
     .scroll-hide{scrollbar-width:none;-ms-overflow-style:none}
     .scroll-hide::-webkit-scrollbar{display:none}
     .skeleton{background:linear-gradient(90deg,#1C2D52 25%,#243450 50%,#1C2D52 75%);background-size:200% 100%;animation:shimmer 1.6s infinite}
@@ -2496,7 +2497,7 @@ async function saveApraisalResult(type) {
 
   // Append to body (off-screen), capture, then remove
   const wrapper = document.createElement('div');
-  wrapper.style.cssText = 'position:fixed;top:-9999px;left:0;z-index:-1;';
+  wrapper.style.cssText = 'position:fixed;top:-9999px;left:-9999px;z-index:-1;';
   wrapper.innerHTML = printHtml;
   document.body.appendChild(wrapper);
   const printEl = wrapper.firstElementChild;

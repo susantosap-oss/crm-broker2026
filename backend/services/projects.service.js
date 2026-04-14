@@ -77,6 +77,8 @@ class ProjectsService {
       Deskripsi:        data.Deskripsi      || '',
       Foto_1_URL:       data.Foto_1_URL     || '',
       Foto_2_URL:       data.Foto_2_URL     || '',
+      Foto_3_URL:       data.Foto_3_URL     || '',
+      Foto_4_URL:       data.Foto_4_URL     || '',
       Cloudinary_IDs:   data.Cloudinary_IDs ? JSON.stringify(data.Cloudinary_IDs) : '[]',
       Caption_Sosmed:   '',
       Status:           'Draft',
