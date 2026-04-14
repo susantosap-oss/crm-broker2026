@@ -1,9 +1,9 @@
-const CACHE_NAME = 'mansion-crm-v5';
+const CACHE_NAME = 'mansion-crm-v6';
 const STATIC_ASSETS = [
   '/',
-  '/js/app.js?v=20260413',
-  '/js/app-mobile.js?v=20260413',
-  '/js/pa-dashboard.js',
+  '/js/app.js?v=20260414',
+  '/js/app-mobile.js?v=20260414',
+  '/js/pa-dashboard.js?v=20260414',
   '/assets/mansion-logo.png',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png'

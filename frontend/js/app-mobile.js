@@ -4774,10 +4774,10 @@ async function uploadPendingProjectPhotos() {
 
   for (const slot of [1, 2, 3, 4]) {
     const photo = _projectPhotos[slot];
-    if (!photo?._file) continue;   // tidak ada file baru — pertahankan url yg ada
+    // Cek ada file baru — gunakan _preview sebagai indikator (lebih reliable dari _file)
+    if (!photo?._preview) continue;
 
     if (!cloudName) {
-      // Config masih tidak ada — batalkan upload, kembalikan URL lama
       _projectPhotos[slot] = { url: photo._existingUrl || '', cloudId: '' };
       showToast(`Konfigurasi upload tidak ditemukan. Foto ${slot} tidak berubah.`, 'error');
       continue;
@@ -4785,8 +4785,14 @@ async function uploadPendingProjectPhotos() {
 
     try {
       showToast(`Mengupload foto ${slot}...`, 'info');
+
+      // Gunakan data URL (_preview) untuk upload — menghindari stale File reference
+      // pada Android browser yang invalidate input.files setelah input.value = ''
+      const blob = await fetch(photo._preview).then(r => r.blob());
+      const ext  = blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg';
+
       const formData = new FormData();
-      formData.append('file', photo._file);
+      formData.append('file', blob, `foto_${slot}.${ext}`);
       formData.append('upload_preset', uploadPreset);
       formData.append('folder', 'crm_projects');
 
@@ -4797,7 +4803,6 @@ async function uploadPendingProjectPhotos() {
       if (!data.secure_url) throw new Error(data.error?.message || 'Upload gagal');
       _projectPhotos[slot] = { url: data.secure_url, cloudId: data.public_id };
     } catch (e) {
-      // Upload gagal — kembalikan URL lama agar tidak overwrite dengan string kosong
       _projectPhotos[slot] = { url: photo._existingUrl || '', cloudId: '' };
       showToast(`Gagal upload foto ${slot}: ${e.message}`, 'error');
     }
