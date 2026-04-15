@@ -1038,6 +1038,31 @@
   <div class="modal-sheet">
     <div class="mheader"><div class="drag-handle"></div><div style="display:flex;align-items:center;justify-content:space-between"><h3 id="modal-listing-title" style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff">Tambah Listing</h3><button onclick="resetListingModal()" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button></div></div>
     <div class="mbody">
+      <!-- FOTO (multi-select + reorder) -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <label class="form-label" style="margin-bottom:0">Foto Properti <span style="color:rgba(255,255,255,0.3);font-size:9px">maks. 3 foto</span></label>
+          <button type="button" onclick="triggerListingPhotoInput(0)" style="background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);border-radius:8px;color:#D4A853;font-size:10px;font-weight:600;padding:4px 10px;cursor:pointer"><i class="fa-solid fa-images" style="margin-right:4px"></i>Pilih Semua</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div id="lp-slot-0" onclick="triggerListingPhotoInput(0)" style="aspect-ratio:1;border:1.5px dashed rgba(212,168,83,0.4);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:rgba(212,168,83,0.05);overflow:hidden;position:relative">
+            <i class="fa-solid fa-camera" style="font-size:18px;color:rgba(212,168,83,0.5);margin-bottom:4px"></i>
+            <span style="font-size:10px;color:rgba(212,168,83,0.7);font-weight:600">Foto Utama</span>
+          </div>
+          <div id="lp-slot-1" onclick="triggerListingPhotoInput(1)" style="aspect-ratio:1;border:1.5px dashed rgba(255,255,255,0.15);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,0.02);overflow:hidden;position:relative">
+            <i class="fa-solid fa-plus" style="font-size:14px;color:rgba(255,255,255,0.2);margin-bottom:4px"></i>
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">Foto 2</span>
+          </div>
+          <div id="lp-slot-2" onclick="triggerListingPhotoInput(2)" style="aspect-ratio:1;border:1.5px dashed rgba(255,255,255,0.15);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,0.02);overflow:hidden;position:relative">
+            <i class="fa-solid fa-plus" style="font-size:14px;color:rgba(255,255,255,0.2);margin-bottom:4px"></i>
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">Foto 3</span>
+          </div>
+        </div>
+        <input id="lp-input-0" type="file" accept="image/*" multiple style="display:none" onchange="handleListingPhotoSelect(this,0)"/>
+        <input id="lp-input-1" type="file" accept="image/*" style="display:none" onchange="handleListingPhotoSelect(this,1)"/>
+        <input id="lp-input-2" type="file" accept="image/*" style="display:none" onchange="handleListingPhotoSelect(this,2)"/>
+        <p style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:6px;margin-bottom:0"><i class="fa-solid fa-info-circle" style="margin-right:4px"></i>Pilih 1–3 foto sekaligus via Foto Utama. Ketuk foto terisi untuk <strong style="color:#D4A853">★ Jadikan Utama</strong>.</p>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label class="form-label">Tipe *</label><select id="add-tipe" class="form-input"><option value="">Pilih</option><option>Rumah</option><option>Ruko</option><option>Tanah</option><option>Apartemen</option><option>Gudang</option></select></div>
         <div><label class="form-label">Transaksi *</label><select id="add-transaksi" class="form-input"><option value="">Pilih</option><option>Jual</option><option>Sewa</option></select></div>
@@ -1065,27 +1090,6 @@
         <p style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px"><i class="fa-solid fa-info-circle" style="margin-right:4px"></i>Digunakan juga di VCARD & Website Kantor</p>
       </div>
       <div><label class="form-label">Caption Media Sosial <span style="color:rgba(255,255,255,0.3);font-size:9px">(auto-generate)</span></label><div style="background:#131F38;border-radius:12px;padding:10px 14px;border:1px solid rgba(255,255,255,0.06)"><p style="font-size:11px;color:rgba(255,255,255,0.35);margin:0"><i class="fa-solid fa-magic-wand-sparkles" style="color:#D4A853;margin-right:6px"></i>Caption akan dibuat otomatis dari data listing di atas</p></div></div>
-      <div>
-        <label class="form-label">Foto Properti (auto compress)</label>
-        <label style="display:flex;flex-direction:column;align-items:center;gap:8px;border:2px dashed rgba(255,255,255,0.12);border-radius:14px;padding:20px;cursor:pointer">
-          <i class="fa-solid fa-cloud-arrow-up" style="color:rgba(255,255,255,0.25);font-size:22px"></i>
-          <span style="color:rgba(255,255,255,0.3);font-size:12px">Klik untuk upload foto</span>
-          <input id="add-photos" type="file" accept="image/*" multiple style="display:none" onchange="previewPhotos(this)"/>
-          <input id="add-photo2" type="file" accept="image/*" style="display:none" onchange="previewSinglePhoto(this,'prev-photo2')"/>
-          <input id="add-photo3" type="file" accept="image/*" style="display:none" onchange="previewSinglePhoto(this,'prev-photo3')"/>
-        </label>
-        <div id="photo-preview-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px"></div>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <div onclick="document.getElementById('add-photo2').click()" id="prev-photo2"
-              style="flex:1;height:70px;border:1.5px dashed rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,0.02);overflow:hidden">
-              <span style="font-size:11px;color:rgba(255,255,255,0.3)">+ Foto 2</span>
-            </div>
-            <div onclick="document.getElementById('add-photo3').click()" id="prev-photo3"
-              style="flex:1;height:70px;border:1.5px dashed rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,0.02);overflow:hidden">
-              <span style="font-size:11px;color:rgba(255,255,255,0.3)">+ Foto 3</span>
-            </div>
-          </div>
-      </div>
       <div style="display:flex;gap:10px;padding-top:4px">
         <button onclick="resetListingModal()" class="btn-ghost" style="flex:1">Batal</button>
         <button id="listing-submit-btn" onclick="submitAddListing()" class="btn-gold" style="flex:1"><i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan</button>
@@ -1488,9 +1492,9 @@
   </div>
 </div>
 
-<script src="/js/app.js?v=20260414"></script>
-<script src="/js/app-mobile.js?v=20260414"></script>
-<script src="/js/pa-dashboard.js?v=20260414"></script>
+<script src="/js/app.js?v=20260415"></script>
+<script src="/js/app-mobile.js?v=20260415"></script>
+<script src="/js/pa-dashboard.js?v=20260415"></script>
 <script>
   // Init PA Dashboard setelah app siap
   document.addEventListener('DOMContentLoaded', () => {
@@ -1502,14 +1506,60 @@
     };
   });
 
-  // ── Service Worker & PWA Install ──
+  // ── Service Worker, PWA Install & Push Notifications ──
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('[CRM SW] Registered:', reg.scope))
+        .then(reg => {
+          console.log('[CRM SW] Registered:', reg.scope);
+          // Setup push subscription setelah login berhasil
+          window._swRegistration = reg;
+        })
         .catch(err => console.warn('[CRM SW] Failed:', err));
     });
   }
+
+  async function setupPushNotifications() {
+    if (!('PushManager' in window) || !window._swRegistration) return;
+    try {
+      const permResult = await Notification.requestPermission();
+      if (permResult !== 'granted') return;
+
+      // Ambil VAPID public key dari backend
+      const keyRes = await fetch('/api/v1/push/vapid-public-key', {
+        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('crm_token') || '') },
+      });
+      if (!keyRes.ok) return;
+      const { publicKey } = await keyRes.json();
+      if (!publicKey) return;
+
+      // Convert base64 ke Uint8Array
+      const urlBase64ToUint8Array = (base64) => {
+        const pad = base64 + '='.repeat((4 - base64.length % 4) % 4);
+        const raw = atob(pad.replace(/-/g, '+').replace(/_/g, '/'));
+        return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+      };
+
+      const subscription = await window._swRegistration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+
+      // Kirim subscription ke backend
+      await fetch('/api/v1/push/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (localStorage.getItem('crm_token') || ''),
+        },
+        body: JSON.stringify({ subscription }),
+      });
+      console.log('[PUSH] Subscription berhasil disimpan');
+    } catch (e) {
+      console.warn('[PUSH] Setup push gagal:', e.message);
+    }
+  }
+  window.setupPushNotifications = setupPushNotifications;
 
   let _pwaPrompt = null;
   window.addEventListener('beforeinstallprompt', (e) => {
@@ -1624,17 +1674,21 @@
             placeholder="LT: 72 m²&#10;LB: 60 m²&#10;3 KT, 2 KM&#10;✅ Lokasi strategis&#10;✅ One gate system&#10;✅ Dekat tol"></textarea>
         </div>
 
-        <!-- Foto Upload (max 4) -->
+        <!-- Foto Upload (max 4, multi-select + reorder) -->
         <div style="margin-bottom:16px">
-          <label class="form-label">Foto Proyek <span style="color:rgba(255,255,255,0.4);font-size:11px">(max 4 foto)</span></label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <label class="form-label" style="margin-bottom:0">Foto Proyek <span style="color:rgba(255,255,255,0.4);font-size:11px">(max 4 foto)</span></label>
+            <button type="button" onclick="triggerProjectPhotoUpload(0)" style="background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);border-radius:8px;color:#D4A853;font-size:10px;font-weight:600;padding:4px 10px;cursor:pointer"><i class="fa-solid fa-images" style="margin-right:4px"></i>Pilih Semua</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
 
-            <!-- Foto 1 -->
+            <!-- Foto 1 (Utama) -->
             <div id="pf-foto1-container" onclick="triggerProjectPhotoUpload(1)"
               style="height:110px;border:2px dashed rgba(212,168,83,0.4);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden;transition:all 0.2s">
               <img id="pf-foto1-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
               <i class="fa-solid fa-image" style="font-size:20px;color:#D4A853;position:relative;z-index:1"></i>
               <span style="font-size:10px;color:rgba(255,255,255,0.4);position:relative;z-index:1">Foto Utama</span>
+              <span id="pf-foto1-utama-badge" style="display:none;position:absolute;top:5px;left:5px;z-index:2;background:rgba(212,168,83,0.9);border-radius:4px;color:#000;font-size:8px;font-weight:700;padding:2px 5px">★ UTAMA</span>
               <button id="pf-foto1-del" onclick="event.stopPropagation();clearProjectPhoto(1)"
                 style="display:none;position:absolute;top:6px;right:6px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px">✕</button>
             </div>
@@ -1645,6 +1699,7 @@
               <img id="pf-foto2-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
               <i class="fa-solid fa-image" style="font-size:20px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
               <span style="font-size:10px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto 2</span>
+              <button id="pf-foto2-utama" onclick="event.stopPropagation();setProjectPhotoUtama(2)" style="display:none;position:absolute;top:5px;left:5px;z-index:2;background:rgba(0,0,0,0.6);border:1px solid rgba(212,168,83,0.5);border-radius:4px;color:#D4A853;font-size:8px;font-weight:600;padding:2px 5px;cursor:pointer">★ Utama</button>
               <button id="pf-foto2-del" onclick="event.stopPropagation();clearProjectPhoto(2)"
                 style="display:none;position:absolute;top:6px;right:6px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px">✕</button>
             </div>
@@ -1655,6 +1710,7 @@
               <img id="pf-foto3-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
               <i class="fa-solid fa-image" style="font-size:20px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
               <span style="font-size:10px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto 3</span>
+              <button id="pf-foto3-utama" onclick="event.stopPropagation();setProjectPhotoUtama(3)" style="display:none;position:absolute;top:5px;left:5px;z-index:2;background:rgba(0,0,0,0.6);border:1px solid rgba(212,168,83,0.5);border-radius:4px;color:#D4A853;font-size:8px;font-weight:600;padding:2px 5px;cursor:pointer">★ Utama</button>
               <button id="pf-foto3-del" onclick="event.stopPropagation();clearProjectPhoto(3)"
                 style="display:none;position:absolute;top:6px;right:6px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px">✕</button>
             </div>
@@ -1665,12 +1721,15 @@
               <img id="pf-foto4-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
               <i class="fa-solid fa-image" style="font-size:20px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
               <span style="font-size:10px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto 4</span>
+              <button id="pf-foto4-utama" onclick="event.stopPropagation();setProjectPhotoUtama(4)" style="display:none;position:absolute;top:5px;left:5px;z-index:2;background:rgba(0,0,0,0.6);border:1px solid rgba(212,168,83,0.5);border-radius:4px;color:#D4A853;font-size:8px;font-weight:600;padding:2px 5px;cursor:pointer">★ Utama</button>
               <button id="pf-foto4-del" onclick="event.stopPropagation();clearProjectPhoto(4)"
                 style="display:none;position:absolute;top:6px;right:6px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px">✕</button>
             </div>
 
           </div>
-          <input id="pf-photo-input" type="file" accept="image/*" style="display:none" onchange="handleProjectPhotoSelect(event)"/>
+          <!-- Multi-select input (slot 0 = all 4) + individual slot inputs -->
+          <input id="pf-photo-input" type="file" accept="image/*" multiple style="display:none" onchange="handleProjectPhotoSelect(event)"/>
+          <p style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:8px;margin-bottom:0"><i class="fa-solid fa-info-circle" style="margin-right:4px"></i>Pilih 1–4 foto sekaligus. Ketuk foto untuk <strong style="color:#D4A853">★ Jadikan Utama</strong>.</p>
         </div>
 
         <!-- Notes (opsional) -->
@@ -1679,11 +1738,15 @@
           <input id="pf-notes" class="form-input" type="text" placeholder="Catatan khusus untuk tim..."/>
         </div>
 
-        <!-- Koordinator (auto-fill untuk koordinator, read-only) -->
+        <!-- Koordinator (auto-fill untuk koordinator, picker untuk principal/admin) -->
         <div id="pf-koordinator-wrap" style="margin-bottom:16px;display:none">
           <label class="form-label">Koordinator <span style="color:rgba(255,255,255,0.4);font-size:11px">(penanggung jawab proyek)</span></label>
-          <input id="pf-koordinator-nama" class="form-input" type="text" placeholder="Nama koordinator" readonly
-            style="background:rgba(212,168,83,0.06);border-color:rgba(212,168,83,0.2);color:#D4A853;cursor:default"/>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="pf-koordinator-nama" class="form-input" type="text" placeholder="Pilih atau masuk otomatis..." readonly
+              style="flex:1;background:rgba(212,168,83,0.06);border-color:rgba(212,168,83,0.2);color:#D4A853;cursor:default"/>
+            <button id="pf-koordinator-pick-btn" type="button" onclick="openKoordinatorPickerForNewProject()"
+              style="display:none;background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.3);border-radius:10px;color:#D4A853;font-size:12px;padding:10px 14px;cursor:pointer;white-space:nowrap">Pilih</button>
+          </div>
           <input type="hidden" id="pf-koordinator-id"/>
         </div>
 

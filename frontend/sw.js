@@ -1,9 +1,9 @@
-const CACHE_NAME = 'mansion-crm-v6';
+const CACHE_NAME = 'mansion-crm-v7';
 const STATIC_ASSETS = [
   '/',
-  '/js/app.js?v=20260414',
-  '/js/app-mobile.js?v=20260414',
-  '/js/pa-dashboard.js?v=20260414',
+  '/js/app.js?v=20260415',
+  '/js/app-mobile.js?v=20260415',
+  '/js/pa-dashboard.js?v=20260415',
   '/assets/mansion-logo.png',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png'
@@ -46,6 +46,9 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // Push subscription endpoint — network only
+  if (url.pathname.startsWith('/api/v1/push')) return;
+
   // Static assets lain — cache first
   e.respondWith(
     caches.match(request).then(cached => {
@@ -59,6 +62,47 @@ self.addEventListener('fetch', (e) => {
       }).catch(() => {
         if (request.mode === 'navigate') return caches.match('/');
       });
+    })
+  );
+});
+
+// ── Push Notification Handler ──────────────────────────────
+self.addEventListener('push', (e) => {
+  let data = { title: 'Mansion CRM', body: 'Ada notifikasi baru', url: '/' };
+  try {
+    if (e.data) data = { ...data, ...e.data.json() };
+  } catch (_) {
+    if (e.data) data.body = e.data.text();
+  }
+
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/assets/icons/icon-192.png',
+      badge: '/assets/icons/icon-192.png',
+      data: { url: data.url || '/' },
+      tag: data.tag || 'crm-notif',
+      renotify: true,
+      requireInteraction: false,
+    })
+  );
+});
+
+// ── Notification Click Handler ─────────────────────────────
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const targetUrl = e.notification.data?.url || '/';
+
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      // Jika sudah ada tab CRM terbuka, fokuskan dan navigate
+      const crm = windowClients.find(c => c.url.includes(self.location.origin));
+      if (crm) {
+        crm.focus();
+        return crm.navigate(targetUrl);
+      }
+      // Tidak ada tab, buka tab baru
+      return clients.openWindow(targetUrl);
     })
   );
 });

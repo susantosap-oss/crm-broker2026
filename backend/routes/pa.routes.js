@@ -266,7 +266,8 @@ router.post('/vigen/render', authenticate, async (req, res) => {
       listing.Sertifikat     = '';
       listing.Foto_Utama_URL = listing.Foto_1_URL    || '';
       listing.Foto_2_URL     = listing.Foto_2_URL    || '';
-      listing.Foto_3_URL     = '';
+      listing.Foto_3_URL     = listing.Foto_3_URL    || '';
+      listing.Foto_4_URL     = listing.Foto_4_URL    || '';
     } else {
       // Secondary: ambil dari sheet LISTING
       const listings   = await sheetsService.getRows(SHEETS.LISTING);

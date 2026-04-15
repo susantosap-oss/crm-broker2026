@@ -27,3 +27,4 @@ backend/oauth-client.json
 backend/sa-key.json
 _backup_v6_*/
 apply_fixes_v6.py
+.aider*

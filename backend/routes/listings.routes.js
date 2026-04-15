@@ -414,14 +414,23 @@ router.post('/', upload.array('photos', 3), async (req, res) => {
     let photoData = {};
 
     if (req.files?.length > 0) {
+      // Legacy: server-side upload
       const uploads = await cloudinaryService.uploadMultiple(req.files, Date.now());
       photoData = {
         Foto_Utama_URL: uploads[0]?.secure_url || '',
         Foto_2_URL:     uploads[1]?.secure_url || '',
         Foto_3_URL:     uploads[2]?.secure_url || '',
-        Foto_Gallery:   JSON.stringify(uploads.slice(1).map(u => u.secure_url)),
+        Foto_Gallery:   JSON.stringify(uploads.slice(1).map(u => u.secure_url).filter(Boolean)),
         Cloudinary_IDs: JSON.stringify(uploads.map(u => u.public_id)),
       };
+    } else {
+      // Client-side upload: URLs come as req.body fields
+      const fotoUtama = req.body.Foto_Utama_URL || '';
+      const foto2     = req.body.Foto_2_URL || '';
+      const foto3     = req.body.Foto_3_URL || '';
+      if (fotoUtama || foto2 || foto3) {
+        photoData.Foto_Gallery = JSON.stringify([foto2, foto3].filter(Boolean));
+      }
     }
 
     const listing = await listingsService.create(
@@ -456,17 +465,15 @@ router.patch('/:id', upload.array('photos', 3), async (req, res) => {
 
     // Handle foto baru jika ada
     if (req.files?.length) {
+      // Legacy: server-side upload
       const uploads = await cloudinaryService.uploadMultiple(req.files, req.params.id);
 
-      // Tentukan slot foto: isi slot kosong dulu, lalu overwrite dari awal
       const slots = ['Foto_Utama_URL', 'Foto_2_URL', 'Foto_3_URL'];
       let idx = 0;
-      // Pass 1: isi slot kosong
       for (const slot of slots) {
         if (idx >= uploads.length) break;
         if (!listing[slot]) { updateData[slot] = uploads[idx]?.secure_url || ''; idx++; }
       }
-      // Pass 2: overwrite dari slot 1 jika masih ada foto tersisa
       for (const slot of slots) {
         if (idx >= uploads.length) break;
         updateData[slot] = uploads[idx]?.secure_url || ''; idx++;
@@ -476,6 +483,13 @@ router.patch('/:id', upload.array('photos', 3), async (req, res) => {
       updateData.Foto_Gallery   = JSON.stringify(
         [updateData.Foto_2_URL || listing.Foto_2_URL, updateData.Foto_3_URL || listing.Foto_3_URL].filter(Boolean)
       );
+    } else {
+      // Client-side upload: URL fields in req.body — rebuild Foto_Gallery from final values
+      const foto2 = updateData.Foto_2_URL || listing.Foto_2_URL || '';
+      const foto3 = updateData.Foto_3_URL || listing.Foto_3_URL || '';
+      if (updateData.Foto_Utama_URL || updateData.Foto_2_URL || updateData.Foto_3_URL) {
+        updateData.Foto_Gallery = JSON.stringify([foto2, foto3].filter(Boolean));
+      }
     }
 
     const updated = await listingsService.update(req.params.id, updateData, req.user);
@@ -511,6 +525,12 @@ router.put('/:id', upload.array('photos', 3), async (req, res) => {
       updateData.Foto_Gallery   = JSON.stringify(
         [updateData.Foto_2_URL || listing.Foto_2_URL, updateData.Foto_3_URL || listing.Foto_3_URL].filter(Boolean)
       );
+    } else {
+      const foto2 = updateData.Foto_2_URL || listing.Foto_2_URL || '';
+      const foto3 = updateData.Foto_3_URL || listing.Foto_3_URL || '';
+      if (updateData.Foto_Utama_URL || updateData.Foto_2_URL || updateData.Foto_3_URL) {
+        updateData.Foto_Gallery = JSON.stringify([foto2, foto3].filter(Boolean));
+      }
     }
 
     const updated = await listingsService.update(req.params.id, updateData, req.user);

@@ -347,6 +347,10 @@ async function handleLogin() {
     localStorage.setItem('crm_token', STATE.token);
     localStorage.setItem('crm_user', JSON.stringify(STATE.user));
     showApp();
+    // Setup push notification setelah login (non-blocking)
+    if (typeof window.setupPushNotifications === 'function') {
+      setTimeout(() => window.setupPushNotifications(), 2000);
+    }
   } catch (e) {
     if (errEl) { errEl.textContent = e.message; errEl.classList.remove('hidden'); }
   } finally {
@@ -743,8 +747,8 @@ async function openViGen(listingId) {
   _viGen.listingId    = listingId;
   _viGen.listingTitle = listing.Judul || listingId;
   _viGen.listingType  = 'secondary';
+  _viGen.listingData  = listing;   // simpan data listing untuk media fallback
 
-  // Reset state
   viGenSetMood('mewah');
   viGenSetDuration(30);
 
@@ -752,11 +756,15 @@ async function openViGen(listingId) {
   if (lbl) lbl.textContent = listing.Kode_Listing ? `${listing.Kode_Listing} · ${listing.Judul || ''}` : listing.Judul || '';
 
   const btn = document.getElementById('vigen-submit-btn');
-  if (btn) { btn.disabled = false; btn.textContent = ''; btn.innerHTML = '<i class="fa-solid fa-clapperboard" style="margin-right:8px"></i>Mulai Render Video'; }
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-clapperboard" style="margin-right:8px"></i>Mulai Render Video'; }
 
-  openModal('modal-vigen');
-  _viGenLoadMedia(listingId);
-  _viGenLoadJobs(listingId);
+  // Tutup parent modal dulu agar tidak tumpuk (bug: vigen muncul di belakang listing-detail)
+  closeModal('modal-listing-detail');
+  setTimeout(() => {
+    openModal('modal-vigen');
+    _viGenLoadMedia(listingId, listing);
+    _viGenLoadJobs(listingId);
+  }, 320);
 }
 
 // ViGen untuk Primary Project (dipanggil dari modal-project-detail)
@@ -764,11 +772,13 @@ async function openViGenProject() {
   const project = _projectsData.find(p => p.ID === _currentProjectId);
   if (!project) return showToast('Data proyek tidak ditemukan', 'error');
 
-  _viGen.listingId    = _currentProjectId;
-  _viGen.listingTitle = project.Nama_Proyek || _currentProjectId;
-  _viGen.listingType  = 'primary';
+  const projId = _currentProjectId; // capture sebelum close modal
 
-  // Reset state
+  _viGen.listingId    = projId;
+  _viGen.listingTitle = project.Nama_Proyek || projId;
+  _viGen.listingType  = 'primary';
+  _viGen.listingData  = project;   // simpan data untuk media fallback
+
   viGenSetMood('mewah');
   viGenSetDuration(30);
 
@@ -778,9 +788,13 @@ async function openViGenProject() {
   const btn = document.getElementById('vigen-submit-btn');
   if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-clapperboard" style="margin-right:8px"></i>Mulai Render Video'; }
 
-  openModal('modal-vigen');
-  _viGenLoadMedia(_currentProjectId);
-  _viGenLoadJobs(_currentProjectId);
+  // Tutup modal-project-detail dulu agar vigen muncul di depan
+  closeModal('modal-project-detail');
+  setTimeout(() => {
+    openModal('modal-vigen');
+    _viGenLoadMedia(projId, project);
+    _viGenLoadJobs(projId);
+  }, 320);
 }
 
 function viGenSetMood(mood) {
@@ -820,11 +834,14 @@ function viGenSetDuration(dur) {
   });
 }
 
-async function _viGenLoadMedia(listingId) {
+async function _viGenLoadMedia(listingId, localData = null) {
   const el = document.getElementById('vigen-media-preview');
   if (!el) return;
 
   el.innerHTML = '<div class="skeleton" style="border-radius:8px;height:60px;grid-column:span 4"></div>';
+
+  // Bersihkan info lama
+  document.getElementById('vigen-media-info')?.remove();
 
   try {
     const res = await API.get(`/pa/vigen/media/${listingId}`);
@@ -833,16 +850,34 @@ async function _viGenLoadMedia(listingId) {
     const { photos = [], videos = [] } = res.data || {};
     const total = photos.length + videos.length;
 
-    if (total === 0) {
-      el.innerHTML = `<div style="grid-column:span 4;text-align:center;padding:16px;font-size:12px;color:rgba(255,255,255,0.35)"><i class="fa-solid fa-images" style="display:block;font-size:24px;margin-bottom:6px;opacity:.4"></i>Belum ada foto/video. Upload media ke listing terlebih dahulu.</div>`;
+    // Gabungkan foto dari Cloudinary folder + foto dari data listing (SSoT)
+    const listingData = localData || _viGen.listingData;
+    const sheetPhotos = [];
+    if (listingData) {
+      const isPrimary = _viGen.listingType === 'primary';
+      const keys = isPrimary
+        ? ['Foto_1_URL','Foto_2_URL','Foto_3_URL','Foto_4_URL']
+        : ['Foto_Utama_URL','Foto_2_URL','Foto_3_URL'];
+      keys.forEach(k => {
+        const u = listingData[k];
+        if (u && !photos.find(p => p.secure_url === u)) {
+          sheetPhotos.push({ secure_url: u, source: 'listing' });
+        }
+      });
+    }
+    const allPhotos = [...sheetPhotos, ...photos];
+    const totalAll  = allPhotos.length + videos.length;
+
+    if (totalAll === 0) {
+      el.innerHTML = `<div style="grid-column:span 4;text-align:center;padding:16px;font-size:12px;color:rgba(255,255,255,0.35)"><i class="fa-solid fa-images" style="display:block;font-size:24px;margin-bottom:6px;opacity:.4"></i>Belum ada foto/video di listing ini.</div>`;
       return;
     }
 
-    const photoHtml = photos.slice(0, 6).map(p => `
+    const photoHtml = allPhotos.slice(0, 6).map(p => `
       <div style="border-radius:8px;overflow:hidden;height:60px;position:relative;background:#1C2D52">
         <img src="${escapeHtml(p.secure_url)}" loading="lazy"
           style="width:100%;height:100%;object-fit:cover"/>
-        <div style="position:absolute;bottom:2px;left:2px;background:rgba(43,123,255,0.85);border-radius:4px;padding:1px 4px;font-size:9px;color:#fff;font-weight:600">FOTO</div>
+        <div style="position:absolute;bottom:2px;left:2px;background:${p.source==='listing'?'rgba(34,197,94,0.85)':'rgba(43,123,255,0.85)'};border-radius:4px;padding:1px 4px;font-size:9px;color:#fff;font-weight:600">${p.source==='listing'?'LISTING':'CLOUD'}</div>
       </div>`).join('');
 
     const videoHtml = videos.slice(0, 6).map(v => `
@@ -855,12 +890,12 @@ async function _viGenLoadMedia(listingId) {
       </div>`).join('');
 
     el.innerHTML = photoHtml + videoHtml;
-    el.style.gridTemplateColumns = `repeat(${Math.min(total, 4)}, 1fr)`;
+    el.style.gridTemplateColumns = `repeat(${Math.min(totalAll, 4)}, 1fr)`;
 
     // Info row
     el.insertAdjacentHTML('afterend', `
       <div id="vigen-media-info" style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:-4px">
-        ${photos.length} foto · ${videos.length} video clip akan diikutkan ke render
+        ${allPhotos.length} foto · ${videos.length} video clip akan diikutkan ke render
       </div>`);
 
   } catch (e) {
@@ -2465,23 +2500,19 @@ function resetListingModal() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  const prevGrid = document.getElementById('photo-preview-grid');
-  if (prevGrid) prevGrid.innerHTML = '';
   // Clear harga previews
   ['add-harga-preview','add-harga-pm-preview'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = '';
   });
   // Reset photo inputs
-  ['add-photos','add-photo2','add-photo3'].forEach(id => {
+  ['lp-input-0','lp-input-1','lp-input-2'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  // Reset prev-photo divs
-  ['prev-photo2','prev-photo3'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = `<span style="font-size:11px;color:rgba(255,255,255,0.3)">+ ${id === 'prev-photo2' ? 'Foto 2' : 'Foto 3'}</span>`;
-  });
+  // Reset listing photo state & UI
+  _listingPhotos = [null, null, null];
+  renderListingPhotoSlots();
   // Reset modal title & button
   const titleEl = document.getElementById('modal-listing-title');
   const btnEl   = document.getElementById('listing-submit-btn');
@@ -2519,16 +2550,13 @@ function openEditListing(listingId) {
   setVal('add-deskripsi',  l.Deskripsi         || '');
   setVal('add-caption',    l.Caption_Sosmed    || '');
 
-  // Show existing photos as preview
-  const prevGrid = document.getElementById('photo-preview-grid');
-  if (prevGrid) {
-    const photos = [l.Foto_Utama_URL, l.Foto_2_URL, l.Foto_3_URL].filter(Boolean);
-    prevGrid.innerHTML = photos.map(u =>
-      `<div style="border-radius:8px;overflow:hidden;height:80px;background:#1C2D52">
-        <img src="${escapeHtml(u)}" style="width:100%;height:100%;object-fit:cover"/>
-      </div>`
-    ).join('');
-  }
+  // Populate listing photo state from existing URLs
+  _listingPhotos = [
+    l.Foto_Utama_URL ? { _file: null, _preview: null, existingUrl: l.Foto_Utama_URL } : null,
+    l.Foto_2_URL     ? { _file: null, _preview: null, existingUrl: l.Foto_2_URL }     : null,
+    l.Foto_3_URL     ? { _file: null, _preview: null, existingUrl: l.Foto_3_URL }     : null,
+  ];
+  renderListingPhotoSlots();
 
   closeModal('modal-listing-detail');
   openModal('modal-add-listing');
@@ -2571,22 +2599,17 @@ async function submitAddListing() {
   if (!isEdit) formData.append('Status_Listing', 'Aktif');
 
 
-  // Multi photo: utama + foto2 + foto3 (max 3)
-  const photoInputs = [
-    document.getElementById('add-photos'),
-    document.getElementById('add-photo2'),
-    document.getElementById('add-photo3'),
-  ];
-  let hasNewPhotos = false;
-  for (const input of photoInputs) {
-    if (input?.files?.length) {
-      hasNewPhotos = true;
-      for (const f of input.files) {
-        const compressed = await compressImage(f, 1280, 0.80);
-        formData.append('photos', compressed, f.name);
-      }
-    }
-  }
+  // Upload new photos to Cloudinary client-side, then append URLs as text fields
+  const btnEl2 = document.getElementById('listing-submit-btn');
+  if (btnEl2) btnEl2.textContent = 'Upload foto…';
+  await _uploadListingPhotos();
+
+  // Send final photo URLs as form fields (existing + newly uploaded)
+  const fotoSlots = ['Foto_Utama_URL', 'Foto_2_URL', 'Foto_3_URL'];
+  _listingPhotos.forEach((p, i) => {
+    const url = p?._uploadedUrl || p?.existingUrl || '';
+    if (url) formData.append(fotoSlots[i], url);
+  });
 
   const btn = document.getElementById('listing-submit-btn');
   try {
@@ -3294,23 +3317,114 @@ function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-function previewPhotos(input) {
-  const grid = document.getElementById('photo-preview-grid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  Array.from(input.files).forEach(file => {
-    const url = URL.createObjectURL(file);
-    grid.innerHTML += `<div style="position:relative"><img src="${url}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px"/><span style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.5);color:#fff;font-size:9px;padding:2px 5px;border-radius:4px">WebP</span></div>`;
-  });
+// ─── Listing Photo: multi-select + reorder ───────────────
+function triggerListingPhotoInput(slotIdx) {
+  const input = document.getElementById('lp-input-' + slotIdx);
+  if (input) { input.value = ''; input.click(); }
 }
-function previewSinglePhoto(input, previewId) {
-  const prev = document.getElementById(previewId);
-  if (!prev || !input.files?.[0]) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    prev.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">`;
-  };
-  reader.readAsDataURL(input.files[0]);
+
+function handleListingPhotoSelect(input, slotIdx) {
+  const files = Array.from(input.files || []);
+  if (!files.length) return;
+  input.value = ''; // reset so same file can be re-selected
+
+  if (slotIdx === 0 && files.length > 1) {
+    // Multi-select from utama slot: fill all slots in order
+    let pending = files.slice(0, 3).length;
+    files.slice(0, 3).forEach((file, i) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        _listingPhotos[i] = { _file: file, _preview: e.target.result, existingUrl: null };
+        pending--;
+        if (pending === 0) renderListingPhotoSlots();
+      };
+      reader.readAsDataURL(file);
+    });
+  } else {
+    const reader = new FileReader();
+    reader.onload = e => {
+      _listingPhotos[slotIdx] = { _file: files[0], _preview: e.target.result, existingUrl: null };
+      renderListingPhotoSlots();
+    };
+    reader.readAsDataURL(files[0]);
+  }
+}
+
+function renderListingPhotoSlots() {
+  const slotLabels = ['Foto Utama', 'Foto 2', 'Foto 3'];
+  const slotColors = ['rgba(212,168,83,0.4)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0.15)'];
+  const slotBg     = ['rgba(212,168,83,0.05)', 'rgba(255,255,255,0.02)', 'rgba(255,255,255,0.02)'];
+
+  for (let i = 0; i < 3; i++) {
+    const slot = document.getElementById('lp-slot-' + i);
+    if (!slot) continue;
+    const photo = _listingPhotos[i];
+    const src   = photo?._preview || photo?.existingUrl || null;
+
+    if (src) {
+      slot.innerHTML = `
+        <img src="${escapeHtml(src)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" loading="lazy"/>
+        ${i === 0
+          ? `<span style="position:absolute;top:4px;left:4px;background:rgba(212,168,83,0.9);border-radius:4px;color:#000;font-size:8px;font-weight:700;padding:2px 5px;pointer-events:none">★ UTAMA</span>`
+          : `<button onclick="event.stopPropagation();setListingPhotoUtama(${i})" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.65);border:1px solid rgba(212,168,83,0.5);border-radius:4px;color:#D4A853;font-size:8px;font-weight:600;padding:2px 5px;cursor:pointer;pointer-events:all">★ Utama</button>`}
+        <button onclick="event.stopPropagation();clearListingPhoto(${i})" style="position:absolute;top:4px;right:4px;background:rgba(239,68,68,0.75);border:none;border-radius:4px;color:#fff;font-size:9px;padding:2px 5px;cursor:pointer;pointer-events:all">✕</button>`;
+      slot.style.border = `1.5px solid ${slotColors[i]}`;
+    } else {
+      const isUtama = i === 0;
+      slot.innerHTML = `
+        <i class="fa-solid ${isUtama ? 'fa-camera' : 'fa-plus'}" style="font-size:${isUtama ? 18 : 14}px;color:rgba(${isUtama ? '212,168,83' : '255,255,255'},${isUtama ? 0.5 : 0.2});margin-bottom:4px"></i>
+        <span style="font-size:10px;color:rgba(${isUtama ? '212,168,83' : '255,255,255'},${isUtama ? 0.7 : 0.3});font-weight:${isUtama ? 600 : 400}">${slotLabels[i]}</span>`;
+      slot.style.border = `1.5px dashed ${slotColors[i]}`;
+    }
+  }
+}
+
+function setListingPhotoUtama(idx) {
+  if (idx === 0 || !_listingPhotos[idx]) return;
+  const temp = _listingPhotos[0];
+  _listingPhotos[0] = _listingPhotos[idx];
+  _listingPhotos[idx] = temp;
+  renderListingPhotoSlots();
+}
+
+function clearListingPhoto(idx) {
+  _listingPhotos[idx] = null;
+  const compact = _listingPhotos.filter(p => p !== null);
+  while (compact.length < 3) compact.push(null);
+  _listingPhotos = compact;
+  renderListingPhotoSlots();
+}
+
+async function _uploadListingPhotos() {
+  if (!window._CLOUD_NAME) {
+    try {
+      const cfg = await API.get('/config/cloudinary');
+      if (cfg.cloudName) { window._CLOUD_NAME = cfg.cloudName; window._UPLOAD_PRESET = cfg.uploadPreset || 'crm_unsigned'; }
+    } catch (_) {}
+  }
+  const cloudName    = window._CLOUD_NAME;
+  const uploadPreset = window._UPLOAD_PRESET || 'crm_unsigned';
+
+  for (let i = 0; i < 3; i++) {
+    const photo = _listingPhotos[i];
+    if (!photo?._file) continue;  // no new file — keep existingUrl as-is
+    if (!cloudName) { showToast(`Upload gagal: Cloudinary belum dikonfigurasi`, 'error'); continue; }
+
+    try {
+      const compressed = await compressImage(photo._file, 1280, 0.80);
+      const ext  = compressed.type?.includes('png') ? 'png' : 'jpg';
+      const fd   = new FormData();
+      fd.append('file', compressed, `listing_foto${i+1}.${ext}`);
+      fd.append('upload_preset', uploadPreset);
+      fd.append('folder', 'crm_listings');
+      const res  = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!data.secure_url) throw new Error(data.error?.message || 'Upload gagal');
+      _listingPhotos[i] = { _file: null, _preview: photo._preview, existingUrl: null, _uploadedUrl: data.secure_url };
+    } catch (e) {
+      showToast(`Gagal upload foto ${i+1}: ${e.message}`, 'error');
+    }
+  }
 }
 
 
@@ -3768,10 +3882,14 @@ function timeAgo(isoStr) {
 let _projectsData       = [];     // cache semua proyek
 let _currentProjectId   = null;   // proyek yang sedang dibuka
 let _projectPhotoSlot   = 1;      // slot foto yang sedang diupload
-let _projectPhotos      = { 1: { url: '', cloudId: '' }, 2: { url: '', cloudId: '' } };
+let _projectPhotos      = { 1: { url: '', cloudId: '' }, 2: { url: '', cloudId: '' }, 3: { url: '', cloudId: '' }, 4: { url: '', cloudId: '' } };
 let _projectBundle      = null;   // sosmed bundle dari API
 const MANAGE_ROLES_PRIMARY = ['superadmin', 'principal', 'admin', 'koordinator'];
-let _korModalSlot = 1;          // slot koordinator yang sedang diedit
+let _korModalSlot = 1;          // slot koordinator yang sedang diedit (1|2|'new_project')
+
+// Listing photo state — multi-select + reorder
+// Each entry: { _file: File|null, _preview: dataUrl|null, existingUrl: string|null }
+let _listingPhotos = [null, null, null];
 let _korCandidates = [];        // cache kandidat koordinator
 
 // ─────────────────────────────────────────────────────────
@@ -4392,14 +4510,25 @@ function openAddProject() {
   resetProjectPhotoPreview(3);
   resetProjectPhotoPreview(4);
 
-  // Koordinator field: auto-fill untuk role koordinator
+  // Koordinator field
   const role = STATE.user?.role;
-  const korWrap = document.getElementById('pf-koordinator-wrap');
+  const korWrap     = document.getElementById('pf-koordinator-wrap');
+  const korPickBtn  = document.getElementById('pf-koordinator-pick-btn');
+  const korNamaEl   = document.getElementById('pf-koordinator-nama');
+  const korIdEl     = document.getElementById('pf-koordinator-id');
   if (korWrap) {
-    korWrap.style.display = role === 'koordinator' ? '' : 'none';
     if (role === 'koordinator') {
-      document.getElementById('pf-koordinator-nama').value = STATE.user?.nama || '';
-      document.getElementById('pf-koordinator-id').value   = STATE.user?.id   || '';
+      korWrap.style.display = '';
+      if (korNamaEl) korNamaEl.value = STATE.user?.nama || '';
+      if (korIdEl)   korIdEl.value   = STATE.user?.id   || '';
+      if (korPickBtn) korPickBtn.style.display = 'none';
+    } else if (['superadmin','principal','admin','kantor'].includes(role)) {
+      korWrap.style.display = '';
+      if (korNamaEl) korNamaEl.value = '';
+      if (korIdEl)   korIdEl.value   = '';
+      if (korPickBtn) korPickBtn.style.display = '';
+    } else {
+      korWrap.style.display = 'none';
     }
   }
 
@@ -4654,6 +4783,33 @@ async function openKoordinatorModal(slot) {
   }
 }
 
+async function openKoordinatorPickerForNewProject() {
+  _korModalSlot = 'new_project';
+
+  const titleEl = document.getElementById('kor-modal-title');
+  if (titleEl) titleEl.textContent = 'Pilih Koordinator';
+
+  const clearBtn = document.getElementById('kor-clear-btn');
+  if (clearBtn) clearBtn.style.display = 'none';
+
+  const searchEl = document.getElementById('kor-search');
+  if (searchEl) searchEl.value = '';
+
+  const listEl = document.getElementById('kor-candidates-list');
+  if (listEl) listEl.innerHTML = '<p style="color:rgba(255,255,255,0.3);text-align:center;padding:20px;font-size:13px">Memuat...</p>';
+
+  openModal('modal-koordinator');
+
+  try {
+    // Gunakan endpoint agents dengan filter role koordinator
+    const res = await API.get('/agents?role=koordinator');
+    _korCandidates = (res.data || []).map(u => ({ id: u.ID || u.id, nama: u.Nama || u.nama, role: u.Role || u.role, nama_kantor: u.Nama_Kantor || u.nama_kantor || '' }));
+    renderKoordinatorList(_korCandidates, null, 'new_project');
+  } catch (e) {
+    if (listEl) listEl.innerHTML = `<p style="color:#ef4444;text-align:center;padding:20px;font-size:13px">${e.message}</p>`;
+  }
+}
+
 function renderKoordinatorList(candidates, project, slot) {
   const listEl = document.getElementById('kor-candidates-list');
   if (!listEl) return;
@@ -4661,7 +4817,9 @@ function renderKoordinatorList(candidates, project, slot) {
     listEl.innerHTML = '<p style="color:rgba(255,255,255,0.3);text-align:center;padding:20px;font-size:13px">Tidak ada kandidat</p>';
     return;
   }
-  const activeId = slot === 1 ? project?.Koordinator_ID : project?.Koordinator2_ID;
+  const activeId = slot === 'new_project'
+    ? (document.getElementById('pf-koordinator-id')?.value || '')
+    : (slot === 1 ? project?.Koordinator_ID : project?.Koordinator2_ID);
   listEl.innerHTML = candidates.map(c => {
     const isActive = c.id === activeId;
     return `<div onclick="saveKoordinatorSlot('${c.id}', '${escapeHtml(c.nama)}')"
@@ -4687,6 +4845,17 @@ function filterKoordinatorList(query) {
 }
 
 async function saveKoordinatorSlot(koordinatorId, koordinatorNama = '') {
+  // Mode: pilih koordinator untuk form tambah proyek baru (belum ada project ID)
+  if (_korModalSlot === 'new_project') {
+    const namaEl = document.getElementById('pf-koordinator-nama');
+    const idEl   = document.getElementById('pf-koordinator-id');
+    if (namaEl) namaEl.value = koordinatorNama;
+    if (idEl)   idEl.value   = koordinatorId;
+    closeModal('modal-koordinator');
+    showToast(`Koordinator: ${koordinatorNama}`, 'success');
+    return;
+  }
+
   if (!_currentProjectId) return;
   try {
     const res = await API.patch('/projects/' + _currentProjectId + '/koordinator', {
@@ -4724,17 +4893,72 @@ function triggerProjectPhotoUpload(slot) {
 }
 
 function handleProjectPhotoSelect(event) {
-  const file = event.target.files?.[0];
-  if (!file) return;
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
 
+  // slot 0 = "Pilih Semua" — isi slot 1-4 dari multi-select
+  if (_projectPhotoSlot === 0) {
+    const toLoad = files.slice(0, 4);
+    let pending = toLoad.length;
+    toLoad.forEach((file, i) => {
+      const slot = i + 1;
+      const existingUrl = _projectPhotos[slot]?.url || '';
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        _projectPhotos[slot] = { url: '', cloudId: '', _file: file, _preview: e.target.result, _existingUrl: existingUrl };
+        setProjectPhotoPreview(slot, e.target.result);
+        renderProjectPhotoUtamaButtons();
+        pending--;
+      };
+      reader.readAsDataURL(file);
+    });
+    return;
+  }
+
+  const file        = files[0];
   const slot        = _projectPhotoSlot;
-  const existingUrl = _projectPhotos[slot]?.url || '';   // simpan URL lama sebagai fallback
+  const existingUrl = _projectPhotos[slot]?.url || '';
   const reader      = new FileReader();
   reader.onload = (e) => {
     _projectPhotos[slot] = { url: '', cloudId: '', _file: file, _preview: e.target.result, _existingUrl: existingUrl };
     setProjectPhotoPreview(slot, e.target.result);
+    renderProjectPhotoUtamaButtons();
   };
   reader.readAsDataURL(file);
+}
+
+function renderProjectPhotoUtamaButtons() {
+  for (const slot of [2, 3, 4]) {
+    const btn = document.getElementById(`pf-foto${slot}-utama`);
+    if (!btn) continue;
+    const hasPhoto = !!(_projectPhotos[slot]?._preview || _projectPhotos[slot]?.url);
+    btn.style.display = hasPhoto ? '' : 'none';
+  }
+  // show/hide utama badge on slot 1
+  const badge = document.getElementById('pf-foto1-utama-badge');
+  if (badge) {
+    const hasSlot1 = !!(_projectPhotos[1]?._preview || _projectPhotos[1]?.url);
+    badge.style.display = hasSlot1 ? '' : 'none';
+  }
+}
+
+function setProjectPhotoUtama(slot) {
+  if (slot === 1) return;
+  const slot1 = _projectPhotos[1];
+  const slotN = _projectPhotos[slot];
+  if (!slotN?._preview && !slotN?.url) return; // kosong, tidak bisa dijadikan utama
+
+  // Tukar data slot 1 ↔ slot N
+  _projectPhotos[1] = slotN;
+  _projectPhotos[slot] = slot1;
+
+  // Update preview untuk kedua slot
+  const src1 = _projectPhotos[1]?._preview || _projectPhotos[1]?.url || '';
+  const srcN = _projectPhotos[slot]?._preview || _projectPhotos[slot]?.url || '';
+  setProjectPhotoPreview(1, src1);
+  setProjectPhotoPreview(slot, srcN);
+  renderProjectPhotoUtamaButtons();
+  showToast(`Foto ${slot} dijadikan Foto Utama`, 'success');
 }
 
 function setProjectPhotoPreview(slot, src) {
@@ -4747,6 +4971,7 @@ function setProjectPhotoPreview(slot, src) {
 function clearProjectPhoto(slot) {
   _projectPhotos[slot] = { url: '', cloudId: '' };
   resetProjectPhotoPreview(slot);
+  renderProjectPhotoUtamaButtons();
 }
 
 function resetProjectPhotoPreview(slot) {

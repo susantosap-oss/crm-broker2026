@@ -65,6 +65,7 @@ app.use('/api/v1/laporan',       require('./routes/laporan.routes'));
 app.use('/api/v1/share-log',     require('./routes/share-log.routes'));
 app.use('/api/v1/listing-agents', require('./routes/listing_agents.routes'));
 app.use('/api/v1/aktivitas',      require('./routes/aktivitas.routes'));
+app.use('/api/v1/push',           require('./routes/push.routes'));
 // ★ Fitur 2 — PA (OpenClaw) + ViGen (Video Engine)
 // PA routes: /api/v1/pa/*  |  ViGen routes: /api/v1/pa/vigen/*
 app.use('/api/v1/pa',             require('./routes/pa.routes'));
@@ -193,6 +194,9 @@ app.listen(PORT, () => {
   setTimeout(() => {
     migrateHeaders().catch(e => console.warn('[Migrate] Error:', e.message));
   }, 3000);
+
+  // Mulai cron jobs (jadwal harian reminder, dll)
+  require('./services/cron.service').startCronJobs();
 });
 
 // ── Telegram Bot Webhook Endpoint ──────────────────────────

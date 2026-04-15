@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PA Digital Twin — OpenClaw System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #D4A853;
+    --gold-dim: rgba(212,168,83,0.15);
+    --gold-border: rgba(212,168,83,0.3);
+    --green: #4ade80;
+    --green-dim: rgba(74,222,128,0.12);
+    --pink: #f472b6;
+    --pink-dim: rgba(244,114,182,0.12);
+    --blue: #60a5fa;
+    --blue-dim: rgba(96,165,250,0.12);
+    --red: #f87171;
+    --bg: #080e1a;
+    --card: #0f1923;
+    --card2: #131F38;
+    --card3: #1C2D52;
+    --text: rgba(255,255,255,0.85);
+    --muted: rgba(255,255,255,0.4);
+    --border: rgba(255,255,255,0.08);
+  }
+
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: 'Inter', sans-serif; color: var(--text); }
+
+  /* ── SLIDES ── */
+  .deck { width: 100vw; height: 100vh; position: relative; }
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    padding: 48px 56px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.45s ease, transform 0.45s ease;
+    transform: translateY(24px);
+    overflow: hidden;
+  }
+  .slide.active { opacity: 1; pointer-events: all; transform: translateY(0); }
+  .slide.exit-up { opacity: 0; transform: translateY(-24px); }
+
+  /* ── BACKGROUNDS ── */
+  .bg-grid {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(212,168,83,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(212,168,83,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .bg-glow {
+    position: fixed; pointer-events: none; z-index: 0; border-radius: 50%;
+    filter: blur(90px); opacity: 0.18;
+  }
+  .bg-glow-1 { width: 600px; height: 600px; top: -200px; right: -100px; background: var(--gold); }
+  .bg-glow-2 { width: 500px; height: 500px; bottom: -150px; left: -100px; background: var(--blue); }
+  .bg-glow-3 { width: 400px; height: 400px; top: 50%; right: 20%; background: var(--pink); opacity: 0.08; }
+
+  .slide-content { position: relative; z-index: 1; width: 100%; max-width: 1100px; }
+
+  /* ── NAV ── */
+  .nav {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    z-index: 100; display: flex; align-items: center; gap: 16px;
+    background: rgba(15,25,35,0.85); border: 1px solid var(--border);
+    border-radius: 40px; padding: 10px 20px; backdrop-filter: blur(16px);
+  }
+  .nav button {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 16px; padding: 4px 10px; border-radius: 8px;
+    transition: color 0.2s, background 0.2s;
+  }
+  .nav button:hover { color: var(--gold); background: var(--gold-dim); }
+  .nav button:disabled { opacity: 0.25; cursor: default; }
+  .slide-counter { font-size: 12px; color: var(--muted); font-weight: 600; min-width: 60px; text-align: center; }
+  .dot-nav { display: flex; gap: 7px; align-items: center; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); cursor: pointer; transition: all 0.2s; }
+  .dot.active { background: var(--gold); width: 22px; border-radius: 4px; }
+
+  /* ── TYPOGRAPHY ── */
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 5px 12px; border-radius: 20px;
+    border: 1px solid; margin-bottom: 16px;
+  }
+  .tag-gold { color: var(--gold); border-color: var(--gold-border); background: var(--gold-dim); }
+  .tag-green { color: var(--green); border-color: rgba(74,222,128,0.3); background: var(--green-dim); }
+  .tag-pink { color: var(--pink); border-color: rgba(244,114,182,0.3); background: var(--pink-dim); }
+  .tag-blue { color: var(--blue); border-color: rgba(96,165,250,0.3); background: var(--blue-dim); }
+
+  h1 { font-family: 'DM Serif Display', serif; font-size: clamp(40px, 6vw, 72px); line-height: 1.1; color: #fff; }
+  h2 { font-family: 'DM Serif Display', serif; font-size: clamp(28px, 4vw, 48px); line-height: 1.2; color: #fff; margin-bottom: 12px; }
+  h3 { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .lead { font-size: clamp(14px, 1.8vw, 18px); color: var(--muted); line-height: 1.7; max-width: 700px; }
+  .accent { color: var(--gold); }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 24px;
+  }
+  .card-gold { border-color: var(--gold-border); background: linear-gradient(135deg, rgba(212,168,83,0.08), rgba(212,168,83,0.03)); }
+  .card-green { border-color: rgba(74,222,128,0.25); background: var(--green-dim); }
+  .card-pink  { border-color: rgba(244,114,182,0.25); background: var(--pink-dim); }
+  .card-blue  { border-color: rgba(96,165,250,0.25); background: var(--blue-dim); }
+  .card-dark  { background: var(--card2); border-color: var(--border); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+  /* ── FLOW ARROWS ── */
+  .flow-row { display: flex; align-items: center; gap: 0; }
+  .flow-box {
+    flex: 1; text-align: center; padding: 14px 10px;
+    background: var(--card2); border: 1px solid var(--border);
+    border-radius: 12px; font-size: 13px; font-weight: 600; color: #fff;
+  }
+  .flow-arrow {
+    flex-shrink: 0; width: 32px; text-align: center;
+    color: var(--gold); font-size: 14px;
+  }
+  .flow-step {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    flex: 1; text-align: center;
+  }
+  .flow-step-box {
+    width: 100%; padding: 12px 8px;
+    background: var(--card2); border: 1px solid var(--border);
+    border-radius: 12px; font-size: 12px; font-weight: 600; color: #fff;
+    position: relative;
+  }
+  .flow-step-num {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--gold); color: #000; font-size: 10px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .flow-step-label { font-size: 10px; color: var(--muted); }
+  .v-arrow { text-align: center; color: var(--gold); font-size: 14px; margin: 4px 0; }
+
+  /* ── CODE ── */
+  .mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--green);
+    background: var(--card2); border-radius: 8px;
+    padding: 14px 16px; line-height: 1.8;
+    border: 1px solid var(--border);
+  }
+  .mono .k { color: var(--blue); }
+  .mono .s { color: var(--gold); }
+  .mono .c { color: var(--muted); }
+  .mono .v { color: var(--pink); }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+  }
+  .badge-gold  { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold-border); }
+  .badge-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+  .badge-pink  { background: var(--pink-dim); color: var(--pink); border: 1px solid rgba(244,114,182,0.3); }
+  .badge-red   { background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+
+  /* ── ICON CIRCLE ── */
+  .icon-circle {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+
+  /* ── LIST ── */
+  .check-list { display: flex; flex-direction: column; gap: 10px; }
+  .check-item { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--text); }
+  .check-item .check { width: 20px; height: 20px; border-radius: 6px; background: var(--green-dim); border: 1px solid rgba(74,222,128,0.3); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--green); flex-shrink: 0; margin-top: 1px; }
+
+  /* ── SLIDE 1: COVER ── */
+  .cover-logo { font-size: 80px; margin-bottom: 24px; animation: float 4s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+  .cover-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(212,168,83,0.1); border: 1px solid var(--gold-border);
+    border-radius: 30px; padding: 6px 16px; font-size: 12px; color: var(--gold);
+    font-weight: 600; margin-top: 20px;
+  }
+  .pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── PROGRESS BAR ── */
+  .limit-bar { height: 6px; background: var(--card3); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .limit-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--gold), #f59e0b); }
+
+  /* ── SSE LOG ── */
+  .log-item { display: flex; gap: 10px; padding: 10px 12px; background: var(--card2); border-radius: 10px; align-items: flex-start; }
+  .log-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .log-success .log-dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .log-pending .log-dot { background: var(--gold); box-shadow: 0 0 8px var(--gold); animation: pulse 1.5s infinite; }
+  .log-error .log-dot { background: var(--red); }
+
+  /* ── DECORATIVE ── */
+  .divider { width: 60px; height: 3px; background: linear-gradient(90deg, var(--gold), transparent); border-radius: 2px; margin: 16px 0; }
+  .number-big { font-family: 'DM Serif Display', serif; font-size: 56px; color: var(--gold); line-height: 1; }
+
+  /* ── QUEUE VIS ── */
+  .queue-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    background: var(--card2); border-radius: 10px; border: 1px solid var(--border);
+    font-size: 13px; font-weight: 600; color: #fff;
+  }
+  .queue-num {
+    width: 24px; height: 24px; border-radius: 8px; background: rgba(244,114,182,0.2);
+    border: 1px solid rgba(244,114,182,0.4); color: var(--pink);
+    display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  /* ── KEYBOARD HINT ── */
+  .key-hint { position: fixed; bottom: 30px; right: 32px; font-size: 11px; color: rgba(255,255,255,0.2); z-index: 200; }
+  kbd { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; padding: 1px 5px; font-size: 10px; }
+
+  /* ── PROGRESS TOP ── */
+  .progress-line {
+    position: fixed; top: 0; left: 0; height: 3px; z-index: 200;
+    background: linear-gradient(90deg, var(--gold), #f59e0b);
+    transition: width 0.4s ease; border-radius: 0 2px 2px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- Background decorations -->
+<div class="bg-grid"></div>
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+<div class="bg-glow bg-glow-3"></div>
+<div class="progress-line" id="progressLine"></div>
+
+<div class="deck" id="deck">
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SLIDE 1: COVER                                -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="slide active" data-slide="0">
+    <div class="slide-content" style="display:flex;flex-direction:column;align-items:center;text-align:center">
+      <div class="cover-logo">🤖</div>
+      <div class="tag tag-gold"><span class="pulse">●</span> OpenClaw PA System</div>
+      <h1>Personal Assistant<br><span class="accent">Digital Twin</span></h1>
+      <div class="divider" style="margin:20px auto"></div>
+      <p class="lead" style="margin:0 auto">
+        Agen properti bekerja <strong style="color:#fff">24 jam</strong> tanpa buka aplikasi lain.<br>
+        Post Instagram, blast WhatsApp — langsung dari detail listing & proyek CRM.
+      </p>
+      <div style="display:flex;gap:12px;margin-top:32px;flex-wrap:wrap;justify-content:center">
+        <div class="cover-pill"><i class="fa-brands fa-whatsapp" style="color:#4ade80"></i> WA Blast</div>
+        <div class="cover-pill"><i class="fa-brands fa-instagram" style="color:#f472b6"></i> IG Reels</div>
+        <div class="cover-pill"><i class="fa-brands fa-instagram" style="color:#f472b6"></i> IG Story</div>
+        <div class="cover-pill"><i class="fa-solid fa-robot"></i> Anti-Bot Engine</div>
+        <div class="cover-pill"><i class="fa-solid fa-satellite-dish" style="color:#60a5fa"></i> Real-time SSE</div>
+      </div>
+      <p style="margin-top:40px;font-size:12px;color:rgba(255,255,255,0.2);font-weight:600;letter-spacing:1px">TEKAN → UNTUK MULAI</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SLIDE 2: ARSITEKTUR                           -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="slide" data-slide="1">
+    <div class="slide-content">
+      <div class="tag tag-blue"><i class="fa-solid fa-sitemap"></i> Arsitektur Sistem</div>
+      <h2>3 Lapisan yang <span class="accent">Bekerja Bersama</span></h2>
+      <div class="divider"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 40px 1fr 40px 1fr;gap:0;align-items:center;margin-top:24px">
+
+        <div class="card card-blue">
+          <div style="font-size:28px;margin-bottom:10px">📱</div>
+          <h3 style="color:var(--blue)">CRM Frontend</h3>
+          <p style="font-size:13px;color:var(--muted);line-height:1.6">Detail Listing & Proyek<br>Tombol PA terintegrasi<br>SSE real-time logs</p>
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:5px">
+            <div class="badge badge-blue"><i class="fa-solid fa-mobile"></i> app-mobile.js</div>
+            <div class="badge badge-blue" style="margin-top:3px"><i class="fa-solid fa-robot"></i> pa-dashboard.js</div>
+          </div>
+        </div>
+
+        <div style="text-align:center">
+          <div style="color:var(--gold);font-size:20px">⟷</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:4px">REST<br>API</div>
+        </div>
+
+        <div class="card card-gold">
+          <div style="font-size:28px;margin-bottom:10px">⚙️</div>
+          <h3 style="color:var(--gold)">CRM Backend</h3>
+          <p style="font-size:13px;color:var(--muted);line-height:1.6">Validasi & enkripsi AES-256<br>Queue jobs ke OpenClaw<br>Callback & SSE broadcast</p>
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:5px">
+            <div class="badge badge-gold"><i class="fa-solid fa-server"></i> pa.routes.js</div>
+            <div class="badge badge-gold" style="margin-top:3px"><i class="fa-solid fa-gears"></i> pa.service.js</div>
+          </div>
+        </div>
+
+        <div style="text-align:center">
+          <div style="color:var(--gold);font-size:20px">⟷</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:4px">HTTP<br>POST</div>
+        </div>
+
+        <div class="card card-pink">
+          <div style="font-size:28px;margin-bottom:10px">🤖</div>
+          <h3 style="color:var(--pink)">OpenClaw Workers</h3>
+          <p style="font-size:13px;color:var(--muted);line-height:1.6">Playwright browser automation<br>Login IG / WA otomatis<br>Anti-bot humanization</p>
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:5px">
+            <div class="badge badge-pink"><i class="fa-brands fa-instagram"></i> instagram.worker.js</div>
+            <div class="badge badge-pink" style="margin-top:3px"><i class="fa-brands fa-whatsapp"></i> whatsapp.worker.js</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:16px">
+        <div class="card card-dark" style="padding:12px 16px;text-align:center">
+          <div style="font-size:12px;color:var(--muted)">Penyimpanan Sesi</div>
+          <div style="font-size:13px;color:#fff;font-weight:600;margin-top:4px">🪣 Google Cloud Storage</div>
+        </div>
+        <div class="card card-dark" style="padding:12px 16px;text-align:center">
+          <div style="font-size:12px;color:var(--muted)">Database</div>
+          <div style="font-size:13px;color:#fff;font-weight:600;margin-top:4px">📊 Google Sheets SSoT</div>
+        </div>
+        <div class="card card-dark" style="padding:12px 16px;text-align:center">
+          <div style="font-size:12px;color:var(--muted)">Enkripsi Password</div>
+          <div style="font-size:13px;color:#fff;font-weight:600;margin-top:4px">🔒 AES-256-GCM</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SLIDE 3: AKSES DI CRM                        -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="slide" data-slide="2">
+    <div class="slide-content">
+      <div class="tag tag-gold"><i class="fa-solid fa-hand-pointer"></i> Cara Akses</div>
+      <h2>Langsung dari <span class="accent">Detail Listing & Proyek</span></h2>
+      <div class="divider"></div>
+      <p class="lead" style="margin-bottom:24px">Semua pengguna yang login dapat mengakses PA — tidak perlu buka aplikasi lain.</p>
+
+      <div class="grid-2" style="gap:20px">
+
+        <div>
+          <div style="font-size:13px;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">
+            <i class="fa-solid fa-building" style="color:var(--gold);margin-right:6px"></i>Detail Listing (Saya / Kantor)
+          </div>
+
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px">
+            <!-- Mock listing header -->
+            <div style="background:var(--card2);border-radius:10px;height:90px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">[ Foto Listing ]</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span class="badge badge-blue">Rumah</span>
+              <span class="badge badge-gold">Jual</span>
+              <span class="badge badge-gold">Rp 2,5 M</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted)"><i class="fa-solid fa-location-dot" style="color:var(--gold)"></i> Surabaya Barat</div>
+
+            <!-- PA Section -->
+            <div style="padding:12px 0 4px;border-top:1px solid var(--border)">
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;font-weight:700">
+                <i class="fa-solid fa-robot" style="color:var(--gold);margin-right:4px"></i>Personal Assistant
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
+                <div style="padding:10px 4px;border-radius:10px;background:var(--green-dim);border:1px solid rgba(74,222,128,0.25);color:var(--green);font-size:11px;font-weight:700;text-align:center">
+                  <div style="font-size:16px;margin-bottom:3px">📲</div>WA Blast
+                </div>
+                <div style="padding:10px 4px;border-radius:10px;background:var(--pink-dim);border:1px solid rgba(244,114,182,0.25);color:var(--pink);font-size:11px;font-weight:700;text-align:center">
+                  <div style="font-size:16px;margin-bottom:3px">🎬</div>IG Reels
+                </div>
+                <div style="padding:10px 4px;border-radius:10px;background:var(--pink-dim);border:1px solid rgba(244,114,182,0.25);color:var(--pink);font-size:11px;font-weight:700;text-align:center">
+                  <div style="font-size:16px;margin-bottom:3px">📸</div>IG Story
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:13px;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">
+            <i class="fa-solid fa-city" style="color:var(--pink);margin-right:6px"></i>Detail Primary / Proyek
+          </div>
+
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px">
+            <div style="background:var(--card2);border-radius:10px;height:90px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">[ Foto Proyek ]</div>
+            <div style="font-size:16px;font-weight:700;color:#fff">Grand Residence Park</div>
+            <div style="font-size:12px;color:var(--gold)">Mulai dari Rp 800 Juta</div>
+
+            <!-- Existing buttons -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div style="padding:10px;border-radius:10px;background:var(--green-dim);border:1px solid rgba(74,222,128,0.2);color:var(--green);font-size:12px;font-weight:600;text-align:center">
+                <i class="fa-brands fa-whatsapp"></i> Share WA
+              </div>
+              <div style="padding:10px;border-radius:10px;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);color:#a78bfa;font-size:12px;font-weight:600;text-align:center">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Konten
+              </div>
+            </div>
+            <div style="padding:10px;border-radius:10px;background:var(--gold-dim);border:1px solid var(--gold-border);color:var(--gold);font-size:12px;font-weight:600;text-align:center">
+              <i class="fa-solid fa-clapperboard"></i> Buat Konten Iklan (ViGen)
+            </div>
+
+            <!-- PA Section project -->
+            <div style="padding-top:4px">
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;font-weight:700">
+                <i class="fa-solid fa-robot" style="color:var(--gold);margin-right:4px"></i>Personal Assistant
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
+                <div style="padding:10px 4px;border-radius:10px;background:var(--green-dim);border:1px solid rgba(74,222,128,0.25);color:var(--green);font-size:11px;font-weight:700;text-align:center">
+                  <div style="font-size:16px;margin-bottom:3px">📲</div>WA Blast
+                </div>
+                <div style="padding:10px 4px;border-radius:10px;background:var(--pink-dim);border:1px solid rgba(244,114,182,0.25);color:var(--pink);font-size:11px;font-weight:700;text-align:center">
+                  <div style="font-size:16px;margin-bottom:3px">🎬</div>IG Reels
+                </div>
+                <div style="padding:10px 4px;border-radius:10px;background:var(--pink-dim);border:1px solid rgba(244,114,182,0.25);color:var(--pink);font-size:11px;font-weight:700;text-align:center">
+                  <div style="font-size:16px;margin-bottom:3px">📸</div>IG Story
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SLIDE 4: FLOW WA BLAST                       -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="slide" data-slide="3">
+    <div class="slide-content">
+      <div class="tag tag-green"><i class="fa-brands fa-whatsapp"></i> WA Blast</div>
+      <h2>Flow <span class="accent">WhatsApp Blast</span></h2>
+      <div class="divider"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:16px">
+
+        <!-- Left: Steps -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;background:var(--card2);border-radius:12px;border:1px solid var(--border)">
+            <div style="width:28px;height:28px;border-radius:8px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);color:var(--green);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">Buka detail listing / proyek</div>
+              <div style="font-size:12px;color:var(--muted)">Klik tombol <span style="color:var(--green);font-weight:600">📲 WA Blast</span> di section Personal Assistant</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;background:var(--card2);border-radius:12px;border:1px solid var(--border)">
+            <div style="width:28px;height:28px;border-radius:8px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);color:var(--green);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">Pilih sesi & centang nomor tujuan</div>
+              <div style="font-size:12px;color:var(--muted)">Maks 5 nomor/sesi · 2 sesi/hari<br>Ketik nomor → checkbox auto-aktif</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;background:var(--card2);border-radius:12px;border:1px solid var(--border)">
+            <div style="width:28px;height:28px;border-radius:8px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);color:var(--green);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">Edit pesan & kirim</div>
+              <div style="font-size:12px;color:var(--muted)">Pesan otomatis terisi data listing (judul, harga, lokasi, nama agen). Bisa diedit.</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;background:rgba(74,222,128,0.06);border-radius:12px;border:1px solid rgba(74,222,128,0.2)">
+            <div style="font-size:18px;flex-shrink:0">🤖</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:3px">PA mengeksekusi di background</div>
+              <div style="font-size:12px;color:var(--muted)">OpenClaw buka WA Web · mengetik 3–7 dtk/pesan · delay 20–60 dtk antar pesan</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right: Mock Modal -->
+        <div>
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:0;overflow:hidden">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:14px;font-weight:700;color:var(--gold)">📲 WA Blast via PA</span>
+              <span style="color:var(--muted);font-size:16px">✕</span>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+              <div style="background:var(--card2);border-radius:8px;padding:8px 10px;font-size:12px;font-weight:600;color:#fff">Rumah Mewah 5KT — Pakuwon City</div>
+              <div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:8px;padding:8px 10px;font-size:11px;color:rgba(255,255,255,0.6);line-height:1.5">
+                ⚡ PA mengetik seperti manusia (3–7 dtk/pesan). Delay 20–60 dtk antar pesan (anti-ban).
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                  <div style="font-size:11px;color:var(--muted);font-weight:700">Nomor / Grup Tujuan</div>
+                  <div style="font-size:11px;color:var(--green);font-weight:700;background:rgba(74,222,128,0.1);padding:2px 8px;border-radius:10px">2 / 5 dipilih</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <div style="width:16px;height:16px;border-radius:4px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--green)">✓</div>
+                    <div style="flex:1;background:var(--card2);border-radius:6px;padding:5px 8px;font-size:11px;color:#fff;border:1px solid rgba(74,222,128,0.2)">628123456789</div>
+                    <div style="font-size:10px;color:var(--muted);background:var(--card2);border-radius:5px;padding:3px 6px">Personal</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <div style="width:16px;height:16px;border-radius:4px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.4);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--green)">✓</div>
+                    <div style="flex:1;background:var(--card2);border-radius:6px;padding:5px 8px;font-size:11px;color:#fff;border:1px solid rgba(74,222,128,0.2)">Grup Investor 2026</div>
+                    <div style="font-size:10px;color:var(--muted);background:var(--card2);border-radius:5px;padding:3px 6px">Grup WA</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;opacity:0.5">
+                    <div style="width:16px;height:16px;border-radius:4px;background:var(--card3);border:1px solid var(--border)"></div>
+                    <div style="flex:1;background:var(--card2);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--muted)">628xxx...</div>
+                    <div style="font-size:10px;color:var(--muted);background:var(--card2);border-radius:5px;padding:3px 6px">Personal</div>
+                  </div>
+                </div>
+              </div>
+              <div style="background:linear-gradient(135deg,#d4af37,#b8941e);border-radius:8px;padding:10px;text-align:center;font-size:13px;font-weight:700;color:#000">
+                📲 Kirim via PA
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SLIDE 5: FLOW IG QUEUE                       -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="slide" data-slide="4">
+    <div class="slide-content">
+      <div class="tag tag-pink"><i class="fa-brands fa-instagram"></i> IG Post — Queue System</div>
+      <h2>Batch Post <span class="accent">Multiple Listing</span></h2>
+      <div class="divider"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:14px;align-items:start">
+
+        <!-- Left: Queue Flow -->
+        <div>
+          <div style="font-size:12px;color:var(--muted);font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:12px">Alur Kerja Queue</div>
+
+          <div style="display:flex;flex-direction:column;gap:4px">
+
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:var(--card2);border-radius:10px;border-left:3px solid var(--pink)">
+              <span style="font-size:16px">🔍</span>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#fff">Buka listing A → klik IG Reels</div>
+                <div style="font-size:11px;color:var(--muted)">Isi media (URL/upload file) + caption</div>
+              </div>
+            </div>
+
+            <div style="text-align:center;color:var(--muted);font-size:14px;padding:2px">↓</div>
+
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:rgba(244,114,182,0.08);border-radius:10px;border-left:3px solid var(--pink)">
+              <span style="font-size:16px">➕</span>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--pink)">Tambah ke Queue → Queue (1)</div>
+                <div style="font-size:11px;color:var(--muted)">Modal tertutup, badge merah muncul</div>
+              </div>
+            </div>
+
+            <div style="text-align:center;color:var(--muted);font-size:14px;padding:2px">↓</div>
+
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:var(--card2);border-radius:10px;border-left:3px solid var(--pink)">
+              <span style="font-size:16px">🔍</span>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#fff">Buka listing B → klik IG Story</div>
+                <div style="font-size:11px;color:var(--muted)">Modal tampil "Queue aktif: 1 post"</div>
+              </div>
+            </div>
+
+            <div style="text-align:center;color:var(--muted);font-size:14px;padding:2px">↓</div>
+
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:rgba(244,114,182,0.08);border-radius:10px;border-left:3px solid var(--pink)">
+              <span style="font-size:16px">➕</span>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--pink)">Tambah ke Queue → Queue (2)</div>
+                <div style="font-size:11px;color:var(--muted)">Muncul panel "Tambah lagi / Jalankan"</div>
+              </div>
+            </div>
+
+            <div style="text-align:center;color:var(--muted);font-size:14px;padding:2px">↓</div>
+
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:rgba(74,222,128,0.06);border-radius:10px;border-left:3px solid var(--green)">
+              <span style="font-size:16px">▶</span>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--green)">Jalankan (2 post)</div>
+                <div style="font-size:11px;color:var(--muted)">PA eksekusi semua queue secara berurutan</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Right: Queue Panel Mock + Badge -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+
+          <!-- Floating badge -->
+          <div style="display:flex;justify-content:flex-end">
+            <div style="background:linear-gradient(135deg,rgba(225,48,108,0.9),rgba(168,36,80,0.9));border-radius:28px;padding:9px 16px;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#fff;box-shadow:0 4px 20px rgba(225,48,108,0.4)">
+              ⏳ Queue IG <span style="background:rgba(255,255,255,0.2);border-radius:12px;padding:1px 8px;font-size:15px;margin:0 2px">2</span> post ›
+            </div>
+          </div>
+
+          <!-- Queue Panel -->
+          <div style="background:var(--card);border:1px solid rgba(244,114,182,0.2);border-radius:16px;overflow:hidden">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:14px;font-weight:700;color:var(--gold)">⏳ IG Post Queue — 2 post</span>
+              <span style="color:var(--muted)">✕</span>
+            </div>
+            <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+
+              <div class="queue-item">
+                <div class="queue-num">1</div>
+                <div style="font-size:18px">🎬</div>
+                <div style="flex:1">
+                  <div style="font-size:12px;font-weight:700;color:#fff">Rumah Mewah — Pakuwon City</div>
+                  <div style="font-size:10px;color:var(--muted)">Reels · 🎥 video (URL)</div>
+                </div>
+                <div style="font-size:11px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:var(--red);border-radius:6px;padding:3px 7px;cursor:pointer">✕</div>
+              </div>
+
+              <div class="queue-item">
+                <div class="queue-num">2</div>
+                <div style="font-size:18px">📸</div>
+                <div style="flex:1">
+                  <div style="font-size:12px;font-weight:700;color:#fff">Grand Residence Park</div>
+                  <div style="font-size:10px;color:var(--muted)">Story · 🖼️ gambar (upload)</div>
+                </div>
+                <div style="font-size:11px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:var(--red);border-radius:6px;padding:3px 7px;cursor:pointer">✕</div>
+              </div>
+
+              <div style="background:rgba(244,114,182,0.06);border:1px solid rgba(244,114,182,0.15);border-radius:8px;padding:8px 10px;font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5">
+                PA akan memproses <strong style="color:#fff">2 post</strong> secara berurutan dengan metode anti-bot.
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div style="padding:10px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;text-align:center">➕ Tambah Lagi</div>
+                <div style="padding:10px;border-radius:8px;background:linear-gradient(135deg,#d4af37,#b8941e);color:#000;font-size:12px;font-weight:700;text-align:center">▶ Jalankan (2)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Media Upload options -->
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;gap:8px;align-items:center">
+            <div style="font-size:20px">📁</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:3px">Mendukung Video & Gambar</div>
+              <div style="font-size:11px;color:var(--muted)">URL publik (Cloudinary/ViGen) atau upload file langsung (JPG, PNG, MP4)</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SLIDE 6: ANTI-BOT ENGINE                     -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="slide" data-slide="5">
+    <div class="slide-content">
+      <div class="tag tag-pink"><i class="fa-solid fa-shield-halved"></i> Anti-Bot Engine</div>
+      <h2>Berperilaku Seperti <span class="accent">Manusia Sungguhan</span></h2>
+      <div class="divider"></div>
+      <p class="lead" style="margin-bottom:24px">OpenClaw menggunakan serangkaian teknik humanisasi untuk menghindari deteksi bot oleh Instagram & WhatsApp.</p>
+
+      <div class="grid-2" style="gap:16px">
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+
+          <div class="card card-dark" style="display:flex;gap:14px;align-items:flex-start">
+            <div class="icon-circle" style="background:rgba(225,48,108,0.12);border:1px solid rgba(225,48,108,0.2)">🖱️</div>
+            <div>
+              <h3 style="font-size:14px;margin-bottom:5px">Bezier Mouse Movement</h3>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6">Gerakan kursor mengikuti kurva Bezier alami. Hover 80–200ms sebelum klik. Tidak pernah klik langsung/seketika.</p>
+            </div>
+          </div>
+
+          <div class="card card-dark" style="display:flex;gap:14px;align-items:flex-start">
+            <div class="icon-circle" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.2)">⌨️</div>
+            <div>
+              <h3 style="font-size:14px;margin-bottom:5px">Human-like Typing</h3>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6">Mengetik 50–150ms per karakter dengan jeda acak. Simulasi "typo & hapus" sesekali. Caption IG diketik karakter per karakter.</p>
+            </div>
+          </div>
+
+          <div class="card card-dark" style="display:flex;gap:14px;align-items:flex-start">
+            <div class="icon-circle" style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.2)">⏱️</div>
+            <div>
+              <h3 style="font-size:14px;margin-bottom:5px">Randomized Delays</h3>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6">Jeda 3–7 detik sebelum kirim WA (simulasi mengetik). Delay 20–60 detik antar pesan. Pause 30–120 detik antar aksi besar IG.</p>
+            </div>
+          </div>
+
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+
+          <div class="card card-dark" style="display:flex;gap:14px;align-items:flex-start">
+            <div class="icon-circle" style="background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.2)">📱</div>
+            <div>
+              <h3 style="font-size:14px;margin-bottom:5px">Mobile Browser Spoofing</h3>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6">Pool 4 user-agent iPhone/Android. Viewport 390×844 – 412×915 dengan variasi ±10px. Menyembunyikan flag <code style="color:var(--gold);font-size:11px">navigator.webdriver</code>.</p>
+            </div>
+          </div>
+
+          <div class="card card-dark" style="display:flex;gap:14px;align-items:flex-start">
+            <div class="icon-circle" style="background:rgba(244,114,182,0.12);border:1px solid rgba(244,114,182,0.2)">🍪</div>
+            <div>
+              <h3 style="font-size:14px;margin-bottom:5px">Persistent Session</h3>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6">Cookie IG & WA Web disimpan di Google Cloud Storage. Reuse sesi yang sama → tidak perlu login ulang terus-menerus.</p>
+            </div>
+          </div>
+
+          <div class="card card-dark" style="display:flex;gap:14px;align-items:flex-start">
+            <div class="icon-circle" style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.2)">📊</div>
+            <div>
+              <h3 style="font-size:14px;margin-bottom:5px">Daily Limits Enforcement</h3>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6">Maks 5 post IG/hari. Maks 5 nomor WA/sesi · 2 sesi/hari = 10 pesan/hari. Limit dicek sebelum eksekusi.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SLIDE 7: REAL-TIME MONITORING                -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="slide" data-slide="6">
+    <div class="slide-content">
+      <div class="tag tag-blue"><i class="fa-solid fa-satellite-dish"></i> Real-time Monitoring</div>
+      <h2>Pantau Progress <span class="accent">Secara Live</span></h2>
+      <div class="divider"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:16px;align-items:start">
+
+        <div>
+          <div style="font-size:12px;color:var(--muted);font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:12px">SSE Activity Log</div>
+
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:13px;font-weight:700;color:#fff">PA Activity Log</span>
+              <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green)"><span class="pulse">●</span> Live</span>
+            </div>
+            <div style="padding:12px;display:flex;flex-direction:column;gap:7px">
+
+              <div class="log-item log-success">
+                <div class="log-dot"></div>
+                <div style="flex:1">
+                  <div style="font-size:12px;color:#fff;font-weight:600">✅ IG Reels berhasil diposting</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:2px">Rumah Mewah Pakuwon City · 14:32:15</div>
+                </div>
+                <div class="badge badge-pink" style="font-size:10px">ig_reels</div>
+              </div>
+
+              <div class="log-item log-pending">
+                <div class="log-dot"></div>
+                <div style="flex:1">
+                  <div style="font-size:12px;color:#fff;font-weight:600">⏳ IG Story sedang diproses...</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:2px">Grand Residence Park · 14:33:41</div>
+                </div>
+                <div class="badge badge-pink" style="font-size:10px">ig_story</div>
+              </div>
+
+              <div class="log-item log-success">
+                <div class="log-dot"></div>
+                <div style="flex:1">
+                  <div style="font-size:12px;color:#fff;font-weight:600">✅ WA Blast ke 3 nomor selesai</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:2px">Ruko Strategis Depok · 14:28:05</div>
+                </div>
+                <div class="badge badge-green" style="font-size:10px">wa_blast</div>
+              </div>
+
+              <div class="log-item log-error">
+                <div class="log-dot" style="background:var(--red)"></div>
+                <div style="flex:1">
+                  <div style="font-size:12px;color:var(--red);font-weight:600">❌ Sesi WA expired — QR dibutuhkan</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:2px">Session #2 · 13:15:22</div>
+                </div>
+                <div class="badge badge-red" style="font-size:10px">qr_required</div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+
+          <div style="font-size:12px;color:var(--muted);font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:0">Event Types & Notifikasi</div>
+
+          <div class="card card-dark" style="display:flex;gap:12px;align-items:center;padding:14px">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--green-dim);border:1px solid rgba(74,222,128,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">✅</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:2px">job_done</div>
+              <div style="font-size:11px;color:var(--muted)">Job selesai sukses → toast hijau + update log</div>
+            </div>
+          </div>
+
+          <div class="card card-dark" style="display:flex;gap:12px;align-items:center;padding:14px">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--gold-dim);border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⏳</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:2px">job_queued</div>
+              <div style="font-size:11px;color:var(--muted)">Job diterima PA → toast gold "proses di background"</div>
+            </div>
+          </div>
+
+          <div class="card card-dark" style="display:flex;gap:12px;align-items:center;padding:14px">
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">❌</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:2px">job_failed</div>
+              <div style="font-size:11px;color:var(--muted)">Gagal → toast merah + pesan error detail</div>
+            </div>
+          </div>
+
+          <div class="card card-dark" style="display:flex;gap:12px;align-items:center;padding:14px">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--blue-dim);border:1px solid rgba(96,165,250,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📲</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:2px">qr_required</div>
+              <div style="font-size:11px;color:var(--muted)">WA session expired → modal QR muncul untuk scan ulang</div>
+            </div>
+          </div>
+
+          <div style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(255,255,255,0.5);line-height:1.6">
+            <strong style="color:var(--blue)">Server-Sent Events (SSE)</strong> — koneksi persisten antara browser & server. Update real-time tanpa perlu refresh halaman.
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SLIDE 8: LIMITS & QUOTA                      -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="slide" data-slide="7">
+    <div class="slide-content">
+      <div class="tag tag-gold"><i class="fa-solid fa-gauge-high"></i> Kuota & Batas Harian</div>
+      <h2>Didesain untuk <span class="accent">Keamanan Akun</span></h2>
+      <div class="divider"></div>
+      <p class="lead" style="margin-bottom:24px">Limit bukan hambatan — ini perlindungan agar akun IG & WA tidak diblokir platform.</p>
+
+      <div class="grid-3" style="gap:16px;margin-bottom:20px">
+
+        <div class="card card-pink" style="text-align:center;padding:24px 16px">
+          <div style="font-size:32px;margin-bottom:8px">🎬</div>
+          <div class="number-big">5</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">post IG per hari<br>(Reels + Story gabungan)</div>
+          <div class="limit-bar" style="margin-top:12px">
+            <div class="limit-bar-fill" style="width:60%;background:linear-gradient(90deg,#e1306c,#f472b6)"></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:5px">contoh: 3/5 terpakai</div>
+        </div>
+
+        <div class="card card-green" style="text-align:center;padding:24px 16px">
+          <div style="font-size:32px;margin-bottom:8px">📲</div>
+          <div class="number-big">5</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">nomor per sesi WA<br>(Personal + Grup)</div>
+          <div class="limit-bar" style="margin-top:12px">
+            <div class="limit-bar-fill" style="width:40%;background:linear-gradient(90deg,#4ade80,#22c55e)"></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:5px">contoh: 2/5 terpakai</div>
+        </div>
+
+        <div class="card card-gold" style="text-align:center;padding:24px 16px">
+          <div style="font-size:32px;margin-bottom:8px">📱</div>
+          <div class="number-big">2</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">sesi WA per hari<br>= maks 10 pesan/hari</div>
+          <div class="limit-bar" style="margin-top:12px">
+            <div class="limit-bar-fill" style="width:50%"></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:5px">contoh: sesi 1 selesai</div>
+        </div>
+
+      </div>
+
+      <div class="grid-2" style="gap:16px">
+        <div class="card card-dark">
+          <h3 style="font-size:14px;margin-bottom:10px;color:var(--green)"><i class="fa-solid fa-clock"></i> Timing Anti-Ban (WA)</h3>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <div style="display:flex;justify-content:space-between;font-size:12px">
+              <span style="color:var(--muted)">Simulasi mengetik sebelum kirim</span>
+              <span style="color:#fff;font-weight:700">3 – 7 detik</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px">
+              <span style="color:var(--muted)">Delay antar pesan</span>
+              <span style="color:#fff;font-weight:700">20 – 60 detik</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px">
+              <span style="color:var(--muted)">Max nomor per sesi</span>
+              <span style="color:#fff;font-weight:700">5 nomor</span>
+            </div>
+          </div>
+        </div>
+        <div class="card card-dark">
+          <h3 style="font-size:14px;margin-bottom:10px;color:var(--pink)"><i class="fa-brands fa-instagram"></i> Timing Anti-Ban (IG)</h3>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <div style="display:flex;justify-content:space-between;font-size:12px">
+              <span style="color:var(--muted)">Tunggu proses upload IG</span>
+              <span style="color:#fff;font-weight:700">30 – 120 detik</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px">
+              <span style="color:var(--muted)">Kecepatan ketik caption</span>
+              <span style="color:#fff;font-weight:700">50 – 150 ms/karakter</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px">
+              <span style="color:var(--muted)">Max post/hari</span>
+              <span style="color:#fff;font-weight:700">5 post</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SLIDE 9: KEAMANAN                            -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="slide" data-slide="8">
+    <div class="slide-content">
+      <div class="tag tag-gold"><i class="fa-solid fa-lock"></i> Keamanan Data</div>
+      <h2>Password Tidak Pernah <span class="accent">Terekspos</span></h2>
+      <div class="divider"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:16px">
+
+        <div>
+          <div style="font-size:12px;color:var(--muted);font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:14px">Alur Enkripsi Kredensial</div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+
+            <div style="display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--card2);border-radius:10px">
+              <div style="font-size:18px">1️⃣</div>
+              <div style="font-size:12px;color:var(--text)">Agen input password IG di sidebar PA</div>
+            </div>
+
+            <div style="text-align:center;color:var(--gold);font-size:12px;padding:2px">↓ Dienkripsi AES-256-GCM sebelum dikirim</div>
+
+            <div style="display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--card2);border-radius:10px">
+              <div style="font-size:18px">2️⃣</div>
+              <div style="font-size:12px;color:var(--text)">Tersimpan di Google Sheets sebagai ciphertext</div>
+            </div>
+
+            <div style="text-align:center;color:var(--gold);font-size:12px;padding:2px">↓ Didekripsi hanya saat job akan dieksekusi</div>
+
+            <div style="display:flex;gap:10px;align-items:center;padding:10px 12px;background:rgba(74,222,128,0.06);border-radius:10px;border:1px solid rgba(74,222,128,0.15)">
+              <div style="font-size:18px">3️⃣</div>
+              <div style="font-size:12px;color:var(--text)">Payload terenkripsi dikirim ke OpenClaw via header <code style="color:var(--gold);font-size:10px">x-internal-secret</code></div>
+            </div>
+
+            <div style="text-align:center;color:var(--gold);font-size:12px;padding:2px">↓ Password TIDAK pernah masuk ke frontend</div>
+
+            <div style="display:flex;gap:10px;align-items:center;padding:10px 12px;background:rgba(74,222,128,0.06);border-radius:10px;border:1px solid rgba(74,222,128,0.15)">
+              <div style="font-size:18px">🔐</div>
+              <div style="font-size:12px;color:var(--green);font-weight:600">Cookie sesi disimpan terpisah di GCS Bucket</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="card card-dark">
+            <h3 style="font-size:14px;margin-bottom:10px"><i class="fa-solid fa-key" style="color:var(--gold)"></i> AES-256-GCM Encryption</h3>
+            <div class="mono">
+<span class="c">// Enkripsi sebelum simpan ke Sheets</span>
+<span class="k">encrypt</span>(password):
+  iv  = <span class="v">random</span>(12 bytes)
+  tag = <span class="v">auth_tag</span>(16 bytes)
+  <span class="k">return</span> <span class="s">"iv:tag:ciphertext"</span>
+
+<span class="c">// Dekripsi hanya saat kirim ke OpenClaw</span>
+<span class="k">decrypt</span>(ciphertext):
+  [iv, tag, enc] = split(<span class="s">":"</span>)
+  <span class="k">return</span> <span class="v">plaintext</span>
+            </div>
+          </div>
+
+          <div class="card card-dark">
+            <h3 style="font-size:14px;margin-bottom:10px"><i class="fa-solid fa-shield-halved" style="color:var(--green)"></i> Perlindungan Berlapis</h3>
+            <div class="check-list">
+              <div class="check-item"><div class="check">✓</div><div>Password dienkripsi <strong>sebelum</strong> tersimpan</div></div>
+              <div class="check-item"><div class="check">✓</div><div>Frontend <strong>tidak pernah</strong> melihat plaintext</div></div>
+              <div class="check-item"><div class="check">✓</div><div>Sesi cookie disimpan di <strong>GCS terpisah</strong></div></div>
+              <div class="check-item"><div class="check">✓</div><div>Internal API dilindungi <strong>x-internal-secret</strong></div></div>
+              <div class="check-item"><div class="check">✓</div><div>Zapier webhook per-agen dengan <strong>secret key unik</strong></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SLIDE 10: SUMMARY / CTA                      -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="slide" data-slide="9">
+    <div class="slide-content" style="display:flex;flex-direction:column;align-items:center;text-align:center">
+      <div class="tag tag-gold"><i class="fa-solid fa-rocket"></i> Ringkasan</div>
+      <h2>PA Digital Twin — <span class="accent">Semua Ada di CRM</span></h2>
+      <div class="divider" style="margin:16px auto"></div>
+      <p class="lead" style="margin:0 auto 32px">Satu platform untuk semua aktivitas marketing properti — tanpa berpindah aplikasi.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;width:100%;margin-bottom:28px">
+
+        <div class="card" style="padding:20px 12px;text-align:center;border-color:rgba(74,222,128,0.25)">
+          <div style="font-size:32px;margin-bottom:8px">📲</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:5px">WA Blast</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.5">Checklist 5 nomor/grup<br>Anti-ban delay alami<br>2 sesi/hari</div>
+        </div>
+
+        <div class="card" style="padding:20px 12px;text-align:center;border-color:rgba(244,114,182,0.25)">
+          <div style="font-size:32px;margin-bottom:8px">🎬</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:5px">IG Reels</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.5">Video atau gambar<br>Queue multi-listing<br>Caption otomatis</div>
+        </div>
+
+        <div class="card" style="padding:20px 12px;text-align:center;border-color:rgba(244,114,182,0.25)">
+          <div style="font-size:32px;margin-bottom:8px">📸</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:5px">IG Story</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.5">Video atau gambar<br>Queue multi-listing<br>9:16 optimal</div>
+        </div>
+
+        <div class="card" style="padding:20px 12px;text-align:center;border-color:rgba(96,165,250,0.25)">
+          <div style="font-size:32px;margin-bottom:8px">📡</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:5px">Live Monitor</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.5">SSE real-time log<br>Toast notification<br>QR auto-alert</div>
+        </div>
+
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;width:100%;margin-bottom:28px">
+        <div style="background:var(--card2);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:24px;margin-bottom:4px">🤖</div>
+          <div style="font-size:12px;font-weight:700;color:#fff">Anti-Bot Engine</div>
+          <div style="font-size:11px;color:var(--muted)">Bezier mouse · Human typing · Mobile UA</div>
+        </div>
+        <div style="background:var(--card2);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:24px;margin-bottom:4px">🔒</div>
+          <div style="font-size:12px;font-weight:700;color:#fff">Enkripsi AES-256</div>
+          <div style="font-size:11px;color:var(--muted)">Password tidak pernah ekspos ke frontend</div>
+        </div>
+        <div style="background:var(--card2);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:24px;margin-bottom:4px">🪣</div>
+          <div style="font-size:12px;font-weight:700;color:#fff">GCS Session Store</div>
+          <div style="font-size:11px;color:var(--muted)">Cookie IG & WA persisten lintas sesi</div>
+        </div>
+      </div>
+
+      <div style="background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(212,168,83,0.05));border:1px solid var(--gold-border);border-radius:16px;padding:20px 32px;display:inline-flex;align-items:center;gap:16px">
+        <span style="font-size:28px">🤖</span>
+        <div style="text-align:left">
+          <div style="font-size:16px;font-weight:800;color:var(--gold)">MANSION Realty CRM</div>
+          <div style="font-size:13px;color:var(--muted)">PA Digital Twin — OpenClaw System · 2026</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- end deck -->
+
+<!-- Navigation -->
+<div class="nav" id="nav">
+  <button id="btnPrev" onclick="navigate(-1)" disabled><i class="fa-solid fa-chevron-left"></i></button>
+  <div class="dot-nav" id="dotNav"></div>
+  <div class="slide-counter" id="slideCounter">1 / 10</div>
+  <button id="btnNext" onclick="navigate(1)"><i class="fa-solid fa-chevron-right"></i></button>
+</div>
+
+<div class="key-hint"><kbd>←</kbd> <kbd>→</kbd> navigasi</div>
+
+<script>
+  const slides    = document.querySelectorAll('.slide');
+  const dotNav    = document.getElementById('dotNav');
+  const counter   = document.getElementById('slideCounter');
+  const progressLine = document.getElementById('progressLine');
+  const total     = slides.length;
+  let   current   = 0;
+
+  // Build dots
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotNav.appendChild(d);
+  }
+
+  function goTo(idx) {
+    if (idx < 0 || idx >= total) return;
+    slides[current].classList.remove('active');
+    slides[current].classList.add('exit-up');
+    setTimeout(() => slides[current].classList.remove('exit-up'), 450);
+
+    current = idx;
+    slides[current].classList.add('active');
+
+    // Update dots
+    document.querySelectorAll('.dot').forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+
+    // Counter
+    counter.textContent = `${current + 1} / ${total}`;
+
+    // Progress
+    progressLine.style.width = `${((current + 1) / total) * 100}%`;
+
+    // Buttons
+    document.getElementById('btnPrev').disabled = current === 0;
+    document.getElementById('btnNext').disabled = current === total - 1;
+  }
+
+  function navigate(dir) { goTo(current + dir); }
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   navigate(-1);
+    if (e.key === 'Home') goTo(0);
+    if (e.key === 'End')  goTo(total - 1);
+  });
+
+  // Touch swipe
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => touchStartX = e.touches[0].clientX, { passive: true });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 60) navigate(dx < 0 ? 1 : -1);
+  });
+
+  // Init
+  goTo(0);
+</script>
+</body>
+</html>

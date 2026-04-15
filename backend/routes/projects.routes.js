@@ -26,6 +26,7 @@ const express = require('express');
 const router  = express.Router();
 const { authMiddleware, requireRole } = require('../middleware/auth.middleware');
 const projectsService = require('../services/projects.service');
+const listingsService = require('../services/listings.service');
 const sheetsService   = require('../services/sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 
@@ -197,6 +198,42 @@ router.patch('/:id/approve', async (req, res) => {
 
     const updated = await projectsService.update(req.params.id, { Status_Project: 'Aktif' });
     res.json({ success: true, data: updated, message: `Proyek "${updated.Nama_Proyek}" berhasil diapprove ✅` });
+
+    // Auto-create listing untuk koordinator saat proyek diapprove (non-blocking)
+    setImmediate(async () => {
+      try {
+        const korId   = updated.Koordinator_ID;
+        const korNama = updated.Koordinator_Nama;
+        if (!korId) return; // tidak ada koordinator, skip
+
+        // Cek apakah listing dari proyek ini sudah ada
+        const existingListings = await listingsService.getAll();
+        const already = (existingListings || []).find(l => l.Project_ID === updated.ID && l.Agen_ID === korId);
+        if (already) return;
+
+        await listingsService.create({
+          Judul:            updated.Nama_Proyek || 'Listing dari Proyek',
+          Tipe_Properti:    updated.Tipe_Properti || 'Properti',
+          Status_Transaksi: updated.Status_Transaksi || 'Jual',
+          Kota:             updated.Kota || '',
+          Kecamatan:        updated.Kecamatan || '',
+          Harga:            updated.Harga_Mulai || updated.Harga || '0',
+          Harga_Format:     updated.Harga_Mulai_Format || updated.Harga_Format || '',
+          Deskripsi:        updated.Deskripsi || '',
+          Foto_Utama_URL:   updated.Foto_1_URL || '',
+          Foto_2_URL:       updated.Foto_2_URL || '',
+          Foto_3_URL:       updated.Foto_3_URL || '',
+          Status_Listing:   'Aktif',
+          Tampilkan_di_Web: 'TRUE',
+          Team_ID:          updated.Team_ID || '',
+          Project_ID:       updated.ID,
+        }, { id: korId, nama: korNama });
+
+        console.log(`[AUTO-LISTING] Created listing for koordinator ${korNama} from project ${updated.ID}`);
+      } catch (autoErr) {
+        console.error('[AUTO-LISTING ERROR]', autoErr.message);
+      }
+    });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
