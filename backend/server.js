@@ -166,7 +166,8 @@ async function migrateHeaders() {
     { sheet: SHEETS.PA_JOBS,          cols: COLUMNS.PA_JOBS },
     { sheet: SHEETS.META_ADS_LOG,     cols: COLUMNS.META_ADS_LOG },
     { sheet: SHEETS.VIGEN_JOBS,       cols: COLUMNS.VIGEN_JOBS },
-    { sheet: SHEETS.WEBHOOK_CONFIG,   cols: COLUMNS.WEBHOOK_CONFIG },
+    { sheet: SHEETS.WEBHOOK_CONFIG,      cols: COLUMNS.WEBHOOK_CONFIG },
+    { sheet: SHEETS.PUSH_SUBSCRIPTIONS, cols: COLUMNS.PUSH_SUBSCRIPTIONS },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)
@@ -194,6 +195,9 @@ app.listen(PORT, () => {
   setTimeout(() => {
     migrateHeaders().catch(e => console.warn('[Migrate] Error:', e.message));
   }, 3000);
+
+  // Load push subscriptions dari Sheets ke memory cache
+  require('./services/push.service').loadSubscriptions().catch(() => {});
 
   // Mulai cron jobs (jadwal harian reminder, dll)
   require('./services/cron.service').startCronJobs();

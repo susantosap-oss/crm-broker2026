@@ -206,9 +206,12 @@ router.patch('/:id/approve', async (req, res) => {
         const korNama = updated.Koordinator_Nama;
         if (!korId) return; // tidak ada koordinator, skip
 
-        // Cek apakah listing dari proyek ini sudah ada
+        // Cek apakah listing dari proyek ini sudah ada (cek Project_ID atau fallback Judul+Agen)
         const existingListings = await listingsService.getAll();
-        const already = (existingListings || []).find(l => l.Project_ID === updated.ID && l.Agen_ID === korId);
+        const already = (existingListings || []).find(l =>
+          (l.Project_ID && l.Project_ID === updated.ID) ||
+          (l.Agen_ID === korId && l.Judul === updated.Nama_Proyek)
+        );
         if (already) return;
 
         await listingsService.create({
@@ -233,6 +236,74 @@ router.patch('/:id/approve', async (req, res) => {
       } catch (autoErr) {
         console.error('[AUTO-LISTING ERROR]', autoErr.message);
       }
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ── POST /migrate-listings — Buat listing untuk proyek lama yang belum punya ──
+// Superadmin only. Idempotent (aman dijalankan berkali-kali).
+router.post('/migrate-listings', async (req, res) => {
+  const userRole = (req.user?.role || '').toLowerCase().trim();
+  console.log('[migrate-listings] user:', req.user?.email, '| role raw:', JSON.stringify(req.user?.role), '| role normalized:', userRole);
+  if (userRole !== 'superadmin') {
+    return res.status(403).json({
+      success: false,
+      message: `Akses ditolak. Butuh superadmin, role kamu: "${req.user?.role || 'tidak ada'}" (email: ${req.user?.email || '?'})`
+    });
+  }
+  try {
+    const allProjects = await projectsService.getAll();
+    const allListings = await listingsService.getAll();
+
+    const targets = (allProjects || []).filter(p =>
+      p.Status_Project === 'Aktif' && p.Koordinator_ID
+    );
+
+    const results = { created: [], skipped: [] };
+
+    for (const p of targets) {
+      // Cek apakah listing sudah ada (by Project_ID atau Judul+Agen)
+      const exists = (allListings || []).find(l =>
+        (l.Project_ID && l.Project_ID === p.ID) ||
+        (l.Agen_ID === p.Koordinator_ID && l.Judul === p.Nama_Proyek)
+      );
+
+      if (exists) {
+        results.skipped.push({ id: p.ID, nama: p.Nama_Proyek, reason: 'listing sudah ada' });
+        continue;
+      }
+
+      try {
+        await listingsService.create({
+          Judul:            p.Nama_Proyek || 'Listing dari Proyek',
+          Tipe_Properti:    p.Tipe_Properti || 'Properti',
+          Status_Transaksi: 'Jual',
+          Kota:             p.Kota || '',
+          Kecamatan:        p.Kecamatan || '',
+          Harga:            p.Harga_Mulai || p.Harga || '0',
+          Harga_Format:     p.Harga_Mulai_Format || p.Harga_Format || '',
+          Deskripsi:        p.Deskripsi || '',
+          Foto_Utama_URL:   p.Foto_1_URL || '',
+          Foto_2_URL:       p.Foto_2_URL || '',
+          Foto_3_URL:       p.Foto_3_URL || '',
+          Status_Listing:   'Aktif',
+          Tampilkan_di_Web: 'TRUE',
+          Team_ID:          p.Team_ID || '',
+          Project_ID:       p.ID,
+        }, { id: p.Koordinator_ID, nama: p.Koordinator_Nama });
+
+        results.created.push({ id: p.ID, nama: p.Nama_Proyek, koordinator: p.Koordinator_Nama });
+      } catch (err) {
+        results.skipped.push({ id: p.ID, nama: p.Nama_Proyek, reason: err.message });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Migrasi selesai: ${results.created.length} listing dibuat, ${results.skipped.length} dilewati`,
+      data: results,
     });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });

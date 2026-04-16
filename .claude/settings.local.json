@@ -43,7 +43,18 @@
       "Bash(find C:Usersmansioncrm-broker2026backendconfig -name *.js -type f)",
       "Bash(grep -v \"^\\\\s*//\")",
       "Bash(C:/Users/mansion/crm-broker2026/backend/.env:*)",
-      "Bash(grep -n \"images\\\\|coverImage\\\\|gallery\\\\|slideshow\\\\|ImageGallery\\\\|Carousel\" C:/Users/mansion/web-mansion2026/src/app/listings/[slug]/page.tsx)"
+      "Bash(grep -n \"images\\\\|coverImage\\\\|gallery\\\\|slideshow\\\\|ImageGallery\\\\|Carousel\" C:/Users/mansion/web-mansion2026/src/app/listings/[slug]/page.tsx)",
+      "Read(//c/Users/mansion/web-mansion2026//**)",
+      "Read(//c/Users/mansion/**)",
+      "Bash(grep:*)",
+      "Bash(ls *.yaml *.json Dockerfile)",
+      "Bash(gcloud logging:*)",
+      "Bash(gcloud beta:*)",
+      "Bash(nslookup crm.mansionpro.id)",
+      "Bash(gcloud compute:*)",
+      "Bash(gcloud projects:*)",
+      "Bash(head -10 /c/Users/mansion/web-mansion2026/src/app/listings/[slug]/page.tsx)",
+      "Bash(bash deploy.sh)"
     ]
   }
 }

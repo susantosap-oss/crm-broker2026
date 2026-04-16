@@ -3960,6 +3960,9 @@ async function loadPrimaryPage() {
   const addBtn = document.getElementById('btn-add-project');
   if (addBtn) addBtn.style.display = canManage ? 'flex' : 'none';
 
+  const migrateBtn = document.getElementById('btn-migrate-listings');
+  if (migrateBtn) migrateBtn.style.display = role === 'superadmin' ? 'inline-flex' : 'none';
+
   const filterStatusWrap = document.getElementById('wrap-filter-status');
   if (filterStatusWrap) filterStatusWrap.style.display = canFilter ? '' : 'none';
 
@@ -4723,6 +4726,26 @@ async function deleteCurrentProject() {
 }
 
 // ─────────────────────────────────────────────────────────
+// MIGRATE PROJECT LISTINGS (Superadmin only — one-time)
+// ─────────────────────────────────────────────────────────
+async function migrateProjectListings() {
+  if (!confirm('Buat listing otomatis untuk semua proyek Aktif yang belum punya listing?\n\nOperasi ini aman dijalankan berkali-kali (idempotent).')) return;
+  const btn = document.getElementById('btn-migrate-listings');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Migrasi...'; }
+  try {
+    const res = await API.post('/projects/migrate-listings', {});
+    const d = res.data || {};
+    const created  = (d.created  || []).map(p => `• ${p.nama} → ${p.koordinator}`).join('\n') || '(tidak ada)';
+    const skipped  = (d.skipped  || []).map(p => `• ${p.nama}: ${p.reason}`).join('\n') || '(tidak ada)';
+    showToast(res.message || 'Migrasi selesai', 'success');
+    alert(`Migrasi selesai!\n\n✅ Dibuat (${d.created?.length || 0}):\n${created}\n\n⏭ Dilewati (${d.skipped?.length || 0}):\n${skipped}`);
+  } catch (e) {
+    showToast('Migrasi gagal: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Migrasi Listing'; }
+  }
+}
+
 // APPROVE PROJECT (Principal / Superadmin)
 // ─────────────────────────────────────────────────────────
 async function approveProject() {

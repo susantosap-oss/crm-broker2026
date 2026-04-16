@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="theme-color" content="#080E1A"/>
+  <meta name="app-version" content="1.1.1"/>
   <title>Mansion CRM</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{navy:{DEFAULT:'#080E1A',1:'#0D1526',2:'#131F38',3:'#1C2D52'},gold:{DEFAULT:'#D4A853',light:'#E8C07A',dark:'#A87B30'}}}}};</script>
@@ -150,6 +151,7 @@
       </button>
     </div>
     <p class="text-center mt-8" style="color:rgba(255,255,255,0.2);font-size:12px">Hanya untuk agen & admin terdaftar</p>
+    <p class="text-center mt-2" style="color:rgba(212,168,83,0.5);font-size:11px;letter-spacing:0.08em" id="login-version-label">Mansion CRM v1.1.1</p>
   </div>
 </div>
 
@@ -410,10 +412,16 @@
           <p style="color:rgba(255,255,255,0.45);font-size:13px;margin:0">Proyek Developer — Properti Baru</p>
         </div>
         <!-- Tombol Tambah: hanya admin/principal/superadmin -->
-        <button id="btn-add-project" onclick="openAddProject()"
-          style="display:none;background:#D4A853;color:#0D1526;border:none;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px">
-          <i class="fa-solid fa-plus"></i> Tambah Proyek
-        </button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="btn-migrate-listings" onclick="migrateProjectListings()" title="Buat listing untuk proyek lama yang belum punya listing"
+            style="display:none;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.3);color:#D4A853;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Migrasi Listing
+          </button>
+          <button id="btn-add-project" onclick="openAddProject()"
+            style="display:none;background:#D4A853;color:#0D1526;border:none;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px">
+            <i class="fa-solid fa-plus"></i> Tambah Proyek
+          </button>
+        </div>
       </div>
     </div>
 
@@ -835,6 +843,9 @@
       <button onclick="logout()" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);cursor:pointer;color:#f87171;font-size:13px" onmouseenter="this.style.background='rgba(239,68,68,0.15)'" onmouseleave="this.style.background='rgba(239,68,68,0.08)'">
         <i class="fa-solid fa-right-from-bracket" style="width:16px;text-align:center"></i><span>Keluar dari CRM</span>
       </button>
+      <div style="text-align:center;margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">
+        <span id="sidebar-version-label" style="font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.08em">Mansion CRM v—</span>
+      </div>
     </div>
   </aside>
 
@@ -1085,9 +1096,26 @@
         </div>
       </div>
       <div>
-        <label class="form-label">Deskripsi</label>
-        <textarea id="add-deskripsi" rows="4" class="form-input" style="resize:none" placeholder="LT 120m² / LB 90m² / 3KT 2KM / SHM / 2 Lantai / ROW 8m / Hadap Timur / Semi Furnished / bebas banjir dekat tol..."></textarea>
-        <p style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px"><i class="fa-solid fa-info-circle" style="margin-right:4px"></i>Digunakan juga di VCARD & Website Kantor</p>
+        <label class="form-label">Deskripsi <span style="color:rgba(212,168,83,0.6);font-size:10px"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:3px"></i>dipakai untuk auto-caption sosmed</span></label>
+        <textarea id="add-deskripsi" rows="7" class="form-input" style="resize:none;font-size:12px;line-height:1.7"
+          placeholder="LT: 120&#10;LB: 90&#10;3 KT&#10;2 KM&#10;Garasi: 2&#10;2 Lantai&#10;SHM&#10;ROW: 8m&#10;Hadap: Timur&#10;Semi Furnished&#10;✅ Lokasi strategis dekat tol..."></textarea>
+        <div style="margin-top:6px;padding:8px 10px;background:rgba(212,168,83,0.05);border:1px solid rgba(212,168,83,0.15);border-radius:8px">
+          <p style="font-size:10px;color:rgba(212,168,83,0.7);margin:0 0 3px;font-weight:600"><i class="fa-solid fa-circle-info" style="margin-right:4px"></i>Format untuk auto-caption (tulis per baris):</p>
+          <p style="font-size:10px;color:rgba(255,255,255,0.4);margin:0;line-height:1.8">
+            <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">LT: 120</code> &nbsp;
+            <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">LB: 90</code> &nbsp;
+            <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">3 KT</code> &nbsp;
+            <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">2 KM</code> &nbsp;
+            <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">Garasi: 2</code> &nbsp;
+            <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">2 Lantai</code><br>
+            <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">SHM</code> /
+            <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">HGB</code> /
+            <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">AJB</code> &nbsp;
+            <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">ROW: 8m</code> &nbsp;
+            <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">Hadap: Timur</code> &nbsp;
+            <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">Full Furnished</code>
+          </p>
+        </div>
       </div>
       <div><label class="form-label">Caption Media Sosial <span style="color:rgba(255,255,255,0.3);font-size:9px">(auto-generate)</span></label><div style="background:#131F38;border-radius:12px;padding:10px 14px;border:1px solid rgba(255,255,255,0.06)"><p style="font-size:11px;color:rgba(255,255,255,0.35);margin:0"><i class="fa-solid fa-magic-wand-sparkles" style="color:#D4A853;margin-right:6px"></i>Caption akan dibuat otomatis dari data listing di atas</p></div></div>
       <div style="display:flex;gap:10px;padding-top:4px">
@@ -1506,19 +1534,6 @@
     };
   });
 
-  // ── Service Worker, PWA Install & Push Notifications ──
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(reg => {
-          console.log('[CRM SW] Registered:', reg.scope);
-          // Setup push subscription setelah login berhasil
-          window._swRegistration = reg;
-        })
-        .catch(err => console.warn('[CRM SW] Failed:', err));
-    });
-  }
-
   async function setupPushNotifications() {
     if (!('PushManager' in window) || !window._swRegistration) return;
     try {
@@ -1669,9 +1684,26 @@
 
         <!-- Deskripsi -->
         <div style="margin-bottom:14px">
-          <label class="form-label">Deskripsi <span style="color:rgba(255,255,255,0.4);font-size:11px">(LT/LB/Spesifikasi/Keunggulan/Fasilitas)</span></label>
-          <textarea id="pf-deskripsi" class="form-input" rows="5"
-            placeholder="LT: 72 m²&#10;LB: 60 m²&#10;3 KT, 2 KM&#10;✅ Lokasi strategis&#10;✅ One gate system&#10;✅ Dekat tol"></textarea>
+          <label class="form-label">Deskripsi <span style="color:rgba(212,168,83,0.6);font-size:10px"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:3px"></i>dipakai untuk auto-caption sosmed</span></label>
+          <textarea id="pf-deskripsi" class="form-input" rows="7" style="font-size:12px;line-height:1.7"
+            placeholder="LT: 120&#10;LB: 90&#10;3 KT&#10;2 KM&#10;Garasi: 2&#10;2 Lantai&#10;SHM&#10;ROW: 8m&#10;Hadap: Timur&#10;Semi Furnished&#10;✅ Lokasi strategis dekat tol..."></textarea>
+          <div style="margin-top:6px;padding:8px 10px;background:rgba(212,168,83,0.05);border:1px solid rgba(212,168,83,0.15);border-radius:8px">
+            <p style="font-size:10px;color:rgba(212,168,83,0.7);margin:0 0 3px;font-weight:600"><i class="fa-solid fa-circle-info" style="margin-right:4px"></i>Format untuk auto-caption (tulis per baris):</p>
+            <p style="font-size:10px;color:rgba(255,255,255,0.4);margin:0;line-height:1.8">
+              <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">LT: 120</code> &nbsp;
+              <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">LB: 90</code> &nbsp;
+              <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">3 KT</code> &nbsp;
+              <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">2 KM</code> &nbsp;
+              <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">Garasi: 2</code> &nbsp;
+              <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">2 Lantai</code><br>
+              <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">SHM</code> /
+              <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">HGB</code> /
+              <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">AJB</code> &nbsp;
+              <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">ROW: 8m</code> &nbsp;
+              <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">Hadap: Timur</code> &nbsp;
+              <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">Full Furnished</code>
+            </p>
+          </div>
         </div>
 
         <!-- Foto Upload (max 4, multi-select + reorder) -->
@@ -2612,4 +2644,31 @@ async function saveApraisalResult(type) {
   }
 }
 </script>
+  <!-- App Version Footer -->
+  <div id="app-footer" style="text-align:center;padding:12px 0 20px;pointer-events:none">
+    <span id="app-version-label" style="font-size:10px;color:rgba(255,255,255,0.18);letter-spacing:0.05em">v—</span>
+  </div>
+  <!-- Force SW cache bust: unregister SW lama lalu register ulang -->
+  <script>
+  (function() {
+    const CURRENT_SW_VERSION = '1.1.0';
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => {
+          reg.active?.postMessage({ type: 'GET_VERSION' });
+        });
+      });
+      // Hapus semua cache key yang bukan versi saat ini
+      if ('caches' in window) {
+        caches.keys().then(keys => {
+          keys.forEach(key => {
+            if (!key.includes(CURRENT_SW_VERSION)) {
+              caches.delete(key);
+            }
+          });
+        });
+      }
+    }
+  })();
+  </script>
 </body></html>

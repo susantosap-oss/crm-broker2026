@@ -69,6 +69,16 @@ document.addEventListener('DOMContentLoaded', () => {
     showLoginScreen();
   }
 
+  // Inject version — dijalankan selalu, tidak bergantung SW
+  const meta = document.querySelector('meta[name="app-version"]');
+  if (meta) {
+    const v = meta.content;
+    ['app-version-label', 'sidebar-version-label', 'login-version-label'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = id === 'app-version-label' ? `v${v}` : `Mansion CRM v${v}`;
+    });
+  }
+
   setupPWA();
   setHeroDate();
 });
@@ -1498,7 +1508,28 @@ function setupPWA() {
     }
   });
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      window._swRegistration = reg;
+
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            window.location.reload();
+          }
+        });
+      });
+
+      // Re-subscribe push jika user sudah login (page reload / SW update)
+      if (localStorage.getItem('crm_token')) {
+        setTimeout(() => {
+          if (typeof window.setupPushNotifications === 'function') {
+            window.setupPushNotifications();
+          }
+        }, 2000);
+      }
+    }).catch(() => {});
+
   }
 }
 

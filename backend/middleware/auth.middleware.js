@@ -52,8 +52,11 @@ const authMiddleware = async (req, res, next) => {
 // Require specific roles
 const requireRole = (...roles) => (req, res, next) => {
   if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
-  if (!roles.includes(req.user.role)) {
-    return res.status(403).json({ success: false, message: 'Akses ditolak. Role tidak mencukupi.' });
+  // Flatten jika dipanggil dengan array: requireRole(['a','b']) atau requireRole('a','b')
+  const allowed = roles.flat().map(r => r.toLowerCase());
+  const userRole = (req.user.role || '').toLowerCase();
+  if (!allowed.includes(userRole)) {
+    return res.status(403).json({ success: false, message: `Akses ditolak. Role tidak mencukupi. (role: ${req.user.role})` });
   }
   next();
 };
@@ -61,7 +64,7 @@ const requireRole = (...roles) => (req, res, next) => {
 // Require minimum role level
 const requireMinRole = (minRole) => (req, res, next) => {
   if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
-  const userLevel = ROLE_LEVEL[req.user.role] || 0;
+  const userLevel = ROLE_LEVEL[(req.user.role || '').toLowerCase()] || 0;
   const minLevel  = ROLE_LEVEL[minRole] || 0;
   if (userLevel < minLevel) {
     return res.status(403).json({ success: false, message: 'Akses ditolak. Level tidak mencukupi.' });

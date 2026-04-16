@@ -1,9 +1,12 @@
-const CACHE_NAME = 'mansion-crm-v7';
+// ─── UBAH VERSI DI SINI saat release ───────────────────────
+const APP_VERSION = '1.1.1';
+// ────────────────────────────────────────────────────────────
+const CACHE_NAME = `mansion-crm-v${APP_VERSION}`;
 const STATIC_ASSETS = [
   '/',
-  '/js/app.js?v=20260415',
-  '/js/app-mobile.js?v=20260415',
-  '/js/pa-dashboard.js?v=20260415',
+  '/js/app.js',
+  '/js/app-mobile.js',
+  '/js/pa-dashboard.js',
   '/assets/mansion-logo.png',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png'

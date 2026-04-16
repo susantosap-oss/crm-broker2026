@@ -47,6 +47,8 @@ const SHEETS = {
   META_ADS_LOG:      'META_ADS_LOG',
   VIGEN_JOBS:        'VIGEN_JOBS',
   WEBHOOK_CONFIG:    'WEBHOOK_CONFIG',  // KV store konfigurasi webhook global
+  // ★ Push Notifications
+  PUSH_SUBSCRIPTIONS: 'PUSH_SUBSCRIPTIONS',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -96,6 +98,7 @@ const COLUMNS = {
     'Created_At',         // AM
     'Updated_At',         // AN
     'Notes',              // AO
+    'Project_ID',         // AP  ★ FK ke PROJECTS (jika listing dibuat dari proyek primary)
   ],
 
   LEADS: [
@@ -445,6 +448,17 @@ const COLUMNS = {
     'Finished_At',      // J
     'Error_Msg',        // K
     'Callback_Received',// L  TRUE/FALSE
+  ],
+
+  // ★ PUSH_SUBSCRIPTIONS — Persistent web push subscriptions per user
+  PUSH_SUBSCRIPTIONS: [
+    'ID',           // A  "{userId}:{endpoint_hash}"
+    'User_ID',      // B  FK ke AGENTS
+    'Endpoint',     // C  Push subscription endpoint URL
+    'Auth',         // D  subscription.keys.auth
+    'P256dh',       // E  subscription.keys.p256dh
+    'Created_At',   // F  ISO timestamp
+    'Updated_At',   // G  ISO timestamp
   ],
 
   PIPELINE_STAGES: [
