@@ -144,20 +144,145 @@ function setStatus(status) {
   }
 }
 
+// ─────────────────────────────────────────────────────────
+// CANVA PROFILE PHOTO PIPELINE
+// ─────────────────────────────────────────────────────────
+let _canvaProgressTimers = [];
+
+function _setCanvaProgress(pct, label) {
+  const bar  = document.getElementById('canva-progress-bar');
+  const step = document.getElementById('canva-progress-step');
+  const pctEl = document.getElementById('canva-progress-pct');
+  if (bar)  bar.style.width  = pct + '%';
+  if (step) step.textContent = label;
+  if (pctEl) pctEl.textContent = pct + '%';
+}
+
+function _showCanvaOverlay(show) {
+  const el = document.getElementById('canva-progress-overlay');
+  if (!el) return;
+  el.style.display = show ? 'flex' : 'none';
+  if (!show) {
+    _canvaProgressTimers.forEach(clearTimeout);
+    _canvaProgressTimers = [];
+  }
+}
+
+function _startCanvaFakeProgress() {
+  // Simulasi progress — backend bisa butuh 15-60 detik
+  const timeline = [
+    { delay: 0,     pct: 8,  label: '📤 Mengupload foto...' },
+    { delay: 1500,  pct: 22, label: '🎨 Menghubungi Canva...' },
+    { delay: 4000,  pct: 40, label: '🖼 Menerapkan template...' },
+    { delay: 12000, pct: 58, label: '⏳ Menunggu proses Canva...' },
+    { delay: 25000, pct: 72, label: '📥 Mengekspor hasil...' },
+    { delay: 40000, pct: 83, label: '☁️ Menyimpan ke CDN...' },
+    { delay: 50000, pct: 90, label: '📋 Menyimpan URL...' },
+  ];
+  _canvaProgressTimers = timeline.map(({ delay, pct, label }) =>
+    setTimeout(() => {
+      if (document.getElementById('canva-progress-overlay')?.style.display === 'flex') {
+        _setCanvaProgress(pct, label);
+      }
+    }, delay)
+  );
+}
+
+async function uploadProfilePhotoCanva(file) {
+  _showCanvaOverlay(true);
+  _setCanvaProgress(0, 'Menyiapkan...');
+  _startCanvaFakeProgress();
+
+  try {
+    const formData = new FormData();
+    formData.append('photo', file);
+    const res = await API.post('/agents/profile-photo/canva', formData, true);
+    _setCanvaProgress(100, '✅ Foto profil berhasil!');
+    await new Promise(r => setTimeout(r, 800)); // sebentar tampilkan 100%
+    _showCanvaOverlay(false);
+    return res.data.photo_url;
+  } catch (e) {
+    _showCanvaOverlay(false);
+    throw e;
+  }
+}
+
+// ── Canva Batch Migration (superadmin) ────────────────────
+let _migratePollTimer = null;
+
+async function runCanvaMigrateAll() {
+  if (!confirm('Proses semua foto profil agen yang belum di-Canva?\nProses ini bisa memakan waktu beberapa menit.')) return;
+
+  const btn = document.getElementById('canva-migrate-btn');
+  const box = document.getElementById('canva-migrate-status-box');
+  if (btn) btn.disabled = true;
+  if (box) box.style.display = 'block';
+
+  try {
+    const res = await API.post('/agents/profile-photo/canva/migrate-all', {});
+    if (!res.success) {
+      showToast(res.message || 'Gagal memulai migrasi', 'error');
+      if (btn) btn.disabled = false;
+      return;
+    }
+    showToast(`Migrasi dimulai: ${res.total} agen`, 'success');
+    _pollMigrateStatus();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+    if (btn) btn.disabled = false;
+  }
+}
+
+function _pollMigrateStatus() {
+  if (_migratePollTimer) clearInterval(_migratePollTimer);
+  _migratePollTimer = setInterval(async () => {
+    try {
+      const res = await API.get('/agents/profile-photo/canva/migrate-status');
+      const { total, done, failed, running, percent, log } = res;
+
+      const bar    = document.getElementById('canva-mig-bar');
+      const pctEl  = document.getElementById('canva-mig-pct');
+      const label  = document.getElementById('canva-mig-label');
+      const detail = document.getElementById('canva-mig-detail');
+
+      if (bar)    bar.style.width = percent + '%';
+      if (pctEl)  pctEl.textContent = percent + '%';
+      if (label)  label.textContent = running ? `Memproses... ${done + failed}/${total}` : `Selesai — ${done} berhasil, ${failed} gagal`;
+
+      // Tampilkan log 3 item terakhir
+      if (detail && log?.length) {
+        const recent = log.slice(-3).reverse();
+        detail.innerHTML = recent.map(l =>
+          `<div style="color:${l.status==='done'?'#4ade80':l.status==='failed'?'#f87171':'rgba(255,255,255,0.4)'}">`
+          + `${l.status==='done'?'✓':l.status==='failed'?'✗':'…'} ${l.nama}`
+          + `</div>`
+        ).join('');
+      }
+
+      if (!running) {
+        clearInterval(_migratePollTimer);
+        const btn = document.getElementById('canva-migrate-btn');
+        if (btn) { btn.disabled = false; btn.textContent = `✓ Selesai (${done}/${total})`; }
+        showToast(`Migrasi selesai: ${done} berhasil, ${failed} gagal`, done === total ? 'success' : 'error');
+      }
+    } catch (_) {}
+  }, 3000); // poll tiap 3 detik
+}
+
 async function saveSettings() {
   const nama  = getVal('set-nama').trim();
   const wa    = getVal('set-wa').trim();
   const waBiz = getVal('set-wa-biz').trim();
   if (!nama) { showToast('Nama wajib diisi', 'error'); return; }
 
-  // Upload photo to Cloudinary if pending
+  // Upload photo via Canva pipeline jika ada foto pending
   if (_profileData._pendingPhotoFile) {
     try {
-      const url = await uploadToCloudinary(_profileData._pendingPhotoFile, 'profile');
+      const url = await uploadProfilePhotoCanva(_profileData._pendingPhotoFile);
       _profileData.photoUrl = url;
       _profileData._pendingPhotoFile = null;
     } catch (e) {
-      showToast('Gagal upload foto: ' + e.message, 'error'); return;
+      showToast('Gagal proses foto Canva: ' + e.message, 'error'); return;
     }
   }
   _profileData.nama  = nama;
@@ -508,6 +633,7 @@ async function loadListings() {
       : '/listings';
     const res = await API.get(endpoint);
     _allListings = res.data || [];
+    window._allListings = _allListings;
 
     let toShow = _allListings;
     if (_listingTab === 'fav') toShow = _allListings.filter(l => _favourites.has(l.ID));
@@ -664,12 +790,12 @@ async function openListingDetail(id) {
       <button onclick="shareListingWACatalog('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-regular fa-copy" style="margin-right:6px"></i>WA Catalog
       </button>
-      <button onclick="openViGen('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
+      ${!['agen','koordinator'].includes(STATE.user?.role) ? `<button onclick="openViGen('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-solid fa-clapperboard" style="margin-right:6px"></i>Buat Konten Iklan (ViGen)
-      </button>
+      </button>` : ''}
 
       <!-- OpenClaw Personal Assistant -->
-      ${STATE.user ? `
+      ${STATE.user && !['agen','koordinator'].includes(STATE.user.role) ? `
       <div style="width:100%;padding:12px 0 4px;border-top:1px solid rgba(255,255,255,0.07)">
         <div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;font-weight:600">
           <i class="fa-solid fa-robot" style="margin-right:4px"></i>Personal Assistant (OpenClaw)
@@ -739,6 +865,7 @@ const _viGen = {
   mood:        'mewah',
   duration:    30,
 };
+window._viGen = _viGen; // expose agar pa-dashboard.js bisa baca state
 
 async function openViGen(listingId) {
   const listing = _allListings.find(l => l.ID === listingId);
@@ -2653,12 +2780,14 @@ async function openPropertiPicker() {
     try {
       const res = await API.get('/listings');
       _allListings = res.data || [];
+      window._allListings = _allListings;
     } catch(e) {}
   }
   if (!_projectsData.length) {
     try {
       const res = await API.get('/projects');
       _projectsData = res.data || [];
+      window._projectsData = _projectsData;
     } catch(e) {}
   }
 
@@ -3177,6 +3306,7 @@ async function showApp() {
   await loadFavourites();
   loadCloudinaryConfig().then(() => {});
   checkAdminMenu();
+  if (typeof initPADashboard === 'function') initPADashboard();
   setTimeout(() => navigateTo('dashboard'), 100);
   // Tampilkan laporan card untuk principal/superadmin
   const laporanCard = document.getElementById('laporan-summary-card');
@@ -3623,7 +3753,7 @@ function checkAdminMenu() {
   // ★ Personal Assistant — tampilkan untuk agen & koordinator
   const sbPA = document.getElementById('sb-pa');
   if (sbPA) {
-    const paRoles = ['agen', 'koordinator', 'admin', 'business_manager', 'principal', 'kantor', 'superadmin'];
+    const paRoles = ['admin', 'business_manager', 'principal', 'kantor', 'superadmin'];
     sbPA.style.display = paRoles.includes(role) ? 'flex' : 'none';
   }
 }
@@ -3984,6 +4114,7 @@ async function fetchProjects(silent = false) {
 
     const res = await API.get('/projects?' + params.toString());
     _projectsData = res.data || [];
+    window._projectsData = _projectsData;
     renderProjectGrid(_projectsData);
   } catch (e) {
     showToast('Gagal load proyek: ' + e.message, 'error');
@@ -4090,6 +4221,7 @@ function filterProjects() {
 // ─────────────────────────────────────────────────────────
 async function openProjectDetail(id) {
   _currentProjectId = id;
+  window._currentProjectId = id;
   const project = _projectsData.find(p => p.ID === id) || await loadProjectById(id);
   if (!project) return showToast('Proyek tidak ditemukan', 'error');
 
@@ -4212,13 +4344,13 @@ async function openProjectDetail(id) {
   // Tombol ViGen — tampil untuk koordinator dan ke atas
   const viGenBtn = document.getElementById('pd-vigen-btn');
   if (viGenBtn) {
-    const canVigen = ['superadmin', 'principal', 'kantor', 'admin', 'koordinator'].includes(role) || isOwnProject;
+    const canVigen = ['superadmin', 'principal', 'kantor', 'admin'].includes(role);
     viGenBtn.style.display = canVigen ? '' : 'none';
   }
 
-  // Seksi PA OpenClaw — tampil untuk semua user yang sudah login
+  // Seksi PA OpenClaw — disembunyikan untuk agen dan koordinator
   const paSection = document.getElementById('pd-pa-section');
-  if (paSection) paSection.style.display = STATE.user ? '' : 'none';
+  if (paSection) paSection.style.display = (STATE.user && !['agen','koordinator'].includes(role)) ? '' : 'none';
 
   openModal('modal-project-detail');
 }
@@ -4718,6 +4850,7 @@ async function deleteCurrentProject() {
     closeModal('modal-project-detail');
     showToast('✅ Proyek dihapus', 'success');
     _projectsData = _projectsData.filter(p => p.ID !== _currentProjectId);
+    window._projectsData = _projectsData;
     _currentProjectId = null;
     renderProjectGrid(_projectsData);
   } catch (e) {

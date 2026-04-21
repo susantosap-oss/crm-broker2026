@@ -96,8 +96,8 @@ router.get('/config', authMiddleware, async (req, res) => {
       data: {
         webhook_type:   cfg.webhook_type || 'none',
         base_url:       baseUrl,
-        // URL template Zapier — frontend replace {agent_id} dengan user.id
-        zapier_url_template: `${baseUrl}/api/v1/webhook/zapier/{agent_id}`,
+        // URL template Pipedream — frontend replace {agent_id} dengan user.id
+        zapier_url_template: `${baseUrl}/api/v1/webhook/pipedream/{agent_id}`,
         meta_webhook_url:    `${baseUrl}/api/v1/webhook/meta`,
         // Token/secret — tampil penuh untuk CONFIG_ROLES
         meta_verify_token:        cfg.meta_verify_token || '',
@@ -229,22 +229,22 @@ router.post('/meta', async (req, res) => {
  *   "ad_name":   "Nama Iklan",           ← opsional
  * }
  */
-router.post('/zapier/:agent_id', async (req, res) => {
+async function _handlePipedreamWebhook(req, res) {
   const { agent_id } = req.params;
 
   try {
     // 1. Cek mode webhook global — jika 'none', tolak
     const cfg = await readConfig();
     if (cfg.webhook_type === 'none') {
-      return res.status(403).json({ error: 'Webhook tidak aktif. Agen perlu mengaktifkan mode Zapier di pengaturan PA.' });
+      return res.status(403).json({ error: 'Webhook tidak aktif. Agen perlu mengaktifkan mode Pipedream di pengaturan PA.' });
     }
 
     // 2. Verifikasi secret per-agen dari PA_CREDENTIALS
-    const storedSecret  = await paService.getZapierSecret(agent_id);
-    const incomingSecret = req.body?.secret || req.headers['x-zapier-secret'] || '';
+    const storedSecret   = await paService.getZapierSecret(agent_id);
+    const incomingSecret = req.body?.secret || req.headers['x-zapier-secret'] || req.headers['x-pipedream-secret'] || '';
 
     if (!storedSecret || incomingSecret !== storedSecret) {
-      console.warn(`[ZapierWebhook] ❌ Secret tidak valid untuk agen ${agent_id}`);
+      console.warn(`[PipedreamWebhook] ❌ Secret tidak valid untuk agen ${agent_id}`);
       return res.status(401).json({ error: 'Invalid secret' });
     }
 
@@ -254,15 +254,21 @@ router.post('/zapier/:agent_id', async (req, res) => {
     // 3. Proses lead async — agent_id sudah diketahui dari URL
     setImmediate(() =>
       _processZapierLead(req.body, agent_id).catch(e =>
-        console.error('[ZapierWebhook] processLead error:', e.message)
+        console.error('[PipedreamWebhook] processLead error:', e.message)
       )
     );
 
   } catch (e) {
     if (!res.headersSent) res.status(500).json({ error: e.message });
-    console.error('[ZapierWebhook] Error:', e.message);
+    console.error('[PipedreamWebhook] Error:', e.message);
   }
-});
+}
+
+// Route utama: Pipedream
+router.post('/pipedream/:agent_id', _handlePipedreamWebhook);
+
+// Alias lama: /zapier/:agent_id (backward-compat untuk yg sudah terlanjur setup)
+router.post('/zapier/:agent_id', _handlePipedreamWebhook);
 
 // ══════════════════════════════════════════════════════════
 // CORE: Proses lead masuk

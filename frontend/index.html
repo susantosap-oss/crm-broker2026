@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="theme-color" content="#080E1A"/>
-  <meta name="app-version" content="1.1.1"/>
+  <meta name="app-version" content="1.2.1"/>
   <title>Mansion CRM</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{navy:{DEFAULT:'#080E1A',1:'#0D1526',2:'#131F38',3:'#1C2D52'},gold:{DEFAULT:'#D4A853',light:'#E8C07A',dark:'#A87B30'}}}}};</script>
@@ -995,7 +995,20 @@
 
 <!-- SETTINGS (PR 5,6) -->
 <div id="modal-settings" class="modal-overlay">
-  <div class="modal-sheet">
+  <div class="modal-sheet" style="position:relative">
+    <!-- Canva Processing Overlay -->
+    <div id="canva-progress-overlay" style="display:none;position:absolute;inset:0;background:rgba(13,21,38,0.97);border-radius:24px;z-index:20;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px">
+      <div style="font-size:48px" id="canva-progress-icon">🎨</div>
+      <div style="text-align:center">
+        <div style="font-family:'DM Serif Display',serif;font-size:16px;color:#fff;margin-bottom:6px">Memproses Foto Profil</div>
+        <div id="canva-progress-step" style="font-size:12px;color:rgba(212,168,83,0.8)">Menyiapkan...</div>
+      </div>
+      <div style="width:220px;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden">
+        <div id="canva-progress-bar" style="height:100%;background:linear-gradient(90deg,#D4A853,#f0c874);border-radius:3px;transition:width 0.6s ease;width:0%"></div>
+      </div>
+      <div id="canva-progress-pct" style="font-size:12px;color:rgba(255,255,255,0.35)">0%</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.2);text-align:center;max-width:200px">Canva sedang menerapkan template ke foto kamu. Harap tunggu...</div>
+    </div>
     <div class="mheader"><div class="drag-handle"></div><div style="display:flex;align-items:center;justify-content:space-between"><h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff">Pengaturan Profil</h3><button onclick="closeModal('modal-settings')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button></div></div>
     <div class="mbody">
       <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
@@ -1035,6 +1048,24 @@
             <input id="set-pass-confirm" type="password" class="form-input" placeholder="Ulangi password baru"/>
           </div>
         </div>
+      </div>
+      <!-- Superadmin: Canva Batch Migration -->
+      <div id="superadmin-danger-zone" style="display:none;border-top:1px solid rgba(212,168,83,0.2);padding-top:14px;margin-top:4px">
+        <div style="font-size:11px;font-weight:700;color:rgba(212,168,83,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">🎨 Canva Migration</div>
+        <div id="canva-migrate-status-box" style="display:none;background:#131F38;border-radius:12px;padding:12px;margin-bottom:10px;font-size:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span id="canva-mig-label" style="color:rgba(255,255,255,0.7)">Memproses...</span>
+            <span id="canva-mig-pct" style="color:#D4A853;font-weight:700">0%</span>
+          </div>
+          <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden">
+            <div id="canva-mig-bar" style="height:100%;background:#D4A853;border-radius:2px;transition:width 0.4s;width:0%"></div>
+          </div>
+          <div id="canva-mig-detail" style="margin-top:8px;color:rgba(255,255,255,0.4);font-size:11px"></div>
+        </div>
+        <button onclick="runCanvaMigrateAll()" id="canva-migrate-btn"
+          style="width:100%;padding:12px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:12px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-wand-magic-sparkles" style="margin-right:6px"></i>Proses Semua Foto Profil via Canva
+        </button>
       </div>
       <div style="display:flex;gap:10px;padding-top:4px">
         <button onclick="closeModal('modal-settings')" class="btn-ghost" style="flex:1">Batal</button>
@@ -1520,9 +1551,9 @@
   </div>
 </div>
 
-<script src="/js/app.js?v=20260415"></script>
-<script src="/js/app-mobile.js?v=20260415"></script>
-<script src="/js/pa-dashboard.js?v=20260415"></script>
+<script src="/js/app.js?v=20260421"></script>
+<script src="/js/app-mobile.js?v=20260421"></script>
+<script src="/js/pa-dashboard.js?v=20260421"></script>
 <script>
   // Init PA Dashboard setelah app siap
   document.addEventListener('DOMContentLoaded', () => {
@@ -2651,13 +2682,19 @@ async function saveApraisalResult(type) {
   <!-- Force SW cache bust: unregister SW lama lalu register ulang -->
   <script>
   (function() {
-    const CURRENT_SW_VERSION = '1.1.0';
+    const CURRENT_SW_VERSION = document.querySelector('meta[name="app-version"]')?.content || '1.1.5';
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(regs => {
-        regs.forEach(reg => {
-          reg.active?.postMessage({ type: 'GET_VERSION' });
-        });
+      // Register SW
+      navigator.serviceWorker.register('/sw.js');
+
+      // Listen for SW_UPDATED message → reload halaman agar JS terbaru aktif
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data?.type === 'SW_UPDATED') {
+          console.log('[SW] Updated to', e.data.version, '— reloading');
+          window.location.reload();
+        }
       });
+
       // Hapus semua cache key yang bukan versi saat ini
       if ('caches' in window) {
         caches.keys().then(keys => {

@@ -44,7 +44,22 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: true }));
 
 // ── Static Files ───────────────────────────────────────────
-app.use(express.static(path.join(__dirname, '../frontend')));
+// JS & HTML: no-cache agar browser selalu fetch terbaru saat query string berubah
+// Assets (gambar, icon): 7 hari cache aman karena nama file tidak berubah
+app.use('/js', express.static(path.join(__dirname, '../frontend/js'), {
+  setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache, must-revalidate'),
+}));
+app.use('/sw.js', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  next();
+});
+app.use(express.static(path.join(__dirname, '../frontend'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    }
+  },
+}));
 
 // ── Internal API Routes ────────────────────────────────────
 app.use('/api/v1/auth',          require('./routes/auth.routes'));

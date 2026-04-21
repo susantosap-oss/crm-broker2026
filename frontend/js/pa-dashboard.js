@@ -248,7 +248,7 @@ async function openPACredentialsSidebar() {
             <button id="wb-btn-zapier" onclick="wbSetMode('zapier')"
               style="width:100%;padding:10px 12px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.5)">
               <span style="font-size:16px">⚡</span>
-              <span><b>Zapier</b><br><span style="font-size:10px;font-weight:400;opacity:.7">Rekomendasi — Mudah, tanpa Meta App</span></span>
+              <span><b>Pipedream</b><br><span style="font-size:10px;font-weight:400;opacity:.7">Rekomendasi — Mudah, tanpa Meta App</span></span>
             </button>
             <button id="wb-btn-meta" onclick="wbSetMode('meta')"
               style="width:100%;padding:10px 12px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.5)">
@@ -264,11 +264,11 @@ async function openPACredentialsSidebar() {
               <p style="font-size:13px;color:rgba(255,255,255,0.4);margin:0 0 8px;text-align:center">Webhook lead tidak aktif.</p>
               <p style="font-size:11px;color:rgba(255,255,255,0.3);margin:0;line-height:1.7;text-align:center">
                 Lead dari iklan Meta harus diinput <b>manual</b> via menu Leads.<br>
-                Pilih mode Zapier atau Meta jika ingin otomatis.
+                Pilih mode Pipedream atau Meta jika ingin otomatis.
               </p>
               <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px">
                 <p style="font-size:10px;color:rgba(255,255,255,0.25);margin:0;line-height:1.6">
-                  💡 <b style="color:rgba(255,255,255,0.35)">Rekomendasi untuk mulai:</b> pilih mode <b>Zapier</b> di atas — tidak perlu daftar Meta Developer, cukup akun Zapier gratis.
+                  💡 <b style="color:rgba(255,255,255,0.35)">Rekomendasi untuk mulai:</b> pilih mode <b>Pipedream</b> di atas — tidak perlu daftar Meta Developer, cukup akun Pipedream gratis.
                 </p>
               </div>
             </div>
@@ -304,14 +304,14 @@ async function openPACredentialsSidebar() {
 
             <!-- Secret Key per-agen -->
             <div style="background:rgba(212,168,83,0.06);border:1px solid rgba(212,168,83,0.15);border-radius:10px;padding:12px;margin-bottom:10px">
-              <p style="font-size:11px;color:rgba(255,255,255,0.5);margin:0 0 6px;text-transform:uppercase;letter-spacing:.5px">Secret Key (field "secret" di Zapier)</p>
+              <p style="font-size:11px;color:rgba(255,255,255,0.5);margin:0 0 6px;text-transform:uppercase;letter-spacing:.5px">Secret Key (field "secret" di Pipedream)</p>
               ${creds?.zapier_secret ? `
               <div style="display:flex;gap:6px;align-items:center">
                 <code id="wb-zapier-secret" style="flex:1;font-size:10px;color:#D4A853;word-break:break-all;background:#0D1526;padding:7px 8px;border-radius:6px;border:1px solid rgba(212,168,83,0.2)">${creds.zapier_secret}</code>
                 <button onclick="wbCopy('wb-zapier-secret')" style="flex-shrink:0;padding:7px 9px;border-radius:6px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);color:#D4A853;font-size:12px;cursor:pointer">📋</button>
               </div>
               <button onclick="wbGenerateZapierSecret()" style="width:100%;margin-top:8px;padding:7px;border-radius:8px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:#f87171;font-size:10px;cursor:pointer">
-                🔄 Generate Ulang (Zapier perlu diupdate)
+                🔄 Generate Ulang (Pipedream perlu diupdate)
               </button>` : `
               <p style="font-size:11px;color:rgba(255,255,255,0.35);margin:0 0 8px">Belum ada secret key. Generate dulu:</p>
               <button onclick="wbGenerateZapierSecret()" style="width:100%;padding:10px;border-radius:10px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:12px;font-weight:600;cursor:pointer">
@@ -319,52 +319,52 @@ async function openPACredentialsSidebar() {
               </button>`}
             </div>
 
-            <!-- Context: Apa itu Zapier? -->
+            <!-- Context: Apa itu Pipedream? -->
             <details style="margin-bottom:8px;border:1px solid rgba(34,197,94,0.12);border-radius:8px;overflow:hidden">
               <summary style="padding:8px 10px;font-size:11px;color:rgba(255,255,255,0.4);cursor:pointer;list-style:none;background:rgba(34,197,94,0.03)">
-                ❓ Apa itu Zapier & kenapa direkomendasikan? <span style="opacity:.5">(klik)</span>
+                ❓ Apa itu Pipedream & kenapa direkomendasikan? <span style="opacity:.5">(klik)</span>
               </summary>
               <div style="padding:10px;font-size:11px;color:rgba(255,255,255,0.5);line-height:1.8;background:rgba(34,197,94,0.02)">
-                <b style="color:#4ade80">Zapier</b> adalah platform "jembatan" yang menghubungkan dua aplikasi tanpa coding.<br><br>
-                <b style="color:rgba(255,255,255,0.7)">Kenapa Zapier lebih mudah dari Meta Developer?</b><br>
+                <b style="color:#4ade80">Pipedream</b> adalah platform otomasi gratis yang menghubungkan dua aplikasi tanpa coding.<br><br>
+                <b style="color:rgba(255,255,255,0.7)">Kenapa Pipedream lebih mudah dari Meta Developer?</b><br>
                 ✅ Tidak perlu daftar Meta Developer Account<br>
                 ✅ Tidak perlu App Review dari Meta (bisa jadi berbulan-bulan)<br>
                 ✅ Setup 10 menit via browser<br>
-                ✅ Zapier sudah punya integrasi resmi Meta Lead Ads<br><br>
-                <b style="color:rgba(255,255,255,0.7)">Biaya Zapier:</b><br>
-                Plan gratis: 100 Zap runs/bulan — cukup untuk &lt;100 lead/bulan.<br>
-                Plan Starter (~$20/bln): 750 runs. Untuk volume tinggi pakai Meta Langsung.
+                ✅ HTTP Webhook gratis tanpa perlu upgrade plan berbayar<br><br>
+                <b style="color:rgba(255,255,255,0.7)">Biaya Pipedream:</b><br>
+                Free Plan: 3.000 eksekusi/bulan — cukup untuk &lt;3.000 lead/bulan.<br>
+                Untuk volume sangat tinggi, pakai Meta Langsung.
               </div>
             </details>
 
             <!-- Instruksi setup -->
             <details style="margin-bottom:4px">
               <summary style="font-size:11px;color:rgba(255,255,255,0.45);cursor:pointer;padding:6px 0;list-style:none">
-                📋 Tutorial setup Zapier step-by-step <span style="opacity:.5">(klik)</span>
+                📋 Tutorial setup Pipedream step-by-step <span style="opacity:.5">(klik)</span>
               </summary>
               <div style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.8;padding:8px 4px 0">
                 <b style="color:rgba(255,255,255,0.7)">Persiapan:</b><br>
-                • Akun <a href="https://zapier.com" target="_blank" style="color:#4ade80">zapier.com</a> (daftar gratis)<br>
+                • Akun <a href="https://pipedream.com" target="_blank" style="color:#4ade80">pipedream.com</a> (daftar gratis, pakai Google)<br>
                 • Facebook Page yang sudah terhubung ke iklan<br>
                 • Lead Form sudah aktif di iklan FB/IG<br><br>
                 <b style="color:rgba(255,255,255,0.7)">Langkah:</b><br>
-                1. Buka <b style="color:#D4A853">zapier.com</b> → <i>Create Zap</i><br>
-                2. <b>Trigger:</b> cari <i>"Meta Lead Ads"</i> → pilih <i>New Lead</i><br>
+                1. Buka <b style="color:#D4A853">pipedream.com</b> → <i>New Workflow</i><br>
+                2. <b>Trigger:</b> cari <i>"Facebook Lead Ads"</i> → pilih <i>New Lead (Instant)</i><br>
                 &nbsp;&nbsp;→ Hubungkan akun Facebook → pilih <b>Page</b> & <b>Form</b> iklanmu<br>
-                3. <b>Action:</b> cari <i>"Webhooks by Zapier"</i> → pilih <i>POST</i><br>
-                4. <b>URL:</b> paste <i>Webhook URL Kamu</i> dari kotak hijau di atas<br>
-                5. <b>Payload Type:</b> pilih <b>JSON</b><br>
-                6. <b>Data — tambahkan baris berikut:</b><br>
+                3. <b>Action:</b> tambah step → cari <i>"HTTP Request"</i> → pilih <i>Send any HTTP Request</i><br>
+                4. <b>Method:</b> POST &nbsp;|&nbsp; <b>URL:</b> paste <i>Webhook URL Kamu</i> dari kotak hijau di atas<br>
+                5. <b>Content-Type:</b> application/json<br>
+                6. <b>Body (JSON) — isi field berikut:</b><br>
                 <div style="background:#0D1526;border-radius:6px;padding:8px;margin:6px 0;font-family:monospace">
-                  <span style="color:#60a5fa">secret</span> → <span style="color:#4ade80">paste Secret Key dari kotak emas</span><br>
-                  <span style="color:#60a5fa">name</span> → <span style="color:rgba(255,255,255,0.5)">pilih field "Full Name" dari trigger</span><br>
+                  <span style="color:#60a5fa">secret</span> → <span style="color:#4ade80">paste Secret Key dari kotak emas (teks statis)</span><br>
+                  <span style="color:#60a5fa">full_name</span> → <span style="color:rgba(255,255,255,0.5)">pilih field "Full Name" dari trigger</span><br>
                   <span style="color:#60a5fa">phone</span> → <span style="color:rgba(255,255,255,0.5)">pilih field "Phone Number"</span><br>
                   <span style="color:#60a5fa">email</span> → <span style="color:rgba(255,255,255,0.5)">pilih field "Email"</span><br>
                   <span style="color:#60a5fa">form_name</span> → <span style="color:rgba(255,255,255,0.5)">pilih "Form Name"</span><br>
                   <span style="color:#60a5fa">ad_name</span> → <span style="color:rgba(255,255,255,0.5)">pilih "Ad Name"</span>
                 </div>
-                7. <b>Test</b> → jika sukses, klik <b>Publish</b><br><br>
-                ✅ Selesai! Lead dari iklan akan otomatis masuk ke CRM dalam &lt;2 menit.
+                7. Klik <b>Test</b> → respons <code>{"received":true}</code> = sukses → klik <b>Deploy</b><br><br>
+                ✅ Selesai! Lead dari iklan akan otomatis masuk ke CRM dalam hitungan detik.
               </div>
             </details>
           </div>
@@ -378,8 +378,8 @@ async function openPACredentialsSidebar() {
                 ❓ Apa itu Meta for Developer & cara daftar? <span style="opacity:.5">(klik)</span>
               </summary>
               <div style="padding:10px;font-size:11px;color:rgba(255,255,255,0.5);line-height:1.8;background:rgba(43,123,255,0.02)">
-                <b style="color:#60a5fa">Meta for Developers</b> adalah platform resmi Meta untuk integrasi langsung tanpa perantara (tanpa Zapier).<br><br>
-                <b style="color:rgba(255,255,255,0.7)">Keuntungan vs Zapier:</b><br>
+                <b style="color:#60a5fa">Meta for Developers</b> adalah platform resmi Meta untuk integrasi langsung tanpa perantara (tanpa Pipedream).<br><br>
+                <b style="color:rgba(255,255,255,0.7)">Keuntungan vs Pipedream:</b><br>
                 ✅ Gratis — tidak ada biaya bulanan<br>
                 ✅ Real-time — lead masuk dalam hitungan detik<br>
                 ✅ Tidak ada batas run per bulan<br><br>
@@ -401,7 +401,7 @@ async function openPACredentialsSidebar() {
             </details>
 
             ${wbCfg.can_edit ? `
-            <!-- Base URL (sama seperti Zapier) -->
+            <!-- Base URL (sama seperti Pipedream) -->
             <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;margin-bottom:10px">
               <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:0 0 6px;text-transform:uppercase;letter-spacing:.5px">Base URL CRM (domain publik)</p>
               <div style="display:flex;gap:6px">
@@ -579,7 +579,7 @@ function wbSetMode(mode, fromInit = false) {
 // Simpan mode ke server (dipanggil saat user klik tombol mode)
 async function wbSaveMode(mode) {
   try {
-    const labels = { zapier: 'Zapier', meta: 'Meta for Developer', none: 'Tidak Pakai' };
+    const labels = { zapier: 'Pipedream', meta: 'Meta for Developer', none: 'Tidak Pakai' };
     await window.API.post('/webhook/config', { webhook_type: mode });
     _showPAToast(`✅ Mode diubah: ${labels[mode] || mode}`, 'success');
   } catch (e) {
@@ -602,7 +602,7 @@ async function wbSaveBaseUrl(panel = 'zapier') {
 // Generate/regenerate Secret Key per-agen (Zapier)
 async function wbGenerateZapierSecret() {
   const isRegen = !!document.getElementById('wb-zapier-secret');
-  if (isRegen && !confirm('Generate ulang Secret Key?\nZapier yang sudah dikonfigurasi harus diupdate dengan key baru.')) return;
+  if (isRegen && !confirm('Generate ulang Secret Key?\nPipedream yang sudah dikonfigurasi harus diupdate dengan key baru.')) return;
   try {
     const res = await window.API.post('/pa/zapier-secret/generate', {});
     if (!res.success) throw new Error(res.message);
@@ -876,8 +876,10 @@ async function _loadViGenMediaPreview(listingId) {
 }
 
 async function submitViGenRender(listingId) {
-  const mood     = document.querySelector('input[name="vigen-mood"]:checked')?.value || 'mewah';
-  const duration = document.querySelector('input[name="vigen-duration"]:checked')?.value || '30';
+  // Fallback ke _viGen state (dipanggil dari modal-vigen statis tanpa parameter)
+  if (!listingId) listingId = window._viGen?.listingId;
+  const mood     = document.querySelector('input[name="vigen-mood"]:checked')?.value || window._viGen?.mood || 'mewah';
+  const duration = document.querySelector('input[name="vigen-duration"]:checked')?.value || String(window._viGen?.duration || 30);
 
   const btn = document.querySelector('#pa-vigen-modal .pa-btn-primary');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Mengirim job render...'; }
@@ -907,7 +909,8 @@ async function submitViGenRender(listingId) {
 
     // ── Trigger render ────────────────────────────────────
     const res = await window.API.post('/pa/vigen/render', {
-      listing_id: listingId,
+      listing_id:   listingId,
+      listing_type: window._viGen?.listingType || 'secondary',
       mood,
       duration: parseInt(duration),
     });
@@ -1697,3 +1700,6 @@ window.openViGenModal          = openViGenModal;
 window.submitViGenRender       = submitViGenRender;
 window.openWABlastModal        = openWABlastModal;
 window.submitWABlast           = submitWABlast;
+window.openIGPostModal         = openIGPostModal;
+window.openProjectWABlastModal = openProjectWABlastModal;
+window.openProjectIGPostModal  = openProjectIGPostModal;

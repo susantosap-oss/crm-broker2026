@@ -12,10 +12,23 @@
 const express  = require('express');
 const router   = express.Router();
 const bcrypt   = require('bcryptjs');
+const multer   = require('multer');
+const cloudinary = require('cloudinary').v2;
 const { v4: uuidv4 } = require('uuid');
 const { authMiddleware, requireRole, requireMinRole } = require('../middleware/auth.middleware');
 const sheetsService = require('../services/sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
+const canvaService = require('../services/canva.service');
+
+// Multer memory storage untuk Canva profile photo (max 10 MB)
+const _photoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits:  { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) return cb(new Error('Hanya file gambar yang diizinkan'));
+    cb(null, true);
+  },
+});
 
 const VALID_ROLES = ['superadmin', 'principal', 'kantor', 'business_manager', 'admin', 'agen', 'koordinator'];
 
@@ -39,6 +52,66 @@ router.get('/by-telegram/:telegram_id', async (req, res) => {
     delete agent.Password_Hash;
     res.json({ success: true, data: agent });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ─── Canva OAuth routes (PUBLIC — browser redirect, tidak bisa pakai JWT) ────
+// Proteksi: pakai CANVA_AUTH_SECRET sebagai query param agar tidak sembarang orang bisa trigger
+
+// GET /agents/profile-photo/canva/auth?secret=xxx — mulai OAuth flow
+router.get('/profile-photo/canva/auth', (req, res) => {
+  const secret = process.env.CANVA_AUTH_SECRET || 'mansion-canva-2026';
+  if (req.query.secret !== secret) {
+    return res.status(403).send('<h2>Forbidden — tambahkan ?secret=xxx di URL</h2>');
+  }
+  const authUrl = canvaService.getAuthUrl('crm-superadmin');
+  res.redirect(authUrl);
+});
+
+// GET /agents/profile-photo/canva/callback — Canva redirect kesini setelah user izinkan
+router.get('/profile-photo/canva/callback', async (req, res) => {
+  const { code, error, error_description } = req.query;
+
+  if (error) {
+    return res.send(`<html><body style="font-family:sans-serif;padding:40px;background:#0D1526;color:#fff">
+      <h2 style="color:#f87171">❌ Canva OAuth Error</h2>
+      <p>${error}: ${error_description}</p>
+    </body></html>`);
+  }
+  if (!code) {
+    return res.status(400).send('<h2>Error: tidak ada authorization code dari Canva</h2>');
+  }
+
+  try {
+    const tokens = await canvaService.exchangeCode(code, req.query.state || 'crm');
+
+    // Simpan refresh_token ke Sheets CONFIG agar persistent lintas restart
+    if (tokens.refresh_token) {
+      try {
+        const rows = await sheetsService.getRange(SHEETS.CONFIG);
+        const idx  = (rows || []).findIndex(r => r[0] === 'Canva_Refresh_Token');
+        if (idx >= 0) {
+          const row = [...rows[idx]]; row[1] = tokens.refresh_token;
+          await sheetsService.updateRow(SHEETS.CONFIG, idx + 1, row);
+        } else {
+          await sheetsService.appendRow(SHEETS.CONFIG, ['Canva_Refresh_Token', tokens.refresh_token, 'OAuth refresh token Canva API']);
+        }
+        console.log('[Canva] Refresh token tersimpan ke Sheets CONFIG');
+      } catch (sheetErr) {
+        console.log('[Canva] Gagal simpan ke Sheets:', sheetErr.message);
+      }
+    }
+
+    res.send(`<html><body style="font-family:sans-serif;padding:40px;background:#0D1526;color:#fff;text-align:center">
+      <h2 style="color:#D4A853">✅ Canva Berhasil Diotorisasi!</h2>
+      <p style="color:rgba(255,255,255,0.7)">Refresh token tersimpan. Tutup tab ini dan kembali ke CRM.</p>
+      <p style="color:rgba(255,255,255,0.3);font-size:12px">Token type: ${tokens.token_type} | Expires in: ${tokens.expires_in}s</p>
+      <script>setTimeout(()=>window.close(),3000)</script>
+    </body></html>`);
+  } catch (e) {
+    res.status(500).send(`<html><body style="padding:40px;background:#0D1526;color:#fff">
+      <h2 style="color:#f87171">Error saat tukar token</h2><p>${e.message}</p>
+    </body></html>`);
+  }
 });
 
 // ─── Semua route di bawah ini butuh JWT ──────────────────────────────────────
@@ -251,6 +324,303 @@ router.put('/profile', async (req, res) => {
     await sheetsService.updateRow(SHEETS.AGENTS, result.rowIndex, row);
     res.json({ success: true, message: 'Profil diupdate' });
   } catch (e) { res.json({ success: true, message: 'Saved locally' }); }
+});
+
+// GET /agents/profile-photo/canva/test — superadmin: cek status koneksi Canva
+router.get('/profile-photo/canva/test', requireRole('superadmin'), async (req, res) => {
+  const result = {
+    env: {
+      clientId:   process.env.CANVA_CLIENT_ID ? process.env.CANVA_CLIENT_ID.slice(0,10)+'...' : 'MISSING',
+      templateId: process.env.CANVA_PROFILE_TEMPLATE_ID || 'MISSING',
+      hasRefreshToken: canvaService.hasRefreshToken(),
+    },
+    token: null, asset: null, error: null,
+  };
+
+  // Coba load refresh_token dari Sheets jika belum ada di memory
+  if (!canvaService.hasRefreshToken()) {
+    try {
+      const rows = await sheetsService.getRange(SHEETS.CONFIG);
+      const row  = (rows || []).find(r => r[0] === 'Canva_Refresh_Token');
+      if (row?.[1]) {
+        canvaService.setRefreshToken(row[1]);
+        result.env.hasRefreshToken = true;
+        result.env.tokenSource = 'sheets';
+      }
+    } catch (_) {}
+  }
+
+  try {
+    const axios = require('axios');
+    const token = await canvaService.getAccessToken();
+    result.token = { ok: true };
+
+    // Test upload asset kecil via POST /asset-uploads binary langsung
+    const tinyJpeg = Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8AVf/Z', 'base64');
+    const nameB64 = Buffer.from('test_crm.jpg').toString('base64');
+    try {
+      // POST binary ke /asset-uploads dengan TUS headers
+      const uploadRes = await axios.post('https://api.canva.com/rest/v1/asset-uploads', tinyJpeg, {
+        headers: {
+          Authorization:     `Bearer ${token}`,
+          'Content-Type':    'application/octet-stream',
+          'Tus-Resumable':   '1.0.0',
+          'Upload-Length':   String(tinyJpeg.length),
+          'Upload-Metadata': `name ${nameB64}`,
+        },
+        maxBodyLength: Infinity,
+      });
+      const jobId = uploadRes.data?.job?.id;
+      result.asset = { ok: false, step: 'job_created', jobId, rawResponse: uploadRes.data };
+
+      if (jobId) {
+        // Poll 3x untuk test
+        for (let i = 0; i < 3; i++) {
+          await new Promise(r => setTimeout(r, 2000));
+          const poll = await axios.get(`https://api.canva.com/rest/v1/asset-uploads/${jobId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const job = poll.data?.job;
+          if (job?.status === 'success') {
+            result.asset = { ok: true, assetId: job.asset?.id, step: 'success' };
+            break;
+          }
+          if (job?.status === 'failed') {
+            result.asset = { ok: false, step: 'upload_failed', error: job.error };
+            break;
+          }
+          result.asset.step = `polling_${i+1}`;
+          result.asset.jobStatus = job?.status;
+        }
+      }
+    } catch (ae) {
+      result.asset = { ok: false, status: ae.response?.status, body: ae.response?.data, rawErr: ae.message };
+    }
+
+    res.json({ success: result.asset?.ok, result });
+  } catch (e) {
+    result.error = e.message;
+    res.json({ success: false, result });
+  }
+});
+
+// POST /agents/profile-photo/canva — proses foto profil via Canva Brand Template
+// 1. Terima foto (multipart) → 2. Kirim ke Canva → 3. Export PNG → 4. Upload Cloudinary
+// Frontend bertanggung jawab menyimpan URL ke sheets via PUT /profile
+router.post('/profile-photo/canva', _photoUpload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada foto yang diupload' });
+
+    const agentId   = req.user.id;
+    const agentName = req.user.nama || req.user.name || '';
+    const { buffer, mimetype } = req.file;
+
+    // ── Step 1: Proses via Canva ──────────────────────────
+    let pngBuffer;
+    try {
+      pngBuffer = await canvaService.processProfilePhoto(buffer, mimetype, agentId, agentName);
+    } catch (canvaErr) {
+      console.error('[Canva] Error:', canvaErr.message);
+      return res.status(502).json({
+        success: false,
+        message: 'Canva gagal memproses foto: ' + canvaErr.message,
+      });
+    }
+
+    // ── Step 2: Upload hasil PNG ke Cloudinary ────────────
+    const base64DataUri = `data:image/png;base64,${pngBuffer.toString('base64')}`;
+    const cloudResult   = await cloudinary.uploader.upload(base64DataUri, {
+      folder:        'mansion_profiles',
+      public_id:     `agent_${agentId}`,
+      overwrite:     true,
+      resource_type: 'image',
+      transformation: [
+        { quality: 'auto:good' },
+        { fetch_format: 'auto' },
+        { width: 800, crop: 'limit' },
+      ],
+    });
+
+    const photoUrl = cloudResult.secure_url;
+
+    // ── Step 3: Simpan langsung ke Sheets ────────────────
+    try {
+      const agentRow = await sheetsService.findRowById(SHEETS.AGENTS, agentId);
+      if (agentRow) {
+        const existing = rowToAgent(agentRow.data);
+        existing.Foto_URL   = photoUrl;
+        existing.Updated_At = new Date().toISOString();
+        const row = COLUMNS.AGENTS.map(col => existing[col] || '');
+        await sheetsService.updateRow(SHEETS.AGENTS, agentRow.rowIndex, row);
+      }
+    } catch (sheetErr) {
+      // Sheets error tidak fatal — URL sudah ada, frontend akan sync via PUT /profile
+      console.warn('[Canva] Sheets update gagal (non-fatal):', sheetErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Foto profil berhasil diproses via Canva',
+      data:    { photo_url: photoUrl },
+    });
+
+  } catch (e) {
+    console.error('[Canva Route] Unexpected error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ── In-memory migration progress tracker ─────────────────
+const _migrateState = {
+  running:    false,
+  total:      0,
+  done:       0,
+  skipped:    0,
+  failed:     0,
+  errors:     [],   // [{ id, nama, error }]
+  log:        [],   // [{ id, nama, status, url }]
+  startedAt:  null,
+  finishedAt: null,
+};
+
+// POST /agents/profile-photo/canva/migrate-all — superadmin only
+// Download existing Foto_URL → Canva pipeline → Cloudinary → Sheets
+router.post('/profile-photo/canva/migrate-all', requireRole('superadmin'), async (req, res) => {
+  if (_migrateState.running) {
+    return res.status(409).json({
+      success: false,
+      message: 'Migrasi sedang berjalan',
+      progress: _migrateState,
+    });
+  }
+
+  // Ambil semua agen dengan foto
+  let agents;
+  try {
+    const rows = await sheetsService.getRange(SHEETS.AGENTS);
+    const [, ...data] = rows;
+    agents = data
+      .map(row => rowToAgent(row))
+      .filter(a => a.ID && a.Foto_URL && !a.Foto_URL.includes('mansion_profiles'));
+  } catch (e) {
+    return res.status(500).json({ success: false, message: 'Gagal baca Sheets: ' + e.message });
+  }
+
+  if (!agents.length) {
+    return res.json({ success: true, message: 'Semua foto sudah diproses via Canva, tidak ada yang perlu migrasi.' });
+  }
+
+  // Reset state & mulai background job
+  Object.assign(_migrateState, {
+    running: true, total: agents.length,
+    done: 0, skipped: 0, failed: 0,
+    errors: [], log: [],
+    startedAt: new Date().toISOString(), finishedAt: null,
+  });
+
+  res.json({
+    success: true,
+    message: `Migrasi dimulai untuk ${agents.length} agen. Cek status via GET /agents/profile-photo/canva/migrate-status`,
+    total:   agents.length,
+  });
+
+  // ── Background processing (sequential — Canva rate limit) ─
+  (async () => {
+    const axios = require('axios');
+
+    // Load refresh_token dari Sheets jika belum ada di memory
+    if (!canvaService.hasRefreshToken()) {
+      try {
+        const configRows = await sheetsService.getRange(SHEETS.CONFIG);
+        const tokenRow   = (configRows || []).find(r => r[0] === 'Canva_Refresh_Token');
+        if (tokenRow?.[1]) canvaService.setRefreshToken(tokenRow[1]);
+        else throw new Error('Canva_Refresh_Token belum ada di Sheets CONFIG. Buka /canva/auth dulu.');
+      } catch (initErr) {
+        _migrateState.running    = false;
+        _migrateState.finishedAt = new Date().toISOString();
+        agents.forEach(a => {
+          _migrateState.failed++;
+          _migrateState.errors.push({ id: a.ID, nama: a.Nama, error: initErr.message });
+        });
+        console.log('[Canva Migrate] Abort:', initErr.message);
+        return;
+      }
+    }
+    for (const agent of agents) {
+      const logEntry = { id: agent.ID, nama: agent.Nama, status: 'processing', url: '' };
+      _migrateState.log.push(logEntry);
+      try {
+        // 1. Download foto existing dari Cloudinary URL — force JPEG via Cloudinary transform
+        const jpegUrl   = agent.Foto_URL.replace('/upload/', '/upload/f_jpg,q_90/');
+        const imgRes    = await axios.get(jpegUrl, {
+          responseType: 'arraybuffer',
+          timeout:      30_000,
+        });
+        const imgBuffer = Buffer.from(imgRes.data);
+        const mimeType  = 'image/jpeg'; // selalu JPEG setelah transform
+
+        // 2. Proses via Canva
+        const pngBuffer = await canvaService.processProfilePhoto(imgBuffer, mimeType, agent.ID, agent.Nama);
+
+        // 3. Upload ke Cloudinary → mansion_profiles/
+        const b64   = `data:image/png;base64,${pngBuffer.toString('base64')}`;
+        const cloud = await cloudinary.uploader.upload(b64, {
+          folder:        'mansion_profiles',
+          public_id:     `agent_${agent.ID}`,
+          overwrite:     true,
+          resource_type: 'image',
+          transformation: [{ quality: 'auto:good' }, { fetch_format: 'auto' }, { width: 800, crop: 'limit' }],
+        });
+
+        // 4. Update Sheets
+        const agentRow = await sheetsService.findRowById(SHEETS.AGENTS, agent.ID);
+        if (agentRow) {
+          const existing = rowToAgent(agentRow.data);
+          existing.Foto_URL   = cloud.secure_url;
+          existing.Updated_At = new Date().toISOString();
+          const row = COLUMNS.AGENTS.map(col => existing[col] || '');
+          await sheetsService.updateRow(SHEETS.AGENTS, agentRow.rowIndex, row);
+        }
+
+        logEntry.status = 'done';
+        logEntry.url    = cloud.secure_url;
+        _migrateState.done++;
+        console.log(`[Canva Migrate] ✓ ${agent.Nama} (${agent.ID})`);
+      } catch (err) {
+        logEntry.status = 'failed';
+        logEntry.error  = err.message;
+        _migrateState.failed++;
+        _migrateState.errors.push({ id: agent.ID, nama: agent.Nama, error: err.message });
+        console.error(`[Canva Migrate] ✗ ${agent.Nama}: ${err.message}`);
+      }
+
+      // Jeda 2 detik antar agen — hindari rate limit Canva
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    _migrateState.running    = false;
+    _migrateState.finishedAt = new Date().toISOString();
+    console.log(`[Canva Migrate] Selesai. Done: ${_migrateState.done}, Failed: ${_migrateState.failed}`);
+  })();
+});
+
+// GET /agents/profile-photo/canva/migrate-status — cek progress migrasi
+router.get('/profile-photo/canva/migrate-status', requireRole('superadmin'), (req, res) => {
+  const pct = _migrateState.total
+    ? Math.round((_migrateState.done + _migrateState.failed) / _migrateState.total * 100)
+    : 0;
+  res.json({
+    success:    true,
+    running:    _migrateState.running,
+    percent:    pct,
+    total:      _migrateState.total,
+    done:       _migrateState.done,
+    failed:     _migrateState.failed,
+    errors:     _migrateState.errors,
+    log:        _migrateState.log,
+    startedAt:  _migrateState.startedAt,
+    finishedAt: _migrateState.finishedAt,
+  });
 });
 
 // PUT /agents/:id — update user

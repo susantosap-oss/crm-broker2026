@@ -1,5 +1,5 @@
 // ─── UBAH VERSI DI SINI saat release ───────────────────────
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.2.1';
 // ────────────────────────────────────────────────────────────
 const CACHE_NAME = `mansion-crm-v${APP_VERSION}`;
 const STATIC_ASSETS = [
@@ -23,7 +23,12 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    ).then(() => {
+      // Beritahu semua tab/PWA yang terbuka agar reload halaman
+      return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+        clients.forEach(client => client.postMessage({ type: 'SW_UPDATED', version: APP_VERSION }));
+      });
+    })
   );
   self.clients.claim();
 });
@@ -34,6 +39,20 @@ self.addEventListener('fetch', (e) => {
 
   // API calls — network only, no cache
   if (url.pathname.startsWith('/api/')) return;
+
+  // Navigasi HTML — network first agar selalu dapat index.html terbaru
+  if (request.mode === 'navigate') {
+    e.respondWith(
+      fetch(request).then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(request).then(r => r || caches.match('/')))
+    );
+    return;
+  }
 
   // JS files — network first, fallback ke cache (agar selalu dapat versi terbaru)
   if (url.pathname.endsWith('.js')) {
@@ -62,9 +81,7 @@ self.addEventListener('fetch', (e) => {
           caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
         }
         return response;
-      }).catch(() => {
-        if (request.mode === 'navigate') return caches.match('/');
-      });
+      }).catch(() => caches.match('/'));
     })
   );
 });
