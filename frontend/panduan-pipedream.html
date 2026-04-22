@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Panduan Pipedream — MANSION Realty CRM</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0D1526;
+      color: #e2e8f0;
+      line-height: 1.65;
+      font-size: 15px;
+    }
+
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,21,38,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(212,168,83,0.2);
+      padding: 14px 20px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .nav-logo {
+      width: 28px; height: 28px; border-radius: 6px;
+      background: linear-gradient(135deg,#D4A853,#A87B30);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 14px; color: #fff; flex-shrink: 0;
+    }
+    .nav-title { font-size: 14px; font-weight: 700; color: #D4A853; }
+    .nav-sub   { font-size: 12px; color: rgba(255,255,255,0.4); margin-left: auto; }
+
+    .container { max-width: 760px; margin: 0 auto; padding: 32px 20px 80px; }
+
+    .hero {
+      background: linear-gradient(135deg,rgba(52,211,153,0.1),rgba(16,185,129,0.05));
+      border: 1px solid rgba(52,211,153,0.25);
+      border-radius: 16px; padding: 28px 24px; margin-bottom: 36px;
+      text-align: center;
+    }
+    .hero-icon  { font-size: 42px; margin-bottom: 10px; }
+    .hero h1    { font-size: 22px; font-weight: 800; color: #34d399; margin-bottom: 8px; }
+    .hero p     { font-size: 14px; color: rgba(255,255,255,0.55); max-width: 520px; margin: 0 auto; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3);
+      border-radius: 20px; padding: 4px 12px; font-size: 11px;
+      font-weight: 700; color: #34d399; margin-top: 12px;
+    }
+
+    .section { margin-bottom: 40px; }
+    .section-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(212,168,83,0.12); border: 1px solid rgba(212,168,83,0.3);
+      border-radius: 20px; padding: 4px 12px; font-size: 11px;
+      font-weight: 700; color: #D4A853; text-transform: uppercase;
+      letter-spacing: 0.8px; margin-bottom: 12px;
+    }
+    .section h2 {
+      font-size: 18px; font-weight: 800; color: #fff;
+      margin-bottom: 14px; line-height: 1.3;
+    }
+    .section p  { color: rgba(255,255,255,0.65); margin-bottom: 12px; font-size: 14px; }
+
+    .steps { display: flex; flex-direction: column; gap: 14px; }
+    .step {
+      display: flex; gap: 14px; align-items: flex-start;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px; padding: 16px;
+    }
+    .step-num {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg,#D4A853,#A87B30);
+      color: #fff; font-weight: 800; font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-num.green { background: linear-gradient(135deg,#34d399,#059669); }
+    .step-body  { flex: 1; min-width: 0; }
+    .step-title { font-weight: 700; color: #fff; font-size: 14px; margin-bottom: 5px; }
+    .step-desc  { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.55; }
+
+    .info-box {
+      border-radius: 12px; padding: 14px 16px; margin: 12px 0;
+      font-size: 13px; line-height: 1.55;
+    }
+    .info-box.gold  { background: rgba(212,168,83,0.08); border: 1px solid rgba(212,168,83,0.25); color: rgba(255,230,160,0.85); }
+    .info-box.green { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2);  color: rgba(180,255,220,0.85); }
+    .info-box.blue  { background: rgba(96,165,250,0.08); border: 1px solid rgba(96,165,250,0.2);  color: rgba(180,220,255,0.85); }
+    .info-box.red   { background: rgba(248,113,113,0.08);border: 1px solid rgba(248,113,113,0.2); color: rgba(255,190,190,0.85); }
+
+    code {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 5px; padding: 2px 7px; font-size: 12px; color: #93c5fd;
+    }
+    .code-block {
+      background: #080f1e; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 14px 16px; margin: 10px 0;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px; line-height: 1.7;
+      overflow-x: auto; white-space: pre;
+    }
+    .code-block .key { color: #86efac; }
+    .code-block .val { color: #fcd34d; }
+    .code-block .cmt { color: rgba(255,255,255,0.3); font-style: italic; }
+    .code-block .str { color: #7dd3fc; }
+
+    .field-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+    .field-table th {
+      text-align: left; padding: 8px 12px;
+      background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.5);
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .field-table td {
+      padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.7); vertical-align: top;
+    }
+    .badge-req  { background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); color: #fca5a5; border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 700; }
+    .badge-opt  { background: rgba(148,163,184,0.1);  border: 1px solid rgba(148,163,184,0.2); color: #94a3b8;  border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 700; }
+
+    .divider { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 36px 0; }
+
+    .toc {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px; padding: 18px 20px; margin-bottom: 36px;
+    }
+    .toc h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(255,255,255,0.35); margin-bottom: 10px; }
+    .toc ol  { padding-left: 18px; }
+    .toc li  { margin-bottom: 5px; }
+    .toc a   { color: #93c5fd; font-size: 13px; text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .flow {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+      margin: 14px 0; justify-content: center;
+    }
+    .flow-node {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px; padding: 10px 16px; text-align: center;
+      font-size: 12px; color: rgba(255,255,255,0.7); min-width: 90px;
+    }
+    .flow-node .fn-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+    .flow-node.green { background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.3); color: #34d399; }
+    .flow-arrow { font-size: 16px; color: rgba(255,255,255,0.25); }
+
+    .vs-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+    .vs-table th { padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.4); text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .vs-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: center; font-size: 13px; color: rgba(255,255,255,0.65); }
+    .vs-table td:first-child { text-align: left; font-weight: 600; color: rgba(255,255,255,0.8); }
+    .ok  { color: #34d399; font-weight: 700; }
+    .bad { color: #f87171; }
+
+    @media (max-width: 480px) {
+      .flow-node { min-width: 70px; padding: 8px 10px; }
+      .section h2 { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">M</div>
+  <span class="nav-title">MANSION Realty CRM</span>
+  <span class="nav-sub">Panduan Pipedream · Personal Assistant</span>
+</nav>
+
+<div class="container">
+
+  <div class="hero">
+    <div class="hero-icon">🔗</div>
+    <h1>Panduan Integrasi Pipedream</h1>
+    <p>Hubungkan iklan Facebook/Instagram kamu ke CRM secara otomatis — setiap lead langsung tercatat atas nama kamu tanpa input manual.</p>
+    <div class="hero-badge">&#10003; Gratis sepenuhnya &middot; Tidak perlu kartu kredit</div>
+  </div>
+
+  <div class="info-box green" style="margin-bottom:28px">
+    <strong>Kenapa Pipedream, bukan Zapier?</strong><br/>
+    Zapier mengunci fitur Webhooks di plan berbayar (~$20/bulan). Pipedream menyediakan HTTP Trigger (webhook) <strong>secara gratis</strong> tanpa batas waktu, dengan 3.000 eksekusi per bulan di Free Plan.
+  </div>
+
+  <table class="vs-table" style="margin-bottom:36px">
+    <thead>
+      <tr><th>Fitur</th><th>Zapier Free</th><th>Pipedream Free</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Webhook / HTTP Trigger</td><td class="bad">Berbayar</td><td class="ok">&#10003; Gratis</td></tr>
+      <tr><td>Facebook Lead Ads</td><td class="ok">&#10003;</td><td class="ok">&#10003;</td></tr>
+      <tr><td>Eksekusi per bulan</td><td class="bad">100 task</td><td class="ok">3.000 eksekusi</td></tr>
+      <tr><td>Perlu kartu kredit</td><td class="bad">Untuk webhook</td><td class="ok">Tidak</td></tr>
+    </tbody>
+  </table>
+
+  <div class="toc">
+    <h3>Daftar Isi</h3>
+    <ol>
+      <li><a href="#cara-kerja">Cara kerja integrasi</a></li>
+      <li><a href="#daftar">Cara daftar Pipedream (gratis)</a></li>
+      <li><a href="#crm-setup">Setup di CRM — dapatkan Webhook URL &amp; Secret Key</a></li>
+      <li><a href="#buat-workflow">Buat Workflow: Facebook Lead Ads &#8594; CRM</a></li>
+      <li><a href="#payload">Field yang dikirim ke CRM</a></li>
+      <li><a href="#test">Test &amp; verifikasi</a></li>
+      <li><a href="#faq">FAQ &amp; troubleshooting</a></li>
+    </ol>
+  </div>
+
+  <!-- 1 -->
+  <div class="section" id="cara-kerja">
+    <div class="section-badge">&#128161; 01 &mdash; Konsep</div>
+    <h2>Cara Kerja Integrasi</h2>
+    <p>Pipedream bertindak sebagai jembatan antara Facebook Lead Ads dan CRM MANSION. Setiap prospek yang mengisi form iklan akan otomatis muncul di tab <strong>Leads</strong> CRM atas nama kamu.</p>
+    <div class="flow">
+      <div class="flow-node"><span class="fn-icon">&#128226;</span>FB/IG Lead Ads</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-node green"><span class="fn-icon">&#128279;</span>Pipedream</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-node"><span class="fn-icon">&#128274;</span>Webhook CRM</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-node"><span class="fn-icon">&#128203;</span>Tab Leads</div>
+    </div>
+    <div class="info-box blue">
+      <strong>Mengapa tidak langsung dari Facebook?</strong><br/>
+      Facebook Lead Ads tidak mendukung push langsung ke URL kustom. Dibutuhkan platform perantara (seperti Pipedream) yang sudah terdaftar sebagai integrasi resmi Meta.
+    </div>
+  </div>
+
+  <hr class="divider"/>
+
+  <!-- 2 -->
+  <div class="section" id="daftar">
+    <div class="section-badge">&#128221; 02 &mdash; Daftar</div>
+    <h2>Cara Daftar Pipedream (Gratis)</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num green">1</div>
+        <div class="step-body">
+          <div class="step-title">Buka pipedream.com</div>
+          <div class="step-desc">Kunjungi <strong>pipedream.com</strong> dari browser. Klik tombol <strong>"Sign Up Free"</strong> di pojok kanan atas.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">2</div>
+        <div class="step-body">
+          <div class="step-title">Daftar dengan Google</div>
+          <div class="step-desc">Pilih <strong>"Continue with Google"</strong> — paling cepat, tidak perlu isi password baru. Gunakan akun Google kerja kamu. Tidak perlu kartu kredit.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">3</div>
+        <div class="step-body">
+          <div class="step-title">Kamu sudah di dashboard Pipedream</div>
+          <div class="step-desc">Halaman <strong>Workflows</strong> muncul. Pipedream siap digunakan. Lanjut ke langkah berikutnya.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider"/>
+
+  <!-- 3 -->
+  <div class="section" id="crm-setup">
+    <div class="section-badge">&#9881;&#65039; 03 &mdash; Setup CRM</div>
+    <h2>Setup di CRM — Dapatkan Webhook URL &amp; Secret Key</h2>
+    <p>Sebelum buat workflow, siapkan dua data dari CRM: <strong>Webhook URL</strong> dan <strong>Secret Key</strong>.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Buka Personal Assistant</div>
+          <div class="step-desc">Login ke CRM. Tap ikon <strong>robot &#129302;</strong> di menu bawah untuk membuka halaman Personal Assistant (OpenClaw).</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Buka Pengaturan PA</div>
+          <div class="step-desc">Tap tombol <strong>&#9881; Pengaturan PA</strong> di bagian atas. Sidebar konfigurasi terbuka dari sisi kanan.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Aktifkan mode Zapier</div>
+          <div class="step-desc">Di bagian <strong>"Webhook / Integrasi"</strong>, pilih tab <strong>Zapier</strong> dan pastikan mode ini aktif (bukan "Tidak Pakai").</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Generate Secret Key</div>
+          <div class="step-desc">Klik tombol <strong>"Generate Secret Key"</strong>. Sebuah kode unik (UUID) akan muncul. <strong>Salin dan simpan</strong> — ini akan dipakai di Pipedream.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">Salin Webhook URL kamu</div>
+          <div class="step-desc">
+            Di bawah Secret Key, ada <strong>"Webhook URL Kamu (unik per agen)"</strong>:<br/><br/>
+            <code>https://crm.mansionpro.id/api/v1/webhook/zapier/[ID_KAMU]</code><br/><br/>
+            Tap ikon salin di sebelah URL tersebut.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="info-box gold">
+      <strong>Simpan keduanya sebelum lanjut:</strong><br/>
+      &bull; <strong>Webhook URL</strong> — tujuan pengiriman data lead<br/>
+      &bull; <strong>Secret Key</strong> — verifikasi keamanan agar hanya workflow kamu yang bisa kirim
+    </div>
+  </div>
+
+  <hr class="divider"/>
+
+  <!-- 4 -->
+  <div class="section" id="buat-workflow">
+    <div class="section-badge">&#128279; 04 &mdash; Buat Workflow</div>
+    <h2>Buat Workflow: Facebook Lead Ads &#8594; CRM MANSION</h2>
+    <p>Workflow = satu alur otomasi. Kita buat alur: <em>lead baru di FB Ads &#8594; kirim ke Webhook CRM</em>.</p>
+
+    <div class="info-box blue" style="margin-bottom:16px"><strong>BAGIAN A &mdash; Trigger: Facebook Lead Ads</strong></div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num green">1</div>
+        <div class="step-body">
+          <div class="step-title">Klik "New Workflow" di dashboard Pipedream</div>
+          <div class="step-desc">Tombol ada di pojok kanan atas halaman Workflows.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">2</div>
+        <div class="step-body">
+          <div class="step-title">Pilih Trigger: Facebook Lead Ads</div>
+          <div class="step-desc">Di panel "Choose a trigger", ketik <strong>"Facebook Lead Ads"</strong>. Pilih app tersebut lalu pilih event <strong>"New Lead (Instant)"</strong>.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">3</div>
+        <div class="step-body">
+          <div class="step-title">Connect akun Facebook</div>
+          <div class="step-desc">Klik <strong>"Connect Account"</strong> lalu login dengan akun Facebook yang mengelola halaman bisnis / iklan propertimu. Izinkan akses Pipedream.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">4</div>
+        <div class="step-body">
+          <div class="step-title">Pilih Page &amp; Form iklanmu</div>
+          <div class="step-desc">Pilih <strong>Facebook Page</strong> kamu, lalu pilih <strong>Lead Form</strong> yang mau dihubungkan. Klik <strong>"Generate Test Event"</strong> untuk mengambil contoh data lead.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box blue" style="margin-top:24px;margin-bottom:16px"><strong>BAGIAN B &mdash; Action: Kirim ke Webhook CRM</strong></div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num green">5</div>
+        <div class="step-body">
+          <div class="step-title">Tambah step baru — pilih HTTP Request</div>
+          <div class="step-desc">Klik tanda <strong>"+"</strong> di bawah trigger. Pilih <strong>"Send HTTP Request"</strong> atau cari app <strong>"HTTP / Webhook"</strong>.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">6</div>
+        <div class="step-body">
+          <div class="step-title">Pilih action: Send any HTTP Request</div>
+          <div class="step-desc">Pilih <strong>"Send any HTTP Request"</strong>. Ini setara dengan POST di Zapier — sepenuhnya gratis di Pipedream.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">7</div>
+        <div class="step-body">
+          <div class="step-title">Isi URL, Method, dan Content-Type</div>
+          <div class="step-desc">
+            <strong>URL:</strong> paste Webhook URL CRM kamu<br/>
+            <code>https://crm.mansionpro.id/api/v1/webhook/zapier/[ID_KAMU]</code><br/><br/>
+            <strong>Method:</strong> <code>POST</code><br/>
+            <strong>Content-Type:</strong> <code>application/json</code>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">8</div>
+        <div class="step-body">
+          <div class="step-title">Isi Body JSON</div>
+          <div class="step-desc">Di bagian Body, pilih mode <strong>Raw</strong>. Isi JSON berikut — untuk value dinamis, klik ikon <code>{"{}"}</code> untuk memilih field dari data trigger:</div>
+          <table class="field-table" style="margin-top:12px">
+            <thead>
+              <tr><th>Key</th><th>Value — pilih dari data trigger FB</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>secret</code></td>
+                <td><em>Paste Secret Key kamu (teks statis)</em></td>
+                <td><span class="badge-req">WAJIB</span></td>
+              </tr>
+              <tr>
+                <td><code>full_name</code></td>
+                <td>Pilih <em>Full Name</em> dari data FB Lead</td>
+                <td><span class="badge-req">WAJIB</span></td>
+              </tr>
+              <tr>
+                <td><code>phone</code></td>
+                <td>Pilih <em>Phone Number</em> dari data FB Lead</td>
+                <td><span class="badge-req">WAJIB</span></td>
+              </tr>
+              <tr>
+                <td><code>email</code></td>
+                <td>Pilih <em>Email</em> dari data FB Lead</td>
+                <td><span class="badge-opt">OPSIONAL</span></td>
+              </tr>
+              <tr>
+                <td><code>form_name</code></td>
+                <td>Pilih <em>Form Name</em> dari data FB Lead</td>
+                <td><span class="badge-opt">OPSIONAL</span></td>
+              </tr>
+              <tr>
+                <td><code>ad_name</code></td>
+                <td>Pilih <em>Ad Name</em> atau <em>Campaign Name</em></td>
+                <td><span class="badge-opt">OPSIONAL</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="info-box gold" style="margin-top:10px">
+            <strong>Nama field berbeda tiap form.</strong> Gunakan variable picker Pipedream (klik ikon <code>{}</code>) untuk browse field yang tersedia dari data test trigger kamu.
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">9</div>
+        <div class="step-body">
+          <div class="step-title">Test step</div>
+          <div class="step-desc">Klik <strong>"Test"</strong>. Jika berhasil, response dari server:</div>
+          <div class="code-block">{ <span class="key">"received"</span>: <span class="val">true</span> }</div>
+          <div class="step-desc">Status code harus <code>200</code>. Cek juga tab Leads di CRM — data test seharusnya sudah masuk.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">10</div>
+        <div class="step-body">
+          <div class="step-title">Deploy Workflow</div>
+          <div class="step-desc">Klik tombol <strong>"Deploy"</strong> di pojok kanan atas. Workflow sekarang aktif — setiap lead baru dari FB Ads akan otomatis dikirim ke CRM dalam hitungan detik.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider"/>
+
+  <!-- 5 -->
+  <div class="section" id="payload">
+    <div class="section-badge">&#128230; 05 &mdash; Data</div>
+    <h2>Field yang Dikirim ke CRM</h2>
+    <p>Contoh lengkap payload JSON yang dikirim Pipedream ke Webhook CRM:</p>
+    <div class="code-block"><span class="cmt">// Request body dari Pipedream ke CRM</span>
+{
+  <span class="key">"secret"</span>:      <span class="val">"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"</span>,  <span class="cmt">&#8592; Secret Key dari CRM</span>
+  <span class="key">"full_name"</span>:   <span class="val">"Budi Santoso"</span>,
+  <span class="key">"phone"</span>:       <span class="val">"628123456789"</span>,             <span class="cmt">&#8592; awali 62, tanpa +</span>
+  <span class="key">"email"</span>:       <span class="val">"budi@email.com"</span>,
+  <span class="key">"form_name"</span>:   <span class="val">"Form Apartemen Jakarta Selatan"</span>,
+  <span class="key">"ad_name"</span>:     <span class="val">"Promo Akhir Tahun - Jaksel"</span>
+}</div>
+    <div class="info-box green">
+      <strong>Data agen ditambahkan otomatis oleh CRM:</strong><br/>
+      CRM membaca <code>agent_id</code> langsung dari URL Webhook (sudah include ID kamu). Tidak perlu mengirim data agen dari Pipedream.
+    </div>
+  </div>
+
+  <hr class="divider"/>
+
+  <!-- 6 -->
+  <div class="section" id="test">
+    <div class="section-badge">&#10003; 06 &mdash; Verifikasi</div>
+    <h2>Test &amp; Verifikasi Integrasi</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num green">1</div>
+        <div class="step-body">
+          <div class="step-title">Test dari Pipedream</div>
+          <div class="step-desc">Di editor workflow, klik <strong>"Test"</strong> pada step HTTP Request. Response <code>{"received": true}</code> dengan status <code>200</code> berarti CRM berhasil menerima data.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">2</div>
+        <div class="step-body">
+          <div class="step-title">Cek tab Leads di CRM</div>
+          <div class="step-desc">Buka CRM &#8594; tab <strong>Leads</strong>. Data test seharusnya sudah muncul sebagai lead baru dengan nama kamu sebagai agen yang bertanggung jawab.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">3</div>
+        <div class="step-body">
+          <div class="step-title">Test live dengan form asli</div>
+          <div class="step-desc">Isi form Lead Ads kamu sendiri dengan data dummy. Pipedream akan memproses lead tersebut secara <strong>real-time</strong> (biasanya dalam 5–30 detik setelah form diisi).</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">4</div>
+        <div class="step-body">
+          <div class="step-title">Pantau Event History</div>
+          <div class="step-desc">Di Pipedream &#8594; klik workflow kamu &#8594; tab <strong>"Event History"</strong>. Setiap eksekusi tercatat lengkap dengan data masuk dan respons keluar.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider"/>
+
+  <!-- 7 -->
+  <div class="section" id="faq">
+    <div class="section-badge">&#10067; 07 &mdash; FAQ</div>
+    <h2>FAQ &amp; Troubleshooting</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">?</div>
+        <div class="step-body">
+          <div class="step-title">Error 401: "Invalid secret"</div>
+          <div class="step-desc">Secret Key di Pipedream tidak cocok dengan yang di CRM. Buka Pengaturan PA &#8594; generate ulang Secret Key &#8594; update di step HTTP Request Pipedream &#8594; Deploy ulang.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">?</div>
+        <div class="step-body">
+          <div class="step-title">Error 403: "Webhook tidak aktif"</div>
+          <div class="step-desc">Mode webhook di CRM sedang "Tidak Pakai". Buka Pengaturan PA &#8594; Webhook/Integrasi &#8594; pilih mode <strong>Zapier</strong> &#8594; simpan.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">?</div>
+        <div class="step-body">
+          <div class="step-title">Lead tidak muncul di CRM meskipun response 200</div>
+          <div class="step-desc">Pastikan field <code>full_name</code> dan <code>phone</code> terisi nilainya (tidak kosong). Cek di Event History Pipedream untuk melihat nilai aktual yang dikirim.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">?</div>
+        <div class="step-body">
+          <div class="step-title">Tidak ada data saat "Generate Test Event"</div>
+          <div class="step-desc">Form Lead Ads belum pernah menerima lead, atau Pipedream belum ter-subscribe ke page tersebut. Isi form sendiri dulu, atau klik <strong>"Skip Test"</strong> dan lanjut setup — workflow tetap berjalan saat ada lead asli masuk.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">?</div>
+        <div class="step-body">
+          <div class="step-title">Bisa pakai satu workflow untuk beberapa agen?</div>
+          <div class="step-desc">Tidak dianjurkan. Setiap agen punya Webhook URL dan Secret Key sendiri. Buat workflow terpisah untuk setiap agen / halaman Facebook yang berbeda.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">?</div>
+        <div class="step-body">
+          <div class="step-title">Bisa hubungkan selain Facebook Lead Ads?</div>
+          <div class="step-desc">Ya. Pipedream mendukung banyak sumber: Google Forms, TikTok Lead Gen, Instagram Lead Ads, Typeform, dll. Ganti saja Trigger app-nya — Action HTTP Request-nya tetap sama.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">?</div>
+        <div class="step-body">
+          <div class="step-title">Berapa limit gratis Pipedream?</div>
+          <div class="step-desc"><strong>Free Plan: 3.000 eksekusi/bulan</strong> (&#177;100/hari). Artinya kamu bisa menerima hingga 3.000 lead per bulan tanpa biaya — lebih dari cukup untuk agen properti aktif.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding-top:20px;color:rgba(255,255,255,0.2);font-size:12px">
+    MANSION Realty CRM &nbsp;&middot;&nbsp; Personal Assistant (OpenClaw) &nbsp;&middot;&nbsp; Panduan Pipedream
+  </div>
+
+</div>
+</body>
+</html>

@@ -148,22 +148,21 @@ function setRefreshToken(token) { _refreshToken = token; }
 function hasRefreshToken()      { return !!_refreshToken; }
 
 // ── Upload foto ke Canva sebagai Asset ──────────────────────────────────────
-// POST /rest/v1/asset-uploads dengan binary langsung + Asset-Name header → poll job
+// POST /rest/v1/asset-uploads: binary body + Asset-Upload-Metadata JSON header
+// Poll via GET /rest/v1/asset-uploads/{jobId} → asset.id
 async function uploadAsset(imageBuffer, mimeType, agentId) {
   const token    = await getAccessToken();
-  const filename = `profile_${agentId}_${Date.now()}.jpg`;
+  const shortId  = agentId.slice(0, 8);                           // max ~20 chars total
+  const filename = `p_${shortId}.jpg`;
   const nameB64  = Buffer.from(filename).toString('base64');
 
-  // POST binary ke /asset-uploads — TUS protocol: Upload-Metadata, Upload-Length, Tus-Resumable
   let res;
   try {
     res = await axios.post(`${BASE}/asset-uploads`, imageBuffer, {
       headers: {
-        Authorization:    `Bearer ${token}`,
-        'Content-Type':   'application/octet-stream',
-        'Tus-Resumable':  '1.0.0',
-        'Upload-Length':  String(imageBuffer.length),
-        'Upload-Metadata': `name ${nameB64}`,
+        Authorization:           `Bearer ${token}`,
+        'Content-Type':          'application/octet-stream',
+        'Asset-Upload-Metadata': JSON.stringify({ name_base64: nameB64 }),
       },
       maxBodyLength:    Infinity,
       maxContentLength: Infinity,

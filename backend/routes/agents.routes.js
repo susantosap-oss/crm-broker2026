@@ -11,6 +11,7 @@
 
 const express  = require('express');
 const router   = express.Router();
+const axios    = require('axios');
 const bcrypt   = require('bcryptjs');
 const multer   = require('multer');
 const cloudinary = require('cloudinary').v2;
@@ -19,6 +20,7 @@ const { authMiddleware, requireRole, requireMinRole } = require('../middleware/a
 const sheetsService = require('../services/sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 const canvaService = require('../services/canva.service');
+const sharpService = require('../services/sharp.service');
 
 // Multer memory storage untuk Canva profile photo (max 10 MB)
 const _photoUpload = multer({
@@ -359,14 +361,11 @@ router.get('/profile-photo/canva/test', requireRole('superadmin'), async (req, r
     const tinyJpeg = Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8AVf/Z', 'base64');
     const nameB64 = Buffer.from('test_crm.jpg').toString('base64');
     try {
-      // POST binary ke /asset-uploads dengan TUS headers
       const uploadRes = await axios.post('https://api.canva.com/rest/v1/asset-uploads', tinyJpeg, {
         headers: {
-          Authorization:     `Bearer ${token}`,
-          'Content-Type':    'application/octet-stream',
-          'Tus-Resumable':   '1.0.0',
-          'Upload-Length':   String(tinyJpeg.length),
-          'Upload-Metadata': `name ${nameB64}`,
+          Authorization:           `Bearer ${token}`,
+          'Content-Type':          'application/octet-stream',
+          'Asset-Upload-Metadata': JSON.stringify({ name_base64: nameB64 }),
         },
         maxBodyLength: Infinity,
       });
@@ -404,6 +403,33 @@ router.get('/profile-photo/canva/test', requireRole('superadmin'), async (req, r
   }
 });
 
+// GET /agents/profile-photo/canva/brand-templates — list templates + dataset fields (superadmin debug)
+router.get('/profile-photo/canva/brand-templates', requireRole('superadmin'), async (req, res) => {
+  try {
+    const token = await canvaService.getAccessToken();
+    const r = await axios.get('https://api.canva.com/rest/v1/brand-templates?limit=20', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const items = r.data?.items || [];
+
+    // Fetch dataset untuk setiap template
+    const withDataset = await Promise.all(items.map(async (item) => {
+      try {
+        const ds = await axios.get(`https://api.canva.com/rest/v1/brand-templates/${item.id}/dataset`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        return { ...item, dataset: ds.data };
+      } catch {
+        return { ...item, dataset: null };
+      }
+    }));
+
+    res.json({ success: true, items: withDataset });
+  } catch (e) {
+    res.json({ success: false, error: e.response?.data || e.message });
+  }
+});
+
 // POST /agents/profile-photo/canva — proses foto profil via Canva Brand Template
 // 1. Terima foto (multipart) → 2. Kirim ke Canva → 3. Export PNG → 4. Upload Cloudinary
 // Frontend bertanggung jawab menyimpan URL ke sheets via PUT /profile
@@ -415,15 +441,22 @@ router.post('/profile-photo/canva', _photoUpload.single('photo'), async (req, re
     const agentName = req.user.nama || req.user.name || '';
     const { buffer, mimetype } = req.file;
 
-    // ── Step 1: Proses via Canva ──────────────────────────
+    // Ambil kantor dari Sheets
+    let agentKantor = '';
+    try {
+      const agentRow = await sheetsService.findRowById(SHEETS.AGENTS, agentId);
+      if (agentRow) agentKantor = rowToAgent(agentRow.data).Nama_Kantor || '';
+    } catch (_) {}
+
+    // ── Step 1: Proses via Sharp ──────────────────────────
     let pngBuffer;
     try {
-      pngBuffer = await canvaService.processProfilePhoto(buffer, mimetype, agentId, agentName);
-    } catch (canvaErr) {
-      console.error('[Canva] Error:', canvaErr.message);
+      pngBuffer = await sharpService.processProfilePhoto(buffer, agentName, agentKantor);
+    } catch (sharpErr) {
+      console.error('[Sharp] Error:', sharpErr.message);
       return res.status(502).json({
         success: false,
-        message: 'Canva gagal memproses foto: ' + canvaErr.message,
+        message: 'Sharp gagal memproses foto: ' + sharpErr.message,
       });
     }
 
@@ -433,12 +466,9 @@ router.post('/profile-photo/canva', _photoUpload.single('photo'), async (req, re
       folder:        'mansion_profiles',
       public_id:     `agent_${agentId}`,
       overwrite:     true,
+      invalidate:    true,
       resource_type: 'image',
-      transformation: [
-        { quality: 'auto:good' },
-        { fetch_format: 'auto' },
-        { width: 800, crop: 'limit' },
-      ],
+      format:        'png',
     });
 
     const photoUrl = cloudResult.secure_url;
@@ -499,9 +529,10 @@ router.post('/profile-photo/canva/migrate-all', requireRole('superadmin'), async
   try {
     const rows = await sheetsService.getRange(SHEETS.AGENTS);
     const [, ...data] = rows;
+    const force = req.query.force === 'true';
     agents = data
       .map(row => rowToAgent(row))
-      .filter(a => a.ID && a.Foto_URL && !a.Foto_URL.includes('mansion_profiles'));
+      .filter(a => a.ID && a.Foto_URL && (force || !a.Foto_URL.includes('mansion_profiles')));
   } catch (e) {
     return res.status(500).json({ success: false, message: 'Gagal baca Sheets: ' + e.message });
   }
@@ -524,28 +555,8 @@ router.post('/profile-photo/canva/migrate-all', requireRole('superadmin'), async
     total:   agents.length,
   });
 
-  // ── Background processing (sequential — Canva rate limit) ─
+  // ── Background processing (sequential) ──────────────────
   (async () => {
-    const axios = require('axios');
-
-    // Load refresh_token dari Sheets jika belum ada di memory
-    if (!canvaService.hasRefreshToken()) {
-      try {
-        const configRows = await sheetsService.getRange(SHEETS.CONFIG);
-        const tokenRow   = (configRows || []).find(r => r[0] === 'Canva_Refresh_Token');
-        if (tokenRow?.[1]) canvaService.setRefreshToken(tokenRow[1]);
-        else throw new Error('Canva_Refresh_Token belum ada di Sheets CONFIG. Buka /canva/auth dulu.');
-      } catch (initErr) {
-        _migrateState.running    = false;
-        _migrateState.finishedAt = new Date().toISOString();
-        agents.forEach(a => {
-          _migrateState.failed++;
-          _migrateState.errors.push({ id: a.ID, nama: a.Nama, error: initErr.message });
-        });
-        console.log('[Canva Migrate] Abort:', initErr.message);
-        return;
-      }
-    }
     for (const agent of agents) {
       const logEntry = { id: agent.ID, nama: agent.Nama, status: 'processing', url: '' };
       _migrateState.log.push(logEntry);
@@ -559,8 +570,8 @@ router.post('/profile-photo/canva/migrate-all', requireRole('superadmin'), async
         const imgBuffer = Buffer.from(imgRes.data);
         const mimeType  = 'image/jpeg'; // selalu JPEG setelah transform
 
-        // 2. Proses via Canva
-        const pngBuffer = await canvaService.processProfilePhoto(imgBuffer, mimeType, agent.ID, agent.Nama);
+        // 2. Proses via Sharp
+        const pngBuffer = await sharpService.processProfilePhoto(imgBuffer, agent.Nama, agent.Nama_Kantor);
 
         // 3. Upload ke Cloudinary → mansion_profiles/
         const b64   = `data:image/png;base64,${pngBuffer.toString('base64')}`;
@@ -568,8 +579,9 @@ router.post('/profile-photo/canva/migrate-all', requireRole('superadmin'), async
           folder:        'mansion_profiles',
           public_id:     `agent_${agent.ID}`,
           overwrite:     true,
+          invalidate:    true,
           resource_type: 'image',
-          transformation: [{ quality: 'auto:good' }, { fetch_format: 'auto' }, { width: 800, crop: 'limit' }],
+          format:        'png',
         });
 
         // 4. Update Sheets

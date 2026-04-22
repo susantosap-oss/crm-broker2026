@@ -54,7 +54,16 @@
       "Bash(gcloud compute:*)",
       "Bash(gcloud projects:*)",
       "Bash(head -10 /c/Users/mansion/web-mansion2026/src/app/listings/[slug]/page.tsx)",
-      "Bash(bash deploy.sh)"
+      "Bash(bash deploy.sh)",
+      "Bash(find C:Usersmansioncrm-broker2026 -path */node_modules -prune -o -path */_patch* -prune -o -path */deploy_* -prune -o -path */fase* -prune -o -path */hotfix* -prune -o -type f \\\\\\(-name *agent* -o -name *profile* -o -name *photo* \\\\\\) -print)",
+      "Bash(node -e \"require\\(''./services/canva.service''\\)\")",
+      "Bash(node -e \"require\\(''./routes/agents.routes''\\)\")",
+      "Bash(node -e \"require\\(''./backend/services/canva.service''\\)\")",
+      "WebSearch",
+      "WebFetch(domain:www.canva.dev)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:tus.io)",
+      "WebFetch(domain:www.canva.com)"
     ]
   }
 }
