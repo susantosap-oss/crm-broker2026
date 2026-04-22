@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="theme-color" content="#080E1A"/>
-  <meta name="app-version" content="1.2.1"/>
+  <meta name="app-version" content="1.2.3"/>
   <title>Mansion CRM</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{navy:{DEFAULT:'#080E1A',1:'#0D1526',2:'#131F38',3:'#1C2D52'},gold:{DEFAULT:'#D4A853',light:'#E8C07A',dark:'#A87B30'}}}}};</script>
@@ -1328,6 +1328,16 @@
             <input id="nu-kantor" type="text" class="form-input" placeholder="Nama Kantor" style="border:none;border-radius:0;background:transparent;flex:1"/>
           </div>
         </div>
+        <div>
+          <label class="form-label">Foto Profil <span style="color:rgba(255,255,255,0.3)">(opsional)</span></label>
+          <label for="nu-photo" style="cursor:pointer;display:flex;align-items:center;gap:12px;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 14px">
+            <div id="nu-photo-wrap" style="width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;background:rgba(212,168,83,0.15);display:flex;align-items:center;justify-content:center">
+              <i class="fa-solid fa-camera" style="color:#D4A853;font-size:16px"></i>
+            </div>
+            <span id="nu-photo-name" style="font-size:12px;color:rgba(255,255,255,0.4)">Pilih foto profil...</span>
+            <input type="file" id="nu-photo" accept="image/*" style="display:none" onchange="previewUserPhoto('nu',this)"/>
+          </label>
+        </div>
         <div style="display:flex;gap:10px;padding-top:4px">
           <button onclick="setUserTab('list')" class="btn-ghost" style="flex:1">Batal</button>
           <button onclick="submitAddUser()" class="btn-gold" style="flex:1"><i class="fa-solid fa-user-plus" style="margin-right:6px"></i>Tambah User</button>
@@ -1339,10 +1349,12 @@
 
 <!-- MODAL EDIT USER (PR 18) -->
 <div id="modal-edit-user" class="modal-center">
-  <div class="modal-card" style="max-width:420px;width:100%">
-    <h3 style="font-family:'DM Serif Display',serif;font-size:16px;color:#fff;margin-bottom:16px">Edit User</h3>
+  <div class="modal-card" style="max-width:420px;width:100%;display:flex;flex-direction:column;max-height:90vh;padding:0;overflow:hidden">
+    <div style="padding:20px 20px 14px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <h3 style="font-family:'DM Serif Display',serif;font-size:16px;color:#fff;margin:0">Edit User</h3>
+    </div>
     <input type="hidden" id="eu-id"/>
-    <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="overflow-y:auto;flex:1;padding:16px 20px;display:flex;flex-direction:column;gap:12px">
       <div><label class="form-label">Nama</label><input id="eu-nama" type="text" class="form-input"/></div>
       <div><label class="form-label">No. WhatsApp</label><input id="eu-wa" type="tel" class="form-input"/></div>
       <div><label class="form-label">Password Baru <span style="color:rgba(255,255,255,0.3)">(kosongkan jika tidak diubah)</span></label><input id="eu-password" type="password" class="form-input" placeholder="Password baru..."/></div>
@@ -1367,8 +1379,18 @@
           <input id="eu-kantor" type="text" class="form-input" placeholder="Nama Kantor" style="border:none;border-radius:0;background:transparent;flex:1"/>
         </div>
       </div>
+      <div>
+        <label class="form-label">Foto Profil</label>
+        <label for="eu-photo" style="cursor:pointer;display:flex;align-items:center;gap:12px;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 14px">
+          <div id="eu-photo-wrap" style="width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;background:rgba(212,168,83,0.15);display:flex;align-items:center;justify-content:center">
+            <i class="fa-solid fa-camera" style="color:#D4A853;font-size:16px"></i>
+          </div>
+          <span id="eu-photo-name" style="font-size:12px;color:rgba(255,255,255,0.4)">Ganti foto profil...</span>
+          <input type="file" id="eu-photo" accept="image/*" style="display:none" onchange="previewUserPhoto('eu',this)"/>
+        </label>
+      </div>
     </div>
-    <div style="display:flex;gap:10px;margin-top:16px">
+    <div style="display:flex;gap:10px;padding:14px 20px;flex-shrink:0;border-top:1px solid rgba(255,255,255,0.06)">
       <button onclick="closeModal('modal-edit-user')" class="btn-ghost" style="flex:1">Batal</button>
       <button onclick="submitEditUser()" class="btn-gold" style="flex:1">Simpan</button>
     </div>

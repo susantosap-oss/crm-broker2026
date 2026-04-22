@@ -635,6 +635,36 @@ router.get('/profile-photo/canva/migrate-status', requireRole('superadmin'), (re
   });
 });
 
+// POST /agents/:id/profile-photo — admin upload foto profil untuk user lain
+router.post('/:id/profile-photo', requireMinRole('admin'), _photoUpload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'Tidak ada foto yang diupload' });
+    const targetId = req.params.id;
+    const agentRow = await sheetsService.findRowById(SHEETS.AGENTS, targetId);
+    if (!agentRow) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+    const agent = rowToAgent(agentRow.data);
+    const { buffer } = req.file;
+    let pngBuffer;
+    try {
+      pngBuffer = await sharpService.processProfilePhoto(buffer, agent.Nama, agent.Nama_Kantor || '');
+    } catch (sharpErr) {
+      return res.status(502).json({ success: false, message: 'Sharp gagal: ' + sharpErr.message });
+    }
+    const base64DataUri = `data:image/png;base64,${pngBuffer.toString('base64')}`;
+    const cloudResult = await cloudinary.uploader.upload(base64DataUri, {
+      folder: 'mansion_profiles', public_id: `agent_${targetId}`,
+      overwrite: true, invalidate: true, resource_type: 'image', format: 'png',
+    });
+    const photoUrl = cloudResult.secure_url;
+    agent.Foto_URL = photoUrl;
+    agent.Updated_At = new Date().toISOString();
+    await sheetsService.updateRow(SHEETS.AGENTS, agentRow.rowIndex, COLUMNS.AGENTS.map(col => agent[col] || ''));
+    res.json({ success: true, data: { photo_url: photoUrl } });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // PUT /agents/:id — update user
 router.put('/:id', requireMinRole('admin'), async (req, res) => {
   try {

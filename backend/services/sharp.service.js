@@ -22,9 +22,9 @@ const TPL_DIR = path.join(__dirname, '../../frontend/assets/template_profile');
 // ── Layout constants ─────────────────────────────────────────────────────────
 // foto_profile.png  320×320, center (160,160)
 //   whiteR : 128 — white fill covers template crosshatch (inside gold ring)
-//   photoR : 75  — circular photo in center
-//   textR  : 104 — arc text in white ring above photo
-const PROFILE = { W: 320, H: 320, cx: 160, cy: 160, whiteR: 128, photoR: 75, textR: 104 };
+//   photoR : 112 — circular photo (70% of 320px canvas)
+//   textR  : 120 — arc text in tight white ring (128-112=16px ring)
+const PROFILE = { W: 320, H: 320, cx: 160, cy: 160, whiteR: 128, photoR: 112, textR: 120 };
 
 // Bisnis_Card.png  600×1050
 //   photo circle   : center (300,263), r=128
@@ -53,43 +53,20 @@ const BISCARD = {
  * @returns {Buffer}            — PNG hasil composite
  */
 async function processProfilePhoto(imageBuffer, agentName = '', agentKantor = '') {
-  const { W, H, cx, cy, whiteR, photoR, textR } = PROFILE;
+  const { W, H, cx, cy, whiteR, photoR } = PROFILE;
 
   const circlePhoto = await _circularCrop(imageBuffer, photoR * 2);
 
-  const lx = cx - textR;  // 56
-  const rx = cx + textR;  // 264
-
-  // Top arc: CCW right→top→left — reversed string agar terbaca normal dari kiri-kanan
-  const topText = _reverseStr((agentName || '').toUpperCase());
-
-  // Layer 1: white fill — tutup crosshatch template, buat latar putih di dalam gold ring
   const svgFill = Buffer.from(
     `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
       <circle cx="${cx}" cy="${cy}" r="${whiteR}" fill="white"/>
     </svg>`
   );
 
-  // Layer 3: curved text di atas foto
-  const svgText = Buffer.from(
-    `<svg width="${W}" height="${H}"
-      xmlns="http://www.w3.org/2000/svg"
-      xmlns:xlink="http://www.w3.org/1999/xlink">
-      <defs>
-        <path id="tp" d="M ${rx},${cy} A ${textR},${textR} 0 0,0 ${lx},${cy}"/>
-      </defs>
-      <text font-family="DejaVu Sans,Liberation Sans,Arial,sans-serif"
-            font-size="13" font-weight="bold" fill="#0D1B3E" letter-spacing="2">
-        <textPath xlink:href="#tp" startOffset="50%" text-anchor="middle">${_esc(topText)}</textPath>
-      </text>
-    </svg>`
-  );
-
   return sharp(path.join(TPL_DIR, 'foto_profile.png'))
     .composite([
-      { input: svgFill,     left: 0,           top: 0           },  // 1. white background
-      { input: circlePhoto, left: cx - photoR,  top: cy - photoR },  // 2. foto agen
-      { input: svgText,     left: 0,           top: 0           },  // 3. curved text
+      { input: svgFill,     left: 0,          top: 0           },
+      { input: circlePhoto, left: cx - photoR, top: cy - photoR },
     ])
     .png()
     .toBuffer();

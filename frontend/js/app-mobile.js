@@ -207,6 +207,18 @@ async function uploadProfilePhotoCanva(file) {
   }
 }
 
+function previewUserPhoto(prefix, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const wrap = document.getElementById(`${prefix}-photo-wrap`);
+  const nameLbl = document.getElementById(`${prefix}-photo-name`);
+  if (nameLbl) nameLbl.textContent = file.name;
+  if (wrap) {
+    const url = URL.createObjectURL(file);
+    wrap.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover"/>`;
+  }
+}
+
 // ── Canva Batch Migration (superadmin) ────────────────────
 let _migratePollTimer = null;
 
@@ -3605,8 +3617,8 @@ async function loadUserList() {
     const statusColor = { Aktif:'#4ade80', Cuti:'#9ca3af', Nonaktif:'#ef4444' };
     el.innerHTML = _userList.map(u => `
       <div style="display:flex;align-items:center;gap:12px;background:#131F38;border-radius:14px;padding:12px 14px;border:1px solid rgba(255,255,255,0.06)">
-        <div style="width:40px;height:40px;border-radius:50%;background:rgba(212,168,83,0.15);display:flex;align-items:center;justify-content:center;font-weight:700;color:#D4A853;font-size:15px;flex-shrink:0">
-          ${escapeHtml((u.Nama||'U').charAt(0).toUpperCase())}
+        <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0;background:rgba(212,168,83,0.15);display:flex;align-items:center;justify-content:center;font-weight:700;color:#D4A853;font-size:15px">
+          ${u.Foto_URL ? `<img src="${u.Foto_URL}" style="width:100%;height:100%;object-fit:cover"/>` : escapeHtml((u.Nama||'U').charAt(0).toUpperCase())}
         </div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
@@ -3644,6 +3656,19 @@ function openEditUser(id) {
   setVal('eu-lsp', u.Nomer_LSP||'');
   setVal('eu-role', u.Role||'agen');
   setVal('eu-status', u.Status||'Aktif');
+  const photoInput = document.getElementById('eu-photo');
+  if (photoInput) photoInput.value = '';
+  const wrap = document.getElementById('eu-photo-wrap');
+  const nameLbl = document.getElementById('eu-photo-name');
+  if (wrap) {
+    if (u.Foto_URL) {
+      wrap.innerHTML = `<img src="${u.Foto_URL}" style="width:100%;height:100%;object-fit:cover"/>`;
+      if (nameLbl) nameLbl.textContent = 'Foto saat ini — klik untuk ganti';
+    } else {
+      wrap.innerHTML = '<i class="fa-solid fa-camera" style="color:#D4A853;font-size:16px"></i>';
+      if (nameLbl) nameLbl.textContent = 'Ganti foto profil...';
+    }
+  }
   openModal('modal-edit-user');
 }
 
@@ -3661,12 +3686,23 @@ async function submitEditUser() {
   };
   const newPass = getVal('eu-password').trim();
   if (newPass) payload.newPassword = newPass;
+  const saveBtn = document.querySelector('#modal-edit-user .btn-gold');
   try {
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Menyimpan...'; }
     await API.put(`/agents/${id}`, payload);
+    const photoFile = document.getElementById('eu-photo')?.files[0];
+    if (photoFile) {
+      const fd = new FormData();
+      fd.append('photo', photoFile);
+      await API.post(`/agents/${id}/profile-photo`, fd, true);
+    }
     showToast('✅ User berhasil diupdate!', 'success');
     closeModal('modal-edit-user');
     loadUserList();
   } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+  finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Simpan'; }
+  }
 }
 
 async function submitAddUser() {
@@ -3687,11 +3723,24 @@ async function submitAddUser() {
   try {
     const btn = document.querySelector('#user-tab-add .btn-gold');
     if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
-    await API.post('/agents', payload);
+    const res = await API.post('/agents', payload);
+    const newId = res.data?.id;
+    const photoFile = document.getElementById('nu-photo')?.files[0];
+    if (newId && photoFile) {
+      const fd = new FormData();
+      fd.append('photo', photoFile);
+      await API.post(`/agents/${newId}/profile-photo`, fd, true);
+    }
     showToast(`✅ User ${nama} berhasil ditambahkan!`, 'success');
     setUserTab('list');
     loadUserList();
     ['nu-nama','nu-email','nu-password','nu-wa','nu-telegram','nu-kantor','nu-lsp'].forEach(id => setVal(id,''));
+    const nuPhoto = document.getElementById('nu-photo');
+    if (nuPhoto) nuPhoto.value = '';
+    const nuWrap = document.getElementById('nu-photo-wrap');
+    if (nuWrap) nuWrap.innerHTML = '<i class="fa-solid fa-camera" style="color:#D4A853;font-size:16px"></i>';
+    const nuNameLbl = document.getElementById('nu-photo-name');
+    if (nuNameLbl) nuNameLbl.textContent = 'Pilih foto profil...';
   } catch (e) {
     showToast('Gagal: ' + e.message, 'error');
   } finally {
