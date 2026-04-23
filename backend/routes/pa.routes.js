@@ -55,9 +55,9 @@ router.get('/credentials', authenticate, async (req, res) => {
 // POST /pa/credentials — simpan/update kredensial
 router.post('/credentials', authenticate, async (req, res) => {
   try {
-    const { ig_username, ig_password, wa_number, pa_enabled } = req.body;
+    const { ig_username, ig_password, wa_number, pa_enabled, fonnte_token } = req.body;
     const result = await paService.saveCredentials(req.user.id, {
-      ig_username, ig_password, wa_number, pa_enabled
+      ig_username, ig_password, wa_number, pa_enabled, fonnte_token
     });
     res.json(result);
   } catch (e) {
@@ -76,48 +76,120 @@ router.post('/zapier-secret/generate', authenticate, async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════
+// PA WA SESSION (whatsapp-web.js)
+// ════════════════════════════════════════════════════════
+
+const waBlastService = require('../services/wa-blast.service');
+
+// GET /pa/wa/qr — inisialisasi WA client & kembalikan QR code
+router.get('/wa/qr', authenticate, async (req, res) => {
+  try {
+    const result = await waBlastService.getQR(req.user.id);
+    res.json({ success: true, ...result });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// GET /pa/wa/status — cek status WA session
+router.get('/wa/status', authenticate, (req, res) => {
+  const status = waBlastService.getStatus(req.user.id);
+  res.json({ success: true, status });
+});
+
+// POST /pa/wa/pair — minta pairing code (untuk pengguna HP)
+router.post('/wa/pair', authenticate, async (req, res) => {
+  try {
+    const { phone_number } = req.body;
+    if (!phone_number) return res.status(400).json({ success: false, message: 'phone_number wajib diisi' });
+    const result = await waBlastService.requestPairingCode(req.user.id, phone_number);
+    res.json({ success: true, ...result });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// DELETE /pa/wa/session — logout WA session
+router.delete('/wa/session', authenticate, async (req, res) => {
+  try {
+    await waBlastService.logout(req.user.id);
+    res.json({ success: true, message: 'WA session logout' });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════
 // PA JOBS
 // ════════════════════════════════════════════════════════
 
 // POST /pa/trigger — trigger job baru
 router.post('/trigger', authenticate, async (req, res) => {
   try {
-    const { type, listing_id, video_url, recipients, session_number } = req.body;
+    const { type, listing_id, video_url, recipients, session_number, message_template, sessions } = req.body;
 
     if (!type || !['ig_reels', 'ig_story', 'wa_blast'].includes(type)) {
       return res.status(400).json({ success: false, message: 'type harus: ig_reels|ig_story|wa_blast' });
     }
 
-    if (type.startsWith('ig_') && !video_url) {
-      return res.status(400).json({ success: false, message: 'video_url wajib untuk IG job' });
-    }
-    if (type === 'wa_blast' && (!recipients || recipients.length === 0)) {
-      return res.status(400).json({ success: false, message: 'recipients wajib untuk WA Blast' });
-    }
-
-    // Ambil data listing & agen untuk caption dll
+    // Ambil judul listing
     let listingTitle = '';
     if (listing_id) {
       const listings = await sheetsService.getRows(SHEETS.LISTING);
       const listing  = listings.find(r => r[0] === listing_id);
-      listingTitle = listing ? listing[6] : listing_id; // col G = Judul
+      listingTitle = listing ? listing[6] : listing_id;
+    }
+
+    // ── WA Blast: queue system ────────────────────────────
+    if (type === 'wa_blast') {
+      // sessions: [[{nomor,type},...], [...], ...] maks 4 sesi
+      const sessionList = sessions || (recipients ? [recipients] : []);
+      if (sessionList.length === 0 || sessionList.every(s => !s || s.length === 0)) {
+        return res.status(400).json({ success: false, message: 'sessions wajib untuk WA Blast' });
+      }
+      const result = await paService.triggerBlastQueue({
+        agentId:      req.user.id,
+        agentNama:    req.user.nama,
+        listingId:    listing_id,
+        listingTitle,
+        sessions:     sessionList,
+        message:      message_template || '',
+        triggeredBy:  req.user.id,
+      });
+      return res.json(result);
+    }
+
+    // ── IG Jobs: alur lama ────────────────────────────────
+    if (!video_url) {
+      return res.status(400).json({ success: false, message: 'video_url wajib untuk IG job' });
     }
 
     const result = await paService.triggerJob({
-      agentId:      req.user.id,
-      agentNama:    req.user.nama,
+      agentId:         req.user.id,
+      agentNama:       req.user.nama,
       type,
-      listingId:    listing_id,
+      listingId:       listing_id,
       listingTitle,
-      videoUrl:     video_url,
+      videoUrl:        video_url,
       recipients,
-      sessionNumber: session_number || 1,
-      triggeredBy:  req.user.id,
+      sessionNumber:   session_number || 1,
+      triggeredBy:     req.user.id,
+      messageTemplate: message_template || null,
     });
 
     res.json(result);
   } catch (e) {
     res.status(400).json({ success: false, message: e.message });
+  }
+});
+
+// POST /pa/jobs/:jobId/complete — agen konfirmasi sesi WA Blast sudah dikirim
+router.post('/jobs/:jobId/complete', authenticate, async (req, res) => {
+  try {
+    const result = await paService.completeBlastJob(req.params.jobId, req.user.id);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
   }
 });
 

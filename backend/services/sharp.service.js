@@ -21,10 +21,9 @@ const TPL_DIR = path.join(__dirname, '../../frontend/assets/template_profile');
 
 // ── Layout constants ─────────────────────────────────────────────────────────
 // foto_profile.png  320×320, center (160,160)
-//   whiteR : 128 — white fill covers template crosshatch (inside gold ring)
-//   photoR : 112 — circular photo (70% of 320px canvas)
-//   textR  : 120 — arc text in tight white ring (128-112=16px ring)
-const PROFILE = { W: 320, H: 320, cx: 160, cy: 160, whiteR: 128, photoR: 112, textR: 120 };
+//   whiteR : 138 — white fill covers template crosshatch (inside gold ring), photoR+2px gap
+//   photoR : 136 — circular photo (85% of 320px canvas → diameter 272px)
+const PROFILE = { W: 320, H: 320, cx: 160, cy: 160, whiteR: 138, photoR: 136 };
 
 // Bisnis_Card.png  600×1050
 //   photo circle   : center (300,263), r=128

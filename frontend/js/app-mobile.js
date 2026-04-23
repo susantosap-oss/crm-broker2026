@@ -807,7 +807,7 @@ async function openListingDetail(id) {
       </button>` : ''}
 
       <!-- OpenClaw Personal Assistant -->
-      ${STATE.user && !['agen','koordinator'].includes(STATE.user.role) ? `
+      ${STATE.user ? `
       <div style="width:100%;padding:12px 0 4px;border-top:1px solid rgba(255,255,255,0.07)">
         <div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;font-weight:600">
           <i class="fa-solid fa-robot" style="margin-right:4px"></i>Personal Assistant (OpenClaw)

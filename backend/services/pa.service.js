@@ -14,9 +14,13 @@
 
 const crypto   = require('crypto');
 const axios    = require('axios');
+const cron     = require('node-cron');
 const { v4: uuidv4 } = require('uuid');
 const sheetsService  = require('./sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
+
+const SESSION_DELAY_MIN = 180; // menit antar sesi WA Blast
+const MAX_SESSIONS_PER_DAY = 4;
 
 // ── Encryption (AES-256-GCM) ─────────────────────────────
 const ENC_KEY = Buffer.from(process.env.PA_ENCRYPTION_KEY || '', 'hex'); // 32-byte hex
@@ -57,26 +61,25 @@ class PAService {
     if (!row) return null;
 
     return {
-      id:            row[0],
-      agent_id:      row[1],
-      ig_username:   row[2],
-      // Password tidak dikirim ke frontend
-      wa_number:     row[4],
-      pa_enabled:    row[5] === 'TRUE',
-      ig_status:     row[12] || 'not_configured',
-      wa_status:     row[13] || 'not_configured',
-      last_ig_login: row[10] || null,
-      last_wa_login: row[11] || null,
-      zapier_secret: row[14] || null,  // null = belum di-generate
+      id:             row[0],
+      agent_id:       row[1],
+      ig_username:    row[2],
+      wa_number:      row[4],
+      pa_enabled:     row[5] === 'TRUE',
+      ig_status:      row[12] || 'not_configured',
+      wa_status:      row[13] || 'not_configured',
+      last_ig_login:  row[10] || null,
+      last_wa_login:  row[11] || null,
+      zapier_secret:  row[14] || null,
+      fonnte_token:   row[15] ? '***' : null, // ada/tidak ada, nilai asli tidak dikirim
     };
   }
 
-  async saveCredentials(agentId, { ig_username, ig_password, wa_number, pa_enabled, zapier_secret }) {
+  async saveCredentials(agentId, { ig_username, ig_password, wa_number, pa_enabled, zapier_secret, fonnte_token }) {
     const existing = await this._findCredRow(agentId);
     const now      = new Date().toISOString();
 
     if (existing) {
-      // Update row yang sudah ada
       const rowIdx = existing.rowIndex;
       const updates = {};
 
@@ -85,28 +88,20 @@ class PAService {
       if (wa_number     !== undefined) updates[4]  = wa_number;
       if (pa_enabled    !== undefined) updates[5]  = pa_enabled ? 'TRUE' : 'FALSE';
       if (zapier_secret !== undefined) updates[14] = zapier_secret;
-      updates[9] = now; // Updated_At
+      if (fonnte_token  !== undefined) updates[15] = fonnte_token; // simpan plain (token publik Fonnte)
+      updates[9] = now;
 
       await sheetsService.updateRowCells(SHEETS.PA_CREDENTIALS, rowIdx, updates);
       return { success: true, message: 'Credentials updated' };
     } else {
-      // Insert baru
       const newRow = [
-        uuidv4(),        // ID
-        agentId,         // Agen_ID
-        ig_username || '', // IG_Username
-        ig_password ? encrypt(ig_password) : '', // IG_Password_Enc
-        wa_number || '', // WA_Number
-        pa_enabled ? 'TRUE' : 'FALSE', // PA_Enabled
-        '',              // IG_Session_GCS
-        '',              // WA_Session_GCS
-        now,             // Created_At
-        now,             // Updated_At
-        '',              // Last_IG_Login
-        '',              // Last_WA_Login
-        'not_configured',// IG_Status
-        'not_configured',// WA_Status
-        '',              // Zapier_Secret (diisi saat agen generate pertama kali)
+        uuidv4(), agentId,
+        ig_username || '', ig_password ? encrypt(ig_password) : '',
+        wa_number || '', pa_enabled ? 'TRUE' : 'FALSE',
+        '', '', now, now, '', '',
+        'not_configured', 'not_configured',
+        '',                   // Zapier_Secret
+        fonnte_token || '',   // Fonnte_Token
       ];
       await sheetsService.appendRow(SHEETS.PA_CREDENTIALS, newRow);
       return { success: true, message: 'Credentials saved' };
@@ -117,10 +112,11 @@ class PAService {
     const row = await this._findCredRow(agentId);
     if (!row) return null;
     return {
-      ig_username: row.data[2],
-      ig_password: decrypt(row.data[3]),
-      wa_number:   row.data[4],
-      pa_enabled:  row.data[5] === 'TRUE',
+      ig_username:  row.data[2],
+      ig_password:  decrypt(row.data[3]),
+      wa_number:    row.data[4],
+      pa_enabled:   row.data[5] === 'TRUE',
+      fonnte_token: row.data[15] || '',
     };
   }
 
@@ -148,7 +144,7 @@ class PAService {
    * Trigger job ke OpenClaw.
    * Kalau ada Cloud Tasks, pakai itu. Fallback ke direct HTTP.
    */
-  async triggerJob({ agentId, agentNama, type, listingId, listingTitle, videoUrl, recipients, sessionNumber = 1, triggeredBy }) {
+  async triggerJob({ agentId, agentNama, type, listingId, listingTitle, videoUrl, recipients, sessionNumber = 1, triggeredBy, messageTemplate }) {
     const creds = await this.getDecryptedCredentials(agentId);
     if (!creds || !creds.pa_enabled) {
       throw new Error('PA belum dikonfigurasi atau tidak aktif untuk agen ini');
@@ -184,26 +180,27 @@ class PAService {
       triggeredBy || agentId,
     ]);
 
-    // Kirim ke OpenClaw worker
-    const payload = {
-      job_id:   jobId,
-      agent_id: agentId,
-      type,
-      payload: {
-        video_url:       videoUrl,
-        caption:         await this._buildCaption(listingId, listingTitle),
-        listing_id:      listingId,
-        listing_title:   listingTitle,
-        type,
-        today_count:     todayCount,
-        ig_username:     creds.ig_username,
-        ig_password:     creds.ig_password,
-        recipients:      recipients || [],
-        session_number:  sessionNumber,
-      }
-    };
+    // Dispatch job
+    const message = messageTemplate || await this._buildCaption(listingId, listingTitle);
 
-    await this._sendToOpenClaw(payload);
+    if (type === 'wa_blast') {
+      // Fire-and-forget: jalankan langsung inline (tidak butuh worker terpisah)
+      this._runWaBlast(jobId, agentId, recipients, message).catch(err =>
+        console.error(`[PA] WA Blast job ${jobId} error:`, err.message)
+      );
+    } else {
+      // IG jobs — masih pending implementasi worker
+      const payload = {
+        job_id: jobId, agent_id: agentId, type,
+        payload: {
+          video_url: videoUrl, caption: message,
+          listing_id: listingId, listing_title: listingTitle, type,
+          today_count: todayCount,
+          ig_username: creds.ig_username, ig_password: creds.ig_password,
+        },
+      };
+      await this._sendToOpenClaw(payload);
+    }
 
     // Broadcast ke SSE clients
     this._broadcast(agentId, {
@@ -336,6 +333,265 @@ class PAService {
   // PRIVATE HELPERS
   // ════════════════════════════════════════════════════════
 
+  // ════════════════════════════════════════════════════════
+  // WA BLAST QUEUE — 4 sesi/hari, jeda 180 menit antar sesi
+  // ════════════════════════════════════════════════════════
+
+  /**
+   * Terima semua sesi sekaligus, jadwalkan masing-masing.
+   * sessions: Array of Array<{nomor, type}> — maks 4 sesi, tiap sesi maks 5 nomor
+   */
+  async triggerBlastQueue({ agentId, agentNama, listingId, listingTitle, sessions, message, triggeredBy }) {
+    const creds = await this.getDecryptedCredentials(agentId);
+    if (!creds || !creds.pa_enabled) {
+      throw new Error('PA belum dikonfigurasi atau tidak aktif');
+    }
+
+    // Cek berapa sesi hari ini yang masih active
+    const todayJobs = await this._getTodayBlastJobs(agentId);
+    const activeSessions = todayJobs.filter(j => !['expired', 'cancelled'].includes(j[4]));
+    const remaining = MAX_SESSIONS_PER_DAY - activeSessions.length;
+
+    if (remaining <= 0) {
+      throw new Error(`Batas harian ${MAX_SESSIONS_PER_DAY} sesi sudah tercapai`);
+    }
+
+    const toSchedule = sessions.slice(0, remaining);
+    const now = new Date();
+    const jobIds = [];
+
+    const hasFonnte = !!(creds.fonnte_token);
+
+    for (let i = 0; i < toSchedule.length; i++) {
+      const recipients = toSchedule[i];
+      if (!recipients || recipients.length === 0) continue;
+
+      const delayMs = i === 0
+        ? 5_000
+        : i * SESSION_DELAY_MIN * 60 * 1000 + 5_000;
+
+      const scheduledAt = new Date(now.getTime() + delayMs).toISOString();
+      const jobId = uuidv4();
+      const status = hasFonnte ? 'scheduled' : 'scheduled'; // sama, tapi mode beda
+
+      await sheetsService.appendRow(SHEETS.PA_JOBS, [
+        jobId, agentId, agentNama, 'wa_blast', status,
+        listingId || '', listingTitle || '', '',
+        JSON.stringify(recipients),
+        String(i + 1),
+        message || '', '',
+        now.toISOString(), '', '',
+        triggeredBy || agentId,
+        scheduledAt,
+        hasFonnte ? 'fonnte' : 'manual', // col 17: mode
+      ]);
+
+      jobIds.push({ jobId, sessionNumber: i + 1, scheduledAt, mode: hasFonnte ? 'fonnte' : 'manual' });
+    }
+
+    this._broadcast(agentId, {
+      event:   'blast_queued',
+      job_ids: jobIds,
+      mode:    hasFonnte ? 'fonnte' : 'manual',
+      message: `✅ ${jobIds.length} sesi WA Blast dijadwalkan PA (${hasFonnte ? 'Fully Auto via Fonnte' : 'Semi Manual'})`,
+      ts:      now.toISOString(),
+    });
+
+    return { success: true, sessions: jobIds, mode: hasFonnte ? 'fonnte' : 'manual' };
+  }
+
+  /** Tandai job WA Blast sebagai selesai (dipanggil dari frontend setelah agen kirim semua wa.me) */
+  async completeBlastJob(jobId, agentId) {
+    await this._updateJobStatus(jobId, 'completed');
+    this._broadcast(agentId, {
+      event:   'job_done',
+      job_id:  jobId,
+      type:    'wa_blast',
+      message: 'Sesi WA Blast ditandai selesai',
+    });
+    return { success: true };
+  }
+
+  /** Cron tiap menit — cek sesi yang sudah waktunya */
+  async _checkScheduledBlasts() {
+    try {
+      const rows = await sheetsService.getRows(SHEETS.PA_JOBS);
+      const now  = new Date();
+
+      for (let idx = 0; idx < rows.length; idx++) {
+        const row = rows[idx];
+        if (row[3] !== 'wa_blast')  continue;
+        if (row[4] !== 'scheduled') continue;
+
+        const scheduledAt = row[16] ? new Date(row[16]) : null;
+        if (!scheduledAt || scheduledAt > now) continue;
+
+        const jobId      = row[0];
+        const agentId    = row[1];
+        const recipients = row[8] ? JSON.parse(row[8]) : [];
+        const message    = row[10] || '';
+        const sessionNum = row[9] || '1';
+
+        // Update status → notified
+        await sheetsService.updateRowCells(SHEETS.PA_JOBS, idx + 2, { 4: 'notified' });
+
+        const blastMode = row[17] || 'manual';
+
+        if (blastMode === 'fonnte') {
+          // Fonnte: kirim otomatis dari server
+          const creds = await this.getDecryptedCredentials(agentId);
+          if (creds?.fonnte_token) {
+            this._runFontteBlast(jobId, agentId, recipients, message, creds.fonnte_token).catch(console.error);
+          } else {
+            // Token hilang → fallback ke manual
+            this._broadcast(agentId, { event: 'wa_blast_due', job_id: jobId, session_number: parseInt(sessionNum), recipients, message, ts: now.toISOString() });
+          }
+        } else {
+          // Manual: broadcast SSE → trigger frontend buka wa.me
+          this._broadcast(agentId, {
+            event:          'wa_blast_due',
+            job_id:         jobId,
+            session_number: parseInt(sessionNum),
+            recipients,
+            message,
+            ts:             now.toISOString(),
+          });
+        }
+
+        // Push notification ke agent
+        try {
+          const pushSvc = require('./push.service');
+          await pushSvc.sendToUser(agentId, {
+            title: `📲 WA Blast Sesi ${sessionNum} Siap`,
+            body:  `${recipients.length} nomor menunggu dikirim. Buka CRM sekarang.`,
+            data:  { type: 'wa_blast_due', job_id: jobId },
+          });
+        } catch (_) {}
+      }
+    } catch (e) {
+      console.error('[PA] _checkScheduledBlasts error:', e.message);
+    }
+  }
+
+  async _getTodayBlastJobs(agentId) {
+    const rows  = await sheetsService.getRows(SHEETS.PA_JOBS);
+    const today = new Date().toISOString().slice(0, 10);
+    return rows.filter(r =>
+      r[1] === agentId &&
+      r[3] === 'wa_blast' &&
+      r[12] && r[12].startsWith(today)
+    );
+  }
+
+  async _runFontteBlast(jobId, agentId, recipients, message, fontteToken) {
+    await this._updateJobStatus(jobId, 'running');
+    this._broadcast(agentId, {
+      event: 'job_started', job_id: jobId,
+      message: `🤖 PA mengirim WA Blast via Fonnte (${recipients.length} nomor)...`,
+    });
+
+    const results = [];
+    let cumulativeDelay = 0;
+
+    for (let i = 0; i < recipients.length; i++) {
+      const { nomor } = recipients[i];
+      const num = nomor.replace(/\D/g, '').replace(/^0/, '62');
+      // Delay antar nomor: 20–60 detik acak
+      const delayThisMsg = i === 0 ? 0 : (20 + Math.floor(Math.random() * 41));
+      cumulativeDelay += delayThisMsg;
+
+      try {
+        await axios.post('https://api.fonnte.com/send', {
+          target:      num,
+          message,
+          delay:       cumulativeDelay, // Fonnte kirim setelah X detik
+          countryCode: '62',
+          typing:      true,            // simulasi typing
+        }, {
+          headers: { Authorization: fontteToken },
+          timeout: 10_000,
+        });
+
+        results.push({ nomor, status: 'queued' });
+        this._broadcast(agentId, {
+          event: 'wa_progress', job_id: jobId, nomor,
+          status: 'queued',
+          message: `⏳ Dijadwalkan ke ${num} (${cumulativeDelay}s)`,
+        });
+      } catch (e) {
+        const errMsg = e.response?.data?.reason || e.message;
+        results.push({ nomor, status: 'failed', error: errMsg });
+        this._broadcast(agentId, {
+          event: 'wa_progress', job_id: jobId, nomor,
+          status: 'failed', message: `❌ Gagal ke ${num}: ${errMsg}`,
+        });
+      }
+    }
+
+    const failedCount = results.filter(r => r.status === 'failed').length;
+    await this._updateJobStatus(jobId, failedCount === results.length ? 'failed' : 'completed');
+    this._broadcast(agentId, {
+      event:   'job_done', job_id: jobId, type: 'wa_blast', results,
+      message: `✅ Fonnte: ${results.length - failedCount}/${results.length} pesan dijadwalkan`,
+    });
+  }
+
+  async _runWaBlast(jobId, agentId, recipients, message) {
+    const waBlastService = require('./wa-blast.service');
+
+    await this._updateJobStatus(jobId, 'running');
+    this._broadcast(agentId, {
+      event: 'job_started', job_id: jobId,
+      message: `WA Blast dimulai — ${recipients.length} nomor antrian`,
+    });
+
+    try {
+      const results = await waBlastService.sendBlast(agentId, recipients, message, {
+        onProgress: ({ nomor, status, error }) => {
+          this._broadcast(agentId, {
+            event:   'wa_progress',
+            job_id:  jobId,
+            nomor, status, error,
+            message: status === 'sent'
+              ? `✅ Terkirim ke ${nomor}`
+              : `❌ Gagal ke ${nomor}: ${error}`,
+          });
+        },
+      });
+
+      const failedCount = results.filter(r => r.status === 'failed').length;
+      const finalStatus = failedCount === results.length ? 'failed' : 'completed';
+      await this._updateJobStatus(jobId, finalStatus);
+      this._broadcast(agentId, {
+        event:   'job_done',
+        job_id:  jobId, results,
+        message: `WA Blast selesai: ${results.length - failedCount}/${results.length} terkirim`,
+      });
+
+    } catch (e) {
+      await this._updateJobStatus(jobId, 'failed', e.message);
+      this._broadcast(agentId, {
+        event: 'job_failed', job_id: jobId, message: e.message,
+      });
+    }
+  }
+
+  async _updateJobStatus(jobId, status, errorMsg = '') {
+    try {
+      const rows   = await sheetsService.getRows(SHEETS.PA_JOBS);
+      const rowIdx = rows.findIndex(r => r[0] === jobId);
+      if (rowIdx < 0) return;
+      const updates = { 4: status };
+      if (errorMsg) updates[11] = errorMsg;
+      const now = new Date().toISOString();
+      if (status === 'running')                        updates[13] = now; // Started_At
+      if (status === 'completed' || status === 'failed') updates[14] = now; // Finished_At
+      await sheetsService.updateRowCells(SHEETS.PA_JOBS, rowIdx + 2, updates);
+    } catch (e) {
+      console.error('[PA] _updateJobStatus error:', e.message);
+    }
+  }
+
   async _sendToOpenClaw(payload) {
     const url = process.env.OPENCLAW_URL;
     if (!url) throw new Error('OPENCLAW_URL not configured');
@@ -411,4 +667,9 @@ function _typeLabel(type) {
   return labels[type] || type;
 }
 
-module.exports = new PAService();
+const _paInstance = new PAService();
+
+// Cron: cek scheduled WA Blast tiap menit
+cron.schedule('* * * * *', () => _paInstance._checkScheduledBlasts());
+
+module.exports = _paInstance;

@@ -8,6 +8,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.16",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.0",
@@ -27,6 +28,7 @@
     "node-cron": "^4.2.1",
     "node-telegram-bot-api": "^0.66.0",
     "pdfkit": "^0.15.0",
+    "qrcode": "^1.5.3",
     "sharp": "^0.33.0",
     "uuid": "^9.0.0",
     "web-push": "^3.6.7"

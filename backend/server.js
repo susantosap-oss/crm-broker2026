@@ -17,6 +17,9 @@ const path    = require('path');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Cloud Run / Cloudflare proxy — trust 1 hop supaya rate-limit dapat IP asli
+app.set('trust proxy', 1);
+
 // ── Middleware ─────────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(compression());

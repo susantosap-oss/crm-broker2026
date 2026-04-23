@@ -82,8 +82,10 @@ function _handleSSEEvent(data) {
     _showPAToast(`❌ PA gagal: ${message}`, 'error');
   } else if (event === 'qr_required') {
     _showQRModal(platform, qr_image, message);
-  } else if (event === 'job_queued') {
+  } else if (event === 'job_queued' || event === 'blast_queued') {
     _showPAToast(`⏳ ${message}`, 'info');
+  } else if (event === 'wa_blast_due') {
+    _openWABlastSession(data);
   }
 }
 
@@ -165,18 +167,40 @@ async function openPACredentialsSidebar() {
 
         <!-- Section WA -->
         <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px">
-          <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
             <span style="font-size:13px;font-weight:600;color:#fff">📲 WhatsApp</span>
-            <span class="pa-status-badge ${_statusBadgeClass(creds?.wa_status)}">${_statusLabel(creds?.wa_status)}</span>
           </div>
           <div>
-            <label class="form-label">Nomor WhatsApp Business</label>
+            <label class="form-label">Nomor WhatsApp (referensi)</label>
             <input class="form-input" id="pa-wa-number" type="tel"
               placeholder="contoh: 628123456789 (awali 62, tanpa +)"
               value="${creds?.wa_number || ''}" autocomplete="off">
-            <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:6px 0 0;line-height:1.5">📱 Nomor harus aktif di WA Web. Scan QR diminta saat pertama kali atau session expired.</p>
+            <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:6px 0 0;line-height:1.5">📱 Nomor WA agen — dipakai untuk WA Blast mode Semi Manual.</p>
           </div>
-          ${creds?.last_wa_login ? `<div style="font-size:11px;color:rgba(212,175,55,0.6)">Paired terakhir: ${_formatDate(creds.last_wa_login)}</div>` : ''}
+        </div>
+
+        <!-- Section Fonnte (Fully Auto AI) -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(37,211,102,0.15);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <span style="font-size:13px;font-weight:600;color:#fff">🤖 Fonnte — Fully Auto AI</span>
+              <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">WA Blast dikirim otomatis oleh PA tanpa intervensi</div>
+            </div>
+            <span style="font-size:10px;padding:2px 8px;border-radius:8px;font-weight:600;
+              ${creds?.fonnte_token ? 'background:rgba(37,211,102,0.15);color:#25d366' : 'background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.3)'}">
+              ${creds?.fonnte_token ? '✅ Terpasang' : '⚪ Belum'}
+            </span>
+          </div>
+          <div>
+            <label class="form-label">Token Fonnte</label>
+            <input class="form-input" id="pa-fonnte-token" type="password"
+              placeholder="${creds?.fonnte_token ? '••••••••••• (sudah tersimpan)' : 'Masukkan token dari fonnte.com'}"
+              autocomplete="new-password">
+            <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:6px 0 0;line-height:1.6">
+              Daftar & hubungkan WA di <b style="color:rgba(255,255,255,0.5)">fonnte.com</b> → salin Device Token → paste di sini.<br>
+              Jika diisi, WA Blast berjalan <b style="color:#25d366">fully otomatis</b> tanpa agen membuka WA.
+            </p>
+          </div>
         </div>
 
         <!-- Batas Harian -->
@@ -185,7 +209,7 @@ async function openPACredentialsSidebar() {
           <div class="pa-limits-grid" id="pa-limits-grid">
             <div class="pa-limit-card"><span class="pa-limit-icon">🎬</span><span class="pa-limit-label">IG Reels</span><span class="pa-limit-count" id="pa-count-ig_reels">-/5</span></div>
             <div class="pa-limit-card"><span class="pa-limit-icon">📸</span><span class="pa-limit-label">IG Story</span><span class="pa-limit-count" id="pa-count-ig_story">-/5</span></div>
-            <div class="pa-limit-card"><span class="pa-limit-icon">📲</span><span class="pa-limit-label">WA Blast</span><span class="pa-limit-count" id="pa-count-wa_blast">-/2</span></div>
+            <div class="pa-limit-card"><span class="pa-limit-icon">📲</span><span class="pa-limit-label">WA Blast</span><span class="pa-limit-count" id="pa-count-wa_blast">-/4</span></div>
           </div>
         </div>
 
@@ -502,7 +526,9 @@ function closePACredentialsSidebar() {
   const sheet = sidebar.querySelector('.modal-sheet');
   if (sheet) { sheet.style.opacity = '0'; sheet.style.transform = 'translateY(16px)'; }
   setTimeout(() => sidebar.remove(), 200);
+  _waQRPollStop();
 }
+
 
 async function savePACredentials() {
   const igUsername = document.getElementById('pa-ig-username')?.value?.trim();
@@ -510,18 +536,22 @@ async function savePACredentials() {
   const waNumber   = document.getElementById('pa-wa-number')?.value?.trim();
   const paEnabled  = document.getElementById('pa-enabled-toggle')?.checked;
 
+  const fontteToken = document.getElementById('pa-fonnte-token')?.value?.trim();
+
   const body = { pa_enabled: paEnabled };
-  if (igUsername) body.ig_username = igUsername;
-  if (igPassword) body.ig_password = igPassword;
-  if (waNumber)   body.wa_number   = waNumber;
+  if (igUsername)   body.ig_username  = igUsername;
+  if (igPassword)   body.ig_password  = igPassword;
+  if (waNumber)     body.wa_number    = waNumber;
+  if (fontteToken)  body.fonnte_token = fontteToken;
 
   try {
     await window.API.post('/pa/credentials', body);
     _showPAToast('✅ Pengaturan PA disimpan', 'success');
 
-    // Clear password field setelah simpan
     const pwdField = document.getElementById('pa-ig-password');
     if (pwdField) pwdField.value = '';
+    const ftField = document.getElementById('pa-fonnte-token');
+    if (ftField) ftField.value = '';
   } catch (e) {
     _showPAToast(`❌ Gagal simpan: ${e.message}`, 'error');
   }
@@ -927,145 +957,264 @@ async function submitViGenRender(listingId) {
 // MODAL WA BLAST
 // ═══════════════════════════════════════════════════════════
 
-function openWABlastModal(listingId) {
-  document.getElementById('pa-wa-modal')?.remove();
-
+// ── Helpers ──────────────────────────────────────────────────────
+function _buildWAMessage(listingId) {
   const listing = (window._allListings || []).find(l => l.ID === listingId);
   const project = (window._projectsData || []).find(p => p.ID === listingId);
-  const title   = listing?.Judul || project?.Nama_Proyek || listingId;
+  const agen    = (window.STATE?.user?.nama || 'Tim MANSION Realty').split(' ').slice(0,2).join(' ');
+  if (listing) {
+    const harga  = listing.Harga_Format || (listing.Harga ? 'Rp\u00a0' + Number(listing.Harga).toLocaleString('id-ID') : 'Hubungi Agen');
+    const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ') || '—';
+    return `Halo! 👋\n\nSaya ingin menawarkan properti eksklusif:\n\n🏠 *${listing.Judul || 'Properti'}*\n💰 ${harga}\n📍 ${lokasi}\n\nProperti ini sangat strategis. Apakah Anda tertarik mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
+  } else if (project) {
+    const harga = project.Harga_Format || project.Harga_Mulai || 'On Request';
+    return `Halo! 👋\n\nSaya ingin menawarkan proyek properti eksklusif:\n\n🏗️ *${project.Nama_Proyek || 'Proyek'}*\n💰 Mulai dari ${harga}\n\nProyek ini sangat strategis. Apakah Anda tertarik mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
+  }
+  return `Halo! 👋\n\nSaya ingin menawarkan properti eksklusif dari MANSION Realty.\n\nApakah Anda tertarik untuk mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
+}
+
+function _buildSessionInputs(sessionIdx) {
+  const label = sessionIdx === 0
+    ? '<span style="font-size:10px;background:rgba(37,211,102,0.15);color:#25d366;padding:1px 7px;border-radius:8px;font-weight:600">⚡ Langsung</span>'
+    : `<span style="font-size:10px;color:rgba(255,255,255,0.35)">+${sessionIdx * 180} mnt</span>`;
+
+  return `
+    <div class="wa-session-block" id="wa-sess-${sessionIdx}"
+      style="border:1px solid rgba(255,255,255,0.07);border-radius:12px;overflow:hidden;margin-bottom:8px">
+
+      <!-- Header (accordion toggle) -->
+      <div onclick="_toggleWASession(${sessionIdx})"
+        style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
+               cursor:pointer;background:rgba(255,255,255,0.03);user-select:none">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;font-weight:700;color:#fff">Sesi ${sessionIdx + 1}</span>
+          ${label}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="wa-sess-${sessionIdx}-badge"
+            style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.3)">0/5</span>
+          <span style="font-size:10px;color:rgba(255,255,255,0.2)">▾</span>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div id="wa-sess-${sessionIdx}-body"
+        style="padding:10px 14px;display:${sessionIdx === 0 ? 'block' : 'none'}">
+
+        <!-- Tombol pilih kontak (hanya tampil jika Contact Picker API tersedia) -->
+        <button id="wa-sess-${sessionIdx}-pick"
+          onclick="_pickContactsForSession(${sessionIdx})"
+          style="display:none;width:100%;margin-bottom:10px;padding:8px;border:1px dashed rgba(37,211,102,0.4);
+                 border-radius:9px;background:rgba(37,211,102,0.06);color:#25d366;
+                 font-size:12px;font-weight:600;cursor:pointer">
+          📱 Pilih dari Kontak HP (maks 5)
+        </button>
+
+        <!-- Input nomor -->
+        ${[0,1,2,3,4].map(j => `
+          <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+            <span style="font-size:10px;color:rgba(255,255,255,0.25);width:14px;text-align:right;flex-shrink:0">${j+1}</span>
+            <input type="tel" class="pa-input wa-num" data-sess="${sessionIdx}" data-slot="${j}"
+              placeholder="628xxx..."
+              style="flex:1;margin:0;font-size:13px;padding:7px 10px"
+              oninput="_waNumInput(this)">
+          </div>
+        `).join('')}
+
+        <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:6px">
+          Format 628xxx (tanpa +). Kosongkan slot yang tidak dipakai.
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function _toggleWASession(idx) {
+  const body = document.getElementById(`wa-sess-${idx}-body`);
+  if (body) body.style.display = body.style.display === 'none' ? 'block' : 'none';
+}
+
+function _waNumInput(input) {
+  const sess  = input.dataset.sess;
+  const block = document.getElementById(`wa-sess-${sess}`);
+  const inputs = block?.querySelectorAll('.wa-num') || [];
+  const filled = [...inputs].filter(i => i.value.trim()).length;
+  const badge  = document.getElementById(`wa-sess-${sess}-badge`);
+  if (badge) {
+    badge.textContent  = `${filled}/5`;
+    badge.style.color  = filled > 0 ? '#4ade80' : 'rgba(255,255,255,0.3)';
+  }
+}
+
+async function _pickContactsForSession(sessionIdx) {
+  if (!('contacts' in navigator && 'ContactsManager' in window)) {
+    _showPAToast('Fitur pilih kontak tidak tersedia di browser ini', 'error');
+    return;
+  }
+  try {
+    const contacts = await navigator.contacts.select(['name', 'tel'], { multiple: true });
+    if (!contacts || contacts.length === 0) return;
+
+    const inputs = document.querySelectorAll(`#wa-sess-${sessionIdx} .wa-num`);
+    let filled = 0;
+    for (const input of inputs) {
+      if (input.value.trim()) filled++;
+    }
+
+    for (const contact of contacts) {
+      if (filled >= 5) break;
+      const tel = (contact.tel || [])[0];
+      if (!tel) continue;
+      // Normalize to 628xxx format
+      let num = tel.replace(/\D/g, '');
+      if (num.startsWith('0')) num = '62' + num.slice(1);
+      else if (!num.startsWith('62')) num = '62' + num;
+
+      // Find next empty input
+      for (const input of inputs) {
+        if (!input.value.trim()) {
+          input.value = num;
+          filled++;
+          break;
+        }
+      }
+    }
+
+    _waNumInput({ closest: (sel) => document.getElementById(`wa-sess-${sessionIdx}`)?.closest?.(sel) ?? { querySelector: () => null } });
+    // Update badge manually
+    const allInputs = document.querySelectorAll(`#wa-sess-${sessionIdx} .wa-num`);
+    const count = [...allInputs].filter(i => i.value.trim()).length;
+    const badge = document.getElementById(`wa-sess-${sessionIdx}-badge`);
+    if (badge) {
+      badge.textContent = `${count}/5`;
+      badge.style.color = count > 0 ? '#4ade80' : 'rgba(255,255,255,0.3)';
+    }
+
+    _showPAToast(`${Math.min(contacts.length, 5 - (filled - contacts.length))} kontak dipilih`, 'success');
+  } catch (e) {
+    if (e.name !== 'AbortError') _showPAToast('Gagal membuka kontak: ' + e.message, 'error');
+  }
+}
+
+async function openWABlastModal(listingId) {
+  document.getElementById('pa-wa-modal')?.remove();
+
+  const listing   = (window._allListings || []).find(l => l.ID === listingId);
+  const project   = (window._projectsData || []).find(p => p.ID === listingId);
+  const title     = listing?.Judul || project?.Nama_Proyek || listingId;
   const escapedId = listingId.replace(/'/g, "\\'");
+  const message   = _buildWAMessage(listingId);
+
+  // Cek mode (Fonnte atau manual) dari credentials
+  let hasFonnte = false;
+  try {
+    const creds = await window.API.get('/pa/credentials');
+    hasFonnte = !!(creds?.data?.fonnte_token);
+  } catch {}
+
+  const modeHtml = hasFonnte
+    ? `<div style="display:flex;align-items:center;gap:8px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.25);border-radius:10px;padding:10px 12px">
+        <span style="font-size:18px">🤖</span>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#25d366">Fully Auto AI — Fonnte Aktif</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px">PA kirim otomatis ke semua nomor. Agen tidak perlu melakukan apapun.</div>
+        </div>
+      </div>`
+    : `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px;font-size:11px">
+        <div style="font-weight:600;color:rgba(255,255,255,0.7);margin-bottom:8px">📋 Mode Pengiriman</div>
+        <table style="width:100%;border-collapse:collapse;font-size:10px">
+          <tr style="color:rgba(255,255,255,0.35)">
+            <td style="padding:3px 6px 3px 0;width:40%">Langkah</td>
+            <td style="padding:3px 6px;color:#fbbf24;text-align:center">Semi Manual</td>
+            <td style="padding:3px 6px;color:#25d366;text-align:center">Fully Auto AI</td>
+          </tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.05)">
+            <td style="padding:4px 6px 4px 0;color:rgba(255,255,255,0.5)">Siapkan pesan</td>
+            <td style="text-align:center">🤖 PA</td><td style="text-align:center">🤖 PA</td>
+          </tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.05)">
+            <td style="padding:4px 6px 4px 0;color:rgba(255,255,255,0.5)">Jadwalkan sesi</td>
+            <td style="text-align:center">🤖 PA</td><td style="text-align:center">🤖 PA</td>
+          </tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.05)">
+            <td style="padding:4px 6px 4px 0;color:rgba(255,255,255,0.5)">Kirim notifikasi</td>
+            <td style="text-align:center">🤖 PA</td><td style="text-align:center">🤖 PA</td>
+          </tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.05)">
+            <td style="padding:4px 6px 4px 0;color:rgba(255,255,255,0.5)">Buka WA & kirim</td>
+            <td style="text-align:center;color:#fbbf24">👤 Agen</td><td style="text-align:center;color:#25d366">🤖 PA</td>
+          </tr>
+        </table>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);font-size:10px;color:rgba(255,255,255,0.3)">
+          💡 Upgrade ke <b style="color:#25d366">Fully Auto AI</b>: masukkan <b>Token Fonnte</b> di Pengaturan PA.
+        </div>
+      </div>`;
 
   const modal = document.createElement('div');
   modal.id = 'pa-wa-modal';
   modal.className = 'pa-modal-backdrop';
   modal.innerHTML = `
-    <div class="pa-modal-box">
+    <div class="pa-modal-box" style="max-height:92vh;overflow-y:auto">
       <div class="pa-modal-header">
-        <span>📲 WA Blast via PA</span>
+        <span>📲 WA Blast Queue — PA</span>
         <button onclick="document.getElementById('pa-wa-modal').remove()">✕</button>
       </div>
       <div class="pa-modal-body">
 
-        <div style="background:#1C2D52;border-radius:10px;padding:10px 12px;font-size:13px;color:#fff;font-weight:600">
+        <div style="background:#1C2D52;border-radius:10px;padding:10px 12px;font-size:13px;color:#fff;font-weight:600;margin-bottom:2px">
           ${title.replace(/</g,'&lt;').replace(/>/g,'&gt;')}
         </div>
 
-        <div class="pa-info-box">
-          ⚡ PA mengetik pesan seperti manusia (3–7 dtk/pesan). Delay antar pengiriman <strong>20–60 dtk</strong> (anti-ban).<br>
-          Maks <strong>5 nomor / sesi</strong> · <strong>2 sesi / hari</strong>.
+        ${modeHtml}
+
+        <div class="pa-info-box" style="font-size:11px;margin-top:2px">
+          ⏱ PA jadwalkan otomatis: <b>Sesi 1</b> langsung · <b>+180 mnt</b> · <b>+360 mnt</b> · <b>+540 mnt</b>
         </div>
 
-        <div class="pa-form-group">
-          <label>Sesi ke- (hari ini)</label>
-          <select class="pa-select" id="wa-session-number">
-            <option value="1">Sesi 1 (slot 1–5)</option>
-            <option value="2">Sesi 2 (slot 6–10)</option>
-          </select>
+        <!-- 4 Session Inputs -->
+        ${[0,1,2,3].map(i => _buildSessionInputs(i)).join('')}
+
+        <!-- Pesan -->
+        <div class="pa-form-group" style="margin-top:10px">
+          <label>Pesan (sama untuk semua sesi, bisa diedit)</label>
+          <textarea class="pa-textarea" id="wa-message-preview" rows="5">${message.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
         </div>
 
-        <div class="pa-form-group">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <label style="margin:0">Nomor / Grup Tujuan</label>
-            <span id="wa-selected-count" style="font-size:11px;color:#94a3b8;font-weight:600;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:10px">0 / 5 dipilih</span>
-          </div>
-          <div id="wa-recipient-list">
-            ${[1,2,3,4,5].map(i => `
-              <div class="wa-recipient-row" style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
-                <input type="checkbox" class="wa-nomor-check" onchange="_updateWACounter()"
-                  style="width:18px;height:18px;flex-shrink:0;cursor:pointer;accent-color:#4ade80">
-                <input class="pa-input wa-nomor" type="tel"
-                  placeholder="628xxx... atau nama grup WA"
-                  style="flex:1;margin:0;font-size:12px;padding:7px 10px"
-                  oninput="_autoCheckWA(this)">
-                <select class="pa-select-sm wa-type" style="width:82px;flex-shrink:0">
-                  <option value="personal">Personal</option>
-                  <option value="group">Grup WA</option>
-                </select>
-              </div>
-            `).join('')}
-          </div>
-          <div class="pa-hint">Centang nomor yang ingin dikirim. Nomor format 628xxx (tanpa +).</div>
-        </div>
-
-        <div class="pa-form-group">
-          <label>Preview Pesan</label>
-          <textarea class="pa-textarea" id="wa-message-preview" rows="5"
-            placeholder="Pesan akan otomatis diisi dari data properti..."></textarea>
-          <div class="pa-hint">Bisa diedit sebelum dikirim.</div>
-        </div>
-
-        <button class="pa-btn-primary" onclick="submitWABlast('${escapedId}')">
-          📲 Kirim via PA
+        <button class="pa-btn-primary" onclick="submitWABlastQueue('${escapedId}')">
+          📋 Queue ke PA
         </button>
       </div>
     </div>
   `;
 
   document.body.appendChild(modal);
-  _updateWACounter();
-  _loadWATemplate(listingId);
-}
 
-function _autoCheckWA(input) {
-  const row   = input.closest('.wa-recipient-row');
-  const check = row?.querySelector('.wa-nomor-check');
-  if (check) check.checked = !!input.value.trim();
-  _updateWACounter();
-}
-
-function _updateWACounter() {
-  const checks  = document.querySelectorAll('#pa-wa-modal .wa-nomor-check');
-  const count   = [...checks].filter(c => c.checked).length;
-  const el      = document.getElementById('wa-selected-count');
-  if (el) {
-    el.textContent = `${count} / 5 dipilih`;
-    el.style.color = count > 0 ? '#4ade80' : '#94a3b8';
+  // Show contact picker buttons only on compatible browsers (mobile Chrome/Android)
+  if ('contacts' in navigator && 'ContactsManager' in window) {
+    for (let s = 0; s < 4; s++) {
+      const btn = document.getElementById(`wa-sess-${s}-pick`);
+      if (btn) btn.style.display = 'block';
+    }
   }
 }
 
-async function _loadWATemplate(listingId) {
-  const textarea = document.getElementById('wa-message-preview');
-  if (!textarea) return;
-
-  const listing = (window._allListings || []).find(l => l.ID === listingId);
-  const project = (window._projectsData || []).find(p => p.ID === listingId);
-
-  if (listing) {
-    const harga  = listing.Harga_Format || (listing.Harga ? 'Rp\u00a0' + Number(listing.Harga).toLocaleString('id-ID') : 'Hubungi Agen');
-    const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ') || '—';
-    const agen   = (window.STATE?.user?.nama || listing.Agen_Nama || 'Tim MANSION Realty').split(' ').slice(0,2).join(' ');
-    textarea.value = `Halo! 👋\n\nSaya ingin menawarkan properti eksklusif:\n\n🏠 *${listing.Judul || 'Properti'}*\n💰 ${harga}\n📍 ${lokasi}\n\nProperti ini sangat strategis. Apakah Anda tertarik mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
-  } else if (project) {
-    const harga = project.Harga_Format || project.Harga_Mulai || 'On Request';
-    const agen  = (window.STATE?.user?.nama || 'Tim MANSION Realty').split(' ').slice(0,2).join(' ');
-    textarea.value = `Halo! 👋\n\nSaya ingin menawarkan proyek properti eksklusif:\n\n🏗️ *${project.Nama_Proyek || 'Proyek'}*\n💰 Mulai dari ${harga}\n\nProyek ini sangat strategis dan menawarkan berbagai pilihan unit. Apakah Anda tertarik mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
-  } else {
-    textarea.value = `Halo! 👋\n\nSaya ingin menawarkan properti eksklusif dari MANSION Realty.\n\nApakah Anda tertarik untuk mengetahui lebih lanjut?\n\nSalam,\nTim MANSION Realty`;
-  }
-}
-
-async function submitWABlast(listingId) {
-  const sessionNumber = parseInt(document.getElementById('wa-session-number')?.value) || 1;
-  const message       = document.getElementById('wa-message-preview')?.value?.trim();
-
+async function submitWABlastQueue(listingId) {
+  const message = document.getElementById('wa-message-preview')?.value?.trim();
   if (!message) { _showPAToast('Pesan tidak boleh kosong', 'error'); return; }
 
-  // Kumpulkan hanya baris yang di-centang
-  const recipients = [];
-  document.querySelectorAll('#pa-wa-modal .wa-recipient-row').forEach(row => {
-    const check = row.querySelector('.wa-nomor-check');
-    const input = row.querySelector('.wa-nomor');
-    const sel   = row.querySelector('.wa-type');
-    if (!check?.checked || !input?.value.trim()) return;
-    recipients.push({ nomor: input.value.trim(), type: sel?.value || 'personal' });
-  });
-
-  if (recipients.length === 0) {
-    _showPAToast('Centang minimal 1 nomor tujuan', 'error');
-    return;
+  // Kumpulkan sesi
+  const sessions = [];
+  for (let s = 0; s < 4; s++) {
+    const inputs = document.querySelectorAll(`#wa-sess-${s} .wa-num`);
+    const recipients = [...inputs]
+      .map(i => i.value.trim())
+      .filter(Boolean)
+      .map(nomor => ({ nomor, type: 'personal' }));
+    if (recipients.length > 0) sessions.push(recipients);
   }
-  if (recipients.length > 5) {
-    _showPAToast('Maksimal 5 nomor per sesi', 'error');
+
+  if (sessions.length === 0) {
+    _showPAToast('Isi minimal 1 nomor di Sesi 1', 'error');
     return;
   }
 
@@ -1073,20 +1222,113 @@ async function submitWABlast(listingId) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Mengirim ke PA...'; }
 
   try {
-    await window.API.post('/pa/trigger', {
+    const res = await window.API.post('/pa/trigger', {
       type:             'wa_blast',
       listing_id:       listingId,
-      recipients,
+      sessions,
       message_template: message,
-      session_number:   sessionNumber,
     });
 
     document.getElementById('pa-wa-modal')?.remove();
-    _showPAToast(`✅ WA Blast ke ${recipients.length} nomor diterima PA! Proses berjalan di background.`, 'success');
+
+    const total = sessions.reduce((a, s) => a + s.length, 0);
+    _showPAToast(`✅ ${sessions.length} sesi · ${total} nomor dijadwalkan PA!`, 'success');
   } catch (e) {
-    if (btn) { btn.disabled = false; btn.textContent = '📲 Kirim via PA'; }
+    if (btn) { btn.disabled = false; btn.textContent = '📋 Queue ke PA'; }
     _showPAToast(`❌ ${e.message}`, 'error');
   }
+}
+
+// ── WA Blast Session Runner (wa.me links) ────────────────────────
+
+function _openWABlastSession({ job_id, session_number, recipients, message }) {
+  document.getElementById('pa-wa-runner')?.remove();
+
+  if (!recipients || recipients.length === 0) return;
+
+  let currentIdx = 0;
+  let countdownTimer = null;
+
+  const panel = document.createElement('div');
+  panel.id = 'pa-wa-runner';
+  panel.style.cssText = `
+    position:fixed;inset:0;z-index:1500;display:flex;align-items:flex-end;justify-content:center;
+    background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)
+  `;
+
+  function renderCurrent() {
+    if (currentIdx >= recipients.length) {
+      // Semua selesai
+      clearInterval(countdownTimer);
+      window.API.post(`/pa/jobs/${job_id}/complete`).catch(() => {});
+      _showPAToast(`✅ Sesi ${session_number} selesai — ${recipients.length} nomor dikirim`, 'success');
+      panel.remove();
+      _loadTodayJobCounts();
+      return;
+    }
+
+    const { nomor } = recipients[currentIdx];
+    const num  = nomor.replace(/\D/g, '').replace(/^0/, '62');
+    const waUrl = `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
+    const remaining = recipients.length - currentIdx;
+
+    panel.innerHTML = `
+      <div style="background:#0d1a30;border:1px solid rgba(212,175,55,0.3);border-radius:20px 20px 0 0;
+                  width:100%;max-width:480px;padding:24px 20px 32px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:14px;font-weight:700;color:#fff">📲 WA Blast Sesi ${session_number}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4)">${currentIdx + 1} / ${recipients.length}</div>
+        </div>
+
+        <!-- Progress bar -->
+        <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:4px;margin-bottom:18px">
+          <div style="height:100%;width:${(currentIdx/recipients.length)*100}%;background:#25d366;border-radius:4px;transition:.3s"></div>
+        </div>
+
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px">Nomor tujuan</div>
+        <div style="font-size:18px;font-weight:700;color:#fff;font-family:monospace;margin-bottom:20px">${num}</div>
+
+        <a href="${waUrl}" target="_blank" rel="noopener"
+          onclick="_waRunnerNext(${currentIdx})"
+          style="display:block;padding:14px;text-align:center;background:linear-gradient(135deg,#25d366,#128c7e);
+                 border-radius:12px;color:#fff;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:12px">
+          📱 Buka WA & Kirim
+        </a>
+
+        <div style="display:flex;gap:8px">
+          <button onclick="_waRunnerSkip(${currentIdx})"
+            style="flex:1;padding:10px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;
+                   background:transparent;color:rgba(255,255,255,0.5);font-size:12px;cursor:pointer">
+            Lewati
+          </button>
+          <button onclick="panel.remove();clearInterval(countdownTimer)"
+            style="flex:1;padding:10px;border:1px solid rgba(255,100,100,0.3);border-radius:10px;
+                   background:transparent;color:rgba(255,100,100,0.7);font-size:12px;cursor:pointer">
+            Stop Sesi
+          </button>
+        </div>
+
+        ${remaining > 1 ? `<div style="font-size:11px;color:rgba(255,255,255,0.25);text-align:center;margin-top:12px">
+          Setelah klik Buka WA & Kirim, nomor berikutnya otomatis muncul
+        </div>` : ''}
+      </div>
+    `;
+
+    // Ekspos fungsi ke inline onclick
+    window._waRunnerNext = (idx) => {
+      if (idx !== currentIdx) return;
+      currentIdx++;
+      setTimeout(renderCurrent, 300);
+    };
+    window._waRunnerSkip = (idx) => {
+      if (idx !== currentIdx) return;
+      currentIdx++;
+      renderCurrent();
+    };
+  }
+
+  document.body.appendChild(panel);
+  renderCurrent();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1499,7 +1741,7 @@ async function _loadTodayJobCounts() {
     const counts = { ig_reels: 0, ig_story: 0, wa_blast: 0 };
     todayJobs.forEach(j => { if (counts[j.type] !== undefined) counts[j.type]++; });
 
-    const limits = { ig_reels: 5, ig_story: 5, wa_blast: 2 };
+    const limits = { ig_reels: 5, ig_story: 5, wa_blast: 4 };
     Object.entries(counts).forEach(([type, count]) => {
       const el = document.getElementById(`pa-count-${type}`);
       if (el) {
@@ -1598,6 +1840,10 @@ function _injectPAStyles() {
     .pa-badge-active   { background:rgba(74,222,128,0.15);color:#4ade80 }
     .pa-badge-warning  { background:rgba(251,191,36,0.15);color:#fbbf24 }
     .pa-badge-inactive { background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.3) }
+    .pa-badge-error    { background:rgba(248,113,113,0.15);color:#f87171 }
+    .pa-badge-pending  { background:rgba(251,191,36,0.12);color:#fbbf24 }
+    .pa-badge-checking { background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.35) }
+    .pa-badge-idle     { background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.3) }
 
     /* ── Buttons ─────────────────────────────────── */
     .pa-btn-save,.pa-btn-primary {
@@ -1700,6 +1946,7 @@ window.openViGenModal          = openViGenModal;
 window.submitViGenRender       = submitViGenRender;
 window.openWABlastModal        = openWABlastModal;
 window.submitWABlast           = submitWABlast;
+window._pickContactsForSession = _pickContactsForSession;
 window.openIGPostModal         = openIGPostModal;
 window.openProjectWABlastModal = openProjectWABlastModal;
 window.openProjectIGPostModal  = openProjectIGPostModal;
