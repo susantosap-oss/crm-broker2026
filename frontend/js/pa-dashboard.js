@@ -20,9 +20,11 @@ const PA_TYPES = {
 };
 
 // SSE connection singleton
-let _sseConnection = null;
-let _paLogs        = [];      // Buffer logs untuk tampilkan di UI
-const MAX_LOGS     = 50;
+let _sseConnection  = null;
+let _paLogs         = [];      // Buffer logs untuk tampilkan di UI
+const MAX_LOGS      = 50;
+let _paLogPoller    = null;    // Polling interval fallback
+let _paLogLastFetch = 0;       // Timestamp last successful poll
 
 // IG Post Queue — antrian batch posting IG
 let _igQueue = [];            // [{ listingId, title, type, url, file, mediaType, caption }]
@@ -34,8 +36,71 @@ let _igQueue = [];            // [{ listingId, title, type, url, file, mediaType
 function initPADashboard() {
   _injectPAStyles();
   _connectSSE();
+  _startLogPoller();
   _initCreateAdsButtons();
   console.log('[PA Dashboard] Initialized');
+}
+
+// Polling fallback — baca job history dari /pa/jobs setiap 10 detik
+function _startLogPoller() {
+  if (_paLogPoller) clearInterval(_paLogPoller);
+  _paLogPoller = setInterval(_pollJobHistory, 10_000);
+  _pollJobHistory(); // langsung fetch saat init
+}
+
+async function _pollJobHistory() {
+  try {
+    const res  = await window.API.get('/pa/jobs?limit=20');
+    const jobs = res.data || [];
+    const now  = Date.now();
+
+    jobs.forEach(job => {
+      // Cek apakah job ini sudah ada di buffer (hindari duplikat)
+      const exists = _paLogs.some(l => l.job_id === job.id);
+      if (exists) {
+        // Update status jika berubah (misalnya queued → completed)
+        const entry = _paLogs.find(l => l.job_id === job.id);
+        if (entry && entry._status !== job.status) {
+          entry._status = job.status;
+          entry.event   = job.status === 'completed' ? 'job_done'
+                        : job.status === 'failed'    ? 'job_failed'
+                        : entry.event;
+          entry.message = _jobStatusMessage(job);
+        }
+        return;
+      }
+
+      // Entry baru dari polling — masukkan ke buffer
+      _paLogs.push({
+        ts:      new Date(job.created_at),
+        event:   job.status === 'completed' ? 'job_done'
+               : job.status === 'failed'    ? 'job_failed'
+               : job.status === 'running'   ? 'job_started'
+               : 'job_queued',
+        message: _jobStatusMessage(job),
+        type:    job.type,
+        job_id:  job.id,
+        _status: job.status,
+        _source: 'poll',
+      });
+    });
+
+    // Urutkan ulang berdasarkan timestamp terbaru
+    _paLogs.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+    if (_paLogs.length > MAX_LOGS) _paLogs.length = MAX_LOGS;
+
+    _paLogLastFetch = now;
+    _renderPALogsPanel();
+  } catch { /* abaikan error polling */ }
+}
+
+function _jobStatusMessage(job) {
+  const typeLabel = PA_TYPES[job.type]?.label || job.type;
+  const title     = job.listing_title ? `"${job.listing_title}"` : '';
+  if (job.status === 'completed') return `✅ ${typeLabel} berhasil diposting ${title}`;
+  if (job.status === 'failed')    return `❌ ${typeLabel} gagal ${title}: ${job.error || 'unknown error'}`;
+  if (job.status === 'running')   return `⏳ ${typeLabel} sedang diproses ${title}...`;
+  return `📋 ${typeLabel} dijadwalkan ${title}`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -150,19 +215,26 @@ async function openPACredentialsSidebar() {
             <span style="font-size:13px;font-weight:600;color:#fff">📸 Instagram</span>
             <span class="pa-status-badge ${_statusBadgeClass(creds?.ig_status)}">${_statusLabel(creds?.ig_status)}</span>
           </div>
-          <div>
-            <label class="form-label">Username Instagram</label>
-            <input class="form-input" id="pa-ig-username" type="text"
-              placeholder="contoh: agen.mansion (tanpa @)"
-              value="${creds?.ig_username || ''}" autocomplete="off">
+
+          <!-- Graph API fields (primary) -->
+          <div style="background:rgba(43,123,255,0.06);border:1px solid rgba(43,123,255,0.18);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11px;color:#60a5fa;font-weight:600">🔵 Graph API (Meta for Developer)</div>
+            <div>
+              <label class="form-label">Instagram User ID</label>
+              <input class="form-input" id="pa-ig-graph-uid" type="text"
+                placeholder="contoh: 17841400000000000"
+                value="${creds?.ig_graph_user_id || ''}" autocomplete="off">
+              <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:4px 0 0">Angka dari Meta Developer → Graph API Explorer → id</p>
+            </div>
+            <div>
+              <label class="form-label">Access Token</label>
+              <input class="form-input" id="pa-ig-graph-token" type="password"
+                placeholder="${creds?.ig_graph_token ? '••••••• (sudah tersimpan)' : 'Paste long-lived token di sini'}"
+                autocomplete="new-password">
+              <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:4px 0 0">Long-lived token (60 hari). Generate di Meta Developer → Graph API Explorer.</p>
+            </div>
           </div>
-          <div>
-            <label class="form-label">Password Instagram</label>
-            <input class="form-input" id="pa-ig-password" type="password"
-              placeholder="Kosongkan jika tidak ingin mengubah" autocomplete="new-password">
-            <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:6px 0 0;line-height:1.5">🔒 Disimpan terenkripsi AES-256. Hanya dipakai saat session login expired.</p>
-          </div>
-          ${creds?.last_ig_login ? `<div style="font-size:11px;color:rgba(212,175,55,0.6)">Login terakhir: ${_formatDate(creds.last_ig_login)}</div>` : ''}
+
         </div>
 
         <!-- Section WA -->
@@ -531,27 +603,31 @@ function closePACredentialsSidebar() {
 
 
 async function savePACredentials() {
-  const igUsername = document.getElementById('pa-ig-username')?.value?.trim();
-  const igPassword = document.getElementById('pa-ig-password')?.value;
-  const waNumber   = document.getElementById('pa-wa-number')?.value?.trim();
-  const paEnabled  = document.getElementById('pa-enabled-toggle')?.checked;
-
-  const fontteToken = document.getElementById('pa-fonnte-token')?.value?.trim();
+  const igUsername    = document.getElementById('pa-ig-username')?.value?.trim();
+  const igPassword    = document.getElementById('pa-ig-password')?.value;
+  const waNumber      = document.getElementById('pa-wa-number')?.value?.trim();
+  const paEnabled     = document.getElementById('pa-enabled-toggle')?.checked;
+  const fontteToken   = document.getElementById('pa-fonnte-token')?.value?.trim();
+  const igGraphUid    = document.getElementById('pa-ig-graph-uid')?.value?.trim();
+  const igGraphToken  = document.getElementById('pa-ig-graph-token')?.value?.trim();
 
   const body = { pa_enabled: paEnabled };
-  if (igUsername)   body.ig_username  = igUsername;
-  if (igPassword)   body.ig_password  = igPassword;
-  if (waNumber)     body.wa_number    = waNumber;
-  if (fontteToken)  body.fonnte_token = fontteToken;
+  if (igUsername)   body.ig_username       = igUsername;
+  if (igPassword)   body.ig_password       = igPassword;
+  if (waNumber)     body.wa_number         = waNumber;
+  if (fontteToken)  body.fonnte_token      = fontteToken;
+  if (igGraphUid)   body.ig_graph_user_id  = igGraphUid;
+  if (igGraphToken) body.ig_graph_token    = igGraphToken;
 
   try {
     await window.API.post('/pa/credentials', body);
     _showPAToast('✅ Pengaturan PA disimpan', 'success');
 
-    const pwdField = document.getElementById('pa-ig-password');
-    if (pwdField) pwdField.value = '';
-    const ftField = document.getElementById('pa-fonnte-token');
-    if (ftField) ftField.value = '';
+    // Clear sensitive fields setelah disimpan
+    ['pa-ig-password', 'pa-fonnte-token', 'pa-ig-graph-token'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
   } catch (e) {
     _showPAToast(`❌ Gagal simpan: ${e.message}`, 'error');
   }
@@ -1338,10 +1414,11 @@ function _openWABlastSession({ job_id, session_number, recipients, message }) {
 function openIGPostModal(listingId, type) {
   document.getElementById('pa-ig-modal')?.remove();
 
-  const listing = (window._allListings || []).find(l => l.ID === listingId);
-  const project = (window._projectsData || []).find(p => p.ID === listingId);
-  const title   = listing?.Judul || project?.Nama_Proyek || listingId;
-  const caption = (listing?.Caption_Sosmed || listing?.Caption || project?.Deskripsi || '').slice(0, 2200);
+  const listing      = (window._allListings || []).find(l => l.ID === listingId);
+  const project      = (window._projectsData || []).find(p => p.ID === listingId);
+  const title        = listing?.Judul || project?.Nama_Proyek || listingId;
+  const caption      = (listing?.Caption_Sosmed || listing?.Caption || project?.Deskripsi || '').slice(0, 2200);
+  const autoPhotoUrl = listing?.Foto_Utama_URL || listing?.Foto_2_URL || project?.Foto_1_URL || project?.Foto_2_URL || '';
 
   const typeLabel = type === 'ig_reels' ? 'Instagram Reels' : 'Instagram Story';
   const typeIcon  = type === 'ig_reels' ? '🎬' : '📸';
@@ -1384,7 +1461,7 @@ function openIGPostModal(listingId, type) {
 
         <div class="pa-form-group">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <label style="margin:0">Media <span style="color:#f87171">*</span></label>
+            <label style="margin:0">Media <span style="font-size:10px;font-weight:400;color:rgba(255,255,255,0.35)">(opsional)</span></label>
             <div style="display:flex;gap:4px">
               <button id="ig-tab-url" onclick="_igSwitchTab('url')"
                 style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:rgba(225,48,108,0.2);border:1px solid rgba(225,48,108,0.4);color:#f472b6">
@@ -1413,6 +1490,18 @@ function openIGPostModal(listingId, type) {
               style="display:none" onchange="_igFileSelected(this)">
           </div>
           <div class="pa-hint" style="margin-top:5px">${mediaHint}</div>
+
+          ${autoPhotoUrl ? `
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 10px">
+            <img src="${autoPhotoUrl}" style="width:44px;height:44px;object-fit:cover;border-radius:7px;flex-shrink:0" onerror="this.parentElement.style.display='none'">
+            <div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:1px">Foto listing (dipakai otomatis jika media kosong)</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.25);word-break:break-all;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${autoPhotoUrl}</div>
+            </div>
+          </div>` : `
+          <div style="margin-top:8px;font-size:11px;color:#f87171;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:7px 10px">
+            ⚠️ Foto listing belum tersedia — media wajib diisi manual.
+          </div>`}
         </div>
 
         <div class="pa-form-group">
@@ -1468,16 +1557,16 @@ function _igFileSelected(input) {
 }
 
 function _igGetMediaInput() {
-  const fileDiv  = document.getElementById('ig-tab-file-content');
-  const isFile   = fileDiv && fileDiv.style.display !== 'none';
+  const fileDiv = document.getElementById('ig-tab-file-content');
+  const isFile  = fileDiv && fileDiv.style.display !== 'none';
 
   if (isFile) {
     const file = document.getElementById('ig-media-file')?.files?.[0];
-    if (!file) return { error: 'Pilih file media terlebih dahulu' };
+    if (!file) return { useListingMedia: true }; // kosong → pakai foto listing
     return { file, mediaType: file.type.startsWith('video/') ? 'video' : 'image' };
   } else {
     const url = document.getElementById('ig-media-url')?.value?.trim();
-    if (!url) return { error: 'URL media wajib diisi' };
+    if (!url) return { useListingMedia: true }; // kosong → pakai foto listing
     const ext = url.split('?')[0].split('.').pop().toLowerCase();
     return { url, mediaType: ['mp4','mov','webm','avi'].includes(ext) ? 'video' : 'image' };
   }
@@ -1534,9 +1623,11 @@ function _showIGQueuePanel() {
 
   const items = _igQueue.map((q, i) => {
     const isFile = !!q.file;
-    const mediaLabel = q.mediaType === 'video'
-      ? (isFile ? '🎥 video (lokal)' : '🎥 video (URL)')
-      : (isFile ? '🖼️ gambar (lokal)' : '🖼️ gambar (URL)');
+    const mediaLabel = q.useListingMedia
+      ? '🖼️ foto listing (otomatis)'
+      : q.mediaType === 'video'
+        ? (isFile ? '🎥 video (lokal)' : '🎥 video (URL)')
+        : (isFile ? '🖼️ gambar (lokal)' : '🖼️ gambar (URL)');
     return `
       <div style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:#131F38;border-radius:10px">
         <span style="font-size:18px;flex-shrink:0">${q.type === 'ig_reels' ? '🎬' : '📸'}</span>
@@ -1598,26 +1689,39 @@ function _removeFromIGQueue(index) {
   }
 }
 
+// Flag untuk cancel countdown antar post
+let _igQueueCancelled = false;
+
 async function submitIGQueue() {
   if (_igQueue.length === 0) return;
 
   const btn = document.getElementById('pa-queue-run-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Memproses...'; }
 
+  _igQueueCancelled = false;
   const total = _igQueue.length;
   let success = 0;
   let failed  = 0;
   const token = localStorage.getItem('crm_token') || localStorage.getItem('token');
 
   for (let i = 0; i < total; i++) {
+    if (_igQueueCancelled) break;
+
     const item = _igQueue[i];
-    if (btn) btn.textContent = `⏳ ${i + 1} / ${total}...`;
+    _igQueueShowProgress(i + 1, total, item.title || item.listingId, 'posting');
 
     try {
-      let mediaUrl = item.url;
+      let mediaUrl  = item.url;
+      let mediaType = item.mediaType;
 
-      // Upload file lokal ke Cloudinary via CRM jika ada
-      if (item.file) {
+      if (item.useListingMedia) {
+        // Ambil foto utama dari data listing/project yang sudah di-load
+        const ls = (window._allListings  || []).find(l => l.ID === item.listingId);
+        const pj = (window._projectsData || []).find(p => p.ID === item.listingId);
+        mediaUrl  = ls?.Foto_Utama_URL || ls?.Foto_2_URL || pj?.Foto_1_URL || pj?.Foto_2_URL || '';
+        mediaType = 'image';
+        if (!mediaUrl) throw new Error('Foto listing tidak tersedia. Buka modal dan upload media manual.');
+      } else if (item.file) {
         const fd = new FormData();
         fd.append('files', item.file);
         const up = await fetch(`/api/v1/media/upload/photos/${item.listingId}`, {
@@ -1634,25 +1738,97 @@ async function submitIGQueue() {
         type:             item.type,
         listing_id:       item.listingId,
         video_url:        mediaUrl,
-        media_type:       item.mediaType,
+        media_type:       mediaType,
         caption_override: item.caption || undefined,
       });
       success++;
     } catch (e) {
       failed++;
       console.error(`[IGQueue] job ${i + 1} gagal:`, e.message);
+      _showPAToast(`⚠️ Post ke-${i + 1} gagal: ${e.message}`, 'error');
+    }
+
+    // Human-habit delay sebelum post berikutnya (bukan post terakhir)
+    if (i < total - 1 && !_igQueueCancelled) {
+      const delaySec = 60 + Math.floor(Math.random() * 120); // 1–3 menit
+      const skipped = await _igQueueCountdown(delaySec, i + 2, total);
+      if (!skipped && _igQueueCancelled) break;
     }
   }
 
+  _igQueueRemoveProgress();
   _igQueue = [];
   _renderIGQueueBadge();
   document.getElementById('pa-ig-queue-panel')?.remove();
 
-  if (failed === 0) {
-    _showPAToast(`✅ ${total} post IG berhasil dikirim ke PA! Pantau progress di Activity Log.`, 'success');
+  if (_igQueueCancelled && success === 0 && failed === 0) {
+    _showPAToast('Queue IG dibatalkan.', 'error');
+  } else if (failed === 0) {
+    _showPAToast(`✅ ${success} post IG dikirim ke PA! Pantau progress di Activity Log.`, 'success');
   } else {
-    _showPAToast(`⚠️ ${success} berhasil · ${failed} gagal. Cek Activity Log untuk detail.`, 'error');
+    _showPAToast(`⚠️ ${success} berhasil · ${failed} gagal. Cek Activity Log.`, 'error');
   }
+}
+
+function _igQueueShowProgress(current, total, title, phase) {
+  let bar = document.getElementById('pa-ig-progress-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'pa-ig-progress-bar';
+    bar.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:#0D1526;border:1px solid rgba(43,123,255,0.3);border-radius:14px;padding:12px 16px;min-width:280px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.5)';
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = `
+    <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">IG Queue ${current}/${total}</div>
+    <div style="font-size:13px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${phase === 'posting' ? '📤' : '⏳'} ${title}</div>
+  `;
+}
+
+function _igQueueRemoveProgress() {
+  document.getElementById('pa-ig-progress-bar')?.remove();
+}
+
+// Countdown panel antar post — returns true jika di-skip, false jika habis/dibatalkan
+function _igQueueCountdown(totalSec, nextIdx, total) {
+  return new Promise(resolve => {
+    let remaining = totalSec;
+    let skipped   = false;
+
+    const panel = document.createElement('div');
+    panel.id    = 'pa-ig-countdown';
+    panel.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:#0D1526;border:1px solid rgba(212,168,83,0.3);border-radius:14px;padding:14px 16px;min-width:280px;max-width:320px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.5)';
+
+    const render = () => {
+      const m = Math.floor(remaining / 60);
+      const s = String(remaining % 60).padStart(2, '0');
+      panel.innerHTML = `
+        <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Anti-bot delay</div>
+        <div style="font-size:22px;font-weight:700;color:#D4A853;letter-spacing:2px">${m}:${s}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.45);margin:4px 0 10px">Post ke-${nextIdx}/${total} akan dikirim...</div>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button onclick="window._igSkipDelay()" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(212,168,83,0.3);background:rgba(212,168,83,0.08);color:#D4A853;font-size:11px;cursor:pointer">Lewati</button>
+          <button onclick="window._igCancelQueue()" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.06);color:#f87171;font-size:11px;cursor:pointer">Batalkan</button>
+        </div>
+      `;
+    };
+
+    window._igSkipDelay  = () => { skipped = true; clearInterval(timer); panel.remove(); resolve(true); };
+    window._igCancelQueue = () => { _igQueueCancelled = true; clearInterval(timer); panel.remove(); resolve(false); };
+
+    document.body.appendChild(panel);
+    render();
+
+    const timer = setInterval(() => {
+      remaining--;
+      if (remaining <= 0) {
+        clearInterval(timer);
+        panel.remove();
+        resolve(false);
+      } else {
+        render();
+      }
+    }, 1000);
+  });
 }
 
 // ── Wrapper Project Detail ─────────────────────────────────

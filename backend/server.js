@@ -219,6 +219,10 @@ app.listen(PORT, () => {
 
   // Mulai cron jobs (jadwal harian reminder, dll)
   require('./services/cron.service').startCronJobs();
+
+  // Poll ViGen render jobs setiap 2 menit
+  const vigenService = require('./services/vigen.service');
+  setInterval(() => vigenService.pollPendingJobs(), 120_000);
 });
 
 // ── Telegram Bot Webhook Endpoint ──────────────────────────

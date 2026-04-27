@@ -817,6 +817,7 @@ async function openListingDetail(id) {
             style="padding:11px 4px;border-radius:12px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3">
             <div style="font-size:16px;margin-bottom:3px">📲</div>WA Blast
           </button>
+          ${['superadmin','principal'].includes(STATE.user?.role) ? `
           <button onclick="openIGPostModal('${escapeHtml(id)}','ig_reels')"
             style="padding:11px 4px;border-radius:12px;background:rgba(225,48,108,0.12);border:1px solid rgba(225,48,108,0.25);color:#f472b6;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3">
             <div style="font-size:16px;margin-bottom:3px">🎬</div>IG Reels
@@ -824,7 +825,7 @@ async function openListingDetail(id) {
           <button onclick="openIGPostModal('${escapeHtml(id)}','ig_story')"
             style="padding:11px 4px;border-radius:12px;background:rgba(225,48,108,0.12);border:1px solid rgba(225,48,108,0.25);color:#f472b6;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3">
             <div style="font-size:16px;margin-bottom:3px">📸</div>IG Story
-          </button>
+          </button>` : ''}
         </div>
       </div>` : ''}
 
@@ -4400,6 +4401,11 @@ async function openProjectDetail(id) {
   // Seksi PA OpenClaw — disembunyikan untuk agen dan koordinator
   const paSection = document.getElementById('pd-pa-section');
   if (paSection) paSection.style.display = (STATE.user && !['agen','koordinator'].includes(role)) ? '' : 'none';
+
+  // IG Reels & Story (primary) — hanya superadmin & principal untuk testing
+  const canIGPost = ['superadmin','principal'].includes(role);
+  document.getElementById('pd-ig-reels-btn')?.style && (document.getElementById('pd-ig-reels-btn').style.display = canIGPost ? '' : 'none');
+  document.getElementById('pd-ig-story-btn')?.style && (document.getElementById('pd-ig-story-btn').style.display = canIGPost ? '' : 'none');
 
   openModal('modal-project-detail');
 }

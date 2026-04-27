@@ -132,17 +132,30 @@ router.post('/trigger', authenticate, async (req, res) => {
       return res.status(400).json({ success: false, message: 'type harus: ig_reels|ig_story|wa_blast' });
     }
 
-    // Ambil judul listing
-    let listingTitle = '';
+    // Ambil judul + foto listing (secondary) atau project (primary)
+    let listingTitle  = listing_id || '';
+    let autoMediaUrl  = video_url  || '';
+
     if (listing_id) {
+      // Coba LISTING sheet dulu
       const listings = await sheetsService.getRows(SHEETS.LISTING);
       const listing  = listings.find(r => r[0] === listing_id);
-      listingTitle = listing ? listing[6] : listing_id;
+      if (listing) {
+        listingTitle = listing[6] || listing_id;                          // col G = Judul
+        if (!autoMediaUrl) autoMediaUrl = listing[24] || listing[25] || ''; // col Y/Z = Foto_Utama_URL / Foto_2_URL
+      } else {
+        // Coba PROJECTS sheet (primary)
+        const projects = await sheetsService.getRows(SHEETS.PROJECTS);
+        const project  = projects.find(r => r[0] === listing_id);
+        if (project) {
+          listingTitle = project[3] || listing_id;                      // col D = Nama_Proyek
+          if (!autoMediaUrl) autoMediaUrl = project[10] || project[11] || ''; // col K/L = Foto_1_URL / Foto_2_URL
+        }
+      }
     }
 
     // ── WA Blast: queue system ────────────────────────────
     if (type === 'wa_blast') {
-      // sessions: [[{nomor,type},...], [...], ...] maks 4 sesi
       const sessionList = sessions || (recipients ? [recipients] : []);
       if (sessionList.length === 0 || sessionList.every(s => !s || s.length === 0)) {
         return res.status(400).json({ success: false, message: 'sessions wajib untuk WA Blast' });
@@ -159,9 +172,9 @@ router.post('/trigger', authenticate, async (req, res) => {
       return res.json(result);
     }
 
-    // ── IG Jobs: alur lama ────────────────────────────────
-    if (!video_url) {
-      return res.status(400).json({ success: false, message: 'video_url wajib untuk IG job' });
+    // ── IG Jobs ───────────────────────────────────────────
+    if (!autoMediaUrl) {
+      return res.status(400).json({ success: false, message: 'Media tidak tersedia. Upload foto/video atau pastikan listing memiliki foto.' });
     }
 
     const result = await paService.triggerJob({
@@ -170,7 +183,7 @@ router.post('/trigger', authenticate, async (req, res) => {
       type,
       listingId:       listing_id,
       listingTitle,
-      videoUrl:        video_url,
+      videoUrl:        autoMediaUrl,
       recipients,
       sessionNumber:   session_number || 1,
       triggeredBy:     req.user.id,

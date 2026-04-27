@@ -388,6 +388,10 @@ const COLUMNS = {
     'IG_Status',        // M  active|challenge_required|not_configured
     'WA_Status',        // N  active|qr_required|not_configured
     'Zapier_Secret',    // O  UUID per-agen untuk Zapier webhook auth
+    'Fonnte_Token',          // P  Token Fonnte (plain, publik)
+    'IG_Session_JSON',       // Q  (legacy, tidak dipakai Graph API)
+    'IG_Graph_User_ID',      // R  Instagram User ID untuk Graph API
+    'IG_Graph_Access_Token', // S  Long-lived Page Access Token (60 hari)
   ],
 
   // ★ PA_JOBS — Tracking semua job OpenClaw

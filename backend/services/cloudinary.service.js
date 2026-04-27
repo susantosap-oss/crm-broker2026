@@ -149,6 +149,24 @@ class CloudinaryService {
    * @param {string} videoUrl    URL sumber video
    * @param {string} listingId
    */
+  // Upload video dari Buffer (hasil download dari ViGen)
+  async uploadVideoBuffer(buffer, listingId, publicIdSuffix = '') {
+    return new Promise((resolve, reject) => {
+      const publicId = publicIdSuffix || `ads_${Date.now()}`;
+      const stream   = cloudinary.uploader.upload_stream(
+        {
+          resource_type: 'video',
+          folder:        `${ROOT}/${listingId}/ads`,
+          public_id:     publicId,
+          tags:          [listingId, 'meta_ads', 'vigen_render'],
+        },
+        (err, result) => err ? reject(err) : resolve(result.secure_url)
+      );
+      const { Readable } = require('stream');
+      Readable.from(buffer).pipe(stream);
+    });
+  }
+
   async uploadAdsVideo(videoUrl, listingId) {
     const publicId = `ads_${Date.now()}`;
 

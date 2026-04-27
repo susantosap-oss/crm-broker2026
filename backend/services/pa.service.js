@@ -1,15 +1,12 @@
 /**
- * PAService — Personal Assistant (OpenClaw) Bridge
+ * PAService — Personal Assistant
  * ============================================
- * Menghubungkan CRM dengan OpenClaw PA worker di Cloud Run.
- *
  * Tanggung jawab:
  *   - Simpan/ambil PA Credentials per agen (enkripsi AES-256)
- *   - Kirim job ke OpenClaw via HTTP (atau Cloud Tasks)
+ *   - Eksekusi IG Post via instagram-private-api (ig-post.service.js)
+ *   - Eksekusi WA Blast via Fonnte atau wa.me manual
  *   - Track job di GSheets PA_JOBS
  *   - Real-time activity logs (Server-Sent Events ke frontend)
- *   - Handle callback dari OpenClaw (job selesai / gagal)
- *   - Handle QR required notification (WA re-pairing)
  */
 
 const crypto   = require('crypto');
@@ -61,21 +58,23 @@ class PAService {
     if (!row) return null;
 
     return {
-      id:             row[0],
-      agent_id:       row[1],
-      ig_username:    row[2],
-      wa_number:      row[4],
-      pa_enabled:     row[5] === 'TRUE',
-      ig_status:      row[12] || 'not_configured',
-      wa_status:      row[13] || 'not_configured',
-      last_ig_login:  row[10] || null,
-      last_wa_login:  row[11] || null,
-      zapier_secret:  row[14] || null,
-      fonnte_token:   row[15] ? '***' : null, // ada/tidak ada, nilai asli tidak dikirim
+      id:                 row[0],
+      agent_id:           row[1],
+      ig_username:        row[2],
+      wa_number:          row[4],
+      pa_enabled:         row[5] === 'TRUE',
+      ig_status:          row[12] || 'not_configured',
+      wa_status:          row[13] || 'not_configured',
+      last_ig_login:      row[10] || null,
+      last_wa_login:      row[11] || null,
+      zapier_secret:      row[14] || null,
+      fonnte_token:       row[15] ? '***' : null,
+      ig_graph_user_id:   row[17] || null,           // col R
+      ig_graph_token:     row[18] ? '***' : null,    // col S — sembunyikan nilai asli
     };
   }
 
-  async saveCredentials(agentId, { ig_username, ig_password, wa_number, pa_enabled, zapier_secret, fonnte_token }) {
+  async saveCredentials(agentId, { ig_username, ig_password, wa_number, pa_enabled, zapier_secret, fonnte_token, ig_graph_user_id, ig_graph_token }) {
     const existing = await this._findCredRow(agentId);
     const now      = new Date().toISOString();
 
@@ -83,12 +82,14 @@ class PAService {
       const rowIdx = existing.rowIndex;
       const updates = {};
 
-      if (ig_username   !== undefined) updates[2]  = ig_username;
-      if (ig_password   !== undefined) updates[3]  = encrypt(ig_password);
-      if (wa_number     !== undefined) updates[4]  = wa_number;
-      if (pa_enabled    !== undefined) updates[5]  = pa_enabled ? 'TRUE' : 'FALSE';
-      if (zapier_secret !== undefined) updates[14] = zapier_secret;
-      if (fonnte_token  !== undefined) updates[15] = fonnte_token; // simpan plain (token publik Fonnte)
+      if (ig_username      !== undefined) updates[2]  = ig_username;
+      if (ig_password      !== undefined) updates[3]  = encrypt(ig_password);
+      if (wa_number        !== undefined) updates[4]  = wa_number;
+      if (pa_enabled       !== undefined) updates[5]  = pa_enabled ? 'TRUE' : 'FALSE';
+      if (zapier_secret    !== undefined) updates[14] = zapier_secret;
+      if (fonnte_token     !== undefined) updates[15] = fonnte_token;
+      if (ig_graph_user_id !== undefined) updates[17] = ig_graph_user_id;  // col R
+      if (ig_graph_token   !== undefined) updates[18] = ig_graph_token;    // col S
       updates[9] = now;
 
       await sheetsService.updateRowCells(SHEETS.PA_CREDENTIALS, rowIdx, updates);
@@ -100,8 +101,11 @@ class PAService {
         wa_number || '', pa_enabled ? 'TRUE' : 'FALSE',
         '', '', now, now, '', '',
         'not_configured', 'not_configured',
-        '',                   // Zapier_Secret
-        fonnte_token || '',   // Fonnte_Token
+        '',                      // O: Zapier_Secret
+        fonnte_token || '',      // P: Fonnte_Token
+        '',                      // Q: IG_Session_JSON
+        ig_graph_user_id || '',  // R: IG_Graph_User_ID
+        ig_graph_token   || '',  // S: IG_Graph_Access_Token
       ];
       await sheetsService.appendRow(SHEETS.PA_CREDENTIALS, newRow);
       return { success: true, message: 'Credentials saved' };
@@ -112,11 +116,13 @@ class PAService {
     const row = await this._findCredRow(agentId);
     if (!row) return null;
     return {
-      ig_username:  row.data[2],
-      ig_password:  decrypt(row.data[3]),
-      wa_number:    row.data[4],
-      pa_enabled:   row.data[5] === 'TRUE',
-      fonnte_token: row.data[15] || '',
+      ig_username:       row.data[2],
+      ig_password:       decrypt(row.data[3]),
+      wa_number:         row.data[4],
+      pa_enabled:        row.data[5] === 'TRUE',
+      fonnte_token:      row.data[15] || '',
+      ig_graph_user_id:  row.data[17] || '',  // col R
+      ig_graph_token:    row.data[18] || '',  // col S
     };
   }
 
@@ -184,22 +190,15 @@ class PAService {
     const message = messageTemplate || await this._buildCaption(listingId, listingTitle);
 
     if (type === 'wa_blast') {
-      // Fire-and-forget: jalankan langsung inline (tidak butuh worker terpisah)
+      // Fire-and-forget
       this._runWaBlast(jobId, agentId, recipients, message).catch(err =>
         console.error(`[PA] WA Blast job ${jobId} error:`, err.message)
       );
     } else {
-      // IG jobs — masih pending implementasi worker
-      const payload = {
-        job_id: jobId, agent_id: agentId, type,
-        payload: {
-          video_url: videoUrl, caption: message,
-          listing_id: listingId, listing_title: listingTitle, type,
-          today_count: todayCount,
-          ig_username: creds.ig_username, ig_password: creds.ig_password,
-        },
-      };
-      await this._sendToOpenClaw(payload);
+      // IG jobs — eksekusi via instagram-private-api
+      this._runIGPost(jobId, agentId, type, videoUrl, message, listingTitle, creds).catch(err =>
+        console.error(`[PA] IG job ${jobId} error:`, err.message)
+      );
     }
 
     // Broadcast ke SSE clients
@@ -592,14 +591,78 @@ class PAService {
     }
   }
 
-  async _sendToOpenClaw(payload) {
-    const url = process.env.OPENCLAW_URL;
-    if (!url) throw new Error('OPENCLAW_URL not configured');
+  // ═══════════════════════════════════════════════════
+  // IG POST — instagram-private-api
+  // ═══════════════════════════════════════════════════
 
-    await axios.post(`${url}/job`, payload, {
-      headers: { 'x-internal-secret': process.env.INTERNAL_SECRET },
-      timeout: 10000,
+  async _runIGPost(jobId, agentId, type, mediaUrl, caption, listingTitle, creds) {
+    const igPostService = require('./ig-post.service');
+
+    await this._updateJobStatus(jobId, 'running');
+    this._broadcast(agentId, {
+      event:   'job_started',
+      job_id:  jobId,
+      type,
+      message: `PA sedang posting ${_typeLabel(type)} untuk "${listingTitle}"...`,
     });
+
+    try {
+      if (!creds.ig_graph_user_id || !creds.ig_graph_token) {
+        throw new Error('Instagram User ID / Access Token belum diisi. Buka PA Settings → Instagram → Graph API.');
+      }
+
+      const result = await igPostService.post({
+        igUserId:    creds.ig_graph_user_id,
+        accessToken: creds.ig_graph_token,
+        type,
+        mediaUrl,
+        caption,
+      });
+
+      await this._updateJobStatus(jobId, 'completed');
+      await this.updateCredStatus(agentId, 'ig', 'active');
+      this._broadcast(agentId, {
+        event:   'job_done',
+        job_id:  jobId,
+        type,
+        message: `✅ ${_typeLabel(type)} berhasil diposting ke @${result.username}`,
+      });
+    } catch (e) {
+      const igSvc = require('./ig-post.service');
+      const { code, message: errMsg } = igSvc.classifyError(e);
+
+      if (code === 'token_expired') {
+        await this.updateCredStatus(agentId, 'ig', 'challenge_required'); // pakai status yg ada
+      }
+
+      await this._updateJobStatus(jobId, 'failed', errMsg);
+      this._broadcast(agentId, {
+        event:   'job_failed',
+        job_id:  jobId,
+        type,
+        message: `❌ ${errMsg}`,
+      });
+    }
+  }
+
+  async _getIGSession(agentId) {
+    try {
+      const row = await this._findCredRow(agentId);
+      const val = row?.data?.[16]; // col Q — IG_Session_JSON
+      return val || null;
+    } catch { return null; }
+  }
+
+  async _saveIGSession(agentId, sessionJson) {
+    try {
+      const row = await this._findCredRow(agentId);
+      if (!row) return;
+      await sheetsService.updateRowCells(SHEETS.PA_CREDENTIALS, row.rowIndex, {
+        16: sessionJson || '',
+      });
+    } catch (e) {
+      console.error('[PA] _saveIGSession error:', e.message);
+    }
   }
 
   async _getTodayJobCount(agentId, type) {

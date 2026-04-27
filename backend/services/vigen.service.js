@@ -1,67 +1,70 @@
 /**
- * ViGenService — Video Engine Bridge (CRM → my-video-app)
+ * ViGenService — Video Engine Bridge (CRM → mansion-vidgen)
  * ============================================
- * Mengirim payload render ke Python Cloud Run (my-video-app)
- * dan menerima callback saat render selesai.
+ * Flow API mansion-vidgen (FastAPI, session-based):
+ *   1. POST /api/login              → dapat Bearer token
+ *   2. POST /api/session            → dapat {sid}
+ *   3. POST /api/upload/{sid}       → upload tiap foto (multipart)
+ *   4. POST /api/render/{sid}       → mulai render
+ *   5. GET  /api/status/{sid}       → poll status (via cron)
+ *   6. GET  /api/download/{sid}     → download video → upload ke Cloudinary
  *
- * ENDPOINT my-video-app: POST /api/render-crm
- * CALLBACK ke CRM:       POST /api/v1/pa/vigen/callback
- *
- * Media yang diikutkan ke payload:
- *   - photos    : maks 6 foto, diambil dari Cloudinary folder photos/
- *   - video_clips: maks 6 video, diambil dari Cloudinary folder raw/ (tiap maks 50MB)
- *
- * Cloudinary folder structure:
- *   mansion_properti/{listing_id}/photos/   ← input foto
- *   mansion_properti/{listing_id}/raw/      ← input video clips
- *   mansion_properti/{listing_id}/ads/      ← output hasil render
- *
- * Flow:
- *   1. CRM: agen klik "Create Ads Content"
- *   2. CRM: ambil foto + video_clips dari Cloudinary listing folder
- *   3. CRM → my-video-app: POST payload render (photos + video_clips)
- *   4. my-video-app: render + upload ke ads/ folder Cloudinary
- *   5. my-video-app → CRM: POST callback URL video
- *   6. CRM: simpan URL video di VIGEN_JOBS + update LISTING
+ * Env vars yang dibutuhkan:
+ *   VIGEN_URL       = https://mansion-vidgen-cb5stice7a-et.a.run.app
+ *   VIGEN_USERNAME  = username akun di ViGen
+ *   VIGEN_PASSWORD  = password akun di ViGen
  */
 
-const axios   = require('axios');
+const axios      = require('axios');
+const FormData   = require('form-data');
 const { v4: uuidv4 } = require('uuid');
 const sheetsService      = require('./sheets.service');
 const cloudinaryService  = require('./cloudinary.service');
 const { SHEETS }         = require('../config/sheets.config');
 
-// Batas media yang dikirim ke my-video-app
 const MAX_PHOTOS_TO_ENGINE     = 6;
-const MAX_VIDEOCLIPS_TO_ENGINE = 6;   // sesuai batasan upload
-const VIDEO_MAX_BYTES          = 50 * 1024 * 1024; // 50MB
+const MAX_VIDEOCLIPS_TO_ENGINE = 6;
+const VIDEO_MAX_BYTES          = 50 * 1024 * 1024;
 
 class ViGenService {
 
+  constructor() {
+    this._token       = null;
+    this._tokenExpiry = 0;
+  }
+
+  // ── Auth token (cached, auto-refresh) ─────────────────────
+  async _getToken() {
+    if (this._token && Date.now() < this._tokenExpiry) return this._token;
+
+    const url  = process.env.VIGEN_URL;
+    const user = process.env.VIGEN_USERNAME;
+    const pass = process.env.VIGEN_PASSWORD;
+    if (!url || !user || !pass) throw new Error('VIGEN_URL / VIGEN_USERNAME / VIGEN_PASSWORD belum dikonfigurasi');
+
+    const { data } = await axios.post(`${url}/api/login`, { username: user, password: pass }, { timeout: 15000 });
+    // ViGen login response: { token: '...' }
+    this._token       = data.token || data.access_token;
+    this._tokenExpiry = Date.now() + 50 * 60 * 1000; // refresh tiap 50 menit
+    return this._token;
+  }
+
+  _headers() {
+    return { Authorization: `Bearer ${this._token}` };
+  }
+
   /**
-   * Trigger render video ke my-video-app.
-   * Foto dan video clips diambil langsung dari Cloudinary folder listing.
-   *
-   * @param {Object} params
-   * @param {string} params.listingId
-   * @param {string} params.listingType  'secondary' | 'primary'
-   * @param {string} params.mood         'minimalis' | 'mewah'
-   * @param {number} params.duration     15 | 30 | 60
-   * @param {Object} params.listing      Row data dari GSheets LISTING (sebagai objek {key:val})
-   * @param {Object} params.agent        Data agen
+   * Trigger render video ke mansion-vidgen.
    */
   async triggerRender({ listingId, listingType, mood, duration, listing, agent }) {
     const jobId = uuidv4();
     const now   = new Date().toISOString();
 
-    // ── Ambil media dari Cloudinary ───────────────────────────
-    // Diambil dari folder listing — ini adalah source of truth terbaru
+    // ── Ambil media dari Cloudinary ──────────────────────────
     const [cloudPhotos, cloudVideos] = await Promise.all([
       cloudinaryService.listListingPhotos(listingId),
       cloudinaryService.listListingVideos(listingId),
     ]);
-
-    // Fallback ke GSheets jika Cloudinary belum ada media (listing lama)
     const photos     = _buildPhotoUrls(cloudPhotos, listing);
     const videoClips = _buildVideoUrls(cloudVideos);
 
@@ -69,116 +72,84 @@ class ViGenService {
       throw new Error('Tidak ada foto listing. Upload minimal 1 foto sebelum membuat konten iklan.');
     }
 
-    // Log untuk audit
-    console.log(`[ViGen] Job ${jobId} | listing ${listingId} | ${photos.length} foto + ${videoClips.length} video clips`);
-    if (videoClips.length > 0) {
-      const totalMB = videoClips.reduce((sum, v) => sum + (v.size_mb || 0), 0);
-      console.log(`[ViGen] Video clips total: ${totalMB.toFixed(1)}MB`);
-    }
-
-    // ── Build Payload ─────────────────────────────────────────
-    const callbackUrl = `${process.env.APP_URL}/api/v1/pa/vigen/callback`;
-
-    const renderPayload = {
-      job_id:       jobId,
-      listing_id:   listingId,
-      listing_type: listingType,
-      mood,
-      media: {
-        // Kirim URL langsung (Cloudinary secure_url) ke my-video-app
-        photos:      photos.slice(0, MAX_PHOTOS_TO_ENGINE),
-        video_clips: videoClips.slice(0, MAX_VIDEOCLIPS_TO_ENGINE).map(v => ({
-          url:      v.secure_url,
-          duration: v.duration || null,    // detik (jika tersedia dari Cloudinary)
-          size_mb:  v.size_mb  || null,
-        })),
-        bgm_preset: mood === 'mewah' ? 'luxury_ambient' : 'minimal_piano',
-        has_video_clips: videoClips.length > 0,
-      },
-      dynamic_text: {
-        harga:     listing.Harga_Format    || listing.Harga || '',
-        lokasi:    `${listing.Kecamatan || ''}, ${listing.Kota || ''}`.replace(/^, /, ''),
-        tipe:      `${listing.Tipe_Properti || ''} · ${listing.Sertifikat || ''}`.trim(),
-        agen_nama: agent.Nama || '',
-        agen_wa:   agent.No_WA || agent.No_WA_Business || '',
-      },
-      output: {
-        // Output disimpan ke folder ads/ per listing
-        cloudinary_folder: `mansion_properti/${listingId}/ads`,
-        cloudinary_public_id: `ads_${Date.now()}`,
-        resolution:    '1080p',
-        aspect_ratio:  '9:16',    // Portrait untuk Reels/Story
-        duration_target: duration,
-      },
-      callback_url:    callbackUrl,
-      callback_secret: process.env.VIGEN_CALLBACK_SECRET,
-    };
-
-    // ── Simpan job ke GSheets ─────────────────────────────────
+    // ── Simpan job ke GSheets (status: pending) ───────────────
     await sheetsService.appendRow(SHEETS.VIGEN_JOBS, [
-      jobId,
-      listingId,
-      listing.Judul || listingId,
-      'pending',
-      '',                       // Video_URL (belum ada, diisi callback)
-      mood,
-      String(duration),
-      agent.ID || '',
-      now,
-      '',                       // Finished_At
-      '',                       // Error_Msg
-      'FALSE',                  // Callback_Received
+      jobId, listingId, listing.Judul || listingId,
+      'pending', '', mood, String(duration), agent.ID || '',
+      now, '', '', 'FALSE',
     ]);
 
-    // ── Kirim ke my-video-app ─────────────────────────────────
-    const viGenUrl = process.env.VIGEN_URL;
-    if (!viGenUrl) throw new Error('VIGEN_URL tidak dikonfigurasi di environment');
+    // ── Jalankan render async (fire-and-forget) ───────────────
+    this._executeRender({
+      jobId, listingId, listingType, mood, duration, listing, agent, photos, videoClips,
+    }).catch(err => console.error(`[ViGen] Job ${jobId} error:`, err.message));
 
+    return {
+      success:     true,
+      job_id:      jobId,
+      message:     `Render video dimulai! ${photos.length} foto akan diproses. Pantau status di Riwayat Render.`,
+      media_count: { photos: photos.length, video_clips: videoClips.length },
+    };
+  }
+
+  async _executeRender({ jobId, listingId, mood, duration, listing, agent, photos, videoClips }) {
+    const url = process.env.VIGEN_URL;
     try {
-      const response = await axios.post(`${viGenUrl}/api/render-crm`, renderPayload, {
-        timeout: 15000,
-        headers: { 'Content-Type': 'application/json' },
+      await this._updateJobStatus(jobId, 'rendering');
+
+      // 1. Login → dapat token
+      await this._getToken();
+
+      // 2. Buat session
+      const { data: sess } = await axios.post(`${url}/api/session`, {}, {
+        headers: this._headers(), timeout: 15000,
       });
+      const sid = sess.sid;
+      if (!sid) throw new Error('ViGen tidak mengembalikan session ID');
 
-      console.log(`[ViGen] Job ${jobId} diterima oleh my-video-app:`, response.data?.status || 'ok');
+      // Simpan sid agar bisa di-poll
+      await this._updateJobSid(jobId, sid);
 
-      return {
-        success:   true,
-        job_id:    jobId,
-        message:   `Render video dimulai! ${photos.length} foto + ${videoClips.length} video clip akan diproses. Notifikasi muncul saat selesai.`,
-        media_count: { photos: photos.length, video_clips: videoClips.length },
-      };
+      // 3. Upload foto (download dari Cloudinary → upload ke ViGen)
+      const photoPaths = [];
+      for (const photoUrl of photos.slice(0, MAX_PHOTOS_TO_ENGINE)) {
+        try {
+          const imgRes = await axios.get(photoUrl, { responseType: 'arraybuffer', timeout: 30000 });
+          const fd     = new FormData();
+          fd.append('file', Buffer.from(imgRes.data), { filename: 'photo.jpg', contentType: 'image/jpeg' });
+          fd.append('file_type', 'photo');
+          const { data: up } = await axios.post(`${url}/api/upload/${sid}`, fd, {
+            headers: { ...this._headers(), ...fd.getHeaders() }, timeout: 30000,
+          });
+          if (up.path) photoPaths.push(up.path);
+        } catch (e) {
+          console.warn(`[ViGen] Upload foto gagal (${photoUrl}):`, e.message);
+        }
+      }
+
+      if (photoPaths.length === 0) throw new Error('Tidak ada foto berhasil diupload ke ViGen');
+
+      // 4. Mulai render
+      await axios.post(`${url}/api/render/${sid}`, {
+        sid,
+        photo_paths:     photoPaths,
+        clip_paths:      [],
+        duration_target: duration,
+        resolution:      '720p  (720×1280) Best',
+        cta_label:       'Hubungi :',
+        cta_nama:        agent.Nama || '',
+        cta_wa:          agent.No_WA || agent.No_WA_Business || '',
+        description:     `${listing.Judul || ''} - ${listing.Harga_Format || ''} - ${listing.Kecamatan || ''}, ${listing.Kota || ''}`,
+        n_captions:      3,
+      }, { headers: this._headers(), timeout: 30000 });
+
+      console.log(`[ViGen] Job ${jobId} render dimulai, sid=${sid}`);
+      // Status akan di-update oleh cron _pollPendingJobs
 
     } catch (err) {
       await this._updateJobStatus(jobId, 'failed', null, err.message);
-      throw new Error(`ViGen render gagal: ${err.message}`);
+      console.error(`[ViGen] Job ${jobId} _executeRender gagal:`, err.message);
     }
-  }
-
-  /**
-   * Handle callback dari my-video-app saat render selesai.
-   * my-video-app sudah upload ke Cloudinary ads/ folder dan mengirim URL-nya.
-   */
-  async handleCallback({ jobId, videoUrl, listingId, secret, error }) {
-    if (secret !== process.env.VIGEN_CALLBACK_SECRET) {
-      throw new Error('Invalid callback secret');
-    }
-
-    if (error) {
-      await this._updateJobStatus(jobId, 'failed', null, error);
-      console.error(`[ViGen] Job ${jobId} FAILED:`, error);
-      return { success: false };
-    }
-
-    await this._updateJobStatus(jobId, 'done', videoUrl, null);
-
-    // Catat URL video ads di LISTING sheet untuk quick access
-    if (listingId && videoUrl) {
-      await this._updateListingVideoAdsUrl(listingId, videoUrl);
-    }
-
-    console.log(`[ViGen] Job ${jobId} DONE. Ads video: ${videoUrl}`);
-    return { success: true, video_url: videoUrl };
   }
 
   /**
@@ -227,6 +198,61 @@ class ViGenService {
    */
   async getListingMedia(listingId) {
     return cloudinaryService.listAllListingMedia(listingId);
+  }
+
+  // ── Polling cron (dipanggil dari server.js tiap 30 detik) ──
+
+  async pollPendingJobs() {
+    const url = process.env.VIGEN_URL;
+    if (!url) return;
+    try {
+      const rows = await sheetsService.getRows(SHEETS.VIGEN_JOBS);
+      const rendering = rows.filter(r => r[3] === 'rendering' && r[12]); // col M = sid
+      if (rendering.length === 0) return;
+
+      await this._getToken();
+
+      for (const row of rendering) {
+        const jobId = row[0];
+        const sid   = row[12];
+        try {
+          const { data } = await axios.get(`${url}/api/status/${sid}`, {
+            headers: this._headers(), timeout: 10000,
+          });
+
+          const st = (data.status || '').toLowerCase();
+          if (st === 'done' || st === 'completed' || st === 'finished') {
+            // Download video → upload ke Cloudinary
+            const videoResp = await axios.get(`${url}/api/download/${sid}`, {
+              headers: this._headers(), responseType: 'arraybuffer', timeout: 120000,
+            });
+            const listingId = row[1];
+            const videoUrl  = await cloudinaryService.uploadVideoBuffer(
+              Buffer.from(videoResp.data),
+              listingId,
+              `ads_${jobId}`
+            );
+            await this._updateJobStatus(jobId, 'done', videoUrl, null);
+            if (listingId && videoUrl) await this._updateListingVideoAdsUrl(listingId, videoUrl);
+            console.log(`[ViGen] Job ${jobId} DONE → ${videoUrl}`);
+          } else if (st === 'failed' || st === 'error') {
+            await this._updateJobStatus(jobId, 'failed', null, data.error || 'Render gagal di ViGen');
+          }
+          // status 'rendering'/'processing' → biarkan, poll lagi berikutnya
+        } catch (e) {
+          console.warn(`[ViGen] poll job ${jobId} error:`, e.message);
+        }
+      }
+    } catch (e) {
+      console.error('[ViGen] pollPendingJobs error:', e.message);
+    }
+  }
+
+  async _updateJobSid(jobId, sid) {
+    const rows = await sheetsService.getRows(SHEETS.VIGEN_JOBS);
+    const idx  = rows.findIndex(r => r[0] === jobId);
+    if (idx < 0) return;
+    await sheetsService.updateRowCells(SHEETS.VIGEN_JOBS, idx + 2, { 12: sid }); // col M
   }
 
   // ── Private Helpers ───────────────────────────────────────
