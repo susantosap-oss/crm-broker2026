@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="theme-color" content="#080E1A"/>
-  <meta name="app-version" content="1.3.5"/>
+  <meta name="app-version" content="1.4.1"/>
   <title>Mansion CRM</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{navy:{DEFAULT:'#080E1A',1:'#0D1526',2:'#131F38',3:'#1C2D52'},gold:{DEFAULT:'#D4A853',light:'#E8C07A',dark:'#A87B30'}}}}};</script>
@@ -272,6 +272,17 @@
         </div>
         <div id="upcoming-tasks-list" style="display:flex;flex-direction:column;gap:8px">
           <div class="skeleton" style="height:60px;border-radius:14px"></div>
+        </div>
+      </div>
+      <!-- Widget: Legal Perjanjian -->
+      <div style="padding:0 16px 20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h3 style="color:rgba(255,255,255,0.65);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em"><i class="fa-solid fa-file-contract" style="color:#34d399;margin-right:6px"></i>Legal Perjanjian</h3>
+          <button onclick="navigateTo('legal')" style="color:rgba(212,168,83,0.8);font-size:11px;background:none;border:none;cursor:pointer">Lihat semua →</button>
+        </div>
+        <div id="dash-legal-list">
+          <div class="skeleton" style="height:54px;border-radius:12px;margin-bottom:8px"></div>
+          <div class="skeleton" style="height:54px;border-radius:12px"></div>
         </div>
       </div>
       <!-- Primary Stats — koordinator/principal/SA (diisi oleh JS) -->
@@ -758,6 +769,139 @@
       </div>
     </div>
   </div>
+  <!-- PAGE: Legal Perjanjian -->
+  <div id="page-legal" class="page" style="display:none;padding:16px;max-width:600px;margin:0 auto">
+    <div id="legal-admin-upload" style="display:none;margin-bottom:20px">
+      <div style="background:#131F38;border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,0.07)">
+        <h3 style="color:#D4A853;font-size:14px;font-weight:700;margin:0 0 14px">Upload Dokumen Legal</h3>
+        <div style="display:grid;gap:10px">
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Agen</label>
+            <select id="legal-agent-select" style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px">
+              <option value="">Pilih Agen...</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Nama Klien <span style="color:#f87171">*</span></label>
+              <input type="text" id="legal-nama-klien" placeholder="Budi Santoso" oninput="updateLegalFilenamePreview()" style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Nama Pemilik / Developer</label>
+              <input type="text" id="legal-nama-pemilik" placeholder="PT. Citraland" style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Kategori</label>
+              <select id="legal-kategori" onchange="updateLegalFilenamePreview()" style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px">
+                <option value="PJB">PJB</option>
+                <option value="Sewa">Sewa</option>
+                <option value="SPR">SPR</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Tanggal Upload</label>
+              <input type="date" id="legal-tanggal" style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box" readonly>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Alamat Unit / Nama Proyek <span style="color:#f87171">*</span></label>
+            <input type="text" id="legal-alamat-unit" placeholder="Jl. Mawar No.5 / Citraland Surabaya" oninput="updateLegalFilenamePreview()" style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">File PDF <span style="color:#f87171">*</span></label>
+            <input type="file" id="legal-file" accept=".pdf" style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 10px;color:#fff;font-size:12px">
+          </div>
+          <!-- Preview nama file auto-generated -->
+          <div id="legal-filename-preview" style="display:none;background:#0a1628;border:1px solid rgba(52,211,153,0.2);border-radius:10px;padding:9px 12px">
+            <span style="font-size:10px;color:rgba(255,255,255,0.35)">Nama file: </span>
+            <span id="legal-filename-text" style="font-size:11px;color:#34d399;font-weight:600;word-break:break-all"></span>
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Catatan (opsional)</label>
+            <input type="text" id="legal-catatan" placeholder="mis: Unit Tower A lantai 5" style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+          <button id="legal-upload-btn" onclick="uploadLegalDoc()" style="background:#D4A853;color:#0D1526;border:none;border-radius:10px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;width:100%">Upload ke Google Drive</button>
+          <div id="legal-upload-progress" style="display:none;font-size:12px;color:rgba(255,255,255,0.5);text-align:center">Mengupload...</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 style="color:#fff;font-size:14px;font-weight:700;margin:0">Dokumen Legal</h3>
+      <div id="legal-admin-filter" style="display:none">
+        <select id="legal-filter-agent" onchange="loadLegalDocs()" style="background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;color:#fff;font-size:12px">
+          <option value="">Semua Agen</option>
+        </select>
+      </div>
+    </div>
+    <div id="legal-docs-list">
+      <div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px 0;font-size:13px">Memuat dokumen...</div>
+    </div>
+  </div>
+
+  <!-- PAGE: Status Sewa -->
+  <div id="page-rental" class="page" style="display:none;padding:16px;max-width:600px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="color:#fff;font-size:14px;font-weight:700;margin:0">Status Sewa</h3>
+      <button onclick="openRentalModal()" style="background:#D4A853;color:#0D1526;border:none;border-radius:10px;padding:8px 14px;font-weight:700;font-size:12px;cursor:pointer">+ Tambah Sewa</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button onclick="filterRental('')" id="rf-all" class="rental-filter-btn active-rf" style="background:#D4A853;color:#0D1526;border:none;border-radius:20px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer">Semua</button>
+      <button onclick="filterRental('aktif')" id="rf-aktif" class="rental-filter-btn" style="background:#131F38;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:5px 14px;font-size:11px;cursor:pointer">Aktif</button>
+      <button onclick="filterRental('selesai')" id="rf-selesai" class="rental-filter-btn" style="background:#131F38;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:5px 14px;font-size:11px;cursor:pointer">Selesai</button>
+      <button onclick="filterRental('diperpanjang')" id="rf-diperpanjang" class="rental-filter-btn" style="background:#131F38;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:5px 14px;font-size:11px;cursor:pointer">Diperpanjang</button>
+    </div>
+    <div id="rental-list">
+      <div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px 0;font-size:13px">Memuat data sewa...</div>
+    </div>
+  </div>
+
+  <!-- MODAL: Tambah/Edit Sewa -->
+  <div id="rental-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.7);overflow-y:auto">
+    <div style="background:#0D1526;border-radius:16px;max-width:480px;margin:40px auto;padding:20px;border:1px solid rgba(255,255,255,0.1)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 id="rental-modal-title" style="color:#D4A853;font-size:15px;font-weight:700;margin:0">Tambah Data Sewa</h3>
+        <button onclick="closeRentalModal()" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer">×</button>
+      </div>
+      <input type="hidden" id="rental-edit-id">
+      <div style="display:grid;gap:12px">
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Nama Penyewa *</label>
+          <input type="text" id="rental-nama-penyewa" placeholder="Budi Santoso" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Alamat Sewa *</label>
+          <input type="text" id="rental-alamat" placeholder="Jl. Mawar No.5, Surabaya" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Tanggal Mulai *</label>
+            <input type="date" id="rental-start" oninput="hitungTanggalSelesaiUI()" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Durasi (Bulan) *</label>
+            <input type="number" id="rental-duration" min="1" max="120" placeholder="12" oninput="hitungTanggalSelesaiUI()" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+        <div style="background:#131F38;border-radius:10px;padding:10px 12px;border:1px solid rgba(212,168,83,0.2)">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4)">Tanggal Selesai: </span>
+          <span id="rental-end-display" style="font-size:13px;color:#D4A853;font-weight:600">—</span>
+        </div>
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Catatan (opsional)</label>
+          <input type="text" id="rental-catatan-modal" placeholder="Catatan tambahan..." style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+        </div>
+        <div id="rental-perpanjang-section" style="display:none;border-top:1px solid rgba(255,255,255,0.07);padding-top:12px">
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Perpanjang (Bulan Tambahan)</label>
+          <input type="number" id="rental-perpanjang-bulan" min="1" max="120" placeholder="mis: 12" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+        </div>
+        <button id="rental-save-btn" onclick="saveRental()" style="background:#D4A853;color:#0D1526;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:13px;cursor:pointer;width:100%;margin-top:4px">Simpan</button>
+      </div>
+    </div>
+  </div>
+
   </main>
 
   <!-- BOTTOM NAV -->
@@ -838,6 +982,9 @@
         <span>Log Share</span>
       </button>
       <button id="sidebar-user-mgmt" onclick="openUserMgmt();closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-users-cog" style="color:#60a5fa;width:16px;text-align:center"></i><span>Manajemen User</span></button>
+      <div style="margin:6px 0;border-top:1px solid rgba(255,255,255,0.06)"></div>
+      <button onclick="navigateTo('legal');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-file-contract" style="color:#34d399;width:16px;text-align:center"></i><span>Legal Perjanjian</span></button>
+      <button onclick="navigateTo('rental');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-key" style="color:#fb923c;width:16px;text-align:center"></i><span>Status Sewa</span></button>
     </nav>
     <div style="padding:12px">
       <button onclick="logout()" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);cursor:pointer;color:#f87171;font-size:13px" onmouseenter="this.style.background='rgba(239,68,68,0.15)'" onmouseleave="this.style.background='rgba(239,68,68,0.08)'">
@@ -861,6 +1008,7 @@
         <button onclick="closeQuickAdd();openModal('modal-add-task');populateTaskLeadDropdown()" style="display:flex;flex-direction:column;align-items:center;gap:10px;background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px 12px;cursor:pointer" onmouseenter="this.style.borderColor='rgba(34,197,94,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'"><div style="width:44px;height:44px;border-radius:14px;background:rgba(34,197,94,0.12);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-calendar-plus" style="color:#22C55E;font-size:18px"></i></div><span style="font-size:12px;font-weight:600;color:#fff">Jadwal Visit</span></button>
         <button onclick="closeQuickAdd();openModal('modal-add-aktivitas')" style="display:flex;flex-direction:column;align-items:center;gap:10px;background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px 12px;cursor:pointer" onmouseenter="this.style.borderColor='rgba(212,168,83,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'"><div style="width:44px;height:44px;border-radius:14px;background:rgba(212,168,83,0.12);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-pencil-alt" style="color:#D4A853;font-size:18px"></i></div><span style="font-size:12px;font-weight:600;color:#fff">Aktivitas Harian</span></button>
         <button onclick="closeQuickAdd();openKomisiForm()" style="display:flex;flex-direction:column;align-items:center;gap:10px;background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px 12px;cursor:pointer" onmouseenter="this.style.borderColor='rgba(212,168,83,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'"><div style="width:44px;height:44px;border-radius:14px;background:rgba(212,168,83,0.12);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-money-bill-wave" style="color:#D4A853;font-size:18px"></i></div><span style="font-size:12px;font-weight:600;color:#fff">Request Komisi</span></button>
+        <button onclick="closeQuickAdd();openRentalModal()" style="display:flex;flex-direction:column;align-items:center;gap:10px;background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px 12px;cursor:pointer" onmouseenter="this.style.borderColor='rgba(251,146,60,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'"><div style="width:44px;height:44px;border-radius:14px;background:rgba(251,146,60,0.12);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-key" style="color:#fb923c;font-size:18px"></i></div><span style="font-size:12px;font-weight:600;color:#fff">Tambah Sewa</span></button>
       </div>
     </div>
   </div>
@@ -1575,7 +1723,8 @@
 
 <script src="/js/app.js?v=20260423c"></script>
 <script src="/js/app-mobile.js?v=20260427d"></script>
-<script src="/js/pa-dashboard.js?v=20260427d"></script>
+<script src="/js/pa-dashboard.js?v=20260427e"></script>
+<script src="/js/legal-rental.js?v=20260427b"></script>
 <script>
   // Init PA Dashboard setelah app siap
   document.addEventListener('DOMContentLoaded', () => {

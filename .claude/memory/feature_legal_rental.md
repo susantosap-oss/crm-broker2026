@@ -4,10 +4,29 @@ description: Rencana implementasi Manajemen Dokumen Legal (Google Drive) dan Sis
 type: project
 originSessionId: d356dbb1-e329-4914-90f0-f8e4813cf9fa
 ---
-## Status: PLANNED — belum dikerjakan
+## Status: IMPLEMENTED — 2026-04-27
 
-**Why:** Permintaan user 2026-04-27. Kerjakan setelah fitur ViGen + IG Post selesai.
-**How to apply:** Saat mulai implementasi, baca arsitektur di bawah sebagai panduan utama.
+**Why:** Permintaan user 2026-04-27. Diimplementasikan setelah pull dari susantosap-oss.
+**How to apply:** Fitur sudah live, tinggal setup Google Sheets tabs + env var + deploy.
+
+### File yang dibuat/dimodifikasi:
+- `backend/config/sheets.config.js` — tambah LEGAL_DOCS + RENTAL_STATUS (tabs + columns)
+- `backend/services/gdrive.service.js` — upload/delete PDF ke Google Drive
+- `backend/routes/legal.routes.js` — POST /upload, GET /docs, DELETE /docs/:id
+- `backend/routes/rental.routes.js` — POST /, GET /, PATCH /:id, DELETE /:id
+- `backend/services/cron.service.js` — tambah checkRentalReminders() 08:00 WIB (01:00 UTC)
+- `backend/server.js` — register /api/v1/legal + /api/v1/rental
+- `frontend/index.html` — page-legal, page-rental, rental-modal, menu sidebar, script tag
+- `frontend/js/legal-rental.js` — semua UI logic (new file)
+- `frontend/js/app.js` — tambah navigateTo handler untuk 'legal' dan 'rental'
+- `frontend/sw.js` + `frontend/index.html` — bump APP_VERSION ke 1.3.6
+
+### Yang perlu dilakukan sebelum deploy:
+1. Buat tab LEGAL_DOCS di Google Sheets (kolom A-J sesuai COLUMNS.LEGAL_DOCS)
+2. Buat tab RENTAL_STATUS di Google Sheets (kolom A-M sesuai COLUMNS.RENTAL_STATUS)
+3. Env var GDRIVE_LEGAL_FOLDER_ID sudah hardcoded: 1OUHq_ZwtNwvkWIR63cH6nYyvFFk21uwE
+4. Service account harus punya akses ke folder Drive tersebut
+5. Enable Google Drive API di GCP project crm-broker2026
 
 ---
 

@@ -234,6 +234,8 @@ async function navigateTo(page) {
   if (page === 'tasks')     await loadTasks();
   if (page === 'pipeline')  await loadPipeline();
   if (page === 'whatsapp')  await loadWaLeadsSelect();
+  if (page === 'legal')     await loadLegalDocs();
+  if (page === 'rental')    await loadRentals();
 
   // Scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -312,6 +314,9 @@ async function loadDashboard() {
     setText('profile-listings', stats.totalListings || '—');
     setText('profile-leads', stats.totalLeads || '—');
     setText('profile-deals', stats.dealsThisMonth || '—');
+
+    // Legal widget (non-blocking)
+    if (typeof loadDashboardLegalWidget === 'function') loadDashboardLegalWidget();
 
   } catch (e) {
     showToast('Gagal memuat dashboard: ' + e.message, 'error');

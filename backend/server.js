@@ -87,6 +87,9 @@ app.use('/api/v1/push',           require('./routes/push.routes'));
 // ★ Fitur 2 — PA (OpenClaw) + ViGen (Video Engine)
 // PA routes: /api/v1/pa/*  |  ViGen routes: /api/v1/pa/vigen/*
 app.use('/api/v1/pa',             require('./routes/pa.routes'));
+// ★ Fitur 3 — Legal Dokumen + Status Sewa
+app.use('/api/v1/legal',          require('./routes/legal.routes'));
+app.use('/api/v1/rental',         require('./routes/rental.routes'));
 // ★ Fitur 2 — Meta/Zapier Webhook + Config API
 // Semua rute webhook (meta, zapier, config) dihandle satu router
 const webhookRouter = require('./routes/meta-webhook.routes');

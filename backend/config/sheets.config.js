@@ -49,6 +49,9 @@ const SHEETS = {
   WEBHOOK_CONFIG:    'WEBHOOK_CONFIG',  // KV store konfigurasi webhook global
   // ★ Push Notifications
   PUSH_SUBSCRIPTIONS: 'PUSH_SUBSCRIPTIONS',
+  // ★ Fitur 3 — Legal Dokumen + Status Sewa
+  LEGAL_DOCS:    'LEGAL_DOCS',
+  RENTAL_STATUS: 'RENTAL_STATUS',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -478,6 +481,40 @@ const COLUMNS = {
     'Is_Terminal',
     'Aktif',
     'Created_At',
+  ],
+
+  // ★ LEGAL_DOCS — Dokumen legal properti (disimpan di Google Drive)
+  LEGAL_DOCS: [
+    'ID',             // A  UUID
+    'Agen_ID',        // B  FK ke AGENTS (agen pemilik dokumen)
+    'Nama_File',      // C  Nama file auto-generated
+    'Kategori',       // D  PJB | Sewa | SPR | Lainnya
+    'Drive_File_ID',  // E  Google Drive file ID
+    'Drive_URL',      // F  Link view publik
+    'Ukuran_KB',      // G  Ukuran file dalam KB
+    'Uploaded_By',    // H  agent_id yang upload
+    'Created_At',     // I  ISO timestamp
+    'Catatan',        // J  opsional
+    'Nama_Klien',     // K  Nama klien (wajib)
+    'Nama_Pemilik',   // L  Nama pemilik / developer
+    'Alamat_Unit',    // M  Alamat unit / nama proyek (wajib)
+  ],
+
+  // ★ RENTAL_STATUS — Data status sewa & reminder otomatis
+  RENTAL_STATUS: [
+    'ID',                 // A  UUID
+    'Agen_ID',            // B  FK ke AGENTS
+    'Nama_Penyewa',       // C
+    'Alamat_Sewa',        // D
+    'Tanggal_Mulai',      // E  ISO date YYYY-MM-DD
+    'Durasi_Bulan',       // F  integer
+    'Tanggal_Selesai',    // G  ISO date (dihitung saat input)
+    'Status',             // H  aktif | selesai | diperpanjang | dibatalkan
+    'Reminder_90_Sent',   // I  TRUE/FALSE
+    'Reminder_30_Sent',   // J  TRUE/FALSE
+    'Catatan',            // K  opsional
+    'Created_At',         // L  ISO timestamp
+    'Updated_At',         // M  ISO timestamp
   ],
 
 };

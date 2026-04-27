@@ -67,7 +67,8 @@
       "Bash(xargs '-I{}' curl -s https://sheets.googleapis.com/v4/spreadsheets/1iHIGVPl7l7dDEVpqHGvZxFVIL8nqUx3G_skBPzFimzI/values/AGENTS!A:H -H 'Authorization: Bearer {}')",
       "Bash(node_modules/.bin/tsc --noEmit)",
       "Bash(/home/susantomansion/web-mansion2026/node_modules/.bin/tsc --noEmit --project /home/susantomansion/web-mansion2026/tsconfig.json)",
-      "Bash(npm info:*)"
+      "Bash(npm info:*)",
+      "Bash(gcloud services list *)"
     ]
   }
 }
