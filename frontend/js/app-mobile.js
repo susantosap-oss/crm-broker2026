@@ -4048,15 +4048,105 @@ async function importWAContacts() {
 
 async function syncWAGroups() {
   const btn = document.querySelector('#page-wa-contacts button[onclick="syncWAGroups()"]');
-  if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Menyinkronkan...'; }
+  if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Mengambil grup...'; }
   try {
     const res = await API.post('/wa-contacts/groups/sync', {});
-    showToast(`✅ ${res.synced} grup baru ditambahkan dari ${res.total_groups} total grup`, 'success');
-    await loadWAContacts();
+    if (!res.groups || res.groups.length === 0) {
+      showToast(res.message || 'Tidak ada grup ditemukan', 'info');
+      return;
+    }
+    _showGroupPickerModal(res.groups);
   } catch (e) {
-    showToast('Gagal sync grup: ' + e.message, 'error');
+    showToast('Gagal Sync group : ' + e.message, 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Sync Grup WA'; }
+  }
+}
+
+function _showGroupPickerModal(groups) {
+  document.getElementById('wa-group-picker-modal')?.remove();
+
+  const newGroups  = groups.filter(g => !g.saved);
+  const savedGroups = groups.filter(g => g.saved);
+
+  const modal = document.createElement('div');
+  modal.id = 'wa-group-picker-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:flex-end';
+  modal.innerHTML = `
+    <div style="background:#0f1928;border-radius:20px 20px 0 0;width:100%;max-height:85vh;display:flex;flex-direction:column;padding:0 0 env(safe-area-inset-bottom)">
+      <div style="padding:16px 20px 12px;border-bottom:1px solid rgba(255,255,255,0.07)">
+        <div style="width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 14px"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:16px;font-weight:700;color:#fff">Pilih Grup WA</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${groups.length} grup dari Fonnte · ${newGroups.length} belum disimpan</div>
+          </div>
+          <button onclick="document.getElementById('wa-group-picker-modal').remove()" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.07);border:none;color:rgba(255,255,255,0.5);font-size:16px;cursor:pointer">✕</button>
+        </div>
+        ${newGroups.length > 0 ? `
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button onclick="_selectAllGroups(true)" style="flex:1;padding:7px;border-radius:8px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.25);color:#25d366;font-size:12px;font-weight:600;cursor:pointer">Pilih Semua</button>
+          <button onclick="_selectAllGroups(false)" style="flex:1;padding:7px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);font-size:12px;cursor:pointer">Batal Semua</button>
+        </div>` : ''}
+      </div>
+
+      <div style="overflow-y:auto;flex:1;padding:12px 16px">
+        ${newGroups.length === 0 ? `<div style="text-align:center;padding:32px 16px;color:rgba(255,255,255,0.35);font-size:13px">Semua grup sudah ada di Buku Kontak</div>` : ''}
+        ${newGroups.length > 0 ? `<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.08em;margin-bottom:8px">BELUM DISIMPAN</div>` : ''}
+        ${newGroups.map(g => `
+          <label style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);margin-bottom:6px;cursor:pointer">
+            <input type="checkbox" class="wa-group-cb" data-id="${escapeHtml(g.id)}" data-name="${escapeHtml(g.name)}" checked
+              style="width:18px;height:18px;accent-color:#25d366;cursor:pointer;flex-shrink:0">
+            <div style="overflow:hidden">
+              <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">👥 ${escapeHtml(g.name)}</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:1px">${escapeHtml(g.id)}</div>
+            </div>
+          </label>`).join('')}
+        ${savedGroups.length > 0 ? `
+          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.2);letter-spacing:0.08em;margin:12px 0 8px">SUDAH DI BUKU KONTAK</div>
+          ${savedGroups.map(g => `
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.015);margin-bottom:6px;opacity:0.5">
+            <span style="font-size:16px">✅</span>
+            <div style="font-size:13px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">👥 ${escapeHtml(g.name)}</div>
+          </div>`).join('')}` : ''}
+      </div>
+
+      ${newGroups.length > 0 ? `
+      <div style="padding:12px 16px">
+        <button onclick="_saveSelectedGroups()" id="wa-group-save-btn"
+          style="width:100%;padding:14px;border-radius:12px;background:#25d366;border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer">
+          Simpan Grup Terpilih
+        </button>
+      </div>` : ''}
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function _selectAllGroups(checked) {
+  document.querySelectorAll('.wa-group-cb').forEach(cb => cb.checked = checked);
+}
+
+async function _saveSelectedGroups() {
+  const selected = [...document.querySelectorAll('.wa-group-cb:checked')]
+    .map(cb => ({ id: cb.dataset.id, name: cb.dataset.name }));
+
+  if (selected.length === 0) {
+    showToast('Pilih minimal 1 grup', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('wa-group-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
+
+  try {
+    const res = await API.post('/wa-contacts/groups/save', { groups: selected });
+    document.getElementById('wa-group-picker-modal')?.remove();
+    showToast(`✅ ${res.saved} grup disimpan ke Buku Kontak`, 'success');
+    await loadWAContacts();
+  } catch (e) {
+    showToast('Gagal simpan: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Simpan Grup Terpilih'; }
   }
 }
 

@@ -68,6 +68,20 @@ class SheetsService {
     return res.data.updates;
   }
 
+  // ── Batch Append Multiple Rows (1 API call) ──────────────
+  async appendRows(sheetName, rows) {
+    if (!rows || rows.length === 0) return;
+    cache.del(`${sheetName}:all`);
+    const res = await this.sheets.spreadsheets.values.append({
+      spreadsheetId: this.spreadsheetId,
+      range: `${sheetName}!A1`,
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      resource: { values: rows },
+    });
+    return res.data.updates;
+  }
+
   // ── Generic Update (Update by Row Number) ────────────────
   async updateRow(sheetName, rowIndex, values) {
     cache.del(`${sheetName}:all`);

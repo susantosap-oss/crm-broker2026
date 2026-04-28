@@ -1038,14 +1038,26 @@ function _buildWAMessage(listingId) {
   const listing = (window._allListings || []).find(l => l.ID === listingId);
   const project = (window._projectsData || []).find(p => p.ID === listingId);
   const agen    = (window.STATE?.user?.nama || 'Tim MANSION Realty').split(' ').slice(0,2).join(' ');
+
   if (listing) {
-    const harga  = listing.Harga_Format || (listing.Harga ? 'Rp\u00a0' + Number(listing.Harga).toLocaleString('id-ID') : 'Hubungi Agen');
-    const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ') || '—';
-    return `Halo! 👋\n\nSaya ingin menawarkan properti eksklusif:\n\n🏠 *${listing.Judul || 'Properti'}*\n💰 ${harga}\n📍 ${lokasi}\n\nProperti ini sangat strategis. Apakah Anda tertarik mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
-  } else if (project) {
-    const harga = project.Harga_Format || project.Harga_Mulai || 'On Request';
-    return `Halo! 👋\n\nSaya ingin menawarkan proyek properti eksklusif:\n\n🏗️ *${project.Nama_Proyek || 'Proyek'}*\n💰 Mulai dari ${harga}\n\nProyek ini sangat strategis. Apakah Anda tertarik mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
+    const harga      = listing.Harga_Format || (listing.Harga ? 'Rp\u00a0' + Number(listing.Harga).toLocaleString('id-ID') : 'Hubungi Agen');
+    const lokasi     = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ') || '—';
+    const tipe       = listing.Tipe_Properti || '';
+    const transaksi  = (listing.Status_Transaksi || '').toLowerCase();
+    const isSewa     = transaksi.includes('sewa');
+    const labelJenis = isSewa ? '🔑 *[SEWA]*' : '🏷️ *[JUAL]*';
+    const labelHarga = isSewa ? `💰 Harga Sewa: ${harga}` : `💰 Harga: ${harga}`;
+    const tipeInfo   = tipe ? `🏠 ${tipe} | ${isSewa ? 'Disewa' : 'Dijual'}` : (isSewa ? 'Disewa' : 'Dijual');
+    return `Halo! 👋\n\nSaya ingin menawarkan properti eksklusif ${labelJenis}:\n\n*${listing.Judul || 'Properti'}*\n${tipeInfo}\n${labelHarga}\n📍 ${lokasi}\n\nProperti ini sangat strategis dan menarik. Apakah Anda tertarik mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
   }
+
+  if (project) {
+    const harga      = project.Harga_Format || project.Harga_Mulai || 'On Request';
+    const lokasi     = [project.Kecamatan, project.Kota].filter(Boolean).join(', ') || '';
+    const lokasiLine = lokasi ? `📍 ${lokasi}\n` : '';
+    return `Halo! 👋\n\nSaya ingin menawarkan proyek properti 🏗️ *[PRIMARY]* eksklusif:\n\n*${project.Nama_Proyek || 'Proyek'}*\n💰 Mulai dari ${harga}\n${lokasiLine}\nProyek ini sangat strategis dan diminati banyak investor. Apakah Anda tertarik mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
+  }
+
   return `Halo! 👋\n\nSaya ingin menawarkan properti eksklusif dari MANSION Realty.\n\nApakah Anda tertarik untuk mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
 }
 

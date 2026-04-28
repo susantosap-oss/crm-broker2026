@@ -348,7 +348,7 @@ class PAService {
 
     // Cek berapa sesi hari ini yang masih active
     const todayJobs = await this._getTodayBlastJobs(agentId);
-    const activeSessions = todayJobs.filter(j => !['expired', 'cancelled'].includes(j[4]));
+    const activeSessions = todayJobs.filter(j => !['expired', 'cancelled', 'failed'].includes(j[4]));
     const remaining = MAX_SESSIONS_PER_DAY - activeSessions.length;
 
     if (remaining <= 0) {
@@ -431,6 +431,8 @@ class PAService {
         const message    = row[10] || '';
         const sessionNum = row[9] || '1';
 
+        console.log(`[PA] Blast due — jobId=${jobId} agent=${agentId} recipients=${recipients.length} mode=${row[17]||'manual'}`);
+
         // Update status → notified
         await sheetsService.updateRowCells(SHEETS.PA_JOBS, idx + 2, { 4: 'notified' });
 
@@ -440,8 +442,9 @@ class PAService {
           // Fonnte: kirim otomatis dari server
           const creds = await this.getDecryptedCredentials(agentId);
           if (creds?.fonnte_token) {
-            this._runFontteBlast(jobId, agentId, recipients, message, creds.fonnte_token).catch(console.error);
+            this._runFontteBlast(jobId, agentId, recipients, message, creds.fonnte_token).catch(e => console.error('[PA] _runFontteBlast error:', e.message));
           } else {
+            console.warn(`[PA] Fonnte token hilang untuk agent=${agentId} — fallback ke manual`);
             // Token hilang → fallback ke manual
             this._broadcast(agentId, { event: 'wa_blast_due', job_id: jobId, session_number: parseInt(sessionNum), recipients, message, ts: now.toISOString() });
           }
@@ -483,6 +486,7 @@ class PAService {
   }
 
   async _runFontteBlast(jobId, agentId, recipients, message, fontteToken) {
+    console.log(`[PA] _runFontteBlast start — jobId=${jobId} recipients=${recipients.length} msgLen=${(message||'').length} msgPreview=${(message||'').slice(0,40).replace(/\n/g,' ')}`);
     await this._updateJobStatus(jobId, 'running');
     this._broadcast(agentId, {
       event: 'job_started', job_id: jobId,
@@ -493,24 +497,45 @@ class PAService {
     let cumulativeDelay = 0;
 
     for (let i = 0; i < recipients.length; i++) {
-      const { nomor } = recipients[i];
-      const num = nomor.replace(/\D/g, '').replace(/^0/, '62');
+      const { nomor, type } = recipients[i];
+      if (!nomor) {
+        console.warn(`[PA] _runFontteBlast: recipients[${i}] tidak punya field 'nomor'`, recipients[i]);
+        results.push({ nomor: '?', status: 'failed', error: 'nomor kosong' });
+        continue;
+      }
+
+      // Grup WA: gunakan JID asli (misal 120363xxx@g.us), jangan strip karakter
+      // Personal : normalisasi ke format 628xxx
+      const isGroup = type === 'group' || nomor.includes('@g.us');
+      const num = isGroup ? nomor : nomor.replace(/\D/g, '').replace(/^0/, '62');
+
       // Delay antar nomor: 20–60 detik acak
       const delayThisMsg = i === 0 ? 0 : (20 + Math.floor(Math.random() * 41));
       cumulativeDelay += delayThisMsg;
 
       try {
-        await axios.post('https://api.fonnte.com/send', {
+        // Fonnte API hanya menerima application/x-www-form-urlencoded, bukan JSON
+        const formData = new URLSearchParams({
           target:      num,
           message,
-          delay:       cumulativeDelay, // Fonnte kirim setelah X detik
+          delay:       String(cumulativeDelay),
           countryCode: '62',
-          typing:      true,            // simulasi typing
-        }, {
-          headers: { Authorization: fontteToken },
+          typing:      'true',
+        });
+        const res = await axios.post('https://api.fonnte.com/send', formData, {
+          headers: {
+            Authorization:  fontteToken,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
           timeout: 10_000,
         });
 
+        // Fonnte bisa return HTTP 200 dengan status:false untuk error token/nomor
+        if (res.data?.status === false) {
+          throw new Error(res.data?.reason || 'Fonnte rejected request');
+        }
+
+        console.log(`[PA] Fonnte queued → ${num} delay=${cumulativeDelay}s`);
         results.push({ nomor, status: 'queued' });
         this._broadcast(agentId, {
           event: 'wa_progress', job_id: jobId, nomor,
@@ -519,6 +544,7 @@ class PAService {
         });
       } catch (e) {
         const errMsg = e.response?.data?.reason || e.message;
+        console.error(`[PA] Fonnte failed → ${num}: ${errMsg}`);
         results.push({ nomor, status: 'failed', error: errMsg });
         this._broadcast(agentId, {
           event: 'wa_progress', job_id: jobId, nomor,
@@ -528,10 +554,20 @@ class PAService {
     }
 
     const failedCount = results.filter(r => r.status === 'failed').length;
-    await this._updateJobStatus(jobId, failedCount === results.length ? 'failed' : 'completed');
+    const finalStatus = results.length === 0 || failedCount === results.length ? 'failed' : 'completed';
+    console.log(`[PA] _runFontteBlast done — jobId=${jobId} status=${finalStatus} queued=${results.length - failedCount}/${results.length}`);
+
+    // Kumpulkan pesan error unik untuk ditampilkan di UI
+    const errSample = results.find(r => r.status === 'failed')?.error || '';
+    await this._updateJobStatus(jobId, finalStatus, finalStatus === 'failed' ? errSample : '');
+
+    const doneMsg = finalStatus === 'failed'
+      ? `❌ Fonnte: semua gagal — ${errSample}`
+      : `✅ Fonnte: ${results.length - failedCount}/${results.length} pesan dijadwalkan`;
     this._broadcast(agentId, {
-      event:   'job_done', job_id: jobId, type: 'wa_blast', results,
-      message: `✅ Fonnte: ${results.length - failedCount}/${results.length} pesan dijadwalkan`,
+      event:   finalStatus === 'failed' ? 'job_failed' : 'job_done',
+      job_id:  jobId, type: 'wa_blast', results,
+      message: doneMsg,
     });
   }
 
@@ -610,6 +646,8 @@ class PAService {
       if (!creds.ig_graph_user_id || !creds.ig_graph_token) {
         throw new Error('Instagram User ID / Access Token belum diisi. Buka PA Settings → Instagram → Graph API.');
       }
+
+      console.log(`[PA] IG post — igUserId=${creds.ig_graph_user_id} tokenLen=${creds.ig_graph_token.length} type=${type}`);
 
       const result = await igPostService.post({
         igUserId:    creds.ig_graph_user_id,

@@ -55,9 +55,9 @@ router.get('/credentials', authenticate, async (req, res) => {
 // POST /pa/credentials — simpan/update kredensial
 router.post('/credentials', authenticate, async (req, res) => {
   try {
-    const { ig_username, ig_password, wa_number, pa_enabled, fonnte_token } = req.body;
+    const { ig_username, ig_password, wa_number, pa_enabled, fonnte_token, ig_graph_user_id, ig_graph_token } = req.body;
     const result = await paService.saveCredentials(req.user.id, {
-      ig_username, ig_password, wa_number, pa_enabled, fonnte_token
+      ig_username, ig_password, wa_number, pa_enabled, fonnte_token, ig_graph_user_id, ig_graph_token
     });
     res.json(result);
   } catch (e) {
@@ -204,10 +204,10 @@ router.post('/trigger', authenticate, async (req, res) => {
       const waMap  = {};
       waRows.filter(r => r[1] === req.user.id).forEach(r => {
         // r[0]=ID, r[3]=Nomor_Enc, r[4]=Tipe, r[5]=JID_Enc
-        waMap[r[0]] = {
-          nomor: r[4] === 'group' ? decryptNum(r[5]) : decryptNum(r[3]),
-          type:  r[4] || 'personal',
-        };
+        let nomor = r[4] === 'group' ? decryptNum(r[5]) : decryptNum(r[3]);
+        // Pastikan JID grup punya suffix @g.us
+        if (r[4] === 'group' && nomor && !nomor.includes('@')) nomor = nomor + '@g.us';
+        waMap[r[0]] = { nomor, type: r[4] || 'personal' };
       });
 
       const resolvedSessions = sessionList.map(sess =>

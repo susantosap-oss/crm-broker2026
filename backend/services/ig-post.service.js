@@ -119,13 +119,18 @@ class IGPostService {
   classifyError(e) {
     const apiErr = e.response?.data?.error;
     const code   = apiErr?.code;
+    const subcode = apiErr?.error_subcode;
     const msg    = apiErr?.message || e.message || '';
+    const fbTrace = apiErr?.fbtrace_id || '';
+
+    console.error(`[IG] Meta API error — code=${code} subcode=${subcode} msg="${msg}" trace=${fbTrace}`);
+    console.error(`[IG] Full error:`, JSON.stringify(e.response?.data || e.message));
 
     if (code === 190 || msg.includes('access token') || msg.includes('OAuthException')) {
       return { code: 'token_expired', message: 'Access Token expired atau tidak valid. Update token di PA Settings → Instagram.' };
     }
     if (code === 10 || msg.includes('permission') || msg.includes('instagram_content_publish')) {
-      return { code: 'permission', message: 'Token tidak punya izin instagram_content_publish. Generate ulang token di Meta Developer.' };
+      return { code: 'permission', message: `Token tidak punya izin instagram_content_publish (code=${code} sub=${subcode}). Generate ulang token di Meta Developer.` };
     }
     if (msg.includes('not a business') || msg.includes('professional')) {
       return { code: 'not_professional', message: 'Akun IG harus Professional/Creator. Ubah di Instagram Settings → Account Type.' };

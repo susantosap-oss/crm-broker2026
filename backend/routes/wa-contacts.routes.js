@@ -186,7 +186,7 @@ router.post('/import', authenticate, async (req, res) => {
   }
 });
 
-// ── POST /wa-contacts/groups/sync — sync grup dari Fonnte ─────
+// ── POST /wa-contacts/groups/sync — ambil daftar grup dari Fonnte (preview, tidak simpan) ──
 router.post('/groups/sync', authenticate, async (req, res) => {
   try {
     const creds = await paService.getDecryptedCredentials(req.user.id);
@@ -202,27 +202,52 @@ router.post('/groups/sync', authenticate, async (req, res) => {
       .map(g => ({ id: g.id, name: g.name || g.subject || g.id }));
 
     if (!groups.length)
-      return res.json({ success: true, synced: 0, message: 'Tidak ada grup ditemukan' });
+      return res.json({ success: true, groups: [], message: 'Tidak ada grup ditemukan' });
 
+    // Tandai mana yang sudah ada di Buku Kontak
+    const existing = await sheetsService.getRows(SHEETS.WA_CONTACTS);
+    const existingJids = new Set(
+      existing.filter(r => r[1] === req.user.id && r[4] === 'group').map(r => decrypt(r[5]))
+    );
+
+    // Normalize: bandingkan dengan dan tanpa @g.us
+    const result = groups.map(g => ({
+      ...g,
+      saved: existingJids.has(g.id) || existingJids.has(g.id + '@g.us') || existingJids.has(g.id.replace('@g.us', '')),
+    }));
+    res.json({ success: true, groups: result });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ── POST /wa-contacts/groups/save — simpan grup terpilih ke Buku Kontak (batch) ──
+router.post('/groups/save', authenticate, async (req, res) => {
+  try {
+    const { groups } = req.body; // array of { id, name }
+    if (!Array.isArray(groups) || groups.length === 0)
+      return res.status(400).json({ success: false, message: 'groups wajib diisi' });
+
+    // Filter yang sudah ada
     const existing = await sheetsService.getRows(SHEETS.WA_CONTACTS);
     const existingJids = new Set(
       existing.filter(r => r[1] === req.user.id && r[4] === 'group').map(r => decrypt(r[5]))
     );
 
     const now = new Date().toISOString();
-    let synced = 0;
+    const rows = groups
+      .filter(g => g.id && !existingJids.has(g.id) && !existingJids.has(g.id + '@g.us'))
+      .map(g => {
+        const jid = g.id.includes('@') ? g.id : g.id + '@g.us';
+        const id  = `WAG-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        return [id, req.user.id, g.name || g.id, '', 'group', encrypt(jid), now];
+      });
 
-    for (const g of groups) {
-      if (existingJids.has(g.id)) continue;
-      const id = `WAG-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      await sheetsService.appendRow(SHEETS.WA_CONTACTS, [
-        id, req.user.id, g.name, '', 'group', encrypt(g.id), now
-      ]);
-      existingJids.add(g.id);
-      synced++;
-    }
+    if (rows.length === 0)
+      return res.json({ success: true, saved: 0, message: 'Semua grup sudah ada di Buku Kontak' });
 
-    res.json({ success: true, synced, total_groups: groups.length });
+    await sheetsService.appendRows(SHEETS.WA_CONTACTS, rows);
+    res.json({ success: true, saved: rows.length });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
