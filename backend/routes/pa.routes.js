@@ -80,6 +80,7 @@ router.post('/zapier-secret/generate', authenticate, async (req, res) => {
 // ════════════════════════════════════════════════════════
 
 const waBlastService = require('../services/wa-blast.service');
+const axios          = require('axios');
 
 // GET /pa/wa/qr — inisialisasi WA client & kembalikan QR code
 router.get('/wa/qr', authenticate, async (req, res) => {
@@ -116,6 +117,31 @@ router.delete('/wa/session', authenticate, async (req, res) => {
     res.json({ success: true, message: 'WA session logout' });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+router.get('/wa/groups', authenticate, async (req, res) => {
+  try {
+    // Fonnte mode: ambil grup dari device yang sudah terpasang di Fonnte
+    const creds = await paService.getDecryptedCredentials(req.user.id);
+    if (creds?.fonnte_token) {
+      const fRes = await axios.post('https://api.fonnte.com/get-whatsapp-group', {}, {
+        headers: { Authorization: creds.fonnte_token },
+        timeout: 15_000,
+      });
+      const raw = fRes.data?.data || fRes.data?.group || [];
+      const groups = (Array.isArray(raw) ? raw : Object.values(raw)).map(g => ({
+        id:           g.id || g.groupId || '',
+        name:         g.name || g.subject || g.id || '',
+        participants: g.participant_count || g.participants || 0,
+      })).filter(g => g.id).sort((a, b) => a.name.localeCompare(b.name, 'id'));
+      return res.json({ success: true, data: groups, mode: 'fonnte' });
+    }
+    // Baileys mode
+    const groups = await waBlastService.getGroups(req.user.id);
+    res.json({ success: true, data: groups, mode: 'baileys' });
+  } catch (e) {
+    res.status(400).json({ success: false, message: e.message });
   }
 });
 
@@ -160,12 +186,51 @@ router.post('/trigger', authenticate, async (req, res) => {
       if (sessionList.length === 0 || sessionList.every(s => !s || s.length === 0)) {
         return res.status(400).json({ success: false, message: 'sessions wajib untuk WA Blast' });
       }
+
+      // Resolve contact_id → nomor asli dari WA_CONTACTS sheet
+      const { crypto, SHEETS: SH } = { crypto: require('crypto'), SHEETS };
+      const ENC_KEY = Buffer.from(process.env.PA_ENCRYPTION_KEY || '', 'hex');
+      function decryptNum(ct) {
+        if (!ct || !ct.includes(':')) return '';
+        try {
+          const [ivH, tagH, encH] = ct.split(':');
+          const dec = crypto.createDecipheriv('aes-256-gcm', ENC_KEY, Buffer.from(ivH,'hex'));
+          dec.setAuthTag(Buffer.from(tagH,'hex'));
+          return dec.update(Buffer.from(encH,'hex')) + dec.final('utf8');
+        } catch { return ''; }
+      }
+
+      const waRows = await sheetsService.getRows(SHEETS.WA_CONTACTS);
+      const waMap  = {};
+      waRows.filter(r => r[1] === req.user.id).forEach(r => {
+        // r[0]=ID, r[3]=Nomor_Enc, r[4]=Tipe, r[5]=JID_Enc
+        waMap[r[0]] = {
+          nomor: r[4] === 'group' ? decryptNum(r[5]) : decryptNum(r[3]),
+          type:  r[4] || 'personal',
+        };
+      });
+
+      const resolvedSessions = sessionList.map(sess =>
+        (sess || []).map(rec => {
+          if (rec.contact_id && waMap[rec.contact_id]) {
+            return { nomor: waMap[rec.contact_id].nomor, type: waMap[rec.contact_id].type };
+          }
+          // Fallback: nomor manual (angka saja)
+          const num = (rec.nomor || '').replace(/\D/g, '').replace(/^0/, '62');
+          return { nomor: num, type: rec.type || 'personal' };
+        }).filter(r => r.nomor && r.nomor.length >= 10)
+      ).filter(s => s.length > 0);
+
+      if (resolvedSessions.length === 0) {
+        return res.status(400).json({ success: false, message: 'Tidak ada nomor valid. Pastikan Buku Kontak sudah terisi.' });
+      }
+
       const result = await paService.triggerBlastQueue({
         agentId:      req.user.id,
         agentNama:    req.user.nama,
         listingId:    listing_id,
         listingTitle,
-        sessions:     sessionList,
+        sessions:     resolvedSessions,
         message:      message_template || '',
         triggeredBy:  req.user.id,
       });

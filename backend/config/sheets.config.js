@@ -52,6 +52,8 @@ const SHEETS = {
   // ★ Fitur 3 — Legal Dokumen + Status Sewa
   LEGAL_DOCS:    'LEGAL_DOCS',
   RENTAL_STATUS: 'RENTAL_STATUS',
+  // ★ Fitur 4 — Buku Kontak WA
+  WA_CONTACTS:   'WA_CONTACTS',
 };
 
 // ── Column Definitions ─────────────────────────────────────

@@ -1049,7 +1049,7 @@ function _buildWAMessage(listingId) {
   return `Halo! 👋\n\nSaya ingin menawarkan properti eksklusif dari MANSION Realty.\n\nApakah Anda tertarik untuk mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
 }
 
-function _buildSessionInputs(sessionIdx) {
+function _buildSessionInputs(sessionIdx, hasFonnte = false) {
   const label = sessionIdx === 0
     ? '<span style="font-size:10px;background:rgba(37,211,102,0.15);color:#25d366;padding:1px 7px;border-radius:8px;font-weight:600">⚡ Langsung</span>'
     : `<span style="font-size:10px;color:rgba(255,255,255,0.35)">+${sessionIdx * 180} mnt</span>`;
@@ -1077,28 +1077,31 @@ function _buildSessionInputs(sessionIdx) {
       <div id="wa-sess-${sessionIdx}-body"
         style="padding:10px 14px;display:${sessionIdx === 0 ? 'block' : 'none'}">
 
-        <!-- Tombol pilih kontak (hanya tampil jika Contact Picker API tersedia) -->
-        <button id="wa-sess-${sessionIdx}-pick"
-          onclick="_pickContactsForSession(${sessionIdx})"
-          style="display:none;width:100%;margin-bottom:10px;padding:8px;border:1px dashed rgba(37,211,102,0.4);
-                 border-radius:9px;background:rgba(37,211,102,0.06);color:#25d366;
-                 font-size:12px;font-weight:600;cursor:pointer">
-          📱 Pilih dari Kontak HP (maks 5)
-        </button>
+        <!-- Tombol pilih kontak WA & grup WA -->
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button onclick="_pickFromContactBook(${sessionIdx})"
+            style="flex:1;padding:8px;border:1px dashed rgba(37,211,102,0.4);
+                   border-radius:9px;background:rgba(37,211,102,0.06);color:#25d366;
+                   font-size:12px;font-weight:600;cursor:pointer">
+            📒 Buku Kontak WA
+          </button>
+        </div>
 
-        <!-- Input nomor -->
+        <!-- Input nomor / grup -->
         ${[0,1,2,3,4].map(j => `
           <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
             <span style="font-size:10px;color:rgba(255,255,255,0.25);width:14px;text-align:right;flex-shrink:0">${j+1}</span>
-            <input type="tel" class="pa-input wa-num" data-sess="${sessionIdx}" data-slot="${j}"
+            <input type="text" class="pa-input wa-num" data-sess="${sessionIdx}" data-slot="${j}" data-type="personal"
               placeholder="628xxx..."
               style="flex:1;margin:0;font-size:13px;padding:7px 10px"
               oninput="_waNumInput(this)">
+            <button onclick="_clearWaSlot(this)" title="Hapus"
+              style="display:none;background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;padding:4px;font-size:14px;flex-shrink:0">✕</button>
           </div>
         `).join('')}
 
         <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:6px">
-          Format 628xxx (tanpa +). Kosongkan slot yang tidak dipakai.
+          Nomor format 628xxx · atau pilih Grup WA dari tombol di atas
         </div>
       </div>
     </div>
@@ -1171,6 +1174,140 @@ async function _pickContactsForSession(sessionIdx) {
     if (e.name !== 'AbortError') _showPAToast('Gagal membuka kontak: ' + e.message, 'error');
   }
 }
+
+function _clearWaSlot(btn) {
+  const row   = btn.closest('div');
+  const input = row.querySelector('.wa-num');
+  if (!input) return;
+  input.value = '';
+  input.readOnly = false;
+  input.placeholder = '628xxx...';
+  input.dataset.type = 'personal';
+  delete input.dataset.groupJid;
+  delete input.dataset.waNumber;
+  input.style.background = '';
+  input.style.color = '';
+  btn.style.display = 'none';
+  _waNumInput(input);
+}
+
+async function _pickFromContactBook(sessionIdx) {
+  const btn = document.querySelector(`#wa-sess-${sessionIdx}-body button`);
+  const origText = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Memuat...'; }
+
+  try {
+    const res = await window.API.get('/wa-contacts');
+    const contacts = res.data || [];
+
+    if (btn) { btn.disabled = false; btn.textContent = origText; }
+
+    if (!contacts.length) {
+      _showPAToast('Buku Kontak WA kosong. Tambah kontak dulu di menu Buku Kontak WA.', 'warning');
+      return;
+    }
+
+    document.getElementById('wa-cb-picker-modal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'wa-cb-picker-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end;justify-content:center';
+
+    const personal = contacts.filter(c => c.tipe === 'personal');
+    const groups   = contacts.filter(c => c.tipe === 'group');
+
+    const renderItems = (list, tipe) => list.map(c => {
+      const icon  = tipe === 'group' ? '👥' : '👤';
+      const color = tipe === 'group' ? '#60a5fa' : '#25d366';
+      const bg    = tipe === 'group' ? 'rgba(96,165,250,0.12)' : 'rgba(37,211,102,0.12)';
+      const sub   = tipe === 'group' ? 'Grup WA' : c.nomor;
+      return `<div data-id="${c.id}" data-nama="${c.nama.replace(/"/g,'&quot;')}" data-tipe="${tipe}"
+        onclick="_selectFromContactBook(${sessionIdx},this)"
+        style="padding:11px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,0.04)"
+        onmouseenter="this.style.background='rgba(255,255,255,0.04)'" onmouseleave="this.style.background=''">
+        <div style="width:36px;height:36px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px">${icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nama}</div>
+          <div style="font-size:10px;color:${color};margin-top:1px">${sub}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    modal.innerHTML = `
+      <div style="background:#0D1526;border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)">
+        <div style="padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.07)">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#fff">📒 Buku Kontak WA</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">${contacts.length} kontak · tap untuk pilih</div>
+          </div>
+          <button onclick="document.getElementById('wa-cb-picker-modal').remove()"
+            style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;cursor:pointer">✕</button>
+        </div>
+        <div style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.05)">
+          <input id="wa-cb-search" placeholder="Cari nama..." oninput="_filterContactBook()"
+            style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+        </div>
+        <div id="wa-cb-list" style="overflow-y:auto;flex:1">
+          ${groups.length ? `<div style="padding:8px 16px 4px;font-size:10px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.08em">GRUP WA</div>${renderItems(groups,'group')}` : ''}
+          ${personal.length ? `<div style="padding:8px 16px 4px;font-size:10px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.08em">PERSONAL</div>${renderItems(personal,'personal')}` : ''}
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    document.getElementById('wa-cb-search')?.focus();
+
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = origText; }
+    _showPAToast('Gagal memuat buku kontak: ' + e.message, 'error');
+  }
+}
+
+function _filterContactBook() {
+  const q = (document.getElementById('wa-cb-search')?.value || '').toLowerCase();
+  document.querySelectorAll('#wa-cb-list [data-id]').forEach(row => {
+    const name = (row.dataset.nama || '').toLowerCase();
+    row.style.display = name.includes(q) ? '' : 'none';
+  });
+}
+
+function _selectFromContactBook(sessionIdx, el) {
+  const inputs  = document.querySelectorAll(`#wa-sess-${sessionIdx} .wa-num`);
+  const id      = el.dataset.id;
+  const nama    = el.dataset.nama;
+  const tipe    = el.dataset.tipe;
+  const color   = tipe === 'group' ? '#60a5fa' : '#25d366';
+  const bg      = tipe === 'group' ? 'rgba(96,165,250,0.08)' : 'rgba(37,211,102,0.06)';
+
+  let placed = false;
+  for (const input of inputs) {
+    if (!input.value.trim()) {
+      input.value      = nama;
+      input.readOnly   = true;
+      input.dataset.type     = tipe;
+      input.dataset.contactId = id;
+      input.style.background = bg;
+      input.style.color      = color;
+      const clearBtn = input.nextElementSibling;
+      if (clearBtn) clearBtn.style.display = 'block';
+      placed = true;
+      break;
+    }
+  }
+
+  const allInputs  = [...inputs];
+  const emptySlots = allInputs.filter(i => !i.value.trim()).length;
+  if (!placed || emptySlots === 0) document.getElementById('wa-cb-picker-modal')?.remove();
+  if (!placed) { _showPAToast('Semua slot terisi. Hapus satu dulu.', 'warning'); return; }
+
+  const count = allInputs.filter(i => i.value.trim()).length;
+  const badge = document.getElementById(`wa-sess-${sessionIdx}-badge`);
+  if (badge) { badge.textContent = `${count}/5`; badge.style.color = count > 0 ? '#4ade80' : 'rgba(255,255,255,0.3)'; }
+  _showPAToast(`"${nama}" ditambahkan${emptySlots > 1 ? ' · pilih lagi' : ''}`, 'success');
+}
+
+// _pickGroupForSession legacy stub (tidak dipakai lagi, sudah unified ke _pickFromContactBook)
+async function _pickGroupForSession(sessionIdx) {
+  await _pickFromContactBook(sessionIdx);
+}
+
 
 async function openWABlastModal(listingId) {
   document.getElementById('pa-wa-modal')?.remove();
@@ -1248,7 +1385,7 @@ async function openWABlastModal(listingId) {
         </div>
 
         <!-- 4 Session Inputs -->
-        ${[0,1,2,3].map(i => _buildSessionInputs(i)).join('')}
+        ${[0,1,2,3].map(i => _buildSessionInputs(i, hasFonnte)).join('')}
 
         <!-- Pesan -->
         <div class="pa-form-group" style="margin-top:10px">
@@ -1283,9 +1420,12 @@ async function submitWABlastQueue(listingId) {
   for (let s = 0; s < 4; s++) {
     const inputs = document.querySelectorAll(`#wa-sess-${s} .wa-num`);
     const recipients = [...inputs]
-      .map(i => i.value.trim())
-      .filter(Boolean)
-      .map(nomor => ({ nomor, type: 'personal' }));
+      .filter(i => i.value.trim())
+      .map(i => ({
+        contact_id: i.dataset.contactId || '',
+        nomor:      i.value.trim(), // fallback jika input manual
+        type:       i.dataset.type || 'personal',
+      }));
     if (recipients.length > 0) sessions.push(recipients);
   }
 
@@ -2122,7 +2262,11 @@ window.openViGenModal          = openViGenModal;
 window.submitViGenRender       = submitViGenRender;
 window.openWABlastModal        = openWABlastModal;
 window.submitWABlast           = submitWABlastQueue;
-window._pickContactsForSession = _pickContactsForSession;
+window._pickFromContactBook     = _pickFromContactBook;
+window._selectFromContactBook   = _selectFromContactBook;
+window._filterContactBook       = _filterContactBook;
+window._pickGroupForSession     = _pickGroupForSession;
+window._clearWaSlot             = _clearWaSlot;
 window.openIGPostModal         = openIGPostModal;
 window.openProjectWABlastModal = openProjectWABlastModal;
 window.openProjectIGPostModal  = openProjectIGPostModal;

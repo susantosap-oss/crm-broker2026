@@ -1,5 +1,5 @@
 // ─── UBAH VERSI DI SINI saat release ───────────────────────
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.5.3';
 // ────────────────────────────────────────────────────────────
 const CACHE_NAME = `mansion-crm-v${APP_VERSION}`;
 const STATIC_ASSETS = [
@@ -36,6 +36,9 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const { request } = e;
   const url = new URL(request.url);
+
+  // Skip non-http(s) schemes (e.g. chrome-extension://)
+  if (!url.protocol.startsWith('http')) return;
 
   // API calls — network only, no cache
   if (url.pathname.startsWith('/api/')) return;

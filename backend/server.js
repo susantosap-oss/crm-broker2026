@@ -90,6 +90,8 @@ app.use('/api/v1/pa',             require('./routes/pa.routes'));
 // ★ Fitur 3 — Legal Dokumen + Status Sewa
 app.use('/api/v1/legal',          require('./routes/legal.routes'));
 app.use('/api/v1/rental',         require('./routes/rental.routes'));
+// ★ Fitur 4 — Buku Kontak WA (AES-256-GCM encrypted)
+app.use('/api/v1/wa-contacts',    require('./routes/wa-contacts.routes'));
 // ★ Fitur 2 — Meta/Zapier Webhook + Config API
 // Semua rute webhook (meta, zapier, config) dihandle satu router
 const webhookRouter = require('./routes/meta-webhook.routes');

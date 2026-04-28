@@ -1768,6 +1768,35 @@ async function loadAdminDashboard() {
           </button>
         </div>
 
+        <!-- Upload Legal Dokumen (admin only) -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:12px">📎 Upload Legal Dokumen</div>
+          <div style="display:grid;gap:8px">
+            <input type="text" id="dlegal-nama-klien" placeholder="Nama Klien *"
+              style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:10px;padding:10px 12px;font-size:13px;box-sizing:border-box">
+            <input type="text" id="dlegal-nama-pemilik" placeholder="Nama Pemilik / Developer"
+              style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:10px;padding:10px 12px;font-size:13px;box-sizing:border-box">
+            <select id="dlegal-kategori"
+              style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:10px;padding:10px 12px;font-size:13px">
+              <option value="PJB">PJB</option>
+              <option value="Sewa">Sewa</option>
+              <option value="SPR">SPR</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+            <input type="text" id="dlegal-alamat-unit" placeholder="Alamat Unit / Nama Proyek *"
+              style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:10px;padding:10px 12px;font-size:13px;box-sizing:border-box">
+            <input type="text" id="dlegal-catatan" placeholder="Catatan (opsional)"
+              style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:10px;padding:10px 12px;font-size:13px;box-sizing:border-box">
+            <input type="file" id="dlegal-file" accept=".pdf"
+              style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 10px;color:#fff;font-size:12px;box-sizing:border-box">
+          </div>
+          <button id="dlegal-upload-btn" onclick="uploadLegalDocDash()"
+            style="width:100%;margin-top:10px;background:#34d399;color:#0D1526;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">
+            ☁️ Upload ke Google Drive
+          </button>
+          <div id="dlegal-progress" style="display:none;font-size:12px;color:rgba(255,255,255,0.45);text-align:center;margin-top:8px">Mengupload...</div>
+        </div>
+
         <!-- Shortcut Buttons -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <button onclick="openUserMgmt()" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.2);border-radius:12px;padding:14px;cursor:pointer;text-align:center">
@@ -1801,6 +1830,60 @@ async function saveLaporanHarian() {
     showToast('Gagal: ' + e.message, 'error');
   } finally {
     btn.disabled = false; btn.textContent = '💾 Simpan Laporan';
+  }
+}
+
+async function uploadLegalDocDash() {
+  const namaKlien   = document.getElementById('dlegal-nama-klien')?.value?.trim();
+  const namaPemilik = document.getElementById('dlegal-nama-pemilik')?.value?.trim() || '';
+  const kategori    = document.getElementById('dlegal-kategori')?.value;
+  const alamatUnit  = document.getElementById('dlegal-alamat-unit')?.value?.trim();
+  const catatan     = document.getElementById('dlegal-catatan')?.value?.trim() || '';
+  const fileInput   = document.getElementById('dlegal-file');
+  const btn         = document.getElementById('dlegal-upload-btn');
+  const progress    = document.getElementById('dlegal-progress');
+
+  if (!namaKlien)           return showToast('Nama klien wajib diisi', 'warning');
+  if (!alamatUnit)          return showToast('Alamat unit / nama proyek wajib diisi', 'warning');
+  if (!fileInput?.files[0]) return showToast('Pilih file PDF terlebih dahulu', 'warning');
+
+  const file = fileInput.files[0];
+  if (file.size > 10 * 1024 * 1024) return showToast('Ukuran file maksimal 10 MB', 'warning');
+
+  btn.disabled = true;
+  btn.textContent = 'Mengupload...';
+  if (progress) progress.style.display = 'block';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('agent_id', STATE.user.id);
+    formData.append('kategori', kategori);
+    formData.append('nama_klien', namaKlien);
+    formData.append('nama_pemilik', namaPemilik);
+    formData.append('alamat_unit', alamatUnit);
+    formData.append('catatan', catatan);
+
+    const token = localStorage.getItem('crm_token');
+    const res = await fetch('/api/v1/legal/upload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Upload gagal');
+
+    showToast(`✅ ${json.data?.Nama_File || 'Dokumen'} berhasil diupload`, 'success');
+    ['dlegal-nama-klien','dlegal-nama-pemilik','dlegal-alamat-unit','dlegal-catatan'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    fileInput.value = '';
+  } catch (e) {
+    showToast(e.message || 'Gagal upload dokumen', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '☁️ Upload ke Google Drive';
+    if (progress) progress.style.display = 'none';
   }
 }
 
@@ -3013,6 +3096,11 @@ async function navigateTo(page) {
   if (page === 'team')      await loadTeamPage();
   if (page === 'primary')   await loadPrimaryPage();
   if (page === 'member')    await loadMemberPage();
+  if (page === 'legal')       await loadLegalDocs();
+  if (page === 'rental')      await loadRentals();
+  if (page === 'pipeline')    await loadPipeline();
+  if (page === 'whatsapp')    await loadWaLeadsSelect();
+  if (page === 'wa-contacts') await loadWAContacts();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -3858,6 +3946,131 @@ async function markAllNotifRead() {
     await loadNotifications();
     showToast('Semua notifikasi sudah dibaca', 'success');
   } catch(_) {}
+}
+
+// ─────────────────────────────────────────────────────────
+// BUKU KONTAK WA
+// ─────────────────────────────────────────────────────────
+async function loadWAContacts() {
+  const list = document.getElementById('wa-contacts-list');
+  if (!list) return;
+  list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px 0;font-size:13px">Memuat...</div>';
+  try {
+    const res = await API.get('/wa-contacts');
+    const contacts = res.data || [];
+    if (!contacts.length) {
+      list.innerHTML = `<div style="text-align:center;padding:40px 16px">
+        <div style="font-size:32px;margin-bottom:12px">📒</div>
+        <div style="color:rgba(255,255,255,0.4);font-size:13px;margin-bottom:8px">Buku kontak masih kosong</div>
+        <div style="color:rgba(255,255,255,0.25);font-size:11px">Import kontak dari HP atau sync grup WA kamu</div>
+      </div>`;
+      return;
+    }
+    const groups   = contacts.filter(c => c.tipe === 'group');
+    const personal = contacts.filter(c => c.tipe === 'personal');
+
+    const renderSection = (title, icon, color, items) => {
+      if (!items.length) return '';
+      return `<div style="margin-bottom:4px">
+        <div style="padding:10px 0 6px;font-size:10px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.08em;text-transform:uppercase">
+          ${icon} ${title} (${items.length})
+        </div>
+        ${items.map(c => `
+          <div style="background:#131F38;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;border:1px solid rgba(255,255,255,0.06)">
+            <div style="width:38px;height:38px;border-radius:50%;background:rgba(${color},0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">
+              ${c.tipe === 'group' ? '👥' : '👤'}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(c.nama)}</div>
+              <div style="font-size:10px;color:rgba(${color},0.8);margin-top:2px">${c.tipe === 'group' ? 'Grup WA' : c.nomor}</div>
+            </div>
+            <button onclick="deleteWAContact('${c.id}','${escapeHtml(c.nama).replace(/'/g,"\\'")}', this)"
+              style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:6px 10px;color:#f87171;font-size:11px;cursor:pointer;flex-shrink:0">
+              Hapus
+            </button>
+          </div>`).join('')}
+      </div>`;
+    };
+
+    list.innerHTML =
+      renderSection('Grup WA', '👥', '96,165,250', groups) +
+      renderSection('Personal', '👤', '37,211,102', personal);
+  } catch (e) {
+    list.innerHTML = `<div style="text-align:center;color:#f87171;padding:30px 0;font-size:13px">Gagal memuat: ${e.message}</div>`;
+  }
+}
+
+async function importWAContacts() {
+  if (!('contacts' in navigator && 'ContactsManager' in window)) {
+    showToast('Fitur pilih kontak tidak tersedia di browser ini. Gunakan Chrome di Android.', 'error');
+    return;
+  }
+  try {
+    const picked = await navigator.contacts.select(['name', 'tel'], { multiple: true });
+    if (!picked || !picked.length) return;
+
+    const numbers = picked.flatMap(c =>
+      (c.tel || []).map(t => ({ nama: (c.name || [])[0] || t, nomor: t }))
+    ).filter(c => c.nomor);
+
+    if (!numbers.length) { showToast('Tidak ada nomor ditemukan', 'warning'); return; }
+
+    showToast(`Memvalidasi ${numbers.length} nomor via WA...`, 'info');
+
+    const res = await API.post('/wa-contacts/validate-import', { numbers });
+    const { valid = [], invalid = [] } = res;
+
+    if (!valid.length) {
+      // Tampilkan debug info Fonnte jika ada
+      if (res._debug) {
+        console.warn('[WA-CONTACTS] Fonnte raw response:', res._debug);
+        showToast(`Debug: Fonnte status=${res._debug.status} — cek console F12 untuk detail`, 'warning');
+      } else {
+        showToast(`Tidak ada nomor yang terdaftar di WA (${invalid.length} nomor dikirim ke Fonnte)`, 'error');
+      }
+      return;
+    }
+
+    const confirmed = confirm(
+      `✅ ${valid.length} nomor terdaftar di WA\n` +
+      `❌ ${invalid.length} nomor tidak ada di WA (akan diabaikan)\n\n` +
+      `Simpan ${valid.length} kontak ke Buku Kontak?`
+    );
+    if (!confirmed) return;
+
+    const saveRes = await API.post('/wa-contacts/import', { contacts: valid });
+    showToast(`✅ ${saveRes.saved} kontak disimpan${saveRes.skipped ? ` · ${saveRes.skipped} sudah ada` : ''}`, 'success');
+    await loadWAContacts();
+  } catch (e) {
+    showToast('Gagal import: ' + e.message, 'error');
+  }
+}
+
+async function syncWAGroups() {
+  const btn = document.querySelector('#page-wa-contacts button[onclick="syncWAGroups()"]');
+  if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Menyinkronkan...'; }
+  try {
+    const res = await API.post('/wa-contacts/groups/sync', {});
+    showToast(`✅ ${res.synced} grup baru ditambahkan dari ${res.total_groups} total grup`, 'success');
+    await loadWAContacts();
+  } catch (e) {
+    showToast('Gagal sync grup: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Sync Grup WA'; }
+  }
+}
+
+async function deleteWAContact(id, nama, btnEl) {
+  if (!confirm(`Hapus "${nama}" dari Buku Kontak?`)) return;
+  btnEl.disabled = true; btnEl.textContent = '...';
+  try {
+    await API.delete(`/wa-contacts/${id}`);
+    showToast(`"${nama}" dihapus`, 'success');
+    await loadWAContacts();
+  } catch (e) {
+    showToast('Gagal hapus: ' + e.message, 'error');
+    btnEl.disabled = false; btnEl.textContent = 'Hapus';
+  }
 }
 
 // ─────────────────────────────────────────────────────────

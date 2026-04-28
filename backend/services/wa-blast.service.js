@@ -89,6 +89,18 @@ class WaBlastService {
   }
 
   /**
+   * Ambil daftar grup WA yang diikuti agen (session harus connected).
+   */
+  async getGroups(agentId) {
+    const s = this._clients.get(agentId);
+    if (!s || s.status !== 'connected') throw new Error('WA PA belum terhubung');
+    const raw = await s.sock.groupFetchAllParticipating();
+    return Object.values(raw)
+      .map(g => ({ id: g.id, name: g.subject || g.id, participants: g.participants?.length || 0 }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'id'));
+  }
+
+  /**
    * Kirim blast ke daftar recipients dengan delay humanlike.
    * @param {string}   agentId
    * @param {Array<{nomor:string, type:'personal'|'group'}>} recipients

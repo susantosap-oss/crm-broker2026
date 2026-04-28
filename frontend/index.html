@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="theme-color" content="#080E1A"/>
-  <meta name="app-version" content="1.4.1"/>
+  <meta name="app-version" content="1.5.3"/>
   <title>Mansion CRM</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{navy:{DEFAULT:'#080E1A',1:'#0D1526',2:'#131F38',3:'#1C2D52'},gold:{DEFAULT:'#D4A853',light:'#E8C07A',dark:'#A87B30'}}}}};</script>
@@ -858,6 +858,39 @@
     </div>
   </div>
 
+  <!-- PAGE: Buku Kontak WA -->
+  <div id="page-wa-contacts" class="page" style="display:none;padding:16px;max-width:600px;margin:0 auto">
+
+    <!-- Action buttons -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <button onclick="importWAContacts()"
+        style="background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.25);border-radius:12px;padding:12px;cursor:pointer;text-align:center">
+        <i class="fa-solid fa-mobile-screen" style="color:#25d366;font-size:18px;display:block;margin-bottom:5px"></i>
+        <span style="font-size:11px;color:#25d366;font-weight:600">Import dari Kontak HP</span>
+        <div style="font-size:9px;color:rgba(255,255,255,0.3);margin-top:2px">Validasi WA otomatis</div>
+      </button>
+      <button onclick="syncWAGroups()"
+        style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.25);border-radius:12px;padding:12px;cursor:pointer;text-align:center">
+        <i class="fa-solid fa-people-group" style="color:#60a5fa;font-size:18px;display:block;margin-bottom:5px"></i>
+        <span style="font-size:11px;color:#60a5fa;font-weight:600">Sync Grup WA</span>
+        <div style="font-size:9px;color:rgba(255,255,255,0.3);margin-top:2px">Dari Fonnte kamu</div>
+      </button>
+    </div>
+
+    <!-- Info enkripsi -->
+    <div style="background:rgba(212,168,83,0.06);border:1px solid rgba(212,168,83,0.15);border-radius:10px;padding:10px 12px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+      <i class="fa-solid fa-lock" style="color:#D4A853;font-size:14px;flex-shrink:0"></i>
+      <div style="font-size:11px;color:rgba(255,255,255,0.45);line-height:1.5">
+        Nomor disimpan terenkripsi AES-256 di database. Hanya kamu yang bisa menggunakannya.
+      </div>
+    </div>
+
+    <!-- Daftar kontak -->
+    <div id="wa-contacts-list">
+      <div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px 0;font-size:13px">Memuat buku kontak...</div>
+    </div>
+  </div>
+
   <!-- MODAL: Tambah/Edit Sewa -->
   <div id="rental-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.7);overflow-y:auto">
     <div style="background:#0D1526;border-radius:16px;max-width:480px;margin:40px auto;padding:20px;border:1px solid rgba(255,255,255,0.1)">
@@ -985,6 +1018,7 @@
       <div style="margin:6px 0;border-top:1px solid rgba(255,255,255,0.06)"></div>
       <button onclick="navigateTo('legal');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-file-contract" style="color:#34d399;width:16px;text-align:center"></i><span>Legal Perjanjian</span></button>
       <button onclick="navigateTo('rental');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-key" style="color:#fb923c;width:16px;text-align:center"></i><span>Status Sewa</span></button>
+      <button onclick="navigateTo('wa-contacts');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-brands fa-whatsapp" style="color:#25d366;width:16px;text-align:center"></i><span>Buku Kontak WA</span></button>
     </nav>
     <div style="padding:12px">
       <button onclick="logout()" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);cursor:pointer;color:#f87171;font-size:13px" onmouseenter="this.style.background='rgba(239,68,68,0.15)'" onmouseleave="this.style.background='rgba(239,68,68,0.08)'">
@@ -1721,9 +1755,9 @@
   </div>
 </div>
 
-<script src="/js/app.js?v=20260423c"></script>
-<script src="/js/app-mobile.js?v=20260427d"></script>
-<script src="/js/pa-dashboard.js?v=20260427e"></script>
+<script src="/js/app.js?v=20260428a"></script>
+<script src="/js/app-mobile.js?v=20260428i"></script>
+<script src="/js/pa-dashboard.js?v=20260428j"></script>
 <script src="/js/legal-rental.js?v=20260427b"></script>
 <script>
   // Init PA Dashboard setelah app siap
