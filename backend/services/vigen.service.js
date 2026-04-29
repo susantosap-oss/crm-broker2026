@@ -129,23 +129,24 @@ class ViGenService {
 
       if (photoPaths.length === 0) throw new Error('Tidak ada foto berhasil diupload ke ViGen');
 
-      // 4. Mulai render — format overlay 3 baris:
-      //   Baris 1: {Tipe_Properti}
-      //   Baris 2: {Tipe_Listing} {Harga}
-      //   Baris 3: {Kecamatan} {Kota}
+      // 4. Mulai render
+      // ViGen word-wrap di ~17 char — susun kata agar wrap jatuh di posisi yang benar:
+      //   "RUMAH JUAL 1.4M Citraland Surabaya"
+      //   → "RUMAH JUAL 1.4M"  (line 1)
+      //   → "Citraland"        (line 2)
+      //   → "Surabaya"         (line 3)
       const tipeProperti = (listing.Tipe_Properti || '').toUpperCase();
       const tipeListing  = (listingType === 'primary' ? 'PRIMARY' : (listing.Status_Transaksi || 'JUAL')).toUpperCase();
-      const harga        = listing.Harga_Format || listing.Harga || 'Hubungi Kami';
-      const area         = [listing.Kecamatan, listing.Kota].filter(Boolean).join(' ');
+      // Compact price: strip "Rp " + spasi agar tidak terpotong di tengah
+      // "Rp 1.4 M" → "1.4M"  |  "Rp 500 Jt" → "500Jt"
+      const hargaRaw     = listing.Harga_Format || listing.Harga || '';
+      const hargaCompact = hargaRaw.replace(/^Rp\s*/i, '').replace(/\s+/g, '');
 
-      const captionLines = [
-        tipeProperti,
-        `${tipeListing} ${harga}`,
-        area,
-      ].filter(Boolean);
-      // n_captions=1 → ViGen render description sebagai 1 overlay multi-line (bukan di-split AI)
-      const nCaptions   = 1;
-      const description = captionLines.join('\n');
+      const description = [
+        tipeProperti, tipeListing, hargaCompact,
+        listing.Kecamatan, listing.Kota,
+      ].filter(Boolean).join(' ');
+      const nCaptions = 1;
 
       await axios.post(`${url}/api/render/${sid}`, {
         sid,
