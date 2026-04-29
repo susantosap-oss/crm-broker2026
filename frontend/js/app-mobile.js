@@ -1085,9 +1085,10 @@ async function _viGenLoadJobs(listingId) {
             </div>
           </div>
           ${j.video_url ? `
-            <a href="${escapeHtml(j.video_url)}" target="_blank"
+            <a href="${escapeHtml(j.video_url.replace('/upload/', '/upload/fl_attachment/'))}"
+              download="video_iklan_${escapeHtml(j.id)}.mp4"
               style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:8px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);color:#D4A853;font-size:11px;font-weight:600;text-decoration:none;margin-top:4px">
-              <i class="fa-solid fa-play"></i> Lihat / Download Video
+              <i class="fa-solid fa-download"></i> Download Video
             </a>` : ''}
           ${j.error ? `<div style="font-size:10px;color:rgba(239,68,68,0.7);margin-top:4px;background:rgba(239,68,68,0.07);padding:6px 8px;border-radius:6px">${escapeHtml(j.error)}</div>` : ''}
         </div>`;
