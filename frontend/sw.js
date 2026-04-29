@@ -1,5 +1,5 @@
 // ─── UBAH VERSI DI SINI saat release ───────────────────────
-const APP_VERSION = '1.5.5';
+const APP_VERSION = '1.5.6';
 // ────────────────────────────────────────────────────────────
 const CACHE_NAME = `mansion-crm-v${APP_VERSION}`;
 const STATIC_ASSETS = [

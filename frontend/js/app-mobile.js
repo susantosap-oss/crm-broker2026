@@ -802,9 +802,9 @@ async function openListingDetail(id) {
       <button onclick="shareListingWACatalog('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-regular fa-copy" style="margin-right:6px"></i>WA Catalog
       </button>
-      ${!['agen','koordinator'].includes(STATE.user?.role) ? `<button onclick="openViGen('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
+      <button onclick="openViGen('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-solid fa-clapperboard" style="margin-right:6px"></i>Buat Konten Iklan (ViGen)
-      </button>` : ''}
+      </button>
 
       <!-- OpenClaw Personal Assistant -->
       ${STATE.user ? `
@@ -4697,13 +4697,12 @@ async function openProjectDetail(id) {
   // Tombol ViGen — tampil untuk koordinator dan ke atas
   const viGenBtn = document.getElementById('pd-vigen-btn');
   if (viGenBtn) {
-    const canVigen = ['superadmin', 'principal', 'kantor', 'admin'].includes(role);
-    viGenBtn.style.display = canVigen ? '' : 'none';
+    viGenBtn.style.display = '';
   }
 
   // Seksi PA OpenClaw — disembunyikan untuk agen dan koordinator
   const paSection = document.getElementById('pd-pa-section');
-  if (paSection) paSection.style.display = (STATE.user && !['agen','koordinator'].includes(role)) ? '' : 'none';
+  if (paSection) paSection.style.display = STATE.user ? '' : 'none';
 
   // IG Reels & Story (primary) — hanya superadmin & principal untuk testing
   const canIGPost = ['superadmin','principal'].includes(role);
