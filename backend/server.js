@@ -73,7 +73,18 @@ app.get('/sw.js', (req, res) => {
   res.setHeader('Content-Type', 'application/javascript');
   res.send(_swJsContent);
 });
+// Serve index.html yang sudah di-inject versi — HARUS sebelum express.static
+// agar tidak di-bypass oleh static middleware
+const _serveIndex = (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.setHeader('Content-Type', 'text/html');
+  res.send(_indexHtmlContent);
+};
+app.get('/', _serveIndex);
+app.get('/index.html', _serveIndex);
+
 app.use(express.static(path.join(__dirname, '../frontend'), {
+  index: false, // Jangan auto-serve index.html — sudah dihandle di atas
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
       res.setHeader('Cache-Control', 'no-cache, must-revalidate');
