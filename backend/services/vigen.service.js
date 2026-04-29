@@ -164,6 +164,7 @@ class ViGenService {
         cta_wa:          agent.No_WA || agent.No_WA_Business || '',
         description,
         n_captions:      nCaptions,
+        caption_align:   'Left',
       }, { headers: this._headers(), timeout: 30000 });
 
       console.log(`[ViGen] Job ${jobId} render dimulai sid=${sid} n_captions=${nCaptions} desc="${description.replace(/\n/g,'|')}"`);
