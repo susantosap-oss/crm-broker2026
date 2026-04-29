@@ -18,6 +18,10 @@
 const axios      = require('axios');
 const FormData   = require('form-data');
 const { v4: uuidv4 } = require('uuid');
+const ffmpeg     = require('fluent-ffmpeg');
+const fs         = require('fs');
+const os         = require('os');
+const path       = require('path');
 const sheetsService      = require('./sheets.service');
 const cloudinaryService  = require('./cloudinary.service');
 const { SHEETS }         = require('../config/sheets.config');
@@ -143,14 +147,15 @@ class ViGenService {
       if (photoPaths.length === 0) throw new Error('Tidak ada foto berhasil diupload ke ViGen');
       console.log(`[ViGen] Upload selesai: ${photoPaths.length} foto berhasil →`, JSON.stringify(photoPaths));
 
-      // 4. Upload BGM (random dari 2 pilihan per mood, fallback ke mewah)
+      // 4. Upload BGM — random track + random start trim
       let bgmPath = null;
       try {
-        const tracks = BGM_TRACKS[mood] || BGM_TRACKS.mewah;
-        const bgmUrl = tracks[Math.floor(Math.random() * tracks.length)];
-        const bgmRes = await axios.get(bgmUrl, { responseType: 'arraybuffer', timeout: 30000 });
-        const bgmFd  = new FormData();
-        bgmFd.append('file', Buffer.from(bgmRes.data), { filename: 'bgm.mp3', contentType: 'audio/mpeg' });
+        const tracks  = BGM_TRACKS[mood] || BGM_TRACKS.mewah;
+        const bgmUrl  = tracks[Math.floor(Math.random() * tracks.length)];
+        const bgmRes  = await axios.get(bgmUrl, { responseType: 'arraybuffer', timeout: 30000 });
+        const trimmed = await this._trimBgm(Buffer.from(bgmRes.data), duration, sid);
+        const bgmFd   = new FormData();
+        bgmFd.append('file', trimmed, { filename: 'bgm.mp3', contentType: 'audio/mpeg' });
         bgmFd.append('file_type', 'bgm');
         const { data: bgmUp } = await axios.post(`${url}/api/upload/${sid}`, bgmFd, {
           headers: { ...this._headers(), ...bgmFd.getHeaders() }, timeout: 30000,
@@ -318,6 +323,46 @@ class ViGenService {
     } catch (e) {
       console.error('[ViGen] pollPendingJobs error:', e.message);
     }
+  }
+
+  /**
+   * Trim BGM: random start (skip 10s intro, max 90s), durasi = video + 2s, fade in/out 1.5s.
+   * Input: raw MP3 buffer. Output: trimmed MP3 buffer.
+   */
+  _trimBgm(inputBuffer, videoDuration, sid) {
+    return new Promise((resolve, reject) => {
+      const tmpIn  = path.join(os.tmpdir(), `bgm_in_${sid}.mp3`);
+      const tmpOut = path.join(os.tmpdir(), `bgm_out_${sid}.mp3`);
+      fs.writeFileSync(tmpIn, inputBuffer);
+
+      // Random start: 10s–90s (skip intro, hindari akhir track)
+      const startSec   = 10 + Math.floor(Math.random() * 80);
+      const trimDur    = videoDuration + 2;
+      const fadeOutAt  = trimDur - 1.5;
+
+      ffmpeg(tmpIn)
+        .setStartTime(startSec)
+        .setDuration(trimDur)
+        .audioFilters(`afade=t=in:ss=0:d=1.5,afade=t=out:st=${fadeOutAt}:d=1.5`)
+        .audioCodec('libmp3lame')
+        .audioBitrate('128k')
+        .output(tmpOut)
+        .on('end', () => {
+          try {
+            const buf = fs.readFileSync(tmpOut);
+            resolve(buf);
+          } finally {
+            fs.unlink(tmpIn,  () => {});
+            fs.unlink(tmpOut, () => {});
+          }
+        })
+        .on('error', (err) => {
+          fs.unlink(tmpIn,  () => {});
+          fs.unlink(tmpOut, () => {});
+          reject(err);
+        })
+        .run();
+    });
   }
 
   async _updateJobSid(jobId, sid) {
