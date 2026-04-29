@@ -143,9 +143,9 @@ class ViGenService {
         `${tipeListing} ${harga}`,
         area,
       ].filter(Boolean);
-      // Sesuaikan jumlah caption dengan jumlah foto (1 caption per foto, maks 3)
-      const nCaptions   = Math.min(photoPaths.length, captionLines.length);
-      const description = captionLines.slice(0, nCaptions).join('\n');
+      // n_captions=1 → ViGen render description sebagai 1 overlay multi-line (bukan di-split AI)
+      const nCaptions   = 1;
+      const description = captionLines.join('\n');
 
       await axios.post(`${url}/api/render/${sid}`, {
         sid,
