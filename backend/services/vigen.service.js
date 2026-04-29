@@ -92,7 +92,7 @@ class ViGenService {
     };
   }
 
-  async _executeRender({ jobId, listingId, mood, duration, listing, agent, photos, videoClips }) {
+  async _executeRender({ jobId, listingId, listingType, mood, duration, listing, agent, photos, videoClips }) {
     const url = process.env.VIGEN_URL;
     try {
       await this._updateJobStatus(jobId, 'rendering');
