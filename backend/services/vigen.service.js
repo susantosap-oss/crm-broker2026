@@ -130,11 +130,15 @@ class ViGenService {
       if (photoPaths.length === 0) throw new Error('Tidak ada foto berhasil diupload ke ViGen');
 
       // 4. Mulai render
-      // Kirim 3 baris terpisah via \n agar ViGen render tiap baris sebagai overlay sendiri
+      // Tiap baris = 1 caption slide — n_captions harus = jumlah baris = jumlah foto yg dipakai
       const judul  = (listing.Judul || '').substring(0, 40);
       const harga  = listing.Harga_Format || listing.Harga || 'Hubungi Kami';
       const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ');
-      const description = [judul, harga, lokasi].filter(Boolean).join('\n');
+
+      const captionLines = [judul, harga, lokasi].filter(Boolean);
+      // Sesuaikan jumlah caption dengan jumlah foto (1 caption per foto, maks 3)
+      const nCaptions   = Math.min(photoPaths.length, captionLines.length);
+      const description = captionLines.slice(0, nCaptions).join('\n');
 
       await axios.post(`${url}/api/render/${sid}`, {
         sid,
@@ -146,7 +150,7 @@ class ViGenService {
         cta_nama:        agent.Nama || '',
         cta_wa:          agent.No_WA || agent.No_WA_Business || '',
         description,
-        n_captions:      3,
+        n_captions:      nCaptions,
       }, { headers: this._headers(), timeout: 30000 });
 
       console.log(`[ViGen] Job ${jobId} render dimulai, sid=${sid}`);
