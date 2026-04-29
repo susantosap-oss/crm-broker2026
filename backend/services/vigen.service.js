@@ -130,12 +130,14 @@ class ViGenService {
       if (photoPaths.length === 0) throw new Error('Tidak ada foto berhasil diupload ke ViGen');
 
       // 4. Mulai render
-      // Tiap baris = 1 caption slide — n_captions harus = jumlah baris = jumlah foto yg dipakai
-      const judul  = (listing.Judul || '').substring(0, 40);
+      // Pakai field pendek (bukan Judul yg panjang) agar tiap baris muat di overlay ViGen
+      const tipe   = listing.Tipe_Properti || '';
+      const kt     = listing.Kamar_Tidur   ? `${listing.Kamar_Tidur} KT` : '';
+      const line1  = [tipe, kt].filter(Boolean).join(' ') || (listing.Judul || '').substring(0, 15);
       const harga  = listing.Harga_Format || listing.Harga || 'Hubungi Kami';
-      const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ');
+      const lokasi = listing.Kecamatan || listing.Kota || '';
 
-      const captionLines = [judul, harga, lokasi].filter(Boolean);
+      const captionLines = [line1, harga, lokasi].filter(Boolean);
       // Sesuaikan jumlah caption dengan jumlah foto (1 caption per foto, maks 3)
       const nCaptions   = Math.min(photoPaths.length, captionLines.length);
       const description = captionLines.slice(0, nCaptions).join('\n');
