@@ -327,6 +327,30 @@ class ViGenService {
   }
 
   /**
+   * Hapus job: delete video dari Cloudinary + hapus baris dari VIGEN_JOBS sheet.
+   */
+  async deleteJob(jobId) {
+    const rows = await sheetsService.getRows(SHEETS.VIGEN_JOBS);
+    const idx  = rows.findIndex(r => r[0] === jobId);
+    if (idx < 0) throw new Error('Job tidak ditemukan');
+
+    // Hapus video dari Cloudinary (public_id dari URL)
+    const videoUrl = rows[idx][4];
+    if (videoUrl) {
+      try {
+        // Extract public_id dari Cloudinary URL
+        const match = videoUrl.match(/\/upload\/(?:v\d+\/)?(.+)\.[^.]+$/);
+        if (match) await cloudinaryService.deleteVideo(match[1]);
+      } catch (e) {
+        console.warn('[ViGen] Gagal hapus video Cloudinary:', e.message);
+      }
+    }
+
+    // Hapus baris dari sheet (replace dengan baris kosong agar index tetap stabil)
+    await sheetsService.deleteRow(SHEETS.VIGEN_JOBS, idx + 2);
+  }
+
+  /**
    * Trim BGM: random start (skip 10s intro, max 90s), durasi = video + 2s, fade in/out 1.5s.
    * Input: raw MP3 buffer. Output: trimmed MP3 buffer.
    */

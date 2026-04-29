@@ -1069,14 +1069,20 @@ async function _viGenLoadJobs(listingId) {
       const date = j.created_at ? new Date(j.created_at).toLocaleDateString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
 
       return `
-        <div style="background:#131F38;border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.06)">
+        <div id="vigen-job-card-${escapeHtml(j.id)}" style="background:#131F38;border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.06)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
             <div style="display:flex;align-items:center;gap:8px">
               <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
               <span style="font-size:12px;font-weight:600;color:${color}">${label}</span>
               <span style="font-size:10px;color:rgba(255,255,255,0.35)">${moodLabel} · ${durLabel}</span>
             </div>
-            <span style="font-size:10px;color:rgba(255,255,255,0.3)">${date}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:10px;color:rgba(255,255,255,0.3)">${date}</span>
+              <button onclick="deleteViGenJob('${escapeHtml(j.id)}')"
+                style="padding:4px 8px;border-radius:6px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);color:#f87171;font-size:10px;cursor:pointer">
+                🗑️
+              </button>
+            </div>
           </div>
           ${j.video_url ? `
             <a href="${escapeHtml(j.video_url)}" target="_blank"
@@ -1094,6 +1100,17 @@ async function _viGenLoadJobs(listingId) {
 
 function refreshViGenJobs() {
   if (_viGen.listingId) _viGenLoadJobs(_viGen.listingId);
+}
+
+async function deleteViGenJob(jobId) {
+  if (!confirm('Hapus hasil render ini? Video akan dihapus permanen dari Cloudinary.')) return;
+  try {
+    await API.delete(`/pa/vigen/jobs/${jobId}`);
+    document.getElementById(`vigen-job-card-${jobId}`)?.remove();
+    showToast('Job berhasil dihapus', 'success');
+  } catch (e) {
+    showToast('Gagal hapus: ' + e.message, 'error');
+  }
 }
 
 async function submitViGenRender() {

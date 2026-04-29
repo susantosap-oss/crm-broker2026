@@ -471,6 +471,16 @@ router.get('/vigen/jobs/:listingId', authenticate, async (req, res) => {
   }
 });
 
+// DELETE /vigen/jobs/:jobId — hapus job (Cloudinary + Sheets)
+router.delete('/vigen/jobs/:jobId', authenticate, async (req, res) => {
+  try {
+    await vigenService.deleteJob(req.params.jobId);
+    res.json({ success: true, message: 'Job berhasil dihapus' });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // GET /vigen/status/:jobId — status satu job
 router.get('/vigen/status/:jobId', authenticate, async (req, res) => {
   try {
