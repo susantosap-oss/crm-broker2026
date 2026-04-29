@@ -166,12 +166,13 @@ class ViGenService {
         console.warn('[ViGen] BGM upload gagal (render tetap lanjut):', e.message);
       }
 
-      // 5. Upload Logo
+      // 5. Upload Logo — resize 70% + opacity 60%
       let logoPath = null;
       try {
-        const logoRes = await axios.get(LOGO_URL, { responseType: 'arraybuffer', timeout: 15000 });
-        const logoFd  = new FormData();
-        logoFd.append('file', Buffer.from(logoRes.data), { filename: 'logo.png', contentType: 'image/png' });
+        const logoRes     = await axios.get(LOGO_URL, { responseType: 'arraybuffer', timeout: 15000 });
+        const logoProcess = await this._processLogo(Buffer.from(logoRes.data), sid);
+        const logoFd      = new FormData();
+        logoFd.append('file', logoProcess, { filename: 'logo.png', contentType: 'image/png' });
         logoFd.append('file_type', 'logo');
         const { data: logoUp } = await axios.post(`${url}/api/upload/${sid}`, logoFd, {
           headers: { ...this._headers(), ...logoFd.getHeaders() }, timeout: 15000,
@@ -346,6 +347,41 @@ class ViGenService {
         .audioFilters(`afade=t=in:ss=0:d=1.5,afade=t=out:st=${fadeOutAt}:d=1.5`)
         .audioCodec('libmp3lame')
         .audioBitrate('128k')
+        .output(tmpOut)
+        .on('end', () => {
+          try {
+            const buf = fs.readFileSync(tmpOut);
+            resolve(buf);
+          } finally {
+            fs.unlink(tmpIn,  () => {});
+            fs.unlink(tmpOut, () => {});
+          }
+        })
+        .on('error', (err) => {
+          fs.unlink(tmpIn,  () => {});
+          fs.unlink(tmpOut, () => {});
+          reject(err);
+        })
+        .run();
+    });
+  }
+
+  /**
+   * Proses logo: resize 70% (kecilkan 30%) + opacity 60% via FFmpeg.
+   * Input: PNG buffer. Output: PNG buffer dengan transparency.
+   */
+  _processLogo(inputBuffer, sid) {
+    return new Promise((resolve, reject) => {
+      const tmpIn  = path.join(os.tmpdir(), `logo_in_${sid}.png`);
+      const tmpOut = path.join(os.tmpdir(), `logo_out_${sid}.png`);
+      fs.writeFileSync(tmpIn, inputBuffer);
+
+      ffmpeg(tmpIn)
+        .videoFilters([
+          'scale=iw*0.7:ih*0.7',         // Kecilkan 30% (70% ukuran asli)
+          'format=rgba',                   // Pastikan RGBA
+          'colorchannelmixer=aa=0.6',      // Opacity 60%
+        ])
         .output(tmpOut)
         .on('end', () => {
           try {
