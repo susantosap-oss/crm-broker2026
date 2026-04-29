@@ -1250,8 +1250,11 @@ function openShareWAPicker(listingId) {
     <button onclick="doShareWA('wa')" style="width:100%;padding:13px;border-radius:12px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#4ade80;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px">
       <i class="fa-brands fa-whatsapp" style="font-size:18px"></i> WhatsApp
     </button>
-    <button onclick="doShareWA('wab')" style="width:100%;padding:13px;border-radius:12px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);color:#25d366;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+    <button onclick="doShareWA('wab')" style="width:100%;padding:13px;border-radius:12px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);color:#25d366;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px">
       <i class="fa-brands fa-whatsapp" style="font-size:18px"></i> WA Business
+    </button>
+    <button onclick="doShareWAStatus()" style="width:100%;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="fa-solid fa-circle-dot" style="font-size:18px"></i> My Status
     </button>
     <button onclick="document.getElementById('wa-picker-popup')?.remove()" style="width:100%;padding:8px;margin-top:8px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer">Batal</button>
   `;
@@ -1304,6 +1307,59 @@ async function doShareWA(type) {
 
   // Log share (fire & forget)
   _logShare('listing', listing.ID, listing.Judul || listing.Kode_Listing || '', platform);
+}
+
+// Share ke WA My Status — teks pendek ≤ 700 char
+async function doShareWAStatus() {
+  document.getElementById('wa-picker-popup')?.remove();
+  const listing = _allListings.find(l => l.ID === _shareWAListingId);
+  if (!listing) return;
+
+  let isOwner = listing.Agen_ID === STATE.user?.id;
+  if (!isOwner && STATE.user?.id) {
+    try {
+      const r = await fetch(`/api/v1/listing_agents/${listing.ID}/agents`, { headers: { 'Authorization': `Bearer ${STATE.token}` } });
+      if (r.ok) { const d = await r.json(); isOwner = (d.data||[]).some(a => a.Agen_ID === STATE.user.id); }
+    } catch (_) {}
+  }
+
+  const text = _buildStatusText(listing, isOwner);
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  _logShare('listing', listing.ID, listing.Judul || '', 'wa_status');
+}
+
+// Caption ringkas untuk WA My Status (max 700 char)
+function _buildStatusText(listing, isOwner = false) {
+  const harga  = listing.Harga_Format || formatRupiah(listing.Harga);
+  const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ');
+  const wa     = (STATE.user?.no_wa || '').replace(/\D/g, '');
+  const slug   = _makeSlug(listing.Judul || '', listing.ID || '');
+  const url    = isOwner ? `\n🔗 ${SITE_URL}/listings/${slug}` : '';
+
+  const _desc  = listing.Deskripsi || '';
+  const _px    = (re) => { const m = _desc.match(re); return m ? m[1] : ''; };
+  const lt = listing.Luas_Tanah    || _px(/LT[:\s]*(\d+)/i);
+  const lb = listing.Luas_Bangunan || _px(/LB[:\s]*(\d+)/i);
+  const kt = listing.Kamar_Tidur   || _px(/(\d+(?:[+\-]\d+)?)\s*KT/i);
+  const km = listing.Kamar_Mandi   || _px(/(\d+(?:[+\-]\d+)?)\s*KM/i);
+  const spek = [lt?`LT${lt}`:'' , lb?`LB${lb}`:'' , kt?`${kt}KT`:'' , km?`${km}KM`:''].filter(Boolean).join(' ');
+
+  const lines = [
+    `*${(listing.Judul||'Properti').toUpperCase()}*`,
+    `${listing.Tipe_Properti||''} ${listing.Status_Transaksi||''}`,
+    ``,
+    `📍 ${lokasi||'-'}`,
+    `💰 *${harga}*`,
+    spek ? `🏠 ${spek}` : '',
+    url,
+    ``,
+    `📱 ${wa ? '+'+wa : STATE.user?.nama || ''}`,
+  ].filter(s => s !== undefined);
+
+  // Pastikan ≤ 700 char
+  let text = lines.join('\n');
+  if (text.length > 700) text = text.substring(0, 697) + '...';
+  return text;
 }
 
 // Legacy: dipanggil dari tempat lain kalau ada
