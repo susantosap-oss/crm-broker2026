@@ -13,9 +13,25 @@ const morgan      = require('morgan');
 const compression = require('compression');
 const rateLimit   = require('express-rate-limit');
 const path    = require('path');
+const fs      = require('fs');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+
+// ── Version Injection ───────────────────────────────────────
+// Satu sumber kebenaran: APP_VERSION di .env
+// sw.js dan index.html pakai placeholder __APP_VERSION__ → diganti saat startup
+const APP_VERSION = process.env.APP_VERSION || '1.0.0';
+const _frontendDir = path.join(__dirname, '../frontend');
+
+function _injectVersion(raw) {
+  return raw.replace(/__APP_VERSION__/g, APP_VERSION);
+}
+
+const _swJsContent     = _injectVersion(fs.readFileSync(path.join(_frontendDir, 'sw.js'), 'utf8'));
+const _indexHtmlContent = _injectVersion(fs.readFileSync(path.join(_frontendDir, 'index.html'), 'utf8'));
+
+console.log(`[Server] APP_VERSION = ${APP_VERSION}`);
 
 // Cloud Run / Cloudflare proxy — trust 1 hop supaya rate-limit dapat IP asli
 app.set('trust proxy', 1);
@@ -52,9 +68,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/js', express.static(path.join(__dirname, '../frontend/js'), {
   setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache, must-revalidate'),
 }));
-app.use('/sw.js', (req, res, next) => {
+app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-  next();
+  res.setHeader('Content-Type', 'application/javascript');
+  res.send(_swJsContent);
 });
 app.use(express.static(path.join(__dirname, '../frontend'), {
   setHeaders: (res, filePath) => {
@@ -137,7 +154,9 @@ app.use((err, req, res, next) => {
 app.use('/p', require('./routes/shortlink.routes'));
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.setHeader('Content-Type', 'text/html');
+  res.send(_indexHtmlContent);
 });
 
 // ── Auto-migrate: ensure new sheet headers exist ──────────
