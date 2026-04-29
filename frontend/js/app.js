@@ -1519,10 +1519,18 @@ function setupPWA() {
       reg.addEventListener('updatefound', () => {
         const sw = reg.installing;
         sw.addEventListener('statechange', () => {
-          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+          // 'installed' bisa dilewati saat skipWaiting() — cek 'activated' juga
+          if ((sw.state === 'installed' || sw.state === 'activated') && navigator.serviceWorker.controller) {
             window.location.reload();
           }
         });
+      });
+
+      // Fallback: SW kirim SW_UPDATED setelah activate → force reload
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'SW_UPDATED') {
+          window.location.reload();
+        }
       });
 
       // Re-subscribe push jika user sudah login (page reload / SW update)
