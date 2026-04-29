@@ -116,7 +116,8 @@ class ViGenService {
         try {
           const imgRes = await axios.get(photoUrl, { responseType: 'arraybuffer', timeout: 30000 });
           const fd     = new FormData();
-          fd.append('file', Buffer.from(imgRes.data), { filename: 'photo.jpg', contentType: 'image/jpeg' });
+          const photoIdx = photoPaths.length + 1;
+          fd.append('file', Buffer.from(imgRes.data), { filename: `photo_${photoIdx}.jpg`, contentType: 'image/jpeg' });
           fd.append('file_type', 'photo');
           const { data: up } = await axios.post(`${url}/api/upload/${sid}`, fd, {
             headers: { ...this._headers(), ...fd.getHeaders() }, timeout: 30000,
