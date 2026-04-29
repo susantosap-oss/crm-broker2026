@@ -129,15 +129,20 @@ class ViGenService {
 
       if (photoPaths.length === 0) throw new Error('Tidak ada foto berhasil diupload ke ViGen');
 
-      // 4. Mulai render
-      // Pakai field pendek (bukan Judul yg panjang) agar tiap baris muat di overlay ViGen
-      const tipe   = listing.Tipe_Properti || '';
-      const kt     = listing.Kamar_Tidur   ? `${listing.Kamar_Tidur} KT` : '';
-      const line1  = [tipe, kt].filter(Boolean).join(' ') || (listing.Judul || '').substring(0, 15);
-      const harga  = listing.Harga_Format || listing.Harga || 'Hubungi Kami';
-      const lokasi = listing.Kecamatan || listing.Kota || '';
+      // 4. Mulai render — format overlay 3 baris:
+      //   Baris 1: {Tipe_Properti}
+      //   Baris 2: {Tipe_Listing} {Harga}
+      //   Baris 3: {Kecamatan} {Kota}
+      const tipeProperti = (listing.Tipe_Properti || '').toUpperCase();
+      const tipeListing  = (listingType === 'primary' ? 'PRIMARY' : (listing.Status_Transaksi || 'JUAL')).toUpperCase();
+      const harga        = listing.Harga_Format || listing.Harga || 'Hubungi Kami';
+      const area         = [listing.Kecamatan, listing.Kota].filter(Boolean).join(' ');
 
-      const captionLines = [line1, harga, lokasi].filter(Boolean);
+      const captionLines = [
+        tipeProperti,
+        `${tipeListing} ${harga}`,
+        area,
+      ].filter(Boolean);
       // Sesuaikan jumlah caption dengan jumlah foto (1 caption per foto, maks 3)
       const nCaptions   = Math.min(photoPaths.length, captionLines.length);
       const description = captionLines.slice(0, nCaptions).join('\n');
