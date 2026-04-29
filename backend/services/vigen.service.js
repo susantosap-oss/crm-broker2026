@@ -128,6 +128,7 @@ class ViGenService {
       }
 
       if (photoPaths.length === 0) throw new Error('Tidak ada foto berhasil diupload ke ViGen');
+      console.log(`[ViGen] Upload selesai: ${photoPaths.length} foto berhasil →`, JSON.stringify(photoPaths));
 
       // 4. Mulai render
       // n_captions = jumlah foto yang dipakai ViGen.
@@ -164,7 +165,7 @@ class ViGenService {
         n_captions:      nCaptions,
       }, { headers: this._headers(), timeout: 30000 });
 
-      console.log(`[ViGen] Job ${jobId} render dimulai, sid=${sid}`);
+      console.log(`[ViGen] Job ${jobId} render dimulai sid=${sid} n_captions=${nCaptions} desc="${description.replace(/\n/g,'|')}"`);
       // Status akan di-update oleh cron _pollPendingJobs
 
     } catch (err) {
