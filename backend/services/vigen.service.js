@@ -26,6 +26,18 @@ const MAX_PHOTOS_TO_ENGINE     = 6;
 const MAX_VIDEOCLIPS_TO_ENGINE = 6;
 const VIDEO_MAX_BYTES          = 50 * 1024 * 1024;
 
+const BGM_TRACKS = {
+  mewah:     [
+    'https://res.cloudinary.com/dqiqatpac/video/upload/v1777441554/bgm_mewah_2_sul3he.mp3',
+    'https://res.cloudinary.com/dqiqatpac/video/upload/v1777441553/bgm_mewah_1_l14f6z.mp3',
+  ],
+  minimalis: [
+    'https://res.cloudinary.com/dqiqatpac/video/upload/v1777441553/bgm_minimalis_2_ftwd6s.mp3',
+    'https://res.cloudinary.com/dqiqatpac/video/upload/v1777441553/bgm_minimalis_1_eohikb.mp3',
+  ],
+};
+const LOGO_URL = 'https://res.cloudinary.com/dqiqatpac/image/upload/v1777441635/Mansion_Logogram1_Blue_2_z203sl.png';
+
 class ViGenService {
 
   constructor() {
@@ -131,7 +143,41 @@ class ViGenService {
       if (photoPaths.length === 0) throw new Error('Tidak ada foto berhasil diupload ke ViGen');
       console.log(`[ViGen] Upload selesai: ${photoPaths.length} foto berhasil →`, JSON.stringify(photoPaths));
 
-      // 4. Mulai render
+      // 4. Upload BGM (random dari 2 pilihan per mood, fallback ke mewah)
+      let bgmPath = null;
+      try {
+        const tracks = BGM_TRACKS[mood] || BGM_TRACKS.mewah;
+        const bgmUrl = tracks[Math.floor(Math.random() * tracks.length)];
+        const bgmRes = await axios.get(bgmUrl, { responseType: 'arraybuffer', timeout: 30000 });
+        const bgmFd  = new FormData();
+        bgmFd.append('file', Buffer.from(bgmRes.data), { filename: 'bgm.mp3', contentType: 'audio/mpeg' });
+        bgmFd.append('file_type', 'bgm');
+        const { data: bgmUp } = await axios.post(`${url}/api/upload/${sid}`, bgmFd, {
+          headers: { ...this._headers(), ...bgmFd.getHeaders() }, timeout: 30000,
+        });
+        bgmPath = bgmUp.path || null;
+        console.log(`[ViGen] BGM uploaded: ${bgmPath}`);
+      } catch (e) {
+        console.warn('[ViGen] BGM upload gagal (render tetap lanjut):', e.message);
+      }
+
+      // 5. Upload Logo
+      let logoPath = null;
+      try {
+        const logoRes = await axios.get(LOGO_URL, { responseType: 'arraybuffer', timeout: 15000 });
+        const logoFd  = new FormData();
+        logoFd.append('file', Buffer.from(logoRes.data), { filename: 'logo.png', contentType: 'image/png' });
+        logoFd.append('file_type', 'logo');
+        const { data: logoUp } = await axios.post(`${url}/api/upload/${sid}`, logoFd, {
+          headers: { ...this._headers(), ...logoFd.getHeaders() }, timeout: 15000,
+        });
+        logoPath = logoUp.path || null;
+        console.log(`[ViGen] Logo uploaded: ${logoPath}`);
+      } catch (e) {
+        console.warn('[ViGen] Logo upload gagal (render tetap lanjut):', e.message);
+      }
+
+      // 6. Mulai render
       // n_captions = jumlah foto yang dipakai ViGen.
       // description dibagi N baris \n (1 baris per foto) agar tiap foto caption berbeda.
       // Kalau foto < 3, gabungkan sisa info ke baris terakhir.
@@ -165,6 +211,8 @@ class ViGenService {
         description,
         n_captions:      nCaptions,
         caption_align:   'Left',
+        ...(bgmPath  ? { bgm_path: bgmPath, bgm_volume: 0.4 } : {}),
+        ...(logoPath ? { logo_path: logoPath }                : {}),
       }, { headers: this._headers(), timeout: 30000 });
 
       console.log(`[ViGen] Job ${jobId} render dimulai sid=${sid} n_captions=${nCaptions} desc="${description.replace(/\n/g,'|')}"`);
