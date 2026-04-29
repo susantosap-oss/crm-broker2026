@@ -1245,17 +1245,24 @@ function openShareWAPicker(listingId) {
     background:#141E35;border:1px solid rgba(212,168,83,0.4);border-radius:16px;
     padding:16px;z-index:9999;width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.5);
   `;
+  const _noWA  = (STATE.user?.no_wa     || '').replace(/\D/g,'');
+  const _noBiz = (STATE.user?.no_wa_biz || '').replace(/\D/g,'');
+  const _bothWA = _noWA && _noBiz;
+  const _statusBtns = _bothWA
+    ? `<button onclick="doShareWAStatus('wa')"  style="width:100%;padding:11px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fa-solid fa-circle-dot" style="font-size:16px"></i> My Status WA</button>
+       <button onclick="doShareWAStatus('wab')" style="width:100%;padding:11px;border-radius:12px;background:rgba(212,168,83,0.07);border:1px solid rgba(212,168,83,0.25);color:#c9a14e;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fa-solid fa-circle-dot" style="font-size:16px"></i> My Status Bisnis</button>`
+    : `<button onclick="doShareWAStatus('${_noBiz && !_noWA ? 'wab' : 'wa'}')" style="width:100%;padding:11px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fa-solid fa-circle-dot" style="font-size:16px"></i> My Status</button>`;
+
   popup.innerHTML = `
-    <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:12px;text-align:center">Pilih aplikasi WhatsApp</div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:12px;text-align:center">Pilih cara share WhatsApp</div>
     <button onclick="doShareWA('wa')" style="width:100%;padding:13px;border-radius:12px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#4ade80;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px">
       <i class="fa-brands fa-whatsapp" style="font-size:18px"></i> WhatsApp
     </button>
     <button onclick="doShareWA('wab')" style="width:100%;padding:13px;border-radius:12px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);color:#25d366;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px">
       <i class="fa-brands fa-whatsapp" style="font-size:18px"></i> WA Business
     </button>
-    <button onclick="doShareWAStatus()" style="width:100%;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-      <i class="fa-solid fa-circle-dot" style="font-size:18px"></i> My Status
-    </button>
+    <div style="font-size:10px;color:rgba(255,255,255,0.25);text-align:center;margin:4px 0 8px;letter-spacing:1px">── MY STATUS ──</div>
+    ${_statusBtns}
     <button onclick="document.getElementById('wa-picker-popup')?.remove()" style="width:100%;padding:8px;margin-top:8px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer">Batal</button>
   `;
 
@@ -1309,8 +1316,8 @@ async function doShareWA(type) {
   _logShare('listing', listing.ID, listing.Judul || listing.Kode_Listing || '', platform);
 }
 
-// Share ke WA My Status — teks pendek ≤ 700 char
-async function doShareWAStatus() {
+// Share ke WA My Status — teks ≤ 700 char / 10 baris + foto utama via Web Share API
+async function doShareWAStatus(type = 'wa') {
   document.getElementById('wa-picker-popup')?.remove();
   const listing = _allListings.find(l => l.ID === _shareWAListingId);
   if (!listing) return;
@@ -1323,18 +1330,43 @@ async function doShareWAStatus() {
     } catch (_) {}
   }
 
-  const text = _buildStatusText(listing, isOwner);
-  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-  _logShare('listing', listing.ID, listing.Judul || '', 'wa_status');
+  const waNum    = type === 'wab'
+    ? (STATE.user?.no_wa_biz || STATE.user?.no_wa || '')
+    : (STATE.user?.no_wa || STATE.user?.no_wa_biz || '');
+  const text     = _buildStatusText(listing, isOwner, waNum);
+  const fotoUrl  = listing.Foto_Utama_URL;
+  const platform = type === 'wab' ? 'wa_business_status' : 'wa_status';
+
+  // Coba Web Share API dengan foto (Android/iOS modern)
+  if (fotoUrl && typeof navigator.canShare === 'function') {
+    try {
+      const resp = await fetch(fotoUrl);
+      const blob = await resp.blob();
+      const ext  = (blob.type || '').includes('png') ? 'png' : 'jpg';
+      const file = new File([blob], `listing.${ext}`, { type: blob.type || 'image/jpeg' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text });
+        _logShare('listing', listing.ID, listing.Judul || '', platform);
+        return;
+      }
+    } catch (_) { /* fallthrough ke teks saja */ }
+  }
+
+  // Fallback: teks saja
+  if (type === 'wab' && /android/i.test(navigator.userAgent)) {
+    window.open(`intent://send?text=${encodeURIComponent(text)}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`, '_blank');
+  } else {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  }
+  _logShare('listing', listing.ID, listing.Judul || '', platform);
 }
 
-// Caption ringkas untuk WA My Status (max 700 char)
-function _buildStatusText(listing, isOwner = false) {
+// Caption ringkas untuk WA My Status (max 10 baris & 700 char)
+function _buildStatusText(listing, isOwner = false, waNum = '') {
   const harga  = listing.Harga_Format || formatRupiah(listing.Harga);
   const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ');
-  const wa     = (STATE.user?.no_wa || '').replace(/\D/g, '');
+  const wa     = (waNum || STATE.user?.no_wa || '').replace(/\D/g, '');
   const slug   = _makeSlug(listing.Judul || '', listing.ID || '');
-  const url    = isOwner ? `\n🔗 ${SITE_URL}/listings/${slug}` : '';
 
   const _desc  = listing.Deskripsi || '';
   const _px    = (re) => { const m = _desc.match(re); return m ? m[1] : ''; };
@@ -1346,18 +1378,16 @@ function _buildStatusText(listing, isOwner = false) {
 
   const lines = [
     `*${(listing.Judul||'Properti').toUpperCase()}*`,
-    `${listing.Tipe_Properti||''} ${listing.Status_Transaksi||''}`,
-    ``,
+    [listing.Tipe_Properti, listing.Status_Transaksi].filter(Boolean).join(' '),
     `📍 ${lokasi||'-'}`,
     `💰 *${harga}*`,
-    spek ? `🏠 ${spek}` : '',
-    url,
-    ``,
-    `📱 ${wa ? '+'+wa : STATE.user?.nama || ''}`,
-  ].filter(s => s !== undefined);
+    spek ? `🏠 ${spek}` : null,
+    isOwner ? `🔗 ${SITE_URL}/listings/${slug}` : null,
+    `📱 ${wa ? '+'+wa : (STATE.user?.nama || '')}`,
+  ].filter(Boolean);
 
-  // Pastikan ≤ 700 char
-  let text = lines.join('\n');
+  // Max 10 baris dan 700 char
+  let text = lines.slice(0, 10).join('\n');
   if (text.length > 700) text = text.substring(0, 697) + '...';
   return text;
 }
@@ -4924,14 +4954,24 @@ function openShareProjectWAPicker() {
     background:#141E35;border:1px solid rgba(212,168,83,0.4);border-radius:16px;
     padding:16px;z-index:9999;width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.5);
   `;
+  const _pNoWA  = (STATE.user?.no_wa     || '').replace(/\D/g,'');
+  const _pNoBiz = (STATE.user?.no_wa_biz || '').replace(/\D/g,'');
+  const _pBoth  = _pNoWA && _pNoBiz;
+  const _pStatusBtns = _pBoth
+    ? `<button onclick="doShareProjectWAStatus('wa')"  style="width:100%;padding:11px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fa-solid fa-circle-dot" style="font-size:16px"></i> My Status WA</button>
+       <button onclick="doShareProjectWAStatus('wab')" style="width:100%;padding:11px;border-radius:12px;background:rgba(212,168,83,0.07);border:1px solid rgba(212,168,83,0.25);color:#c9a14e;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fa-solid fa-circle-dot" style="font-size:16px"></i> My Status Bisnis</button>`
+    : `<button onclick="doShareProjectWAStatus('${_pNoBiz && !_pNoWA ? 'wab' : 'wa'}')" style="width:100%;padding:11px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fa-solid fa-circle-dot" style="font-size:16px"></i> My Status</button>`;
+
   popup.innerHTML = `
-    <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:12px;text-align:center">Pilih aplikasi WhatsApp</div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:12px;text-align:center">Pilih cara share WhatsApp</div>
     <button onclick="doShareProjectWA('wa')" style="width:100%;padding:13px;border-radius:12px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#4ade80;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px">
       <i class="fa-brands fa-whatsapp" style="font-size:18px"></i> WhatsApp
     </button>
-    <button onclick="doShareProjectWA('wab')" style="width:100%;padding:13px;border-radius:12px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);color:#25d366;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+    <button onclick="doShareProjectWA('wab')" style="width:100%;padding:13px;border-radius:12px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);color:#25d366;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px">
       <i class="fa-brands fa-whatsapp" style="font-size:18px"></i> WA Business
     </button>
+    <div style="font-size:10px;color:rgba(255,255,255,0.25);text-align:center;margin:4px 0 8px;letter-spacing:1px">── MY STATUS ──</div>
+    ${_pStatusBtns}
     <button onclick="document.getElementById('wa-project-picker-popup')?.remove()" style="width:100%;padding:8px;margin-top:8px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer">Batal</button>
   `;
 
@@ -4967,6 +5007,65 @@ function doShareProjectWA(type) {
   }
 
   _logShare('project', project.ID, project.Nama_Proyek || '', platform, project.Koordinator_ID || '');
+}
+
+// Share Project ke WA My Status — foto + caption ringkas ≤ 10 baris / 700 char
+async function doShareProjectWAStatus(type = 'wa') {
+  document.getElementById('wa-project-picker-popup')?.remove();
+  if (!_currentProjectId) return;
+  const project = _projectsData.find(p => p.ID === _currentProjectId);
+  if (!project) return;
+
+  const waNum    = type === 'wab'
+    ? (STATE.user?.no_wa_biz || STATE.user?.no_wa || '')
+    : (STATE.user?.no_wa || STATE.user?.no_wa_biz || '');
+  const text     = _buildProjectStatusText(project, waNum);
+  const fotoUrl  = project.Foto_1_URL;
+  const platform = type === 'wab' ? 'wa_business_status' : 'wa_status';
+
+  // Coba Web Share API dengan foto (Android/iOS modern)
+  if (fotoUrl && typeof navigator.canShare === 'function') {
+    try {
+      const resp = await fetch(fotoUrl);
+      const blob = await resp.blob();
+      const ext  = (blob.type || '').includes('png') ? 'png' : 'jpg';
+      const file = new File([blob], `project.${ext}`, { type: blob.type || 'image/jpeg' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text });
+        _logShare('project', project.ID, project.Nama_Proyek || '', platform, project.Koordinator_ID || '');
+        return;
+      }
+    } catch (_) { /* fallthrough */ }
+  }
+
+  // Fallback: teks saja
+  if (type === 'wab' && /android/i.test(navigator.userAgent)) {
+    window.open(`intent://send?text=${encodeURIComponent(text)}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`, '_blank');
+  } else {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  }
+  _logShare('project', project.ID, project.Nama_Proyek || '', platform, project.Koordinator_ID || '');
+}
+
+// Caption ringkas Primary untuk WA My Status (max 10 baris & 700 char)
+function _buildProjectStatusText(project, waNum = '') {
+  const tipeEmoji = { Rumah: '🏡', Ruko: '🏪', Apartemen: '🏢', Gudang: '🏭' }[project.Tipe_Properti] || '🏠';
+  const wa        = (waNum || STATE.user?.no_wa || '').replace(/\D/g, '');
+  const cara      = (project.Cara_Bayar || '').replace(/,/g, ' / ');
+  const slug      = _makeSlug(project.Nama_Proyek || '', project.ID || '');
+
+  const lines = [
+    `${tipeEmoji} *${(project.Nama_Proyek || 'Proyek').toUpperCase()}*`,
+    `Developer: ${project.Nama_Developer || '-'}`,
+    `💰 Mulai *${project.Harga_Format || 'On Request'}*`,
+    cara ? `💳 ${cara}` : null,
+    `🔗 ${SITE_URL}/projects/${slug}`,
+    `📱 ${wa ? '+'+wa : (STATE.user?.nama || '')}`,
+  ].filter(Boolean);
+
+  let text = lines.slice(0, 10).join('\n');
+  if (text.length > 700) text = text.substring(0, 697) + '...';
+  return text;
 }
 
 // backward compat — dipanggil dari tempat lain jika ada

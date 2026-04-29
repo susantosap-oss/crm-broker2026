@@ -72,7 +72,11 @@
       "Bash(claude install:*)",
       "Bash(mkdir -p \"C:/Users/mansion/crm-broker2026/.claude/memory\")",
       "Bash(cp \"C:/Users/mansion/.claude/projects/C--Users-mansion-crm-broker2026/memory/\"*.md \"C:/Users/mansion/crm-broker2026/.claude/memory/\")",
-      "WebFetch(domain:mansion-vidgen-cb5stice7a-et.a.run.app)"
+      "WebFetch(domain:mansion-vidgen-cb5stice7a-et.a.run.app)",
+      "WebFetch(domain:docs.fonnte.com)",
+      "Bash(awk -F: '$2>845 && $2<900')",
+      "Bash(awk 'NR>=845 && NR<=990' /home/susantomansion/crm-broker2026/frontend/index.html)",
+      "Bash(python3 *)"
     ]
   }
 }
