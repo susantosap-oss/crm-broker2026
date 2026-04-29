@@ -68,7 +68,10 @@
       "Bash(node_modules/.bin/tsc --noEmit)",
       "Bash(/home/susantomansion/web-mansion2026/node_modules/.bin/tsc --noEmit --project /home/susantomansion/web-mansion2026/tsconfig.json)",
       "Bash(npm info:*)",
-      "Bash(gcloud services list *)"
+      "Bash(gcloud services list *)",
+      "Bash(claude install:*)",
+      "Bash(mkdir -p \"C:/Users/mansion/crm-broker2026/.claude/memory\")",
+      "Bash(cp \"C:/Users/mansion/.claude/projects/C--Users-mansion-crm-broker2026/memory/\"*.md \"C:/Users/mansion/crm-broker2026/.claude/memory/\")"
     ]
   }
 }

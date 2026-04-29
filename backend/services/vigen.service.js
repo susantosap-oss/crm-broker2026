@@ -130,6 +130,12 @@ class ViGenService {
       if (photoPaths.length === 0) throw new Error('Tidak ada foto berhasil diupload ke ViGen');
 
       // 4. Mulai render
+      // Kirim 3 baris terpisah via \n agar ViGen render tiap baris sebagai overlay sendiri
+      const judul  = (listing.Judul || '').substring(0, 40);
+      const harga  = listing.Harga_Format || listing.Harga || 'Hubungi Kami';
+      const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ');
+      const description = [judul, harga, lokasi].filter(Boolean).join('\n');
+
       await axios.post(`${url}/api/render/${sid}`, {
         sid,
         photo_paths:     photoPaths,
@@ -139,7 +145,7 @@ class ViGenService {
         cta_label:       'Hubungi :',
         cta_nama:        agent.Nama || '',
         cta_wa:          agent.No_WA || agent.No_WA_Business || '',
-        description:     `${listing.Judul || ''} - ${listing.Harga_Format || ''} - ${listing.Kecamatan || ''}, ${listing.Kota || ''}`,
+        description,
         n_captions:      3,
       }, { headers: this._headers(), timeout: 30000 });
 
