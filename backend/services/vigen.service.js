@@ -130,23 +130,26 @@ class ViGenService {
       if (photoPaths.length === 0) throw new Error('Tidak ada foto berhasil diupload ke ViGen');
 
       // 4. Mulai render
-      // ViGen word-wrap di ~17 char — susun kata agar wrap jatuh di posisi yang benar:
-      //   "RUMAH JUAL 1.4M Citraland Surabaya"
-      //   → "RUMAH JUAL 1.4M"  (line 1)
-      //   → "Citraland"        (line 2)
-      //   → "Surabaya"         (line 3)
+      // n_captions = jumlah foto yang dipakai ViGen.
+      // description dibagi N baris \n (1 baris per foto) agar tiap foto caption berbeda.
+      // Kalau foto < 3, gabungkan sisa info ke baris terakhir.
       const tipeProperti = (listing.Tipe_Properti || '').toUpperCase();
       const tipeListing  = (listingType === 'primary' ? 'PRIMARY' : (listing.Status_Transaksi || 'JUAL')).toUpperCase();
-      // Compact price: strip "Rp " + spasi agar tidak terpotong di tengah
-      // "Rp 1.4 M" → "1.4M"  |  "Rp 500 Jt" → "500Jt"
+      // Compact price: "Rp 1.4 M" → "1.4M"  |  "Rp 500 Jt" → "500Jt"
       const hargaRaw     = listing.Harga_Format || listing.Harga || '';
       const hargaCompact = hargaRaw.replace(/^Rp\s*/i, '').replace(/\s+/g, '');
+      const area         = [listing.Kecamatan, listing.Kota].filter(Boolean).join(' ');
 
-      const description = [
-        tipeProperti, tipeListing, hargaCompact,
-        listing.Kecamatan, listing.Kota,
-      ].filter(Boolean).join(' ');
-      const nCaptions = 1;
+      // 3 info pieces — 1 per foto
+      const infoLines = [`${tipeProperti} ${tipeListing}`, hargaCompact, area].filter(Boolean);
+      const nCaptions = Math.min(photoPaths.length, infoLines.length);
+
+      // Gabungkan sisa baris ke baris terakhir jika foto < info
+      const captionLines = nCaptions < infoLines.length
+        ? [...infoLines.slice(0, nCaptions - 1), infoLines.slice(nCaptions - 1).join(' ')]
+        : infoLines.slice(0, nCaptions);
+
+      const description = captionLines.join('\n');
 
       await axios.post(`${url}/api/render/${sid}`, {
         sid,
