@@ -81,6 +81,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   setupPWA();
   setHeroDate();
+
+  // Simpan draft saat PWA di-background; hapus jika kembali tanpa reload
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) saveDraftState();
+    else localStorage.removeItem('crm_draft_state');
+  });
+  window.addEventListener('pagehide', saveDraftState);
 });
 
 // ── AUTH ───────────────────────────────────────────────────
@@ -139,6 +146,7 @@ function doLogout() {
   localStorage.removeItem('crm_token');
   localStorage.removeItem('crm_user');
   localStorage.removeItem('crm_login_at');
+  localStorage.removeItem('crm_draft_state');
   STATE.token = null; STATE.user = null;
   STATE.listings = []; STATE.leads = []; STATE.tasks = [];
   closeModal('modal-sidebar');
@@ -194,7 +202,7 @@ function showApp() {
   setText('sidebar-name', nama || 'Agen');
   setText('sidebar-role', role || 'agen');
 
-  navigateTo('dashboard');
+  navigateTo('dashboard').then(restoreDraftState);
 }
 
 // ── NAVIGATION ─────────────────────────────────────────────
@@ -1499,6 +1507,50 @@ function openModal(id) {
 function closeModal(id) {
   const el = document.getElementById(id);
   if (el) el.classList.remove('open');
+}
+
+// ── DRAFT STATE — jaga isi form saat PWA di-background lalu di-reload ────────
+function saveDraftState() {
+  if (!STATE.token) return;
+  const draft = { page: STATE.currentPage, savedAt: Date.now(), modals: {} };
+  document.querySelectorAll('.modal').forEach(modal => {
+    if (!modal.id) return;
+    const isOpen = modal.classList.contains('open') || modal.style.display === 'block';
+    if (!isOpen) return;
+    const fields = {};
+    modal.querySelectorAll('input:not([type=file]), textarea, select').forEach(el => {
+      if (el.id) fields[el.id] = el.value;
+    });
+    if (Object.keys(fields).length) draft.modals[modal.id] = fields;
+  });
+  localStorage.setItem('crm_draft_state', JSON.stringify(draft));
+}
+
+function restoreDraftState() {
+  try {
+    const raw = localStorage.getItem('crm_draft_state');
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    localStorage.removeItem('crm_draft_state');
+    // Buang draft yang sudah lebih dari 30 menit
+    if (Date.now() - (draft.savedAt || 0) > 30 * 60 * 1000) return;
+    if (draft.page && draft.page !== 'dashboard') navigateTo(draft.page);
+    const modalEntries = Object.entries(draft.modals || {});
+    if (!modalEntries.length) return;
+    // Delay kecil agar halaman sempat di-render sebelum modal dibuka
+    setTimeout(() => {
+      modalEntries.forEach(([modalId, fields]) => {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        openModal(modalId);
+        Object.entries(fields).forEach(([fieldId, val]) => {
+          const el = document.getElementById(fieldId);
+          if (el) el.value = val;
+        });
+      });
+      if (typeof showToast === 'function') showToast('Draft form dipulihkan', 'success');
+    }, 350);
+  } catch (_) {}
 }
 
 // ── PWA ───────────────────────────────────────────────────
