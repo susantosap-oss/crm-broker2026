@@ -104,6 +104,7 @@ const COLUMNS = {
     'Updated_At',         // AN
     'Notes',              // AO
     'Project_ID',         // AP  ★ FK ke PROJECTS (jika listing dibuat dari proyek primary)
+    'Link_GMaps_Personal', // AQ ★ Link Google Maps pribadi agen — hanya CRM pemilik, tidak ke publik/web
   ],
 
   LEADS: [
@@ -165,6 +166,7 @@ const COLUMNS = {
     'Parent_Kantor',      // S  ★ Kantor induk (e.g. MANSION : Citraland untuk Malang)
     'Nomer_LSP',          // T  ★ Nomor Lembaga Sertifikasi Profesi
     'Aktivitas_Count',    // U  ★ Jumlah aktivitas harian (untuk scoring)
+    'Tampilkan_di_Web',  // V  ★ FALSE = sembunyikan dari daftar agen website publik
   ],
 
   // ★ NEW SHEET

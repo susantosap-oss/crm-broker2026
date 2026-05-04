@@ -762,6 +762,15 @@ async function openListingDetail(id) {
       <span>${escapeHtml([listing.Kecamatan, listing.Kota].filter(Boolean).join(', ') || '—')}</span>
     </div>
 
+    <!-- Google Maps personal link — hanya pemilik listing -->
+    ${listing.Agen_ID === STATE.user?.id && listing.Link_GMaps_Personal ? `
+    <a href="${escapeHtml(listing.Link_GMaps_Personal)}" target="_blank" rel="noopener noreferrer"
+      style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;background:rgba(66,133,244,0.1);border:1px solid rgba(66,133,244,0.25);color:#60a5fa;font-size:12px;font-weight:600;text-decoration:none">
+      <i class="fa-solid fa-map-location-dot" style="font-size:14px"></i>
+      Buka Google Maps
+      <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;margin-left:auto;opacity:0.6"></i>
+    </a>` : ''}
+
     <!-- Stats -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
       ${listing.Luas_Tanah ? `<div style="background:#1C2D52;border-radius:10px;padding:10px;text-align:center"><div style="font-size:13px;font-weight:700;color:#fff">${escapeHtml(String(listing.Luas_Tanah))}</div><div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px">LT m²</div></div>` : ''}
@@ -2823,7 +2832,7 @@ let _editListingId = null;
 function resetListingModal() {
   _editListingId = null;
   ['add-tipe','add-transaksi','add-judul','add-kota','add-kecamatan',
-   'add-harga','add-harga-permeter','add-deskripsi','add-caption'].forEach(id => {
+   'add-harga','add-harga-permeter','add-deskripsi','add-caption','add-gmaps-personal'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -2874,8 +2883,9 @@ function openEditListing(listingId) {
   const pmEl = document.getElementById('add-harga-permeter');
   if (hEl)  previewHargaFormat(hEl, 'add-harga-preview');
   if (pmEl) previewHargaFormat(pmEl, 'add-harga-pm-preview');
-  setVal('add-deskripsi',  l.Deskripsi         || '');
-  setVal('add-caption',    l.Caption_Sosmed    || '');
+  setVal('add-deskripsi',        l.Deskripsi            || '');
+  setVal('add-caption',          l.Caption_Sosmed       || '');
+  setVal('add-gmaps-personal',   l.Link_GMaps_Personal  || '');
 
   // Populate listing photo state from existing URLs
   _listingPhotos = [
@@ -2916,9 +2926,10 @@ async function submitAddListing() {
   formData.append('Kota',             kota);
   formData.append('Kecamatan',        getVal('add-kecamatan'));
   formData.append('Harga',            harga);
-  formData.append('Deskripsi',        getVal('add-deskripsi'));
-  formData.append('Caption_Sosmed',   getVal('add-caption'));
-  formData.append('Harga_Format',     formatRupiah(harga));
+  formData.append('Deskripsi',           getVal('add-deskripsi'));
+  formData.append('Caption_Sosmed',      getVal('add-caption'));
+  formData.append('Link_GMaps_Personal', getVal('add-gmaps-personal').trim());
+  formData.append('Harga_Format',        formatRupiah(harga));
   if (hargaPM) {
     formData.append('Harga_Permeter', hargaPM);
     formData.append('Harga_Permeter_Format', formatRupiah(hargaPM));

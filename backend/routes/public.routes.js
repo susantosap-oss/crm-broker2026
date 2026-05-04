@@ -20,6 +20,7 @@ const { publicApiKey } = require('../middleware/auth.middleware');
 const listingsService  = require('../services/listings.service');
 const projectsService  = require('../services/projects.service');
 const sheetsService    = require('../services/sheets.service');
+const { SHEETS, COLUMNS } = require('../config/sheets.config');
 
 // Helper: build foto_gallery from Foto_Gallery JSON or fallback to Foto_2/3_URL
 function buildFotoGallery(obj) {
@@ -250,12 +251,45 @@ router.get('/stats', async (req, res) => {
       success: true,
       data: {
         total_listings_public: stats.totalListings,
-        // NOTE: Leads & agents NOT exposed to public
       }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+});
+
+// ── GET /agents ───────────────────────────────────────────
+// Daftar agen aktif untuk website publik (mansionpro.id/agents)
+// Filter: Status Aktif, Tampilkan_di_Web !== 'FALSE', bukan role internal
+const MANSION_LOGO_URL = 'https://crm.mansionpro.id/assets/mansion-logo.png';
+const HIDDEN_ROLES_PUBLIC = ['superadmin', 'admin', 'kantor'];
+
+router.get('/agents', async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.AGENTS);
+    if (!rows || rows.length < 2) return res.json({ success: true, data: [] });
+
+    const [, ...data] = rows;
+    const agents = data
+      .map(row => COLUMNS.AGENTS.reduce((obj, col, i) => { obj[col] = row[i] || ''; return obj; }, {}))
+      .filter(a => a.ID)
+      .filter(a => a.Status !== 'Nonaktif')
+      .filter(a => !HIDDEN_ROLES_PUBLIC.includes(a.Role))
+      .filter(a => a.Tampilkan_di_Web !== 'FALSE')
+      .map(a => ({
+        id:             a.ID,
+        nama:           a.Nama,
+        role:           a.Role,
+        nama_kantor:    a.Nama_Kantor || 'MANSION Realty',
+        foto_url:       a.Foto_URL || MANSION_LOGO_URL,
+        listing_count:  parseInt(a.Listing_Count) || 0,
+        deal_count:     parseInt(a.Deal_Count)    || 0,
+        join_date:      a.Join_Date || '',
+        no_wa:          a.No_WA || '',
+      }));
+
+    res.json({ success: true, data: agents, count: agents.length });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 module.exports = router;

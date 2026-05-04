@@ -1040,15 +1040,11 @@ function _buildWAMessage(listingId) {
   const agen    = (window.STATE?.user?.nama || 'Tim MANSION Realty').split(' ').slice(0,2).join(' ');
 
   if (listing) {
-    const harga      = listing.Harga_Format || (listing.Harga ? 'Rp\u00a0' + Number(listing.Harga).toLocaleString('id-ID') : 'Hubungi Agen');
-    const lokasi     = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ') || '—';
-    const tipe       = listing.Tipe_Properti || '';
-    const transaksi  = (listing.Status_Transaksi || '').toLowerCase();
-    const isSewa     = transaksi.includes('sewa');
-    const labelJenis = isSewa ? '🔑 *[SEWA]*' : '🏷️ *[JUAL]*';
-    const labelHarga = isSewa ? `💰 Harga Sewa: ${harga}` : `💰 Harga: ${harga}`;
-    const tipeInfo   = tipe ? `🏠 ${tipe} | ${isSewa ? 'Disewa' : 'Dijual'}` : (isSewa ? 'Disewa' : 'Dijual');
-    return `Halo! 👋\n\nSaya ingin menawarkan properti eksklusif ${labelJenis}:\n\n*${listing.Judul || 'Properti'}*\n${tipeInfo}\n${labelHarga}\n📍 ${lokasi}\n\nProperti ini sangat strategis dan menarik. Apakah Anda tertarik mengetahui lebih lanjut?\n\nSalam,\n${agen} — MANSION Realty`;
+    if (typeof _buildShareText === 'function') return _buildShareText(listing, true);
+    // fallback jika _buildShareText belum tersedia
+    const harga  = listing.Harga_Format || (listing.Harga ? 'Rp ' + Number(listing.Harga).toLocaleString('id-ID') : 'Hubungi Agen');
+    const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ') || '—';
+    return `*${(listing.Judul || 'Properti').toUpperCase()}*\n📍 ${lokasi}\n💰 ${harga}\n\nSalam,\n${agen} — MANSION Realty`;
   }
 
   if (project) {
