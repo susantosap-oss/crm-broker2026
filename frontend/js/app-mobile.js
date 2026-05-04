@@ -4023,7 +4023,7 @@ async function loadNotifications() {
       <div onclick="markNotifRead('${n.Notif_ID}', '${n.Link_Type}', '${n.Link_ID}')"
            style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;background:${n.Is_Read==='TRUE'?'transparent':'rgba(212,168,83,0.05)'}">
         <div style="display:flex;align-items:flex-start;gap:10px">
-          <span style="font-size:18px">${n.Tipe==='buyer_request'?'🔔':n.Tipe==='komisi_request'?'💰':'📢'}</span>
+          <span style="font-size:18px">${(n.Tipe==='buyer_request'||n.Tipe==='renter_request')?'🔔':n.Tipe==='komisi_request'?'💰':'📢'}</span>
           <div style="flex:1">
             <div style="font-size:13px;font-weight:${n.Is_Read==='TRUE'?'400':'600'};color:${n.Is_Read==='TRUE'?'rgba(255,255,255,0.55)':'#fff'}">${escapeHtml(n.Judul)}</div>
             <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${escapeHtml(n.Pesan||'')}</div>

@@ -180,12 +180,14 @@ router.post('/', async (req, res) => {
 
     await sheetsService.appendRow(SHEETS.LEADS, row);
 
-    // Kirim notif jika Buyer Request
+    // Kirim notif jika Buyer/Renter Request
     if (isBuyerRequest) {
+      const isRenter = (req.body.Jenis || 'Beli') === 'Sewa';
+      const label    = isRenter ? 'Renter Request' : 'Buyer Request';
       await createNotification({
-        tipe:           'buyer_request',
-        judul:          '🔔 Buyer Request Baru!',
-        pesan:          `${req.user.nama} menambahkan Buyer Request: ${req.body.Nama || 'Lead baru'} — ${req.body.Properti_Diminati || ''}`,
+        tipe:           isRenter ? 'renter_request' : 'buyer_request',
+        judul:          `🔔 ${label} Baru!`,
+        pesan:          `${req.user.nama} menambahkan ${label}: ${req.body.Nama || 'Lead baru'} — ${req.body.Properti_Diminati || ''}`,
         from_user_id:   req.user.id,
         from_user_nama: req.user.nama,
         to_role:        'all',
@@ -211,14 +213,17 @@ router.patch('/:id', async (req, res) => {
       return res.status(403).json({ success: false, message: 'Akses ditolak' });
     }
 
-    // Cek jika diubah jadi Buyer Request
+    // Cek jika diubah jadi Buyer/Renter Request
     const wasBuyerRequest = existing.Is_Buyer_Request === 'TRUE';
     const nowBuyerRequest = req.body.Is_Buyer_Request === 'TRUE';
     if (!wasBuyerRequest && nowBuyerRequest) {
+      const jenis    = req.body.Jenis || existing.Jenis || 'Beli';
+      const isRenter = jenis === 'Sewa';
+      const label    = isRenter ? 'Renter Request' : 'Buyer Request';
       await createNotification({
-        tipe:           'buyer_request',
-        judul:          '🔔 Buyer Request Baru!',
-        pesan:          `${req.user.nama} menandai lead ${existing.Nama} sebagai Buyer Request`,
+        tipe:           isRenter ? 'renter_request' : 'buyer_request',
+        judul:          `🔔 ${label} Baru!`,
+        pesan:          `${req.user.nama} menandai lead ${existing.Nama} sebagai ${label}`,
         from_user_id:   req.user.id,
         from_user_nama: req.user.nama,
         to_role:        'all',
