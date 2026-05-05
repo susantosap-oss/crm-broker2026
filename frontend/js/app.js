@@ -57,6 +57,9 @@ const API = {
 };
 
 // ── INIT ───────────────────────────────────────────────────
+// Capture draft synchronously — sebelum visibilitychange sempat menghapusnya
+let _startupDraft = localStorage.getItem('crm_draft_state');
+
 document.addEventListener('DOMContentLoaded', () => {
   const token = localStorage.getItem('crm_token');
   const user  = localStorage.getItem('crm_user');
@@ -83,9 +86,10 @@ document.addEventListener('DOMContentLoaded', () => {
   setHeroDate();
 
   // Simpan draft saat PWA di-background; hapus jika kembali tanpa reload
+  // Guard: jangan hapus jika _startupDraft belum dikonsumsi oleh restoreDraftState
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) saveDraftState();
-    else localStorage.removeItem('crm_draft_state');
+    else if (!_startupDraft) localStorage.removeItem('crm_draft_state');
   });
   window.addEventListener('pagehide', saveDraftState);
 });
@@ -1528,7 +1532,9 @@ function saveDraftState() {
 
 function restoreDraftState() {
   try {
-    const raw = localStorage.getItem('crm_draft_state');
+    // Pakai _startupDraft jika ada (captured sebelum visibilitychange bisa hapus localStorage)
+    const raw = _startupDraft || localStorage.getItem('crm_draft_state');
+    _startupDraft = null;
     if (!raw) return;
     const draft = JSON.parse(raw);
     localStorage.removeItem('crm_draft_state');

@@ -2924,35 +2924,39 @@ function autoGenerateJudul() {
 // Track edit mode
 let _editListingId = null;
 
-function resetListingModal() {
+function _clearListingForm() {
   _editListingId = null;
   ['add-tipe','add-transaksi','add-judul','add-kota','add-kecamatan',
    'add-harga','add-harga-permeter','add-deskripsi','add-caption','add-gmaps-personal'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  // Clear SEO chips
   const chipsEl = document.getElementById('judul-seo-chips');
   if (chipsEl) chipsEl.innerHTML = '';
-  // Clear harga previews
   ['add-harga-preview','add-harga-pm-preview'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = '';
   });
-  // Reset photo inputs
   ['lp-input-0','lp-input-1','lp-input-2'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  // Reset listing photo state & UI
   _listingPhotos = [null, null, null];
   renderListingPhotoSlots();
-  // Reset modal title & button
   const titleEl = document.getElementById('modal-listing-title');
   const btnEl   = document.getElementById('listing-submit-btn');
   if (titleEl) titleEl.textContent = 'Tambah Listing';
   if (btnEl)   btnEl.innerHTML = '<i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan';
+}
+
+function resetListingModal() {
+  _clearListingForm();
   closeModal('modal-add-listing');
+}
+
+function openNewListing() {
+  _clearListingForm();
+  openModal('modal-add-listing');
 }
 
 // Open Edit Listing — pre-fill form with existing data
