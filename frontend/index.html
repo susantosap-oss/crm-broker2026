@@ -1291,7 +1291,6 @@
         <div><label class="form-label">Tipe *</label><select id="add-tipe" class="form-input"><option value="">Pilih</option><option>Rumah</option><option>Ruko</option><option>Tanah</option><option>Apartemen</option><option>Gudang</option></select></div>
         <div><label class="form-label">Transaksi *</label><select id="add-transaksi" class="form-input"><option value="">Pilih</option><option>Jual</option><option>Sewa</option></select></div>
       </div>
-      <div><label class="form-label">Judul *</label><input id="add-judul" type="text" placeholder="Rumah Minimalis 3KT Surabaya Barat" class="form-input"/></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label class="form-label">Kota *</label><input id="add-kota" type="text" placeholder="Surabaya" class="form-input"/></div>
         <div><label class="form-label">Area</label><input id="add-kecamatan" type="text" placeholder="Wonokromo / Rungkut / Citraland" class="form-input"/></div>
@@ -1310,7 +1309,7 @@
       </div>
       <div>
         <label class="form-label">Deskripsi <span style="color:rgba(212,168,83,0.6);font-size:10px"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:3px"></i>dipakai untuk auto-caption sosmed</span></label>
-        <textarea id="add-deskripsi" rows="7" class="form-input" style="resize:none;font-size:12px;line-height:1.7"
+        <textarea id="add-deskripsi" rows="7" class="form-input" style="resize:none;font-size:12px;line-height:1.7" oninput="buildJudulSeoChips()"
           placeholder="LT: 120&#10;LB: 90&#10;3 KT&#10;2 KM&#10;Garasi: 2&#10;2 Lantai&#10;SHM&#10;ROW: 8m&#10;Hadap: Timur&#10;Semi Furnished&#10;✅ Lokasi strategis dekat tol..."></textarea>
         <div style="margin-top:6px;padding:8px 10px;background:rgba(212,168,83,0.05);border:1px solid rgba(212,168,83,0.15);border-radius:8px">
           <p style="font-size:10px;color:rgba(212,168,83,0.7);margin:0 0 3px;font-weight:600"><i class="fa-solid fa-circle-info" style="margin-right:4px"></i>Format untuk auto-caption (tulis per baris):</p>
@@ -1329,6 +1328,16 @@
             <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;font-size:10px">Full Furnished</code>
           </p>
         </div>
+      </div>
+      <!-- JUDUL SEO -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <label class="form-label" style="margin-bottom:0">Judul Listing * <span style="color:rgba(212,168,83,0.5);font-size:9px;font-weight:600">SEO</span></label>
+          <button type="button" onclick="autoGenerateJudul()" style="background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);border-radius:8px;color:#D4A853;font-size:10px;font-weight:600;padding:4px 10px;cursor:pointer"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:4px"></i>Auto Judul</button>
+        </div>
+        <input id="add-judul" type="text" placeholder="Rumah Dijual 3KT Wonokromo Surabaya 750 Juta" class="form-input" onfocus="buildJudulSeoChips()"/>
+        <div id="judul-seo-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+        <p style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:5px;margin-bottom:0"><i class="fa-solid fa-tag" style="margin-right:4px;color:rgba(212,168,83,0.4)"></i>Ketuk chip untuk sisipkan kata ke judul</p>
       </div>
       <div><label class="form-label">Caption Media Sosial <span style="color:rgba(255,255,255,0.3);font-size:9px">(auto-generate)</span></label><div style="background:#131F38;border-radius:12px;padding:10px 14px;border:1px solid rgba(255,255,255,0.06)"><p style="font-size:11px;color:rgba(255,255,255,0.35);margin:0"><i class="fa-solid fa-magic-wand-sparkles" style="color:#D4A853;margin-right:6px"></i>Caption akan dibuat otomatis dari data listing di atas</p></div></div>
       <div>

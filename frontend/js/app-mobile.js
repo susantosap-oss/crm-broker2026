@@ -2824,6 +2824,101 @@ function renderLeadsList(leads) {
 }
 
 // ─────────────────────────────────────────────────────────
+// SEO JUDUL HELPER
+// ─────────────────────────────────────────────────────────
+function buildJudulSeoChips() {
+  const tipe      = (document.getElementById('add-tipe')?.value || '').trim();
+  const transaksi = (document.getElementById('add-transaksi')?.value || '').trim();
+  const kota      = (document.getElementById('add-kota')?.value || '').trim();
+  const kecamatan = (document.getElementById('add-kecamatan')?.value || '').trim();
+  const hargaRaw  = (document.getElementById('add-harga')?.value || '').replace(/\D/g, '');
+  const deskripsi = (document.getElementById('add-deskripsi')?.value || '');
+  const chips = [];
+
+  if (tipe)      chips.push(tipe);
+  if (transaksi) chips.push(transaksi === 'Jual' ? 'Dijual' : 'Disewa');
+
+  deskripsi.split('\n').forEach(raw => {
+    const line = raw.trim();
+    const lt = line.match(/^LT\s*[:：]?\s*(\d+)/i);       if (lt) chips.push('LT' + lt[1]);
+    const lb = line.match(/^LB\s*[:：]?\s*(\d+)/i);       if (lb) chips.push('LB' + lb[1]);
+    const kt = line.match(/(\d+)\s*KT\b/i);               if (kt) chips.push(kt[1] + 'KT');
+    const km = line.match(/(\d+)\s*KM\b/i);               if (km) chips.push(km[1] + 'KM');
+    const garasi = line.match(/Garasi\s*[:：]?\s*(\d+)/i); if (garasi) chips.push('Garasi ' + garasi[1]);
+    const lantai = line.match(/(\d+)\s*Lantai/i);         if (lantai && parseInt(lantai[1]) >= 2) chips.push(lantai[1] + ' Lantai');
+    if (/\bSHM\b/i.test(line)) chips.push('SHM');
+    if (/\bHGB\b/i.test(line)) chips.push('HGB');
+    if (/\bAJB\b/i.test(line)) chips.push('AJB');
+    const hadap = line.match(/Hadap\s*[:：]?\s*(\w+)/i);  if (hadap) chips.push('Hadap ' + hadap[1]);
+    if (/Full\s*Furnished/i.test(line))        chips.push('Full Furnished');
+    else if (/Semi\s*Furnished/i.test(line))   chips.push('Semi Furnished');
+    else if (/\bUnfurnished\b/i.test(line))    chips.push('Unfurnished');
+    if (/\bStrategis\b/i.test(line))           chips.push('Strategis');
+  });
+
+  if (kecamatan) kecamatan.split(/[\/,]/).forEach(k => { const t = k.trim(); if (t) chips.push(t); });
+  if (kota) chips.push(kota);
+
+  if (hargaRaw) {
+    const n = parseInt(hargaRaw);
+    if (n >= 1000000000) {
+      const v = n / 1000000000;
+      chips.push((Number.isInteger(v) ? v : v.toFixed(1)) + ' M');
+    } else if (n >= 1000000) {
+      chips.push(Math.round(n / 1000000) + ' Juta');
+    }
+  }
+
+  const container = document.getElementById('judul-seo-chips');
+  if (!container) return;
+  const unique = [...new Set(chips.filter(Boolean))];
+  if (!unique.length) {
+    container.innerHTML = '<span style="font-size:10px;color:rgba(255,255,255,0.2)">Isi field di atas untuk melihat saran kata</span>';
+    return;
+  }
+  container.innerHTML = unique.map(chip =>
+    `<button type="button" onclick="insertJudulChip('${chip.replace(/'/g,"\\'")}')" style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;border:1px solid rgba(212,168,83,0.3);background:rgba(212,168,83,0.08);color:rgba(212,168,83,0.9);font-size:10px;font-weight:500;cursor:pointer;white-space:nowrap;line-height:1.4">${chip}</button>`
+  ).join('');
+}
+
+function insertJudulChip(chip) {
+  const input = document.getElementById('add-judul');
+  if (!input) return;
+  input.value = input.value.trimEnd() ? input.value.trimEnd() + ' ' + chip : chip;
+  input.focus();
+}
+
+function autoGenerateJudul() {
+  const tipe      = (document.getElementById('add-tipe')?.value || '').trim();
+  const transaksi = (document.getElementById('add-transaksi')?.value || '').trim();
+  const kota      = (document.getElementById('add-kota')?.value || '').trim();
+  const kecamatan = (document.getElementById('add-kecamatan')?.value || '').trim().split(/[\/,]/)[0].trim();
+  const deskripsi = (document.getElementById('add-deskripsi')?.value || '');
+  const hargaRaw  = (document.getElementById('add-harga')?.value || '').replace(/\D/g, '');
+
+  if (!tipe && !transaksi) { showToast('Isi minimal Tipe & Transaksi terlebih dahulu', 'info'); return; }
+
+  const parts = [];
+  if (tipe)      parts.push(tipe);
+  if (transaksi) parts.push(transaksi === 'Jual' ? 'Dijual' : 'Disewa');
+  const ktM = deskripsi.match(/(\d+)\s*KT\b/i);
+  if (ktM) parts.push(ktM[1] + 'KT');
+  if (kecamatan) parts.push(kecamatan);
+  if (kota)      parts.push(kota);
+  if (hargaRaw) {
+    const n = parseInt(hargaRaw);
+    if (n >= 1000000000) {
+      const v = n / 1000000000;
+      parts.push((Number.isInteger(v) ? v : v.toFixed(1)) + ' M');
+    } else if (n >= 1000000) {
+      parts.push(Math.round(n / 1000000) + ' Juta');
+    }
+  }
+  document.getElementById('add-judul').value = parts.join(' ');
+  buildJudulSeoChips();
+}
+
+// ─────────────────────────────────────────────────────────
 // SUBMIT FORMS
 // ─────────────────────────────────────────────────────────
 // Track edit mode
@@ -2836,6 +2931,9 @@ function resetListingModal() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  // Clear SEO chips
+  const chipsEl = document.getElementById('judul-seo-chips');
+  if (chipsEl) chipsEl.innerHTML = '';
   // Clear harga previews
   ['add-harga-preview','add-harga-pm-preview'].forEach(id => {
     const el = document.getElementById(id);
