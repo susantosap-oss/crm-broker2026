@@ -1191,10 +1191,12 @@ async function saveCaption(listingId) {
 function autoJudulListing(id) {
   const l = _allListings.find(x => x.ID === id);
   if (!l) return;
+  const statusMap = { 'Jual': 'Dijual', 'Sewa': 'Disewa', 'Dijual': 'Dijual', 'Disewa': 'Disewa', 'Disewakan': 'Disewa' };
+  const status = statusMap[l.Status_Transaksi] || l.Status_Transaksi || '';
   const kt     = l.Kamar_Tidur ? `${l.Kamar_Tidur}KT ` : '';
   const lokasi = [l.Kecamatan, l.Kota].filter(Boolean).join(' ');
   const harga  = l.Harga_Format || formatRupiah(l.Harga);
-  const judul  = `${l.Tipe_Properti||''} ${l.Status_Transaksi||''} ${kt}di ${lokasi} — ${harga}`.replace(/\s+/g,' ').trim();
+  const judul  = `${l.Tipe_Properti||''} ${status} ${kt}di ${lokasi} — ${harga}`.replace(/\s+/g,' ').trim();
   const input  = document.getElementById('ld-judul-input');
   if (input) input.value = judul;
 }
