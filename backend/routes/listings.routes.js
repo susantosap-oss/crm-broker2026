@@ -656,6 +656,23 @@ router.get('/stats/by-agent', async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// ── PATCH /:id/judul — Update Judul SEO oleh principal/superadmin/admin ──
+router.patch('/:id/judul', authMiddleware, async (req, res) => {
+  try {
+    const { role } = req.user;
+    if (!['superadmin', 'principal', 'admin'].includes(role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak' });
+    }
+    const judul = (req.body.Judul || '').trim();
+    if (!judul) return res.status(400).json({ success: false, message: 'Judul tidak boleh kosong' });
+
+    const updated = await listingsService.update(req.params.id, { Judul: judul });
+    res.json({ success: true, message: 'Judul berhasil diperbarui', data: updated });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 function tryParse(str, fallback) {
   try { return JSON.parse(str) || fallback; } catch { return fallback; }
 }

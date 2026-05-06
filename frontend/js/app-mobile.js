@@ -778,6 +778,26 @@ async function openListingDetail(id) {
       ${listing.Kamar_Tidur ? `<div style="background:#1C2D52;border-radius:10px;padding:10px;text-align:center"><div style="font-size:13px;font-weight:700;color:#fff">${escapeHtml(String(listing.Kamar_Tidur))}</div><div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px">Kamar Tidur</div></div>` : ''}
     </div>
 
+    <!-- Judul SEO Editor — principal / superadmin / admin -->
+    ${['superadmin','principal','admin'].includes(STATE.user?.role) ? `
+    <div style="background:#131F38;border-radius:12px;padding:14px;border:1px solid rgba(212,168,83,0.18)">
+      <div style="font-size:10px;color:#D4A853;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">
+        <i class="fa-solid fa-pen-nib" style="margin-right:4px"></i>Judul Listing (SEO)
+      </div>
+      <input id="ld-judul-input" class="form-input" value="${escapeHtml(listing.Judul||'')}"
+        style="font-size:12px;margin-bottom:8px" placeholder="Rumah Dijual 3KT di Wonokromo Surabaya — 750 Juta"/>
+      <div style="display:flex;gap:8px">
+        <button onclick="autoJudulListing('${escapeHtml(id)}')"
+          style="flex:1;padding:9px;border-radius:10px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:11px;font-weight:600;cursor:pointer">
+          ✨ Auto-generate
+        </button>
+        <button onclick="saveJudulListing('${escapeHtml(id)}')"
+          style="flex:1;padding:9px;border-radius:10px;background:rgba(43,123,255,0.12);border:1px solid rgba(43,123,255,0.25);color:#60a5fa;font-size:11px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-floppy-disk" style="margin-right:4px"></i>Simpan Judul
+        </button>
+      </div>
+    </div>` : ''}
+
     <!-- Deskripsi -->
     ${deskripsi ? `
     <div>
@@ -1165,6 +1185,32 @@ async function saveCaption(listingId) {
   try {
     await API.put(`/listings/${listingId}`, { Caption_Sosmed: caption });
     showToast('✅ Caption disimpan ke Sheet!', 'success');
+  } catch (e) { showToast('Gagal simpan: ' + e.message, 'error'); }
+}
+
+function autoJudulListing(id) {
+  const l = _allListings.find(x => x.ID === id);
+  if (!l) return;
+  const kt     = l.Kamar_Tidur ? `${l.Kamar_Tidur}KT ` : '';
+  const lokasi = [l.Kecamatan, l.Kota].filter(Boolean).join(' ');
+  const harga  = l.Harga_Format || formatRupiah(l.Harga);
+  const judul  = `${l.Tipe_Properti||''} ${l.Status_Transaksi||''} ${kt}di ${lokasi} — ${harga}`.replace(/\s+/g,' ').trim();
+  const input  = document.getElementById('ld-judul-input');
+  if (input) input.value = judul;
+}
+
+async function saveJudulListing(id) {
+  const input = document.getElementById('ld-judul-input');
+  if (!input) return;
+  const judul = input.value.trim();
+  if (!judul) { showToast('Judul tidak boleh kosong', 'error'); return; }
+  try {
+    await API.patch(`/listings/${id}/judul`, { Judul: judul });
+    const l = _allListings.find(x => x.ID === id);
+    if (l) l.Judul = judul;
+    const titleEl = document.getElementById('ld-title');
+    if (titleEl) titleEl.textContent = judul;
+    showToast('✅ Judul berhasil disimpan!', 'success');
   } catch (e) { showToast('Gagal simpan: ' + e.message, 'error'); }
 }
 
@@ -5600,8 +5646,7 @@ async function openKoordinatorPickerForNewProject() {
   openModal('modal-koordinator');
 
   try {
-    // Gunakan endpoint agents dengan filter role koordinator
-    const res = await API.get('/agents?role=koordinator');
+    const res = await API.get('/agents?role=koordinator,business_manager');
     _korCandidates = (res.data || []).map(u => ({ id: u.ID || u.id, nama: u.Nama || u.nama, role: u.Role || u.role, nama_kantor: u.Nama_Kantor || u.nama_kantor || '' }));
     renderKoordinatorList(_korCandidates, null, 'new_project');
   } catch (e) {

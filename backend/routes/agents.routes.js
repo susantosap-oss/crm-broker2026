@@ -152,8 +152,8 @@ router.get('/', requireMinRole('admin'), async (req, res) => {
       agents = agents.filter(a => a.Team_ID === team_id || a.ID === id);
     }
 
-    // Filter by role jika ada query
-    if (req.query.role) agents = agents.filter(a => a.Role === req.query.role);
+    // Filter by role jika ada query (support comma-separated: ?role=koordinator,business_manager)
+    if (req.query.role) { const roles = req.query.role.split(','); agents = agents.filter(a => roles.includes(a.Role)); }
     if (req.query.team_id) agents = agents.filter(a => a.Team_ID === req.query.team_id);
 
     res.json({ success: true, data: agents });

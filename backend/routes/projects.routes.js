@@ -328,12 +328,12 @@ router.get('/:id/koordinator-candidates', async (req, res) => {
       const meRow = agents.find(a => a.ID === req.user.id);
       const myKantor = meRow?.Nama_Kantor || '';
       agents = agents.filter(a =>
-        ['agen', 'koordinator'].includes(a.Role) &&
+        ['agen', 'koordinator', 'business_manager'].includes(a.Role) &&
         (a.Nama_Kantor === myKantor || a.Parent_Kantor === myKantor)
       );
     } else {
-      // SA/Admin: semua agen & koordinator aktif
-      agents = agents.filter(a => ['agen', 'koordinator'].includes(a.Role));
+      // SA/Admin: semua agen, koordinator & business_manager aktif
+      agents = agents.filter(a => ['agen', 'koordinator', 'business_manager'].includes(a.Role));
     }
 
     const data = agents.map(a => ({
@@ -375,8 +375,8 @@ router.patch('/:id/koordinator', async (req, res) => {
       const korRow    = agentData.find(r => toAgent(r).ID === koordinator_id);
       if (!korRow) return res.status(404).json({ success: false, message: 'Koordinator tidak ditemukan' });
       const kor = toAgent(korRow);
-      if (!['koordinator', 'agen'].includes(kor.Role)) {
-        return res.status(400).json({ success: false, message: 'User yang dipilih bukan koordinator atau agen' });
+      if (!['koordinator', 'agen', 'business_manager'].includes(kor.Role)) {
+        return res.status(400).json({ success: false, message: 'User yang dipilih bukan koordinator, agen, atau business manager' });
       }
       // Cegah orang yang sama di kedua slot
       const existing = await projectsService.getById(req.params.id);
