@@ -167,7 +167,8 @@ const COLUMNS = {
     'Nomer_LSP',          // T  ★ Nomor Lembaga Sertifikasi Profesi
     'Aktivitas_Count',    // U  ★ Jumlah aktivitas harian (untuk scoring)
     'Tampilkan_di_Web',  // V  ★ FALSE = sembunyikan dari daftar agen website publik
-    'Konversi_Rate',    // W  ★ Konversi Deal/Listing (%), ditulis CRM saat closing
+    'Konversi_Rate',    // W  ★ Konversi Deal/Listing atau Deal/Leads (%), ditulis CRM saat closing
+    'Leads_Count',      // X  ★ Total leads diterima agen (denominator konversi Selling)
   ],
 
   // ★ NEW SHEET

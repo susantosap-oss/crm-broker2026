@@ -197,6 +197,9 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Increment Leads_Count agen
+    _incrementAgentLeadsCount(req.user.id).catch(() => {});
+
     res.status(201).json({ success: true, data: { id }, message: 'Lead berhasil ditambahkan' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -303,6 +306,22 @@ async function _updateListingStatusAfterDeal(listingId) {
   } catch { /* silent */ }
 }
 
+async function _incrementAgentLeadsCount(agentId) {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.AGENTS);
+    if (!rows || rows.length < 2) return;
+    const toAgent = (row) => COLUMNS.AGENTS.reduce((o, c, i) => { o[c] = row[i] || ''; return o; }, {});
+    const idx = rows.slice(1).findIndex(r => toAgent(r).ID === agentId);
+    if (idx === -1) return;
+    const rowIndex      = idx + 2;
+    const agent         = toAgent(rows[idx + 1]);
+    const leadsColIdx   = COLUMNS.AGENTS.indexOf('Leads_Count');
+    if (leadsColIdx === -1) return;
+    const newCount = (parseInt(agent.Leads_Count) || 0) + 1;
+    await sheetsService.updateRowCells(SHEETS.AGENTS, rowIndex, { [leadsColIdx]: String(newCount) });
+  } catch { /* silent */ }
+}
+
 async function _incrementAgentDealCount(agentId) {
   try {
     const rows = await sheetsService.getRange(SHEETS.AGENTS);
@@ -319,7 +338,10 @@ async function _incrementAgentDealCount(agentId) {
 
     const newDeal    = (parseInt(agent.Deal_Count) || 0) + 1;
     const listing    = parseInt(agent.Listing_Count) || 0;
-    const konversi   = listing > 0 ? Math.round((newDeal / listing) * 100) : 0;
+    const leads      = parseInt(agent.Leads_Count)   || 0;
+    // Agen Listing: Deal/Listing — Agen Selling (listing=0): Deal/Leads
+    const denom    = listing > 0 ? listing : leads;
+    const konversi = denom > 0 ? Math.round((newDeal / denom) * 100) : 0;
 
     const updates = { [dealColIdx]: String(newDeal) };
     if (konversiColIdx !== -1) updates[konversiColIdx] = String(konversi);
