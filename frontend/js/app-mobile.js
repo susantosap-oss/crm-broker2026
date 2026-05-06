@@ -1180,6 +1180,157 @@ async function copyCaption() {
   catch (_) { el.select(); document.execCommand('copy'); showToast('✅ Caption disalin!', 'success'); }
 }
 
+// ══════════════════════════════════════════════════════════
+// SEO BULK TITLE GENERATOR
+// ══════════════════════════════════════════════════════════
+const SEO_VARS = ['{Tipe}','{Status}','{KT}','{Kecamatan}','{Kota}','{Harga}','{Trend}'];
+let _seoTrend = '';
+let _seoPreviewData = [];
+
+function openSeoBulk() {
+  _seoTrend = '';
+  _seoPreviewData = [];
+  document.getElementById('seo-preview-wrap').style.display = 'none';
+  document.getElementById('seo-trend-selected').style.display = 'none';
+  document.getElementById('seo-trends-list').innerHTML =
+    '<p style="font-size:11px;color:rgba(255,255,255,0.3);margin:0">Klik "Cek Trend" untuk lihat data Google Trends properti Indonesia.</p>';
+
+  // Render variable chips
+  const chipsEl = document.getElementById('seo-var-chips');
+  if (chipsEl) {
+    const existing = chipsEl.querySelectorAll('button');
+    existing.forEach(b => b.remove());
+    SEO_VARS.forEach(v => {
+      const btn = document.createElement('button');
+      btn.textContent = v;
+      btn.onclick = () => {
+        const inp = document.getElementById('seo-template');
+        if (inp) { const s = inp.selectionStart; inp.value = inp.value.slice(0,s) + v + inp.value.slice(inp.selectionEnd); inp.focus(); inp.setSelectionRange(s+v.length, s+v.length); }
+      };
+      btn.style.cssText = 'padding:4px 9px;border-radius:6px;background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.25);color:#c084fc;font-size:10px;font-family:monospace;cursor:pointer';
+      chipsEl.appendChild(btn);
+    });
+  }
+  openModal('modal-seo-bulk');
+}
+
+async function loadSeoTrends() {
+  const btn = document.getElementById('seo-trends-btn');
+  const listEl = document.getElementById('seo-trends-list');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Memuat...'; }
+  try {
+    const res = await API.get('/seo/trends');
+    const trends = res.data || [];
+    const src = res.source === 'google' ? '🌐 Live Google Trends' : '📋 Kurasi Editor';
+    listEl.innerHTML = `<p style="font-size:10px;color:rgba(255,255,255,0.3);margin:0 0 8px">Sumber: ${src}</p>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${trends.map(t => `
+          <button onclick="selectSeoTrend('${escapeHtml(t.keyword)}')"
+            style="padding:5px 10px;border-radius:7px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);color:#c084fc;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px">
+            ${escapeHtml(t.keyword)}
+            <span style="font-size:9px;opacity:0.5">${t.score}</span>
+          </button>`).join('')}
+      </div>`;
+  } catch (e) {
+    listEl.innerHTML = `<p style="font-size:11px;color:#f87171;margin:0">${e.message}</p>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔍 Cek Trend'; }
+  }
+}
+
+function selectSeoTrend(kw) {
+  _seoTrend = kw;
+  const selEl = document.getElementById('seo-trend-selected');
+  const kwEl  = document.getElementById('seo-trend-kw');
+  if (selEl) selEl.style.display = '';
+  if (kwEl)  kwEl.textContent = kw;
+}
+
+function clearSeoTrend() {
+  _seoTrend = '';
+  const selEl = document.getElementById('seo-trend-selected');
+  if (selEl) selEl.style.display = 'none';
+}
+
+async function previewSeoBulk() {
+  const template  = (document.getElementById('seo-template')?.value || '').trim();
+  const onlyBlank = document.getElementById('seo-only-blank')?.checked ? '1' : '0';
+  if (!template) { showToast('Template tidak boleh kosong', 'error'); return; }
+
+  const tableEl = document.getElementById('seo-preview-table');
+  const wrapEl  = document.getElementById('seo-preview-wrap');
+  tableEl.innerHTML = '<p style="color:rgba(255,255,255,0.3);text-align:center;padding:20px;font-size:12px">Memuat preview...</p>';
+  wrapEl.style.display = '';
+
+  try {
+    const params = `template=${encodeURIComponent(template)}&trend=${encodeURIComponent(_seoTrend)}&only_blank=${onlyBlank}`;
+    const res = await API.get(`/seo/bulk-preview?${params}`);
+    _seoPreviewData = res.data || [];
+    document.getElementById('seo-preview-count').textContent = _seoPreviewData.length;
+    renderSeoPreviewTable();
+  } catch (e) {
+    tableEl.innerHTML = `<p style="color:#f87171;text-align:center;padding:20px;font-size:12px">${e.message}</p>`;
+  }
+}
+
+function renderSeoPreviewTable() {
+  const tableEl = document.getElementById('seo-preview-table');
+  if (!_seoPreviewData.length) { tableEl.innerHTML = '<p style="color:rgba(255,255,255,0.3);text-align:center;padding:20px;font-size:12px">Tidak ada listing aktif</p>'; return; }
+  tableEl.innerHTML = _seoPreviewData.map((r, i) => {
+    const changed = r.judul_lama !== r.judul_baru;
+    return `
+    <div style="background:#131F38;border-radius:10px;padding:10px 12px;border:1px solid rgba(255,255,255,${changed?'0.08':'0.03'})">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <input type="checkbox" class="seo-row-check" data-idx="${i}" checked style="accent-color:#c084fc;margin-top:3px;flex-shrink:0" onchange="updateSeoApplyCount()"/>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:4px">${escapeHtml(r.kode||'')} · ${escapeHtml(r.tipe||'')} · ${escapeHtml(r.kota||'')}</div>
+          ${r.judul_lama ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);text-decoration:line-through;margin-bottom:3px">${escapeHtml(r.judul_lama)}</div>` : ''}
+          <div style="font-size:12px;color:${changed?'#c084fc':'rgba(255,255,255,0.5)'};font-weight:${changed?'600':'400'}">${escapeHtml(r.judul_baru)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  updateSeoApplyCount();
+}
+
+function toggleAllSeoRows(checked) {
+  document.querySelectorAll('.seo-row-check').forEach(cb => cb.checked = checked);
+  updateSeoApplyCount();
+}
+
+function updateSeoApplyCount() {
+  const n = document.querySelectorAll('.seo-row-check:checked').length;
+  const el = document.getElementById('seo-apply-count');
+  if (el) el.textContent = n;
+}
+
+async function applySeoBulk() {
+  const checked = [...document.querySelectorAll('.seo-row-check:checked')];
+  if (!checked.length) { showToast('Pilih minimal 1 listing', 'error'); return; }
+
+  const updates = checked.map(cb => {
+    const d = _seoPreviewData[parseInt(cb.dataset.idx)];
+    return d ? { id: d.id, judul: d.judul_baru } : null;
+  }).filter(Boolean);
+
+  const btn = document.getElementById('seo-apply-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Menyimpan...'; }
+
+  try {
+    const res = await API.post('/seo/bulk-apply', { updates });
+    showToast(`✅ ${res.message}`, 'success');
+    // Update local cache
+    updates.forEach(u => { const l = _allListings.find(x => x.ID === u.id); if (l) l.Judul = u.judul; });
+    closeModal('modal-seo-bulk');
+    if (STATE.currentPage === 'listings') renderListingsGrid(_allListings);
+  } catch (e) {
+    showToast('Gagal: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rocket" style="margin-right:6px"></i>Apply ke <span id="seo-apply-count">0</span> Listing'; }
+  }
+}
+// ══ end SEO Bulk ══════════════════════════════════════════
+
 async function saveCaption(listingId) {
   const caption = document.getElementById('ld-caption')?.value || '';
   try {
@@ -4710,6 +4861,9 @@ async function loadPrimaryPage() {
 
   const migrateBtn = document.getElementById('btn-migrate-listings');
   if (migrateBtn) migrateBtn.style.display = role === 'superadmin' ? 'inline-flex' : 'none';
+
+  const seoBulkBtn = document.getElementById('btn-seo-bulk');
+  if (seoBulkBtn) seoBulkBtn.style.display = ['superadmin','principal'].includes(role) ? 'inline-flex' : 'none';
 
   const filterStatusWrap = document.getElementById('wrap-filter-status');
   if (filterStatusWrap) filterStatusWrap.style.display = canFilter ? '' : 'none';

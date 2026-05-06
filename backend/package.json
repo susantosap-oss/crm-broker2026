@@ -19,6 +19,7 @@
     "express-rate-limit": "^7.1.0",
     "fast-levenshtein": "^3.0.0",
     "fluent-ffmpeg": "^2.1.3",
+    "google-trends-api": "^4.9.2",
     "googleapis": "^126.0.0",
     "helmet": "^7.0.0",
     "instagram-private-api": "^1.46.1",
