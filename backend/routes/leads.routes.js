@@ -308,15 +308,23 @@ async function _incrementAgentDealCount(agentId) {
     const rows = await sheetsService.getRange(SHEETS.AGENTS);
     if (!rows || rows.length < 2) return;
     const toAgent = (row) => COLUMNS.AGENTS.reduce((o, c, i) => { o[c] = row[i] || ''; return o; }, {});
-    const header  = rows[0];
-    const idx     = rows.slice(1).findIndex(r => toAgent(r).ID === agentId);
+    const idx = rows.slice(1).findIndex(r => toAgent(r).ID === agentId);
     if (idx === -1) return;
-    const rowIndex   = idx + 2; // 1-based + header
-    const agentData  = toAgent(rows[idx + 1]);
-    const dealColIdx = COLUMNS.AGENTS.indexOf('Deal_Count');
+    const rowIndex  = idx + 2;
+    const agent     = toAgent(rows[idx + 1]);
+
+    const dealColIdx     = COLUMNS.AGENTS.indexOf('Deal_Count');
+    const konversiColIdx = COLUMNS.AGENTS.indexOf('Konversi_Rate');
     if (dealColIdx === -1) return;
-    const newCount = (parseInt(agentData.Deal_Count) || 0) + 1;
-    await sheetsService.updateRowCells(SHEETS.AGENTS, rowIndex, { [dealColIdx]: String(newCount) });
+
+    const newDeal    = (parseInt(agent.Deal_Count) || 0) + 1;
+    const listing    = parseInt(agent.Listing_Count) || 0;
+    const konversi   = listing > 0 ? Math.round((newDeal / listing) * 100) : 0;
+
+    const updates = { [dealColIdx]: String(newDeal) };
+    if (konversiColIdx !== -1) updates[konversiColIdx] = String(konversi);
+
+    await sheetsService.updateRowCells(SHEETS.AGENTS, rowIndex, updates);
   } catch { /* silent */ }
 }
 async function getMyTeamIds(principalId) {
