@@ -37,6 +37,9 @@ router.post('/', async (req, res) => {
     const {
       agent_id, nama_penyewa, alamat_sewa,
       tanggal_mulai, durasi_bulan, catatan = '',
+      agen_listing_id = '', agen_listing_nama = '',
+      agen_selling_id = '', agen_selling_nama = '',
+      cobroke = 'FALSE',
     } = req.body;
 
     if (!nama_penyewa || !alamat_sewa || !tanggal_mulai || !durasi_bulan) {
@@ -50,19 +53,12 @@ router.post('/', async (req, res) => {
     const rentalId = uuidv4();
 
     await sheetsService.appendRow(SHEETS.RENTAL_STATUS, [
-      rentalId,
-      targetAgentId,
-      nama_penyewa,
-      alamat_sewa,
-      tanggal_mulai,
-      durasi_bulan,
-      tanggalSelesai,
-      'aktif',
-      'FALSE',
-      'FALSE',
-      catatan,
-      now,
-      now,
+      rentalId, targetAgentId, nama_penyewa, alamat_sewa,
+      tanggal_mulai, durasi_bulan, tanggalSelesai,
+      'aktif', 'FALSE', 'FALSE', catatan, now, now,
+      agen_listing_id, agen_listing_nama,
+      agen_selling_id, agen_selling_nama,
+      cobroke, '',
     ]);
 
     return res.json({
@@ -127,7 +123,9 @@ router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { role, id: myId } = req.user;
-    const { status, catatan, perpanjang_bulan } = req.body;
+    const { status, catatan, perpanjang_bulan, hasil_fu_reminder,
+            agen_listing_id, agen_listing_nama,
+            agen_selling_id, agen_selling_nama, cobroke } = req.body;
 
     const rows = await sheetsService.getRange(SHEETS.RENTAL_STATUS);
     if (!rows || rows.length < 2) return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
@@ -144,7 +142,13 @@ router.patch('/:id', async (req, res) => {
 
     const updated = { ...rental };
     if (status && VALID_STATUS.includes(status)) updated.Status = status;
-    if (catatan !== undefined) updated.Catatan = catatan;
+    if (catatan !== undefined)         updated.Catatan = catatan;
+    if (hasil_fu_reminder !== undefined) updated.Hasil_FU_Reminder = hasil_fu_reminder;
+    if (agen_listing_id !== undefined)  updated.Agen_Listing_ID   = agen_listing_id;
+    if (agen_listing_nama !== undefined) updated.Agen_Listing_Nama = agen_listing_nama;
+    if (agen_selling_id !== undefined)  updated.Agen_Selling_ID   = agen_selling_id;
+    if (agen_selling_nama !== undefined) updated.Agen_Selling_Nama = agen_selling_nama;
+    if (cobroke !== undefined)          updated.CoBroke            = cobroke;
 
     // Perpanjang: tambah durasi dan recalc tanggal selesai
     if (perpanjang_bulan && parseInt(perpanjang_bulan) > 0) {
@@ -159,7 +163,7 @@ router.patch('/:id', async (req, res) => {
     updated.Updated_At = new Date().toISOString();
 
     const newRow = COLUMNS.RENTAL_STATUS.map(c => updated[c] || '');
-    await sheetsService.updateRow(SHEETS.RENTAL_STATUS, rowIdx, newRow);
+    await sheetsService.updateRow(SHEETS.RENTAL_STATUS, rowIdx + 1, newRow);
 
     const sisaHari = Math.round((new Date(updated.Tanggal_Selesai) - new Date()) / (1000 * 60 * 60 * 24));
     return res.json({ success: true, data: { ...updated, Sisa_Hari: sisaHari } });
@@ -179,7 +183,7 @@ router.delete('/:id', requireRole(...ADMIN_ROLES), async (req, res) => {
     const rowIdx = rows.findIndex((r, i) => i > 0 && r[0] === id);
     if (rowIdx === -1) return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
 
-    await sheetsService.updateRow(SHEETS.RENTAL_STATUS, rowIdx, Array(COLUMNS.RENTAL_STATUS.length).fill(''));
+    await sheetsService.updateRow(SHEETS.RENTAL_STATUS, rowIdx + 1, Array(COLUMNS.RENTAL_STATUS.length).fill(''));
 
     return res.json({ success: true, message: 'Data sewa berhasil dihapus' });
   } catch (err) {

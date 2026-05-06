@@ -925,13 +925,43 @@
           <span style="font-size:11px;color:rgba(255,255,255,0.4)">Tanggal Selesai: </span>
           <span id="rental-end-display" style="font-size:13px;color:#D4A853;font-weight:600">—</span>
         </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Agen Listing</label>
+            <select id="rental-agen-listing" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+              <option value="">— Pilih Agen —</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Agen Selling</label>
+            <select id="rental-agen-selling" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+              <option value="">— Pilih Agen —</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px">
+          <input type="checkbox" id="rental-cobroke" style="width:16px;height:16px;cursor:pointer;accent-color:#D4A853">
+          <label for="rental-cobroke" style="font-size:13px;color:rgba(255,255,255,0.7);cursor:pointer">CoBroke (kerjasama agen lain)</label>
+        </div>
         <div>
           <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Catatan (opsional)</label>
           <input type="text" id="rental-catatan-modal" placeholder="Catatan tambahan..." style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
         </div>
         <div id="rental-perpanjang-section" style="display:none;border-top:1px solid rgba(255,255,255,0.07);padding-top:12px">
-          <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Perpanjang (Bulan Tambahan)</label>
-          <input type="number" id="rental-perpanjang-bulan" min="1" max="120" placeholder="mis: 12" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:8px;display:block">Aksi Perpanjang</label>
+          <select id="rental-perpanjang-aksi" onchange="togglePerpanjangBulan(this.value)" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box;margin-bottom:8px">
+            <option value="">— Pilih —</option>
+            <option value="perpanjang">Perpanjang</option>
+            <option value="tidak">Tidak Perpanjang</option>
+          </select>
+          <div id="rental-bulan-wrap" style="display:none">
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Jumlah Bulan Tambahan</label>
+            <input type="number" id="rental-perpanjang-bulan" min="1" max="120" placeholder="mis: 12" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Hasil FU Reminder</label>
+            <textarea id="rental-hasil-fu" rows="2" placeholder="Catatan hasil follow-up reminder..." style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box;resize:none"></textarea>
+          </div>
         </div>
         <button id="rental-save-btn" onclick="saveRental()" style="background:#D4A853;color:#0D1526;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:13px;cursor:pointer;width:100%;margin-top:4px">Simpan</button>
       </div>
@@ -1343,6 +1373,10 @@
         <p style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:5px;margin-bottom:0"><i class="fa-solid fa-tag" style="margin-right:4px;color:rgba(212,168,83,0.4)"></i>Ketuk chip untuk sisipkan kata ke judul</p>
       </div>
       <div><label class="form-label">Caption Media Sosial <span style="color:rgba(255,255,255,0.3);font-size:9px">(auto-generate)</span></label><div style="background:#131F38;border-radius:12px;padding:10px 14px;border:1px solid rgba(255,255,255,0.06)"><p style="font-size:11px;color:rgba(255,255,255,0.35);margin:0"><i class="fa-solid fa-magic-wand-sparkles" style="color:#D4A853;margin-right:6px"></i>Caption akan dibuat otomatis dari data listing di atas</p></div></div>
+      <div>
+        <label class="form-label">Nama Pemilik / Vendor</label>
+        <input id="add-nama-pemilik" type="text" placeholder="Nama pemilik properti" class="form-input"/>
+      </div>
       <div>
         <label class="form-label">Link Google Maps <span style="color:rgba(255,255,255,0.3);font-size:9px">pribadi · hanya terlihat oleh akun ini</span></label>
         <input id="add-gmaps-personal" type="url" placeholder="https://maps.google.com/..." class="form-input"/>

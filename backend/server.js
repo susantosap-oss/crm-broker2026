@@ -178,9 +178,10 @@ async function migrateHeaders() {
   const { SHEETS, COLUMNS } = require('./config/sheets.config');
 
   const sheetsToMigrate = [
-    { sheet: SHEETS.LEADS,   cols: COLUMNS.LEADS },
-    { sheet: SHEETS.LISTING, cols: COLUMNS.LISTING },
-    { sheet: SHEETS.AGENTS,  cols: COLUMNS.AGENTS },
+    { sheet: SHEETS.LEADS,         cols: COLUMNS.LEADS },
+    { sheet: SHEETS.LISTING,       cols: COLUMNS.LISTING },
+    { sheet: SHEETS.AGENTS,        cols: COLUMNS.AGENTS },
+    { sheet: SHEETS.RENTAL_STATUS, cols: COLUMNS.RENTAL_STATUS },
   ];
 
   for (const { sheet, cols } of sheetsToMigrate) {
@@ -223,6 +224,9 @@ async function migrateHeaders() {
     { sheet: SHEETS.VIGEN_JOBS,       cols: COLUMNS.VIGEN_JOBS },
     { sheet: SHEETS.WEBHOOK_CONFIG,      cols: COLUMNS.WEBHOOK_CONFIG },
     { sheet: SHEETS.PUSH_SUBSCRIPTIONS, cols: COLUMNS.PUSH_SUBSCRIPTIONS },
+    // ★ Fitur 5 — Laporan Transaksi
+    { sheet: SHEETS.LEGAL_DOCS,      cols: COLUMNS.LEGAL_DOCS },
+    { sheet: SHEETS.PAYMENT_STAGES,  cols: COLUMNS.PAYMENT_STAGES },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)

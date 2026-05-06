@@ -54,6 +54,8 @@ const SHEETS = {
   RENTAL_STATUS: 'RENTAL_STATUS',
   // ★ Fitur 4 — Buku Kontak WA
   WA_CONTACTS:   'WA_CONTACTS',
+  // ★ Fitur 5 — Laporan Transaksi
+  PAYMENT_STAGES: 'PAYMENT_STAGES',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -105,6 +107,7 @@ const COLUMNS = {
     'Notes',              // AO
     'Project_ID',         // AP  ★ FK ke PROJECTS (jika listing dibuat dari proyek primary)
     'Link_GMaps_Personal', // AQ ★ Link Google Maps pribadi agen — hanya CRM pemilik, tidak ke publik/web
+    'Nama_Pemilik',       // AR ★ Nama pemilik/vendor properti
   ],
 
   LEADS: [
@@ -142,6 +145,8 @@ const COLUMNS = {
     'Closing_Cobroke',    // AF  Detail listing cobroke / brand lain
     'Closing_Proyek',     // AG  Nama proyek (Primary)
     'Tanggal_Dihubungi',  // AH  Timestamp pertama kali agen hubungi lead
+    'FU_Tanggal',         // AI ★ Tanggal follow-up terakhir (manual input)
+    'FU_Keterangan',      // AJ ★ Keterangan hasil follow-up
   ],
 
   AGENTS: [
@@ -521,6 +526,23 @@ const COLUMNS = {
     'Catatan',            // K  opsional
     'Created_At',         // L  ISO timestamp
     'Updated_At',         // M  ISO timestamp
+    'Agen_Listing_ID',    // N ★ ID agen pemilik listing
+    'Agen_Listing_Nama',  // O ★ Nama agen listing
+    'Agen_Selling_ID',    // P ★ ID agen selling/penjual
+    'Agen_Selling_Nama',  // Q ★ Nama agen selling
+    'CoBroke',            // R ★ TRUE jika cobroke dengan agen lain
+    'Hasil_FU_Reminder',  // S ★ Catatan hasil follow-up reminder perpanjang
+  ],
+
+  // ★ PAYMENT_STAGES — Log tahap pembayaran per transaksi (multi-entry)
+  PAYMENT_STAGES: [
+    'ID',           // A  UUID
+    'Lead_ID',      // B  FK ke LEADS (closing lead)
+    'Listing_ID',   // C  FK ke LISTING
+    'Tanggal',      // D  ISO date YYYY-MM-DD
+    'Catatan',      // E  Keterangan tahap pembayaran
+    'Updated_By',   // F  agent_id yang input
+    'Created_At',   // G  ISO timestamp
   ],
 
 };

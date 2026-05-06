@@ -1745,6 +1745,23 @@ function renderLeadDetail(lead) {
         ${lead.Next_Follow_Up ? makeTimelineItem('Follow up berikutnya', lead.Next_Follow_Up, '#60a5fa') : ''}
       </div>
     </div>
+
+    <!-- Follow Up Manual -->
+    <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:14px">
+      <label class="form-label">Follow Up</label>
+      ${lead.FU_Tanggal ? `<div style="background:#131F38;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:rgba(255,255,255,0.65)"><span style="color:#D4A853;font-weight:600">${lead.FU_Tanggal}</span> — ${escapeHtml(lead.FU_Keterangan||'')}</div>` : ''}
+      <div style="display:grid;gap:8px">
+        <div>
+          <label style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:3px;display:block">Tanggal FU</label>
+          <input type="date" id="fu-tanggal-input" value="${lead.FU_Tanggal||''}" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;box-sizing:border-box"/>
+        </div>
+        <div>
+          <label style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:3px;display:block">Keterangan</label>
+          <textarea id="fu-keterangan-input" rows="2" placeholder="Hasil follow up..." style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;box-sizing:border-box;resize:none">${escapeHtml(lead.FU_Keterangan||'')}</textarea>
+        </div>
+        <button onclick="saveFU('${escapeHtml(lead.ID)}')" style="background:rgba(212,168,83,0.12);color:#D4A853;border:1px solid rgba(212,168,83,0.25);border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">Simpan Follow Up</button>
+      </div>
+    </div>
   `;
 }
 
@@ -1755,6 +1772,21 @@ function makeDetailField(label, value) {
 
 function makeTimelineItem(label, date, color) {
   return `<div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div><div style="flex:1"><span style="font-size:11px;color:rgba(255,255,255,0.6)">${label}: </span><span style="font-size:11px;color:#fff">${formatRelativeDate(date)}</span></div></div>`;
+}
+
+async function saveFU(leadId) {
+  const tanggal    = document.getElementById('fu-tanggal-input')?.value;
+  const keterangan = document.getElementById('fu-keterangan-input')?.value?.trim();
+  if (!tanggal) return showToast('Isi tanggal FU terlebih dahulu', 'warning');
+  try {
+    await API.patch(`/leads/${leadId}`, { FU_Tanggal: tanggal, FU_Keterangan: keterangan || '' });
+    showToast('Follow up tersimpan', 'success');
+    // Refresh detail
+    const res = await API.get(`/leads/${leadId}`);
+    if (res.data) renderLeadDetail(res.data);
+  } catch (e) {
+    showToast(e.message || 'Gagal menyimpan FU', 'error');
+  }
 }
 
 // PR 8: Open change status modal
@@ -3156,7 +3188,8 @@ let _editListingId = null;
 function _clearListingForm() {
   _editListingId = null;
   ['add-tipe','add-transaksi','add-judul','add-kota','add-kecamatan',
-   'add-harga','add-harga-permeter','add-deskripsi','add-caption','add-gmaps-personal'].forEach(id => {
+   'add-harga','add-harga-permeter','add-deskripsi','add-caption',
+   'add-nama-pemilik','add-gmaps-personal'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -3216,6 +3249,7 @@ function openEditListing(listingId) {
   if (pmEl) previewHargaFormat(pmEl, 'add-harga-pm-preview');
   setVal('add-deskripsi',        l.Deskripsi            || '');
   setVal('add-caption',          l.Caption_Sosmed       || '');
+  setVal('add-nama-pemilik',     l.Nama_Pemilik         || '');
   setVal('add-gmaps-personal',   l.Link_GMaps_Personal  || '');
 
   // Populate listing photo state from existing URLs
@@ -3259,6 +3293,7 @@ async function submitAddListing() {
   formData.append('Harga',            harga);
   formData.append('Deskripsi',           getVal('add-deskripsi'));
   formData.append('Caption_Sosmed',      getVal('add-caption'));
+  formData.append('Nama_Pemilik',        getVal('add-nama-pemilik').trim());
   formData.append('Link_GMaps_Personal', getVal('add-gmaps-personal').trim());
   formData.append('Harga_Format',        formatRupiah(harga));
   if (hargaPM) {
