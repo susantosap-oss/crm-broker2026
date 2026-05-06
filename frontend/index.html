@@ -274,8 +274,8 @@
           <div class="skeleton" style="height:60px;border-radius:14px"></div>
         </div>
       </div>
-      <!-- Widget: Legal Perjanjian -->
-      <div style="padding:0 16px 20px">
+      <!-- Widget: Legal Perjanjian (hanya admin/superadmin/principal/kantor) -->
+      <div id="dash-legal-widget" style="display:none;padding:0 16px 20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <h3 style="color:rgba(255,255,255,0.65);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em"><i class="fa-solid fa-file-contract" style="color:#34d399;margin-right:6px"></i>Legal Perjanjian</h3>
           <button onclick="navigateTo('legal')" style="color:rgba(212,168,83,0.8);font-size:11px;background:none;border:none;cursor:pointer">Lihat semua →</button>
@@ -826,7 +826,7 @@
             <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Catatan (opsional)</label>
             <input type="text" id="legal-catatan" placeholder="mis: Unit Tower A lantai 5" style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
           </div>
-          <button id="legal-upload-btn" onclick="uploadLegalDoc()" style="background:#D4A853;color:#0D1526;border:none;border-radius:10px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;width:100%">Upload ke Google Drive</button>
+          <button id="legal-upload-btn" onclick="uploadLegalDoc()" style="background:#D4A853;color:#0D1526;border:none;border-radius:10px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;width:100%">Upload Dokumen</button>
           <div id="legal-upload-progress" style="display:none;font-size:12px;color:rgba(255,255,255,0.5);text-align:center">Mengupload...</div>
         </div>
       </div>
@@ -1019,7 +1019,7 @@
       </button>
       <button id="sidebar-user-mgmt" onclick="openUserMgmt();closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-users-cog" style="color:#60a5fa;width:16px;text-align:center"></i><span>Manajemen User</span></button>
       <div style="margin:6px 0;border-top:1px solid rgba(255,255,255,0.06)"></div>
-      <button onclick="navigateTo('legal');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-file-contract" style="color:#34d399;width:16px;text-align:center"></i><span>Legal Perjanjian</span></button>
+      <button id="sidebar-legal" onclick="navigateTo('legal');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-file-contract" style="color:#34d399;width:16px;text-align:center"></i><span>Legal Perjanjian</span></button>
       <button onclick="navigateTo('rental');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-key" style="color:#fb923c;width:16px;text-align:center"></i><span>Status Sewa</span></button>
       <button onclick="navigateTo('wa-contacts');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-brands fa-whatsapp" style="color:#25d366;width:16px;text-align:center"></i><span>Buku Kontak WA</span></button>
     </nav>

@@ -104,7 +104,7 @@ async function loadLegalDocs() {
           <div style="font-size:10px;color:rgba(255,255,255,0.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.Nama_File}</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-          <a href="${d.Drive_URL}" target="_blank" style="background:#2B7BFF22;color:#60a5fa;border:1px solid #2B7BFF44;border-radius:8px;padding:5px 10px;font-size:11px;text-decoration:none;font-weight:600">Buka</a>
+          <button onclick="window.open('${d.Drive_URL}','_blank')" style="background:#2B7BFF22;color:#60a5fa;border:1px solid #2B7BFF44;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer">Buka</button>
           ${isAdmin ? `<button onclick="deleteLegalDoc('${d.ID}','${(d.Nama_Klien||d.Nama_File).replace(/'/g, "\\'")}')" style="background:rgba(239,68,68,0.08);color:#f87171;border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer">Hapus</button>` : ''}
         </div>
       </div>
@@ -200,13 +200,13 @@ async function uploadLegalDoc() {
     showToast(e.message || 'Gagal upload dokumen', 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Upload ke Google Drive';
+    btn.textContent = 'Upload Dokumen';
     if (progress) progress.style.display = 'none';
   }
 }
 
 async function deleteLegalDoc(id, nama) {
-  if (!confirm(`Hapus dokumen "${nama}"? File akan dihapus dari Google Drive.`)) return;
+  if (!confirm(`Hapus dokumen "${nama}"?`)) return;
   try {
     await API.delete(`/legal/docs/${id}`);
     showToast('Dokumen berhasil dihapus', 'success');
@@ -467,7 +467,7 @@ async function loadDashboardLegalWidget() {
             <span style="font-size:10px;color:rgba(255,255,255,0.3)">${formatTanggal(d.Created_At)}</span>
           </div>
         </div>
-        <a href="${d.Drive_URL}" target="_blank" style="color:#60a5fa;font-size:11px;text-decoration:none;flex-shrink:0;font-weight:600">Buka</a>
+        <button onclick="window.open('${d.Drive_URL}','_blank')" style="color:#60a5fa;font-size:11px;background:none;border:none;cursor:pointer;flex-shrink:0;font-weight:600;padding:0">Buka</button>
       </div>
     `).join('');
   } catch (e) {

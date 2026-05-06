@@ -2317,6 +2317,9 @@ async function loadDashboard() {
       loadPrimaryStats();
     }
 
+    // Legal widget — semua role (filter milik sendiri di backend)
+    if (typeof loadDashboardLegalWidget === 'function') loadDashboardLegalWidget();
+
   } catch (e) {
     console.error('[CRM] Dashboard load error:', e.message, e.stack);
     // Jangan biarkan halaman kosong — tampilkan pesan error minimal
@@ -4312,6 +4315,12 @@ function checkAdminMenu() {
   const role = STATE.user?.role;
   const btn = document.getElementById('sidebar-user-mgmt');
   if (btn && ['admin','principal','kantor','superadmin'].includes(role)) btn.style.display = 'flex';
+
+  // Legal Perjanjian — semua role bisa lihat milik sendiri
+  const btnLegal = document.getElementById('sidebar-legal');
+  if (btnLegal) btnLegal.style.display = 'flex';
+  const dashLegal = document.getElementById('dash-legal-widget');
+  if (dashLegal) dashLegal.style.display = 'block';
   const btnTeam = document.getElementById('sidebar-team-mgmt');
   if (btnTeam && ['principal','kantor','superadmin'].includes(role)) btnTeam.style.display = 'flex';
   const navTeam = document.getElementById('nav-team');

@@ -1,9 +1,9 @@
 FROM node:20-slim
 
-# Install ffmpeg (video compression) + ca-certificates (Baileys TLS)
+# Install ffmpeg (video), ghostscript (PDF compression), ca-certificates (Baileys TLS)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      ffmpeg fonts-dejavu-core fontconfig ca-certificates && \
+      ffmpeg ghostscript fonts-dejavu-core fontconfig ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

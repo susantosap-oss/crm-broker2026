@@ -1,102 +1,91 @@
 /**
- * Google Drive Service — Upload dokumen legal PDF
- * Folder root "CRM Legal" ID: dari env GDRIVE_LEGAL_FOLDER_ID
- * Struktur folder: /CRM Legal/{Kategori}/{Agen_ID}/
- * Auth: service account yang sama dengan Sheets (GOOGLE_PRIVATE_KEY + GOOGLE_SERVICE_ACCOUNT_EMAIL)
+ * Legal Storage Service — Upload dokumen PDF ke Cloudinary
+ * Folder: mansion_legal/{agent_id}/{filename}
+ * Kompresi: ghostscript sebelum upload (hemat 40-70% ukuran)
  */
 
-const { google } = require('googleapis');
+const cloudinary = require('cloudinary').v2;
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const os   = require('os');
+const path = require('path');
+const fs   = require('fs');
 const { Readable } = require('stream');
-const { getGoogleAuth } = require('../config/sheets.config');
 
-const ROOT_FOLDER_ID = process.env.GDRIVE_LEGAL_FOLDER_ID || '1OUHq_ZwtNwvkWIR63cH6nYyvFFk21uwE';
+const execFileAsync = promisify(execFile);
 
-function getDriveClient() {
-  const auth = getGoogleAuth();
-  // Drive butuh scope tambahan — buat auth baru jika scope berbeda
-  const privateKey  = process.env.GOOGLE_PRIVATE_KEY;
-  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const driveAuth = new google.auth.JWT({
-    email: clientEmail,
-    key: privateKey ? privateKey.replace(/\\n/g, '\n') : undefined,
-    scopes: [
-      'https://www.googleapis.com/auth/drive',
-      'https://www.googleapis.com/auth/spreadsheets',
-    ],
-  });
-  return google.drive({ version: 'v3', auth: driveAuth });
-}
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-// Cari atau buat subfolder di dalam parentId
-async function getOrCreateFolder(drive, name, parentId) {
-  const q = `name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-  const res = await drive.files.list({ q, fields: 'files(id,name)', pageSize: 1 });
-  if (res.data.files.length > 0) return res.data.files[0].id;
+const ROOT = 'mansion_legal';
 
-  const created = await drive.files.create({
-    requestBody: {
-      name,
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [parentId],
-    },
-    fields: 'id',
-  });
-  return created.data.id;
+// Kompresi PDF dengan ghostscript. Fallback ke buffer asli jika gs tidak tersedia.
+async function compressPDF(inputBuffer) {
+  const tmpDir    = os.tmpdir();
+  const inputPath = path.join(tmpDir, `legal_in_${Date.now()}_${process.pid}.pdf`);
+  const outPath   = path.join(tmpDir, `legal_out_${Date.now()}_${process.pid}.pdf`);
+  try {
+    fs.writeFileSync(inputPath, inputBuffer);
+    await execFileAsync('gs', [
+      '-sDEVICE=pdfwrite',
+      '-dCompatibilityLevel=1.4',
+      '-dPDFSETTINGS=/ebook',   // /screen=terkecil, /ebook=seimbang, /printer=kualitas tinggi
+      '-dNOPAUSE', '-dQUIET', '-dBATCH',
+      `-sOutputFile=${outPath}`,
+      inputPath,
+    ]);
+    const compressed = fs.readFileSync(outPath);
+    // Pakai hasil kompresi hanya jika lebih kecil
+    return compressed.length < inputBuffer.length ? compressed : inputBuffer;
+  } catch (_) {
+    // ghostscript tidak tersedia atau error — pakai buffer asli
+    return inputBuffer;
+  } finally {
+    try { fs.unlinkSync(inputPath); } catch (_) {}
+    try { fs.unlinkSync(outPath); }  catch (_) {}
+  }
 }
 
 /**
- * Upload PDF buffer ke Drive.
- * @param {Buffer} buffer   - File buffer dari multer
- * @param {string} filename - Nama file original
- * @param {string} agentId  - ID agen (subfolder)
- * @param {string} kategori - PJB | Sewa | SPR | Lainnya
+ * Upload PDF ke Cloudinary (dengan kompresi ghostscript terlebih dahulu).
+ * @param {Buffer} buffer
+ * @param {string} filename  - Nama file auto-generated (tanpa .pdf di public_id)
+ * @param {string} agentId   - ID agen (subfolder)
  * @returns {{ fileId, webViewLink, ukuranKB }}
  */
-async function uploadPDF(buffer, filename, agentId, kategori) {
-  const drive = getDriveClient();
+async function uploadPDF(buffer, filename, agentId) {
+  const compressed = await compressPDF(buffer);
 
-  // Buat path folder: root → kategori → agentId
-  const katFolder   = await getOrCreateFolder(drive, kategori, ROOT_FOLDER_ID);
-  const agenFolder  = await getOrCreateFolder(drive, agentId, katFolder);
-
-  const stream = Readable.from(buffer);
-  const res = await drive.files.create({
-    requestBody: {
-      name: filename,
-      parents: [agenFolder],
-      mimeType: 'application/pdf',
-    },
-    media: {
-      mimeType: 'application/pdf',
-      body: stream,
-    },
-    fields: 'id,webViewLink,size',
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: 'raw',
+        folder:        `${ROOT}/${agentId}`,
+        public_id:     filename,   // pertahankan .pdf agar URL berakhir dengan .pdf
+        overwrite:     false,
+      },
+      (err, result) => {
+        if (err) return reject(err);
+        resolve({
+          fileId:      result.public_id,
+          webViewLink: result.secure_url,
+          ukuranKB:    Math.ceil(result.bytes / 1024),
+        });
+      }
+    );
+    Readable.from(compressed).pipe(stream);
   });
-
-  const fileId = res.data.id;
-
-  // Set permission: anyone with link dapat melihat
-  await drive.permissions.create({
-    fileId,
-    requestBody: { role: 'reader', type: 'anyone' },
-  });
-
-  const ukuranKB = Math.ceil((parseInt(res.data.size || buffer.length) / 1024));
-
-  return {
-    fileId,
-    webViewLink: res.data.webViewLink || `https://drive.google.com/file/d/${fileId}/view`,
-    ukuranKB,
-  };
 }
 
 /**
- * Hapus file dari Google Drive.
- * @param {string} fileId
+ * Hapus file PDF dari Cloudinary.
+ * @param {string} fileId - public_id dari Cloudinary
  */
 async function deleteFile(fileId) {
-  const drive = getDriveClient();
-  await drive.files.delete({ fileId });
+  await cloudinary.uploader.destroy(fileId, { resource_type: 'raw' });
 }
 
 module.exports = { uploadPDF, deleteFile };
