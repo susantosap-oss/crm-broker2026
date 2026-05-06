@@ -1865,7 +1865,7 @@ async function doClosingSubmit() {
     showToast('Pilih tipe transaksi dulu (Secondary / Primary)', 'error'); return;
   }
 
-  const payload = { Score: 'Closing', Closing_Tipe: isSecondary ? 'Secondary' : 'Primary' };
+  const payload = { Score: 'Closing', Status_Lead: 'Deal', Closing_Tipe: isSecondary ? 'Secondary' : 'Primary' };
 
   if (isSecondary) {
     const ownBtn    = document.getElementById('cls-btn-own');

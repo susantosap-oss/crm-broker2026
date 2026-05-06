@@ -240,6 +240,10 @@ router.patch('/:id', async (req, res) => {
     if (wasNew && nowNotNew && !existing.Tanggal_Dihubungi) {
       merged.Tanggal_Dihubungi = new Date().toISOString();
     }
+    // Auto-sync: Score 'Closing' → Status_Lead 'Deal'
+    if (req.body.Score === 'Closing' && merged.Status_Lead !== 'Deal') {
+      merged.Status_Lead = 'Deal';
+    }
 
     const row = COLUMNS.LEADS.map(col => merged[col] || '');
     await sheetsService.updateRow(SHEETS.LEADS, result.rowIndex, row);
@@ -258,6 +262,10 @@ router.put('/:id', async (req, res) => {
     // Auto-set Tanggal_Dihubungi saat pertama kali status berubah dari 'Baru'
     if (existing.Status_Lead === 'Baru' && req.body.Status_Lead && req.body.Status_Lead !== 'Baru' && !existing.Tanggal_Dihubungi) {
       merged.Tanggal_Dihubungi = new Date().toISOString();
+    }
+    // Auto-sync: Score 'Closing' → Status_Lead 'Deal'
+    if (req.body.Score === 'Closing' && merged.Status_Lead !== 'Deal') {
+      merged.Status_Lead = 'Deal';
     }
 
     const row = COLUMNS.LEADS.map(col => merged[col] || '');
