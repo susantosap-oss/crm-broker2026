@@ -10,7 +10,8 @@
 
 const express = require('express');
 const router  = express.Router();
-const sheetsService = require('../services/sheets.service');
+const sheetsService    = require('../services/sheets.service');
+const listingsService  = require('../services/listings.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 const { authMiddleware, isManager } = require('../middleware/auth.middleware');
 const { createNotification } = require('./notifications.routes');
@@ -270,11 +271,28 @@ router.put('/:id', async (req, res) => {
 
     const row = COLUMNS.LEADS.map(col => merged[col] || '');
     await sheetsService.updateRow(SHEETS.LEADS, result.rowIndex, row);
+
+    // Auto-update Status_Listing jika Agen Listing + ada Listing_ID
+    if (req.body.Closing_Peran === 'Listing' && req.body.Closing_Listing_ID) {
+      _updateListingStatusAfterDeal(req.body.Closing_Listing_ID).catch(() => {});
+    }
+
     res.json({ success: true, message: 'Lead berhasil diupdate' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 // ── Helpers ───────────────────────────────────────────────
+async function _updateListingStatusAfterDeal(listingId) {
+  try {
+    const existing = await listingsService.getById(listingId);
+    if (!existing) return;
+    const isJual = (existing.Status_Transaksi || '').toLowerCase().includes('jual');
+    const newStatus = isJual ? 'Terjual' : 'Tersewa';
+    if (!['Terjual', 'Tersewa'].includes(existing.Status_Listing)) {
+      await listingsService.update(listingId, { Status_Listing: newStatus });
+    }
+  } catch { /* silent — jangan block response lead */ }
+}
 async function getMyTeamIds(principalId) {
   try {
     const rows = await sheetsService.getRange(SHEETS.TEAMS);

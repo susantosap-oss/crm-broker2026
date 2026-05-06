@@ -1817,12 +1817,23 @@ function selectSecondarySource(source) {
   document.getElementById('cls-cobroke-wrap').style.display = source === 'cobroke' ? 'block' : 'none';
 
   if (source === 'own') {
-    // Load listing milik agen sendiri
     _loadOwnListingsForClosing();
   } else {
-    // Load semua listing untuk cobroke picker
+    // Reset peran saat buka cobroke
+    selectCobrokePeran(null);
     _loadAllListingsForCobroke();
   }
+}
+
+function selectCobrokePeran(peran) {
+  const btnListing = document.getElementById('cls-btn-peran-listing');
+  const btnSelling = document.getElementById('cls-btn-peran-selling');
+  const listingWrap = document.getElementById('cls-cobroke-listing-wrap');
+
+  if (btnListing) btnListing.style.outline = peran === 'listing' ? '2px solid #4ade80' : 'none';
+  if (btnSelling) btnSelling.style.outline = peran === 'selling' ? '2px solid #60a5fa' : 'none';
+  // Tampilkan listing picker hanya jika Agen Listing
+  if (listingWrap) listingWrap.style.display = peran === 'listing' ? 'block' : 'none';
 }
 
 async function _loadOwnListingsForClosing() {
@@ -1870,22 +1881,32 @@ async function doClosingSubmit() {
   if (isSecondary) {
     const ownBtn    = document.getElementById('cls-btn-own');
     const isOwn     = ownBtn?.style.outline?.includes('solid');
-    const isCobroke = !isOwn;
 
     if (isOwn) {
+      // Listing Sendiri = selalu Agen Listing
       const sel = document.getElementById('cls-own-listing');
       const opt = sel?.options[sel.selectedIndex];
       if (!sel?.value) { showToast('Pilih listing kamu', 'error'); return; }
       payload.Closing_Listing_ID   = sel.value;
       payload.Closing_Listing_Nama = opt?.dataset?.nama || opt?.text || '';
+      payload.Closing_Peran        = 'Listing';
     } else {
+      // Cobroke — wajib pilih peran
+      const peranListing = document.getElementById('cls-btn-peran-listing')?.style.outline?.includes('solid');
+      const peranSelling = document.getElementById('cls-btn-peran-selling')?.style.outline?.includes('solid');
+      if (!peranListing && !peranSelling) { showToast('Pilih peran: Agen Listing atau Agen Selling', 'error'); return; }
+
       const detail = document.getElementById('cls-cobroke-detail')?.value?.trim();
       const coSel  = document.getElementById('cls-cobroke-listing');
       const coOpt  = coSel?.options[coSel?.selectedIndex];
+
+      if (peranListing && !coSel?.value) { showToast('Pilih listing yang terjual', 'error'); return; }
       if (!detail && !coSel?.value) { showToast('Isi detail cobroke atau pilih listing', 'error'); return; }
-      payload.Closing_Cobroke       = detail || (coOpt?.text || '');
-      payload.Closing_Listing_ID    = coSel?.value || '';
-      payload.Closing_Listing_Nama  = coOpt?.dataset?.nama || '';
+
+      payload.Closing_Peran        = peranListing ? 'Listing' : 'Selling';
+      payload.Closing_Cobroke      = detail || (coOpt?.text || '');
+      payload.Closing_Listing_ID   = coSel?.value || '';
+      payload.Closing_Listing_Nama = coOpt?.dataset?.nama || '';
     }
   } else {
     const proyek = document.getElementById('cls-primary-proyek')?.value?.trim();

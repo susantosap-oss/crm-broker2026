@@ -1673,13 +1673,26 @@
 
           <!-- Cobroke detail -->
           <div id="cls-cobroke-wrap" style="display:none;margin-bottom:10px">
+            <label class="form-label">Peran dalam Cobroke</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+              <button id="cls-btn-peran-listing" onclick="selectCobrokePeran('listing')"
+                style="padding:10px 6px;border-radius:10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:11px;font-weight:600;cursor:pointer">
+                🏠 Agen Listing<br><span style="font-size:10px;opacity:0.6;font-weight:400">Saya punya listing</span>
+              </button>
+              <button id="cls-btn-peran-selling" onclick="selectCobrokePeran('selling')"
+                style="padding:10px 6px;border-radius:10px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.25);color:#60a5fa;font-size:11px;font-weight:600;cursor:pointer">
+                🤝 Agen Selling<br><span style="font-size:10px;opacity:0.6;font-weight:400">Saya bawa buyer</span>
+              </button>
+            </div>
             <label class="form-label">Detail Listing Cobroke</label>
             <input id="cls-cobroke-detail" class="form-input" type="text"
-              placeholder="Contoh: Kode/Nama listing + brand/agen pemilik" style="font-size:12px"/>
-            <label class="form-label" style="margin-top:8px">Cari dari Semua Listing</label>
-            <select id="cls-cobroke-listing" class="form-input" style="font-size:12px">
-              <option value="">— Pilih dari listing CRM (opsional) —</option>
-            </select>
+              placeholder="Contoh: Kode/Nama listing + brand/agen pemilik" style="font-size:12px;margin-bottom:8px"/>
+            <div id="cls-cobroke-listing-wrap" style="display:none">
+              <label class="form-label">Pilih Listing (jika Agen Listing)</label>
+              <select id="cls-cobroke-listing" class="form-input" style="font-size:12px">
+                <option value="">— Pilih listing yang terjual —</option>
+              </select>
+            </div>
           </div>
         </div>
 
