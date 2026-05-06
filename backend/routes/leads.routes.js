@@ -272,9 +272,18 @@ router.put('/:id', async (req, res) => {
     const row = COLUMNS.LEADS.map(col => merged[col] || '');
     await sheetsService.updateRow(SHEETS.LEADS, result.rowIndex, row);
 
-    // Auto-update Status_Listing jika Agen Listing + ada Listing_ID
-    if (req.body.Closing_Peran === 'Listing' && req.body.Closing_Listing_ID) {
-      _updateListingStatusAfterDeal(req.body.Closing_Listing_ID).catch(() => {});
+    // Saat closing: update listing + increment Deal_Count agen
+    if (req.body.Score === 'Closing' || req.body.Status_Lead === 'Deal') {
+      const agentId   = existing.Agen_ID || req.user?.id;
+      const listingId = req.body.Closing_Listing_ID;
+      const peran     = req.body.Closing_Peran;
+
+      // Agen Listing → update Status_Listing ke Terjual/Tersewa
+      if (peran === 'Listing' && listingId) {
+        _updateListingStatusAfterDeal(listingId).catch(() => {});
+      }
+      // Semua peran (Listing & Selling) → increment Deal_Count agen
+      if (agentId) _incrementAgentDealCount(agentId).catch(() => {});
     }
 
     res.json({ success: true, message: 'Lead berhasil diupdate' });
@@ -286,12 +295,29 @@ async function _updateListingStatusAfterDeal(listingId) {
   try {
     const existing = await listingsService.getById(listingId);
     if (!existing) return;
-    const isJual = (existing.Status_Transaksi || '').toLowerCase().includes('jual');
+    const isJual   = (existing.Status_Transaksi || '').toLowerCase().includes('jual');
     const newStatus = isJual ? 'Terjual' : 'Tersewa';
     if (!['Terjual', 'Tersewa'].includes(existing.Status_Listing)) {
       await listingsService.update(listingId, { Status_Listing: newStatus });
     }
-  } catch { /* silent — jangan block response lead */ }
+  } catch { /* silent */ }
+}
+
+async function _incrementAgentDealCount(agentId) {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.AGENTS);
+    if (!rows || rows.length < 2) return;
+    const toAgent = (row) => COLUMNS.AGENTS.reduce((o, c, i) => { o[c] = row[i] || ''; return o; }, {});
+    const header  = rows[0];
+    const idx     = rows.slice(1).findIndex(r => toAgent(r).ID === agentId);
+    if (idx === -1) return;
+    const rowIndex   = idx + 2; // 1-based + header
+    const agentData  = toAgent(rows[idx + 1]);
+    const dealColIdx = COLUMNS.AGENTS.indexOf('Deal_Count');
+    if (dealColIdx === -1) return;
+    const newCount = (parseInt(agentData.Deal_Count) || 0) + 1;
+    await sheetsService.updateRowCells(SHEETS.AGENTS, rowIndex, { [dealColIdx]: String(newCount) });
+  } catch { /* silent */ }
 }
 async function getMyTeamIds(principalId) {
   try {
