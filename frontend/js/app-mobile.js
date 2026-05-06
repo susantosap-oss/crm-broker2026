@@ -638,6 +638,12 @@ async function loadListings() {
   if (!grid) return;
   grid.innerHTML = '<div class="skeleton" style="height:100px;border-radius:14px"></div>'.repeat(3);
 
+  const seoBulkBtn = document.getElementById('btn-seo-bulk');
+  if (seoBulkBtn) {
+    const r = STATE.user?.role;
+    seoBulkBtn.style.display = ['superadmin','principal'].includes(r) ? 'inline-flex' : 'none';
+  }
+
   try {
     // Tab fav: ambil semua listing supaya bisa filter lintas agen
     const endpoint = (_listingTab === 'all' || _listingTab === 'fav')
@@ -4861,9 +4867,6 @@ async function loadPrimaryPage() {
 
   const migrateBtn = document.getElementById('btn-migrate-listings');
   if (migrateBtn) migrateBtn.style.display = role === 'superadmin' ? 'inline-flex' : 'none';
-
-  const seoBulkBtn = document.getElementById('btn-seo-bulk');
-  if (seoBulkBtn) seoBulkBtn.style.display = ['superadmin','principal'].includes(role) ? 'inline-flex' : 'none';
 
   const filterStatusWrap = document.getElementById('wrap-filter-status');
   if (filterStatusWrap) filterStatusWrap.style.display = canFilter ? '' : 'none';
