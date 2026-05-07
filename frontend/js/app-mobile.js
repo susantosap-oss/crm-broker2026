@@ -643,6 +643,10 @@ async function loadListings() {
     const r = STATE.user?.role;
     seoBulkBtn.style.display = ['superadmin','principal'].includes(r) ? 'inline-flex' : 'none';
   }
+  const exportListingsBtn = document.getElementById('btn-export-listings');
+  if (exportListingsBtn) {
+    exportListingsBtn.style.display = 'inline-flex';
+  }
 
   try {
     // Tab fav: ambil semua listing supaya bisa filter lintas agen
@@ -1762,7 +1766,24 @@ function renderLeadDetail(lead) {
         <button onclick="saveFU('${escapeHtml(lead.ID)}')" style="background:rgba(212,168,83,0.12);color:#D4A853;border:1px solid rgba(212,168,83,0.25);border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">Simpan Follow Up</button>
       </div>
     </div>
+
+    ${(lead.Score === 'Closing' || lead.Status_Lead === 'Deal') ? `
+    <!-- Tahap Pembayaran -->
+    <div id="payment-section" style="border-top:1px solid rgba(255,255,255,0.07);padding-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <label class="form-label" style="margin:0">Tahap Pembayaran</label>
+        <span id="payment-status-badge" style="font-size:10px;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4)">—</span>
+      </div>
+      <div id="payment-form-wrap" style="display:flex;flex-direction:column;gap:10px">
+        <div style="text-align:center;padding:20px;color:rgba(255,255,255,0.3);font-size:12px"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</div>
+      </div>
+    </div>` : ''}
   `;
+
+  // Load payment data async jika lead closing/deal
+  if (lead.Score === 'Closing' || lead.Status_Lead === 'Deal') {
+    _loadPaymentSection(lead.ID);
+  }
 }
 
 function makeDetailField(label, value) {
@@ -1786,6 +1807,94 @@ async function saveFU(leadId) {
     if (res.data) renderLeadDetail(res.data);
   } catch (e) {
     showToast(e.message || 'Gagal menyimpan FU', 'error');
+  }
+}
+
+// ── Payment Stages ────────────────────────────────────
+async function _loadPaymentSection(leadId) {
+  const wrap  = document.getElementById('payment-form-wrap');
+  const badge = document.getElementById('payment-status-badge');
+  if (!wrap) return;
+  try {
+    const res = await API.get(`/payment/lead/${leadId}`);
+    const p   = res.data || {};
+    _renderPaymentForm(wrap, badge, leadId, p);
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:#f87171;font-size:12px;text-align:center">${e.message}</div>`;
+  }
+}
+
+function _renderPaymentForm(wrap, badge, leadId, p) {
+  const statusColor = { Berjalan:'#D4A853', Selesai:'#4ade80', Batal:'#f87171' };
+  const sc = statusColor[p.Status] || '#6B7280';
+  if (badge) {
+    badge.textContent = p.Status || 'Belum diisi';
+    badge.style.background = `${sc}20`;
+    badge.style.color = sc;
+  }
+
+  const field = (label, idVal, idDate, val, tgl) => `
+    <div style="background:#131F38;border-radius:12px;padding:12px">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">${label}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <label style="font-size:10px;color:rgba(255,255,255,0.35);display:block;margin-bottom:3px">Nominal (Rp)</label>
+          <input id="${idVal}" type="number" value="${val||''}" placeholder="0"
+            style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;box-sizing:border-box"/>
+        </div>
+        <div>
+          <label style="font-size:10px;color:rgba(255,255,255,0.35);display:block;margin-bottom:3px">Tanggal</label>
+          <input id="${idDate}" type="date" value="${tgl||''}"
+            style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;box-sizing:border-box"/>
+        </div>
+      </div>
+    </div>`;
+
+  wrap.innerHTML = `
+    ${field('Tanda Jadi',  'pay-tanda-jadi',  'pay-tgl-tanda-jadi',  p.Tanda_Jadi,     p.Tgl_Tanda_Jadi)}
+    ${field('DP 1',        'pay-dp1',          'pay-tgl-dp1',          p.DP1,            p.Tgl_DP1)}
+    ${field('DP 2',        'pay-dp2',          'pay-tgl-dp2',          p.DP2,            p.Tgl_DP2)}
+    ${field('Pelunasan',   'pay-pelunasan',    'pay-tgl-pelunasan',    p.Pelunasan,      p.Tgl_Pelunasan)}
+    <div>
+      <label style="font-size:10px;color:rgba(255,255,255,0.4);display:block;margin-bottom:3px">Catatan</label>
+      <textarea id="pay-catatan" rows="2" placeholder="Catatan transaksi..."
+        style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;box-sizing:border-box;resize:none">${escapeHtml(p.Catatan||'')}</textarea>
+    </div>
+    <div>
+      <label style="font-size:10px;color:rgba(255,255,255,0.4);display:block;margin-bottom:3px">Status Transaksi</label>
+      <select id="pay-status" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px">
+        <option value="Berjalan"  ${p.Status==='Berjalan'||!p.Status?'selected':''}>Berjalan</option>
+        <option value="Selesai"   ${p.Status==='Selesai'  ?'selected':''}>Selesai</option>
+        <option value="Batal"     ${p.Status==='Batal'    ?'selected':''}>Batal</option>
+      </select>
+    </div>
+    <button onclick="savePayment('${leadId}')"
+      style="background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;width:100%">
+      <i class="fa-solid fa-floppy-disk" style="margin-right:7px"></i>Simpan Tahap Pembayaran
+    </button>
+  `;
+}
+
+async function savePayment(leadId) {
+  const val = id => document.getElementById(id)?.value?.trim() || '';
+  const body = {
+    Tanda_Jadi:     val('pay-tanda-jadi'),
+    Tgl_Tanda_Jadi: val('pay-tgl-tanda-jadi'),
+    DP1:            val('pay-dp1'),
+    Tgl_DP1:        val('pay-tgl-dp1'),
+    DP2:            val('pay-dp2'),
+    Tgl_DP2:        val('pay-tgl-dp2'),
+    Pelunasan:      val('pay-pelunasan'),
+    Tgl_Pelunasan:  val('pay-tgl-pelunasan'),
+    Catatan:        val('pay-catatan'),
+    Status:         val('pay-status'),
+  };
+  try {
+    await API.put(`/payment/lead/${leadId}`, body);
+    showToast('✅ Tahap pembayaran tersimpan', 'success');
+    _loadPaymentSection(leadId);
+  } catch (e) {
+    showToast(e.message || 'Gagal menyimpan payment', 'error');
   }
 }
 
@@ -3690,6 +3799,17 @@ async function loadMemberPage() {
   const container = document.getElementById('member-container');
   if (!container) return;
   container.innerHTML = `<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3);font-size:13px"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</div>`;
+
+  const exportAgentsBtn = document.getElementById('btn-export-agents');
+  if (exportAgentsBtn) {
+    const r = STATE.user?.role;
+    exportAgentsBtn.style.display = ['superadmin', 'principal', 'kantor', 'admin'].includes(r) ? 'inline-flex' : 'none';
+  }
+  const exportPaymentBtn = document.getElementById('btn-export-payment');
+  if (exportPaymentBtn) {
+    exportPaymentBtn.style.display = 'inline-flex';
+  }
+
   try {
     const res  = await API.get('/agents/offices');
     _officesData = res.data || [];
@@ -6518,22 +6638,75 @@ function checkPrimaryDeeplink() {
 // Dan di bagian update nav buttons di navigateTo():
 //   document.getElementById('nav-primary')?.classList.toggle('active', page === 'primary');
 
-// ── Export CSV Leads ─────────────────────────────────
-async function exportLeadsCSV() {
+// ── Export Excel ──────────────────────────────────────
+// sheet: 'leads' | 'listings' | 'agents' | 'rental' | 'payment'
+// scope: 'all' | 'mine' (principal only)
+async function exportExcel(sheet, scope) {
+  const labels = { leads: 'Leads', listings: 'Listings', agents: 'Agen', rental: 'Sewa', payment: 'Payment' };
+  const role   = STATE.user?.role;
+
+  // Principal & BM: tampilkan pilihan scope jika belum dipilih
+  const scopeSheets = ['leads','listings','rental','payment'];
+  if (!scope && scopeSheets.includes(sheet) && ['principal','business_manager'].includes(role)) {
+    _showExportScopeModal(sheet);
+    return;
+  }
+
   try {
-    showToast('Mempersiapkan CSV...', 'info');
-    const res = await fetch('/api/v1/leads/export/csv', {
+    const qs  = scope === 'mine' ? '?scope=mine' : '';
+    showToast(`Menyiapkan Excel ${labels[sheet] || sheet}...`, 'info');
+    const res = await fetch(`/api/v1/export/${sheet}${qs}`, {
       headers: { Authorization: `Bearer ${STATE.token}` }
     });
-    if (!res.ok) { showToast('Gagal export CSV', 'error'); return; }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showToast(err.message || 'Gagal export Excel', 'error');
+      return;
+    }
     const blob = await res.blob();
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href = url; a.download = `leads-${new Date().toISOString().slice(0,10)}.csv`;
+    a.href = url;
+    a.download = `${sheet}-${new Date().toISOString().slice(0,10)}.xlsx`;
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
-    showToast('✅ CSV berhasil didownload!', 'success');
+    showToast(`✅ Excel ${labels[sheet] || sheet} berhasil didownload!`, 'success');
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function _showExportScopeModal(sheet) {
+  const label = { leads: 'Leads', listings: 'Listings', rental: 'Sewa', payment: 'Lap. Transaksi' }[sheet] || sheet;
+  const existing = document.getElementById('export-scope-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'export-scope-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.5)';
+  modal.innerHTML = `
+    <div style="background:#1A2540;border-radius:20px 20px 0 0;padding:24px 20px 32px;width:100%;max-width:480px;box-shadow:0 -4px 30px rgba(0,0,0,0.4)">
+      <div style="text-align:center;margin-bottom:18px">
+        <div style="font-size:13px;font-weight:700;color:#fff">Download Excel ${label}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px">Pilih cakupan data</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button onclick="document.getElementById('export-scope-modal').remove(); exportExcel('${sheet}','all')"
+          style="background:#131F38;border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:12px;padding:14px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px">
+          <i class="fa-solid fa-building" style="color:#D4A853;width:18px"></i>
+          <div><div style="font-weight:700">Semua Data</div><div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px">Seluruh ${label} di kantor</div></div>
+        </button>
+        <button onclick="document.getElementById('export-scope-modal').remove(); exportExcel('${sheet}','mine')"
+          style="background:#131F38;border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:12px;padding:14px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px">
+          <i class="fa-solid fa-user" style="color:#4ade80;width:18px"></i>
+          <div><div style="font-weight:700">Milik Saya</div><div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px">${label} atas nama saya saja</div></div>
+        </button>
+        <button onclick="document.getElementById('export-scope-modal').remove()"
+          style="background:transparent;border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);border-radius:12px;padding:11px;font-size:12px;cursor:pointer;margin-top:2px">
+          Batal
+        </button>
+      </div>
+    </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
 }
 // ── Expose showToast untuk pa-dashboard.js ──────────────
 window.showToast = showToast;

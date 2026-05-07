@@ -534,15 +534,24 @@ const COLUMNS = {
     'Hasil_FU_Reminder',  // S ★ Catatan hasil follow-up reminder perpanjang
   ],
 
-  // ★ PAYMENT_STAGES — Log tahap pembayaran per transaksi (multi-entry)
+  // ★ PAYMENT_STAGES — Tahap pembayaran per transaksi (1 row per lead)
   PAYMENT_STAGES: [
-    'ID',           // A  UUID
-    'Lead_ID',      // B  FK ke LEADS (closing lead)
-    'Listing_ID',   // C  FK ke LISTING
-    'Tanggal',      // D  ISO date YYYY-MM-DD
-    'Catatan',      // E  Keterangan tahap pembayaran
-    'Updated_By',   // F  agent_id yang input
-    'Created_At',   // G  ISO timestamp
+    'ID',             // A  UUID
+    'Lead_ID',        // B  FK ke LEADS
+    'Listing_ID',     // C  FK ke LISTING (opsional)
+    'Tanda_Jadi',     // D  Nominal tanda jadi
+    'Tgl_Tanda_Jadi', // E  Tanggal tanda jadi
+    'DP1',            // F  Nominal DP pertama
+    'Tgl_DP1',        // G  Tanggal DP pertama
+    'DP2',            // H  Nominal DP kedua
+    'Tgl_DP2',        // I  Tanggal DP kedua
+    'Pelunasan',      // J  Nominal pelunasan
+    'Tgl_Pelunasan',  // K  Tanggal pelunasan
+    'Catatan',        // L  Catatan umum
+    'Status',         // M  Berjalan | Selesai | Batal
+    'Updated_By',     // N  agent_id yang update
+    'Created_At',     // O
+    'Updated_At',     // P
   ],
 
 };

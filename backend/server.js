@@ -122,6 +122,10 @@ app.use('/api/v1/rental',         require('./routes/rental.routes'));
 app.use('/api/v1/wa-contacts',    require('./routes/wa-contacts.routes'));
 // ★ SEO — Bulk Title Generator
 app.use('/api/v1/seo',            require('./routes/seo.routes'));
+// ★ Excel Export
+app.use('/api/v1/export',         require('./routes/export.routes'));
+// ★ Payment Stages
+app.use('/api/v1/payment',        require('./routes/payment.routes'));
 // ★ Fitur 2 — Meta/Zapier Webhook + Config API
 // Semua rute webhook (meta, zapier, config) dihandle satu router
 const webhookRouter = require('./routes/meta-webhook.routes');
@@ -178,11 +182,19 @@ async function migrateHeaders() {
   const { SHEETS, COLUMNS } = require('./config/sheets.config');
 
   const sheetsToMigrate = [
-    { sheet: SHEETS.LEADS,         cols: COLUMNS.LEADS },
-    { sheet: SHEETS.LISTING,       cols: COLUMNS.LISTING },
-    { sheet: SHEETS.AGENTS,        cols: COLUMNS.AGENTS },
-    { sheet: SHEETS.RENTAL_STATUS, cols: COLUMNS.RENTAL_STATUS },
+    { sheet: SHEETS.LEADS,          cols: COLUMNS.LEADS },
+    { sheet: SHEETS.LISTING,        cols: COLUMNS.LISTING },
+    { sheet: SHEETS.AGENTS,         cols: COLUMNS.AGENTS },
+    { sheet: SHEETS.RENTAL_STATUS,  cols: COLUMNS.RENTAL_STATUS },
   ];
+
+  // PAYMENT_STAGES: schema redesign — force replace header row (no production data yet)
+  try {
+    await sheetsService.updateRow(SHEETS.PAYMENT_STAGES, 1, COLUMNS.PAYMENT_STAGES);
+    console.log('✅ [Migrate] PAYMENT_STAGES headers force-updated');
+  } catch (e) {
+    console.warn('[Migrate] PAYMENT_STAGES force update skipped:', e.message);
+  }
 
   for (const { sheet, cols } of sheetsToMigrate) {
     try {
