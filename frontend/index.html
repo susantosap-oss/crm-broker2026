@@ -339,15 +339,19 @@
 
   <div id="page-tasks" class="page" style="padding:16px;padding-bottom:100px">
 
-    <!-- ── Main Tab: Jadwal / Aktivitas Harian ── -->
+    <!-- ── Main Tab: Jadwal / Aktivitas Harian / Canvasing ── -->
     <div style="display:flex;gap:4px;background:#131F38;border-radius:14px;padding:4px;margin-bottom:16px">
       <button id="main-tab-jadwal" onclick="setMainAktivitasTab('jadwal')"
-        style="flex:1;padding:9px;border-radius:10px;background:rgba(212,168,83,0.2);color:#D4A853;font-size:12px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+        style="flex:1;padding:9px;border-radius:10px;background:rgba(212,168,83,0.2);color:#D4A853;font-size:11px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
         <i class="fa-solid fa-calendar-check"></i> Jadwal
       </button>
       <button id="main-tab-aktivitas" onclick="setMainAktivitasTab('aktivitas')"
-        style="flex:1;padding:9px;border-radius:10px;background:transparent;color:rgba(255,255,255,0.4);font-size:12px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-        <i class="fa-solid fa-pencil-alt"></i> Aktivitas Harian
+        style="flex:1;padding:9px;border-radius:10px;background:transparent;color:rgba(255,255,255,0.4);font-size:11px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+        <i class="fa-solid fa-pencil-alt"></i> Aktivitas
+      </button>
+      <button id="main-tab-canvasing" onclick="setMainAktivitasTab('canvasing')"
+        style="flex:1;padding:9px;border-radius:10px;background:transparent;color:rgba(255,255,255,0.4);font-size:11px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden">
+        <i class="fa-solid fa-map-location-dot"></i> Canvas
       </button>
     </div>
 
@@ -412,6 +416,29 @@
           <div class="skeleton" style="height:64px;border-radius:12px"></div>
           <div class="skeleton" style="height:64px;border-radius:12px"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION: CANVASING ── -->
+    <div id="section-canvasing" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">Properti ditemukan di lapangan</p>
+        <div style="display:flex;gap:8px">
+          <button onclick="exportExcel('canvasing')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;border-radius:10px;padding:7px 11px;font-size:11px;cursor:pointer"><i class="fa-solid fa-file-excel"></i></button>
+          <button onclick="openCanvasingModal()" style="background:#D4A853;color:#0D1526;border:none;border-radius:10px;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer"><i class="fa-solid fa-plus" style="margin-right:5px"></i>Tambah</button>
+        </div>
+      </div>
+      <div class="scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px">
+        <button onclick="filterCanvasing('')"                id="cf-all"       class="chip on">Semua</button>
+        <button onclick="filterCanvasing('Deal')"            id="cf-deal"      class="chip">🤝 Deal</button>
+        <button onclick="filterCanvasing('Tertarik')"        id="cf-tertarik"  class="chip">✅ Tertarik</button>
+        <button onclick="filterCanvasing('Follow Up')"       id="cf-fu"        class="chip">🔄 Follow Up</button>
+        <button onclick="filterCanvasing('Tidak Tertarik')"  id="cf-tidak"     class="chip">❌ Tidak Tertarik</button>
+        <button onclick="filterCanvasing('__converted')"     id="cf-converted" class="chip">🏠 Converted</button>
+      </div>
+      <div id="canvasing-list" style="display:flex;flex-direction:column;gap:10px">
+        <div class="skeleton" style="height:90px;border-radius:14px"></div>
+        <div class="skeleton" style="height:90px;border-radius:14px"></div>
       </div>
     </div>
 
@@ -983,6 +1010,75 @@
   </div>
 
   </main>
+
+  <!-- MODAL: Canvasing Form -->
+  <div id="modal-canvasing" class="modal-overlay" style="display:none">
+    <div class="modal-sheet">
+      <div class="mheader">
+        <div class="drag-handle"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <h3 id="modal-canvasing-title" style="font-family:'DM Serif Display',serif;font-size:17px;color:#fff">Tambah Canvasing</h3>
+          <button onclick="closeModal('modal-canvasing')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+      <div class="mbody" style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label class="form-label">Tanggal Canvasing *</label>
+            <input id="cv-tanggal" type="date" class="form-input"/>
+          </div>
+          <div>
+            <label class="form-label">Tipe Properti</label>
+            <select id="cv-tipe" class="form-input">
+              <option value="">Pilih</option>
+              <option>Rumah</option><option>Ruko</option><option>Tanah</option>
+              <option>Apartemen</option><option>Gudang</option><option>Lainnya</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Alamat Properti *</label>
+          <input id="cv-alamat" type="text" placeholder="Jl. Contoh No.5, Kelurahan, Kecamatan, Kota" class="form-input"/>
+        </div>
+        <div>
+          <label class="form-label">Link Google Maps</label>
+          <input id="cv-maps-url" type="url" placeholder="https://maps.google.com/..." class="form-input"/>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label class="form-label">Nama Pemilik</label>
+            <input id="cv-nama-pemilik" type="text" placeholder="Nama pemilik" class="form-input"/>
+          </div>
+          <div>
+            <label class="form-label">No WA Pemilik</label>
+            <input id="cv-wa-pemilik" type="tel" placeholder="08xxx" class="form-input"/>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Estimasi Harga (Rp)</label>
+          <input id="cv-harga" type="number" placeholder="750000000" class="form-input"/>
+        </div>
+        <div>
+          <label class="form-label">Hasil Canvasing *</label>
+          <select id="cv-hasil" class="form-input" onchange="toggleCanvasingFU()">
+            <option value="Follow Up">🔄 Follow Up</option>
+            <option value="Tertarik">✅ Tertarik</option>
+            <option value="Deal">🤝 Deal — Buat Listing</option>
+            <option value="Tidak Tertarik">❌ Tidak Tertarik</option>
+          </select>
+        </div>
+        <div id="cv-fu-wrap">
+          <label class="form-label">Tanggal Follow Up</label>
+          <input id="cv-tanggal-fu" type="date" class="form-input"/>
+        </div>
+        <div>
+          <label class="form-label">Catatan</label>
+          <textarea id="cv-catatan" rows="2" placeholder="Catatan tambahan..." class="form-input" style="resize:none"></textarea>
+        </div>
+        <button id="cv-save-btn" onclick="saveCanvasing()" style="background:#D4A853;color:#0D1526;border:none;border-radius:10px;padding:13px;font-weight:700;font-size:13px;cursor:pointer;width:100%">Simpan</button>
+      </div>
+    </div>
+  </div>
 
   <!-- BOTTOM NAV -->
   <nav id="bottom-nav" style="position:fixed;bottom:0;left:0;right:0;z-index:40;background:rgba(13,21,38,0.97);border-top:1px solid rgba(255,255,255,0.07);backdrop-filter:blur(12px);padding-bottom:env(safe-area-inset-bottom,0px)">

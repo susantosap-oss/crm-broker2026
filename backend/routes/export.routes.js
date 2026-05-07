@@ -364,4 +364,51 @@ router.get('/payment', async (req, res) => {
   }
 });
 
+// ── GET /export/canvasing ─────────────────────────────────
+router.get('/canvasing', async (req, res) => {
+  try {
+    const raw = await sheetsService.getRange(SHEETS.CANVASING);
+    const [, ...data] = raw;
+    let records = data.map(r => rowToObj(r, COLUMNS.CANVASING)).filter(r => r.ID);
+
+    const { role, id: userId, nama } = req.user;
+    // Principal & superadmin lihat semua, role lain hanya milik sendiri
+    if (!['principal', 'superadmin'].includes(role)) {
+      records = records.filter(r => r.Agen_ID === userId);
+    }
+
+    const headers = [
+      'No', 'Tanggal', 'Agen', 'Alamat', 'Link GMaps',
+      'Nama Pemilik', 'No WA Pemilik', 'Tipe Properti', 'Estimasi Harga',
+      'Hasil', 'Catatan', 'Tgl FU', 'Status', 'Listing ID',
+    ];
+    const rows = records.map((r, i) => [
+      i + 1,
+      fmtDate(r.Tanggal_Canvasing),
+      r.Agen_Nama,
+      r.Alamat,
+      r.Maps_URL || '',
+      r.Nama_Pemilik,
+      r.No_WA_Pemilik,
+      r.Tipe_Properti,
+      r.Estimasi_Harga,
+      r.Hasil,
+      r.Catatan,
+      fmtDate(r.Tanggal_FU),
+      r.Status,
+      r.Listing_ID,
+    ]);
+
+    await sendExcel(res, {
+      title:    `DATA CANVASING - ${nama} ${todayDisplay()}`,
+      headers,
+      rows,
+      filename: `canvasing-${todayFile()}.xlsx`,
+    });
+  } catch (e) {
+    console.error('[Export/canvasing]', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 module.exports = router;

@@ -56,6 +56,7 @@ const SHEETS = {
   WA_CONTACTS:   'WA_CONTACTS',
   // ★ Fitur 5 — Laporan Transaksi
   PAYMENT_STAGES: 'PAYMENT_STAGES',
+  CANVASING:      'CANVASING',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -532,6 +533,27 @@ const COLUMNS = {
     'Agen_Selling_Nama',  // Q ★ Nama agen selling
     'CoBroke',            // R ★ TRUE jika cobroke dengan agen lain
     'Hasil_FU_Reminder',  // S ★ Catatan hasil follow-up reminder perpanjang
+  ],
+
+  // ★ CANVASING — Data canvasing lapangan agen
+  CANVASING: [
+    'ID',                // A  UUID
+    'Tanggal_Canvasing', // B  ISO date
+    'Agen_ID',           // C  FK ke AGENTS
+    'Agen_Nama',         // D  denormalized
+    'Alamat',            // E  Alamat properti yang ditemukan
+    'Maps_URL',          // F  Link Google Maps
+    'Nama_Pemilik',      // G  Nama pemilik properti
+    'No_WA_Pemilik',     // H  No WA pemilik
+    'Tipe_Properti',     // I  Rumah|Ruko|Tanah|Apartemen|Gudang|dll
+    'Estimasi_Harga',    // J  Estimasi harga (angka)
+    'Hasil',             // K  Tertarik|Follow Up|Tidak Tertarik
+    'Catatan',           // L
+    'Tanggal_FU',        // M  Tanggal follow up rencana
+    'Status',            // N  Aktif|Converted|Tidak Jadi
+    'Listing_ID',        // O  FK ke LISTING jika sudah dikonversi
+    'Created_At',        // P
+    'Updated_At',        // Q
   ],
 
   // ★ PAYMENT_STAGES — Tahap pembayaran per transaksi (1 row per lead)

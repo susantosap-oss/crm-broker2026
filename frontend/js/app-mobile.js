@@ -2814,30 +2814,30 @@ let _aktSubTab      = 'saya';     // 'saya' | 'tim'
 
 function setMainAktivitasTab(tab) {
   _aktMainTab = tab;
-  const isJadwal = tab === 'jadwal';
 
-  // Toggle main tab buttons
-  const btnJ = document.getElementById('main-tab-jadwal');
-  const btnA = document.getElementById('main-tab-aktivitas');
-  if (btnJ) { btnJ.style.background = isJadwal ? 'rgba(212,168,83,0.2)' : 'transparent'; btnJ.style.color = isJadwal ? '#D4A853' : 'rgba(255,255,255,0.4)'; }
-  if (btnA) { btnA.style.background = isJadwal ? 'transparent' : 'rgba(212,168,83,0.2)'; btnA.style.color = isJadwal ? 'rgba(255,255,255,0.4)' : '#D4A853'; }
+  // Toggle all 3 tab buttons
+  ['jadwal','aktivitas','canvasing'].forEach(t => {
+    const btn = document.getElementById(`main-tab-${t}`);
+    if (btn) {
+      btn.style.background = t === tab ? 'rgba(212,168,83,0.2)' : 'transparent';
+      btn.style.color      = t === tab ? '#D4A853' : 'rgba(255,255,255,0.4)';
+    }
+  });
 
   // Toggle sections
-  const sJ = document.getElementById('section-jadwal');
-  const sA = document.getElementById('section-aktivitas');
-  if (sJ) sJ.style.display = isJadwal ? 'block' : 'none';
-  if (sA) sA.style.display = isJadwal ? 'none' : 'block';
+  document.getElementById('section-jadwal')    && (document.getElementById('section-jadwal').style.display    = tab === 'jadwal'    ? 'block' : 'none');
+  document.getElementById('section-aktivitas') && (document.getElementById('section-aktivitas').style.display = tab === 'aktivitas' ? 'block' : 'none');
+  document.getElementById('section-canvasing') && (document.getElementById('section-canvasing').style.display = tab === 'canvasing' ? 'block' : 'none');
 
-  if (!isJadwal) {
-    // Tampilkan sub-tab Saya|Tim hanya untuk role yang bisa lihat tim
+  if (tab === 'aktivitas') {
     const canSeeTim = ['business_manager', 'principal', 'kantor', 'superadmin'].includes(STATE.user?.role);
     const subContainer = document.getElementById('akt-subtab-container');
     if (subContainer) subContainer.style.display = canSeeTim ? 'flex' : 'none';
-
-    // Load sesuai sub-tab aktif (atau reset ke saya jika tidak bisa lihat tim)
     if (_aktSubTab === 'tim' && canSeeTim) loadAktivitasTim();
     else { _aktSubTab = 'saya'; loadAktivitasHarian(); }
   }
+
+  if (tab === 'canvasing') loadCanvasing();
 }
 
 function setAktSubTab(tab) {
@@ -3432,8 +3432,15 @@ async function submitAddListing() {
       await API.put(`/listings/${_editListingId}`, formData, true);
       showToast('✅ Listing berhasil diupdate!', 'success');
     } else {
-      await API.post('/listings', formData, true);
+      const newListing = await API.post('/listings', formData, true);
       showToast('✅ Listing berhasil ditambahkan!', 'success');
+      // Jika dari konversi canvasing → mark converted
+      if (_convertingCanvasingId) {
+        const newId = newListing?.data?.ID || newListing?.ID || '';
+        await API.patch(`/canvasing/${_convertingCanvasingId}`, { Status: 'Converted', Listing_ID: newId }).catch(() => {});
+        _convertingCanvasingId = null;
+        if (STATE.currentPage === 'canvasing') loadCanvasing();
+      }
     }
 
     resetListingModal();
@@ -6637,6 +6644,200 @@ function checkPrimaryDeeplink() {
 //
 // Dan di bagian update nav buttons di navigateTo():
 //   document.getElementById('nav-primary')?.classList.toggle('active', page === 'primary');
+
+// ── Canvasing ─────────────────────────────────────────
+let _canvasingData   = [];
+let _canvasingFilter = '';
+let _editCanvasingId = null;
+
+async function loadCanvasing() {
+  const list = document.getElementById('canvasing-list');
+  if (!list) return;
+  list.innerHTML = '<div class="skeleton" style="height:90px;border-radius:14px"></div>'.repeat(3);
+  try {
+    const res = await API.get('/canvasing');
+    _canvasingData = res.data || [];
+    renderCanvasingList();
+  } catch (e) {
+    list.innerHTML = `<div style="color:#f87171;text-align:center;padding:30px;font-size:13px">${e.message}</div>`;
+  }
+}
+
+function filterCanvasing(val) {
+  _canvasingFilter = val;
+  document.querySelectorAll('[id^="cf-"]').forEach(b => b.classList.remove('on'));
+  const map = { '': 'cf-all', 'Deal': 'cf-deal', 'Tertarik': 'cf-tertarik', 'Follow Up': 'cf-fu', 'Tidak Tertarik': 'cf-tidak', '__converted': 'cf-converted' };
+  const btn = document.getElementById(map[val]);
+  if (btn) btn.classList.add('on');
+  renderCanvasingList();
+}
+
+function renderCanvasingList() {
+  const list = document.getElementById('canvasing-list');
+  if (!list) return;
+  let data = [..._canvasingData];
+  if (_canvasingFilter === '__converted') {
+    data = data.filter(r => r.Status === 'Converted');
+  } else if (_canvasingFilter) {
+    data = data.filter(r => r.Hasil === _canvasingFilter && r.Status !== 'Converted');
+  }
+  if (!data.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3);font-size:13px">Belum ada data canvasing</div>';
+    return;
+  }
+  const hasilColor = { 'Deal':'#818cf8', 'Tertarik':'#4ade80', 'Follow Up':'#D4A853', 'Tidak Tertarik':'#f87171' };
+  list.innerHTML = data.map(r => {
+    const hc = r.Status === 'Converted' ? '#818cf8' : (hasilColor[r.Hasil] || '#6B7280');
+    const label = r.Status === 'Converted' ? '🏠 Converted' : r.Hasil === 'Deal' ? '🤝 Deal' : (r.Hasil || '—');
+    return `
+    <div style="background:#131F38;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.06)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">${escapeHtml(r.Nama_Pemilik||'Pemilik tidak dicatat')}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(r.Alamat||'—')}</div>
+        </div>
+        <span style="font-size:10px;padding:3px 9px;border-radius:6px;background:${hc}18;color:${hc};font-weight:600;white-space:nowrap;margin-left:8px">${label}</span>
+      </div>
+      <div style="display:flex;gap:12px;font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:10px;flex-wrap:wrap">
+        ${r.Tipe_Properti ? `<span><i class="fa-solid fa-house" style="margin-right:3px"></i>${escapeHtml(r.Tipe_Properti)}</span>` : ''}
+        ${r.Estimasi_Harga ? `<span><i class="fa-solid fa-tag" style="margin-right:3px"></i>${formatRupiah(r.Estimasi_Harga)}</span>` : ''}
+        <span><i class="fa-solid fa-calendar" style="margin-right:3px"></i>${r.Tanggal_Canvasing||'—'}</span>
+        ${r.Tanggal_FU ? `<span style="color:#D4A853"><i class="fa-solid fa-clock" style="margin-right:3px"></i>FU: ${r.Tanggal_FU}</span>` : ''}
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="openEditCanvasing('${escapeHtml(r.ID)}')"
+          style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);border-radius:8px;padding:8px;font-size:11px;cursor:pointer">
+          <i class="fa-solid fa-pen" style="margin-right:4px"></i>Edit
+        </button>
+        ${r.Maps_URL ? `
+        <button onclick="window.open('${escapeHtml(r.Maps_URL)}','_blank')"
+          style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);color:#4ade80;border-radius:8px;padding:8px 12px;font-size:11px;cursor:pointer">
+          <i class="fa-solid fa-map-location-dot"></i>
+        </button>` : ''}
+        ${(['Tertarik','Deal'].includes(r.Hasil) && r.Status !== 'Converted') ? `
+        <button onclick="convertCanvasingToListing('${escapeHtml(r.ID)}')"
+          style="flex:1;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.25);color:#D4A853;border-radius:8px;padding:8px;font-size:11px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-house-circle-check" style="margin-right:4px"></i>Konversi ke Listing
+        </button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openCanvasingModal() {
+  _editCanvasingId = null;
+  document.getElementById('modal-canvasing-title').textContent = 'Tambah Canvasing';
+  document.getElementById('cv-tanggal').value       = new Date().toISOString().slice(0,10);
+  document.getElementById('cv-tipe').value           = '';
+  document.getElementById('cv-alamat').value         = '';
+  document.getElementById('cv-maps-url').value       = '';
+  document.getElementById('cv-nama-pemilik').value   = '';
+  document.getElementById('cv-wa-pemilik').value     = '';
+  document.getElementById('cv-harga').value          = '';
+  document.getElementById('cv-hasil').value          = 'Follow Up';
+  document.getElementById('cv-tanggal-fu').value     = '';
+  document.getElementById('cv-catatan').value        = '';
+  toggleCanvasingFU();
+  openModal('modal-canvasing');
+}
+
+function openEditCanvasing(id) {
+  const r = _canvasingData.find(x => x.ID === id);
+  if (!r) return;
+  _editCanvasingId = id;
+  document.getElementById('modal-canvasing-title').textContent = 'Edit Canvasing';
+  document.getElementById('cv-tanggal').value       = r.Tanggal_Canvasing || '';
+  document.getElementById('cv-tipe').value           = r.Tipe_Properti    || '';
+  document.getElementById('cv-alamat').value         = r.Alamat            || '';
+  document.getElementById('cv-maps-url').value       = r.Maps_URL          || '';
+  document.getElementById('cv-nama-pemilik').value   = r.Nama_Pemilik      || '';
+  document.getElementById('cv-wa-pemilik').value     = r.No_WA_Pemilik     || '';
+  document.getElementById('cv-harga').value          = r.Estimasi_Harga    || '';
+  document.getElementById('cv-hasil').value          = r.Hasil             || 'Follow Up';
+  document.getElementById('cv-tanggal-fu').value     = r.Tanggal_FU        || '';
+  document.getElementById('cv-catatan').value        = r.Catatan           || '';
+  toggleCanvasingFU();
+  openModal('modal-canvasing');
+}
+
+function toggleCanvasingFU() {
+  const hasil = document.getElementById('cv-hasil')?.value;
+  const wrap  = document.getElementById('cv-fu-wrap');
+  // Sembunyikan FU untuk Tidak Tertarik dan Deal (langsung buat listing)
+  if (wrap) wrap.style.display = ['Tidak Tertarik', 'Deal'].includes(hasil) ? 'none' : 'block';
+}
+
+async function saveCanvasing() {
+  const alamat = document.getElementById('cv-alamat')?.value?.trim();
+  if (!alamat) { showToast('Alamat wajib diisi', 'warning'); return; }
+
+  const btn = document.getElementById('cv-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
+
+  const body = {
+    Tanggal_Canvasing: document.getElementById('cv-tanggal')?.value,
+    Tipe_Properti:     document.getElementById('cv-tipe')?.value,
+    Alamat:            alamat,
+    Maps_URL:          document.getElementById('cv-maps-url')?.value?.trim(),
+    Nama_Pemilik:      document.getElementById('cv-nama-pemilik')?.value?.trim(),
+    No_WA_Pemilik:     document.getElementById('cv-wa-pemilik')?.value?.trim(),
+    Estimasi_Harga:    document.getElementById('cv-harga')?.value,
+    Hasil:             document.getElementById('cv-hasil')?.value,
+    Tanggal_FU:        document.getElementById('cv-tanggal-fu')?.value,
+    Catatan:           document.getElementById('cv-catatan')?.value?.trim(),
+  };
+
+  try {
+    let savedId;
+    if (_editCanvasingId) {
+      await API.patch(`/canvasing/${_editCanvasingId}`, body);
+      savedId = _editCanvasingId;
+      showToast('✅ Data canvasing diupdate', 'success');
+    } else {
+      const res = await API.post('/canvasing', body);
+      savedId = res.data?.ID || res.ID || null;
+      showToast('✅ Canvasing tersimpan', 'success');
+    }
+    closeModal('modal-canvasing');
+    await loadCanvasing();
+
+    // Jika Hasil = Deal → otomatis buka modal Add Listing
+    if (body.Hasil === 'Deal' && savedId) {
+      setTimeout(() => convertCanvasingToListing(savedId, body), 350);
+    }
+  } catch (e) {
+    showToast(e.message || 'Gagal menyimpan', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Simpan'; }
+  }
+}
+
+// Konversi canvasing → pre-fill form add listing
+// canvasingData opsional: fallback jika belum ada di _canvasingData
+let _convertingCanvasingId = null;
+
+function convertCanvasingToListing(canvasingId, canvasingData) {
+  const r = _canvasingData.find(x => x.ID === canvasingId) || canvasingData || {};
+  if (!r.Alamat && !r.Tipe_Properti) return;
+  _convertingCanvasingId = canvasingId;
+  _clearListingForm();
+
+  // Pre-fill data dari canvasing
+  setVal('add-tipe',         r.Tipe_Properti    || '');
+  setVal('add-transaksi',    'Jual');
+  setVal('add-harga',        r.Estimasi_Harga   || '');
+  setVal('add-nama-pemilik', r.Nama_Pemilik      || '');
+  setVal('add-deskripsi',    `Alamat: ${r.Alamat}${r.Maps_URL ? '\nMaps: ' + r.Maps_URL : ''}${r.Catatan ? '\n\n' + r.Catatan : ''}`);
+  if (r.Estimasi_Harga) {
+    const hEl = document.getElementById('add-harga');
+    if (hEl) previewHargaFormat(hEl, 'add-harga-preview');
+  }
+
+  const titleEl = document.getElementById('modal-listing-title');
+  if (titleEl) titleEl.textContent = 'Listing dari Canvasing';
+
+  openModal('modal-add-listing');
+}
 
 // ── Export Excel ──────────────────────────────────────
 // sheet: 'leads' | 'listings' | 'agents' | 'rental' | 'payment'

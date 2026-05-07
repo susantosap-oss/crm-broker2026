@@ -126,6 +126,8 @@ app.use('/api/v1/seo',            require('./routes/seo.routes'));
 app.use('/api/v1/export',         require('./routes/export.routes'));
 // ★ Payment Stages
 app.use('/api/v1/payment',        require('./routes/payment.routes'));
+// ★ Canvasing
+app.use('/api/v1/canvasing',      require('./routes/canvasing.routes'));
 // ★ Fitur 2 — Meta/Zapier Webhook + Config API
 // Semua rute webhook (meta, zapier, config) dihandle satu router
 const webhookRouter = require('./routes/meta-webhook.routes');
@@ -239,6 +241,8 @@ async function migrateHeaders() {
     // ★ Fitur 5 — Laporan Transaksi
     { sheet: SHEETS.LEGAL_DOCS,      cols: COLUMNS.LEGAL_DOCS },
     { sheet: SHEETS.PAYMENT_STAGES,  cols: COLUMNS.PAYMENT_STAGES },
+    // ★ Fitur 6 — Canvasing
+    { sheet: SHEETS.CANVASING,       cols: COLUMNS.CANVASING },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)
