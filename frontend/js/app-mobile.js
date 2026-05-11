@@ -2741,24 +2741,24 @@ function renderHotLeads(leads) {
   if (!leads.length) { el.innerHTML = emptyState('Tidak ada hot leads saat ini 🎉'); return; }
 
   el.innerHTML = leads.map(l => {
-    const nextFU = l.Next_Follow_Up ? formatRelativeDate(l.Next_Follow_Up) : null;
-    const isOverdue = l.Next_Follow_Up && new Date(l.Next_Follow_Up) < new Date();
+    const nextFU = l.next_follow_up ? formatRelativeDate(l.next_follow_up) : null;
+    const isOverdue = l.next_follow_up && new Date(l.next_follow_up) < new Date();
     return `
-      <div onclick="openLeadDetail('${escapeHtml(l.ID)}')"
+      <div onclick="openLeadDetail('${escapeHtml(l.id)}')"
         style="display:flex;align-items:center;gap:12px;background:#131F38;border:1px solid rgba(239,68,68,0.15);border-radius:14px;padding:14px 16px;cursor:pointer;transition:border-color 0.2s"
         onmouseenter="this.style.borderColor='rgba(239,68,68,0.35)'" onmouseleave="this.style.borderColor='rgba(239,68,68,0.15)'">
         <div style="width:40px;height:40px;border-radius:12px;background:rgba(239,68,68,0.12);display:flex;align-items:center;justify-content:center;font-weight:700;color:#ef4444;font-size:15px;flex-shrink:0">
-          ${escapeHtml((l.Nama||'L').charAt(0).toUpperCase())}
+          ${escapeHtml((l.nama||'?').charAt(0).toUpperCase())}
         </div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-            <span style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(l.Nama||'—')}</span>
+            <span style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(l.nama||'—')}</span>
             <span style="flex-shrink:0;font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.15);color:#ef4444">🔥 Hot</span>
           </div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.35);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(l.Properti_Diminati||l.Minat_Tipe||'—')}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.35);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(l.properti||l.sumber||'—')}</div>
           ${nextFU ? `<div style="font-size:10px;margin-top:3px;color:${isOverdue?'#ef4444':'rgba(255,255,255,0.3)'}">${isOverdue?'⚠️':'🕐'} ${nextFU}</div>` : ''}
         </div>
-        <button onclick="event.stopPropagation();openWA('${escapeHtml(l.No_WA||'')}')"
+        <button onclick="event.stopPropagation();openWA('${escapeHtml(l.no_wa||'')}')"
           style="width:36px;height:36px;border-radius:10px;background:rgba(34,197,94,0.12);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <i class="fa-brands fa-whatsapp" style="color:#22C55E;font-size:16px"></i>
         </button>
@@ -2790,8 +2790,8 @@ function renderUpcomingTasks(tasks) {
           ${tipeIcon[t.Tipe]||'📋'}
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(t.Judul||t.Tipe)}</div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:1px">${timeStr} · ${escapeHtml(t.Lead_Nama||'Tanpa lead')}</div>
+          <div style="font-size:12px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml([t.Tipe,t.Lead_Nama,t.Lokasi].filter(Boolean).join(' · ')||t.Judul||t.Tipe)}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:1px">${timeStr}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
           <div style="width:6px;height:6px;border-radius:50%;background:${prioritasColor}"></div>
