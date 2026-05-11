@@ -153,7 +153,7 @@ class TasksService {
       ID:                    id,
       Kode_Task:             kode,
       Tipe:                  payload.Tipe || 'Follow_Up',
-      Judul:                 payload.Judul || `${payload.Tipe || 'Follow Up'} — ${leadCache.Lead_Nama || ''}`,
+      Judul:                 payload.Judul || [payload.Tipe || 'Follow Up', leadCache.Lead_Nama, payload.Lokasi].filter(Boolean).join(' · '),
       Status:                'Pending',
       Prioritas:             payload.Prioritas || 'Sedang',
       Lead_ID:               payload.Lead_ID || '',

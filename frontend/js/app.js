@@ -455,6 +455,8 @@ function renderTodayTasks(tasks) {
     const color = isOverdue ? '#EF4444' : (tipeColors[t.Tipe] || '#94a3b8');
     const icon  = tipeIcons[t.Tipe] || 'fa-circle-dot';
 
+    const titleParts = [t.Tipe, t.Lead_Nama, t.Lokasi].filter(Boolean);
+    const titleDisplay = titleParts.length > 1 ? titleParts.join(' · ') : (t.Judul || t.Tipe);
     return `
       <div class="card-glass rounded-2xl p-4 task-card ${t.Tipe?.toLowerCase()} ${isOverdue ? 'overdue' : ''}
            flex items-center gap-3 cursor-pointer active:scale-[.98] transition-transform"
@@ -464,10 +466,9 @@ function renderTodayTasks(tasks) {
           <i class="fa-solid ${icon} text-sm" style="color:${color}"></i>
         </div>
         <div class="flex-1 min-w-0">
-          <p class="font-semibold text-white text-sm truncate">${escHtml(t.Judul)}</p>
+          <p class="font-semibold text-white text-sm truncate">${escHtml(titleDisplay)}</p>
           <p class="text-xs mt-0.5" style="color:${isOverdue?'#f87171':'#94a3b8'}">
             ${isOverdue ? '⚠️ Overdue · ' : ''}${formatTime(t.Scheduled_At)}
-            ${t.Lead_Nama ? ` · ${escHtml(t.Lead_Nama)}` : ''}
           </p>
         </div>
         ${t.Status === 'Done' ? `<i class="fa-solid fa-circle-check text-green-400 flex-shrink-0"></i>` :
@@ -781,6 +782,8 @@ function renderTasksList(tasks, statusFilter = 'all', dateFilter = null) {
     const color = isOverdue ? '#EF4444' : (tipeColors[t.Tipe] || '#64748B');
     const icon  = tipeIcons[t.Tipe] || 'fa-circle-dot';
     const pDot  = priorityDot[t.Prioritas] || '#64748B';
+    const titleParts = [t.Tipe, t.Lead_Nama, t.Lokasi].filter(Boolean);
+    const titleDisplay = titleParts.length > 1 ? titleParts.join(' · ') : (t.Judul || t.Tipe);
 
     return `
       <div class="card-glass rounded-2xl p-4 task-card ${t.Tipe?.toLowerCase()} ${isOverdue ? 'overdue' : ''}
@@ -796,13 +799,11 @@ function renderTasksList(tasks, statusFilter = 'all', dateFilter = null) {
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                   <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${pDot}"></div>
-                  <p class="font-semibold text-white text-sm truncate">${escHtml(t.Judul)}</p>
+                  <p class="font-semibold text-white text-sm truncate">${escHtml(titleDisplay)}</p>
                 </div>
                 <p class="text-xs mt-1" style="color:${isOverdue?'#f87171':'#94a3b8'}">
                   ${isOverdue ? '⚠️ ' : '⏰ '}${formatDateTime(t.Scheduled_At)}
                 </p>
-                ${t.Lead_Nama ? `<p class="text-xs text-slate-500 mt-0.5 truncate"><i class="fa-solid fa-user mr-1"></i>${escHtml(t.Lead_Nama)}</p>` : ''}
-                ${t.Lokasi ? `<p class="text-xs text-slate-500 mt-0.5 truncate"><i class="fa-solid fa-location-dot mr-1 text-gold"></i>${escHtml(t.Lokasi)}</p>` : ''}
               </div>
               <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
                 ${t.Status === 'Done'

@@ -3093,6 +3093,8 @@ function renderTasksList(tasks) {
     const d = t.Scheduled_At ? new Date(t.Scheduled_At) : null;
     const timeStr = d ? d.toLocaleString('id-ID', {weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
     const sc = statusColor[t.Status] || '#6B7280';
+    const titleParts = [t.Tipe, t.Lead_Nama, t.Lokasi].filter(Boolean);
+    const titleDisplay = titleParts.length > 1 ? titleParts.join(' · ') : (t.Judul || t.Tipe);
 
     return `
       <div onclick="openTaskDetail('${escapeHtml(t.ID)}')"
@@ -3102,9 +3104,9 @@ function renderTasksList(tasks) {
           ${tipeIcon[t.Tipe]||'📋'}
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px">${escapeHtml(t.Judul||t.Tipe)}</div>
+          <div style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px">${escapeHtml(titleDisplay)}</div>
           <div style="font-size:10px;color:rgba(255,255,255,0.35)">${timeStr}</div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:1px">${escapeHtml(t.Lead_Nama||'')}${t.Listing_Kode?' · '+escapeHtml(t.Listing_Kode):''}</div>
+          ${t.Listing_Kode ? `<div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:1px">${escapeHtml(t.Listing_Kode)}</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
           <span style="font-size:9px;font-weight:600;padding:3px 8px;border-radius:6px;background:${sc}18;color:${sc}">${t.Status}</span>
@@ -3115,9 +3117,77 @@ function renderTasksList(tasks) {
   }).join('');
 }
 
-function openTaskDetail(id) {
-  // Basic — show toast for now, full detail can be extended
-  showToast('Tap tombol Done untuk selesaikan jadwal', 'info');
+async function openTaskDetail(id) {
+  openModal('modal-task-detail');
+  const contentEl = document.getElementById('task-detail-content');
+  contentEl.innerHTML = '<div style="text-align:center;padding:32px;color:rgba(255,255,255,0.3)"><i class="fa-solid fa-spinner fa-spin" style="font-size:22px"></i></div>';
+
+  try {
+    const res = await API.get(`/tasks/${id}`);
+    const t = res.data;
+    const tipeIcon  = { Visit:'🏠', Meeting:'🤝', Follow_Up:'📞', Call:'📱', Admin:'📄' };
+    const tipeColor = { Visit:'#F97316', Meeting:'#A855F7', Follow_Up:'#3B82F6', Call:'#22C55E', Admin:'#64748B' };
+    const color = tipeColor[t.Tipe] || '#64748B';
+    const icon  = tipeIcon[t.Tipe] || '📋';
+    const titleParts = [t.Tipe, t.Lead_Nama, t.Lokasi].filter(Boolean);
+    const titleDisplay = titleParts.length > 1 ? titleParts.join(' · ') : (t.Judul || t.Tipe);
+    const d = t.Scheduled_At ? new Date(t.Scheduled_At) : null;
+    const timeStr = d ? d.toLocaleString('id-ID', {weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+    const isDone = ['Done','Cancelled'].includes(t.Status);
+
+    contentEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+        <div style="width:48px;height:48px;border-radius:14px;background:${color}22;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${icon}</div>
+        <div style="min-width:0">
+          <div style="font-size:15px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(titleDisplay)}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${escapeHtml(t.Kode_Task||'')} · ${escapeHtml(t.Tipe||'')}</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;margin-bottom:20px">
+        <div style="display:flex;gap:12px"><span style="color:rgba(255,255,255,0.35);width:72px;flex-shrink:0">Waktu</span><span style="color:rgba(255,255,255,0.85)">${timeStr}</span></div>
+        ${t.Lead_Nama ? `<div style="display:flex;gap:12px"><span style="color:rgba(255,255,255,0.35);width:72px;flex-shrink:0">Lead</span><span style="color:rgba(255,255,255,0.85)">${escapeHtml(t.Lead_Nama)}</span></div>` : ''}
+        ${t.Lokasi    ? `<div style="display:flex;gap:12px"><span style="color:rgba(255,255,255,0.35);width:72px;flex-shrink:0">Lokasi</span><span style="color:rgba(255,255,255,0.85)">${escapeHtml(t.Lokasi)}</span></div>` : ''}
+        ${t.Catatan_Pre ? `<div style="display:flex;gap:12px"><span style="color:rgba(255,255,255,0.35);width:72px;flex-shrink:0">Catatan</span><span style="color:rgba(255,255,255,0.85)">${escapeHtml(t.Catatan_Pre)}</span></div>` : ''}
+        <div style="display:flex;gap:12px"><span style="color:rgba(255,255,255,0.35);width:72px;flex-shrink:0">Status</span>
+          <span style="font-weight:600;color:${t.Status==='Done'?'#22C55E':t.Status==='Cancelled'?'#64748B':'#F59E0B'}">${t.Status}</span>
+        </div>
+      </div>
+      ${!isDone ? `
+        <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:16px;display:flex;flex-direction:column;gap:10px">
+          <select id="td-outcome" class="form-input">
+            <option value="">Pilih outcome hasil kunjungan…</option>
+            <option value="Lanjut_Negosiasi">Lanjut Negosiasi ↗</option>
+            <option value="Butuh_Followup">Butuh Follow Up lagi</option>
+            <option value="Deal">DEAL 🎉</option>
+            <option value="Batal">Batal ✗</option>
+            <option value="Reschedule">Reschedule</option>
+          </select>
+          <textarea id="td-catatan-post" rows="2" placeholder="Catatan hasil (opsional)" class="form-input" style="resize:none"></textarea>
+          <button onclick="submitTaskDetailComplete('${escapeHtml(t.ID)}')" class="btn-gold" style="width:100%">
+            <i class="fa-solid fa-circle-check" style="margin-right:8px"></i>Tandai Selesai
+          </button>
+        </div>
+      ` : ''}
+    `;
+  } catch(e) {
+    contentEl.innerHTML = '<div style="text-align:center;padding:32px;color:rgba(255,255,255,0.3);font-size:13px">Gagal memuat detail jadwal</div>';
+  }
+}
+
+async function submitTaskDetailComplete(id) {
+  const outcome    = document.getElementById('td-outcome')?.value;
+  const catatanPost = document.getElementById('td-catatan-post')?.value || '';
+  if (!outcome) { showToast('Pilih outcome terlebih dahulu', 'error'); return; }
+
+  try {
+    await API.patch(`/tasks/${id}/complete`, { outcome, catatan_post: catatanPost });
+    showToast('✅ Jadwal selesai! Pipeline lead diupdate.', 'success');
+    closeModal('modal-task-detail');
+    await loadDashboard();
+    if (STATE.currentPage === 'tasks') await setTaskTab(_currentTaskTab);
+  } catch(e) {
+    showToast('Gagal: ' + e.message, 'error');
+  }
 }
 
 // ─────────────────────────────────────────────────────────

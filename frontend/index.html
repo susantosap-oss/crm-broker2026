@@ -1869,6 +1869,20 @@
   </div>
 </div>
 
+<!-- MODAL: Task Detail -->
+<div id="modal-task-detail" class="modal-overlay">
+  <div class="modal-sheet" style="max-height:88vh">
+    <div class="mheader">
+      <div class="drag-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff">Detail Jadwal</h3>
+        <button onclick="closeModal('modal-task-detail')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="mbody" id="task-detail-content" style="overflow-y:auto"></div>
+  </div>
+</div>
+
 <!-- MODAL: Add Photo to Listing -->
 <div id="modal-add-photo-listing" class="modal-overlay">
   <div class="modal-sheet" style="max-height:85vh">
