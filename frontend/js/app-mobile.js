@@ -5218,7 +5218,8 @@ function buildProjectCard(p) {
     <div style="padding:14px">
       <p style="color:rgba(255,255,255,0.4);font-size:10px;margin:0 0 3px;text-transform:uppercase;letter-spacing:1px">${escapeHtml(p.Kode_Proyek)}</p>
       <h3 style="font-family:'DM Serif Display',serif;font-size:15px;color:#fff;margin:0 0 3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${escapeHtml(p.Nama_Proyek)}</h3>
-      <p style="color:#D4A853;font-size:12px;font-weight:600;margin:0 0 10px">${escapeHtml(p.Nama_Developer)}</p>
+      <p style="color:#D4A853;font-size:12px;font-weight:600;margin:0 0 4px">${escapeHtml(p.Nama_Developer)}</p>
+      ${(p.Kota || p.Kecamatan) ? `<p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0 0 8px">📍 ${escapeHtml([p.Kecamatan, p.Kota].filter(Boolean).join(', '))}</p>` : '<div style="margin-bottom:10px"></div>'}
 
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
@@ -5244,7 +5245,7 @@ function filterProjects() {
   const status = document.getElementById('primary-filter-status')?.value || '';
 
   const filtered = _projectsData.filter(p => {
-    const matchSearch = !search || [p.Nama_Proyek, p.Nama_Developer, p.Deskripsi].join(' ').toLowerCase().includes(search);
+    const matchSearch = !search || [p.Nama_Proyek, p.Nama_Developer, p.Deskripsi, p.Kota, p.Kecamatan].join(' ').toLowerCase().includes(search);
     const matchTipe   = !tipe   || p.Tipe_Properti === tipe;
     const matchStatus = !status || p.Status === status;
     return matchSearch && matchTipe && matchStatus;
@@ -5269,6 +5270,15 @@ async function openProjectDetail(id) {
   setEl('pd-deskripsi',   project.Deskripsi || '(tidak ada deskripsi)');
   setEl('pd-tipe-badge',  (({ Rumah: '🏡', Ruko: '🏪', Apartemen: '🏢', Gudang: '🏭' }[project.Tipe_Properti] || '🏠') + ' ' + (project.Tipe_Properti || '')));
   setEl('pd-cara-badge',  '💳 ' + (project.Cara_Bayar || '').replace(/,/g, ' · ') || '—');
+
+  // Lokasi (Kota + Kecamatan)
+  const lokasiEl   = document.getElementById('pd-lokasi');
+  const lokasiText = document.getElementById('pd-lokasi-text');
+  const lokasiStr  = [project.Kecamatan, project.Kota].filter(Boolean).join(', ');
+  if (lokasiEl && lokasiText) {
+    if (lokasiStr) { lokasiText.textContent = lokasiStr; lokasiEl.style.display = ''; }
+    else { lokasiEl.style.display = 'none'; }
+  }
 
   // Status badge
   const badge = document.getElementById('pd-status-badge');
@@ -5749,6 +5759,8 @@ function openAddProject() {
   document.getElementById('pf-harga-preview').textContent = '';
   document.getElementById('pf-deskripsi').value       = '';
   document.getElementById('pf-notes').value           = '';
+  document.getElementById('pf-kota').value            = '';
+  document.getElementById('pf-kecamatan').value       = '';
   document.querySelectorAll('.pf-cara').forEach(cb => cb.checked = false);
   resetProjectPhotoPreview(1);
   resetProjectPhotoPreview(2);
@@ -5797,6 +5809,8 @@ function editCurrentProject() {
   document.getElementById('pf-harga-preview').textContent = p.Harga_Format || '';
   document.getElementById('pf-deskripsi').value       = p.Deskripsi     || '';
   document.getElementById('pf-notes').value           = p.Notes         || '';
+  document.getElementById('pf-kota').value            = p.Kota          || '';
+  document.getElementById('pf-kecamatan').value       = p.Kecamatan     || '';
 
   // Cara bayar checkboxes
   const caraBayar = (p.Cara_Bayar || '').split(',').map(c => c.trim());
@@ -5864,6 +5878,8 @@ async function submitProjectForm() {
     Deskripsi:      document.getElementById('pf-deskripsi').value.trim(),
     Notes:          document.getElementById('pf-notes').value.trim(),
     Cara_Bayar:     [...document.querySelectorAll('.pf-cara:checked')].map(cb => cb.value),
+    Kota:           document.getElementById('pf-kota').value.trim(),
+    Kecamatan:      document.getElementById('pf-kecamatan').value.trim(),
   };
 
   // Koordinator — hanya jika role koordinator dan ada nilainya

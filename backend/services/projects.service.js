@@ -30,7 +30,7 @@ class ProjectsService {
     if (filters.search) {
       const q = filters.search.toLowerCase();
       projects = projects.filter(p =>
-        [p.Nama_Proyek, p.Nama_Developer, p.Tipe_Properti, p.Deskripsi]
+        [p.Nama_Proyek, p.Nama_Developer, p.Tipe_Properti, p.Deskripsi, p.Kota, p.Kecamatan]
           .join(' ').toLowerCase().includes(q)
       );
     }
@@ -92,6 +92,8 @@ class ProjectsService {
       Status_Project:    statusProject,
       Koordinator2_ID:   data.Koordinator2_ID   || '',
       Koordinator2_Nama: data.Koordinator2_Nama || '',
+      Kota:              data.Kota              || '',
+      Kecamatan:         data.Kecamatan         || '',
     };
 
     // Auto-generate caption setelah data lengkap
@@ -415,10 +417,14 @@ Tertarik? Hubungi saya untuk info lengkap & jadwal kunjungan! 🤝`;
     const tipe = (project.Tipe_Properti || '').toLowerCase().replace(/\s/g, '');
     const dev  = (project.Nama_Developer || '').replace(/\s/g, '').slice(0, 20);
     const proj = (project.Nama_Proyek || '').replace(/\s/g, '').slice(0, 25);
+    const kota = (project.Kota || '').toLowerCase().replace(/\s/g, '');
+    const kec  = (project.Kecamatan || '').toLowerCase().replace(/\s/g, '');
 
     const tags = [
       `#${proj}`, `#${dev}`,
       `#${tipe}baru`, `#proyek${tipe}`, `#propertiindonesia`,
+      kota ? `#${tipe}${kota}` : '', kota ? `#properti${kota}` : '',
+      kec  ? `#${kec}` : '',
       '#rumahidaman', '#investasiproperti', '#jualproperti',
       '#rumahmurah', '#properti2024', '#newlaunch',
       '#developer', '#perumahan', '#hunianimpian',

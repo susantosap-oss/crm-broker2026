@@ -50,8 +50,8 @@ class ViGenService {
   }
 
   // ── Auth token (cached, auto-refresh) ─────────────────────
-  async _getToken() {
-    if (this._token && Date.now() < this._tokenExpiry) return this._token;
+  async _getToken(forceRefresh = false) {
+    if (!forceRefresh && this._token && Date.now() < this._tokenExpiry) return this._token;
 
     const url  = process.env.VIGEN_URL;
     const user = process.env.VIGEN_USERNAME;
@@ -59,10 +59,24 @@ class ViGenService {
     if (!url || !user || !pass) throw new Error('VIGEN_URL / VIGEN_USERNAME / VIGEN_PASSWORD belum dikonfigurasi');
 
     const { data } = await axios.post(`${url}/api/login`, { username: user, password: pass }, { timeout: 15000 });
-    // ViGen login response: { token: '...' }
     this._token       = data.token || data.access_token;
-    this._tokenExpiry = Date.now() + 50 * 60 * 1000; // refresh tiap 50 menit
+    this._tokenExpiry = Date.now() + 50 * 60 * 1000;
     return this._token;
+  }
+
+  // Wrapper: auto-retry sekali dengan fresh token jika 401
+  async _axiosWithRetry(fn) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        console.warn('[ViGen] 401 → force refresh token dan retry');
+        this._token = null;
+        await this._getToken(true);
+        return await fn();
+      }
+      throw err;
+    }
   }
 
   _headers() {
@@ -116,10 +130,10 @@ class ViGenService {
       // 1. Login → dapat token
       await this._getToken();
 
-      // 2. Buat session
-      const { data: sess } = await axios.post(`${url}/api/session`, {}, {
-        headers: this._headers(), timeout: 15000,
-      });
+      // 2. Buat session (auto-retry jika token stale setelah redeploy)
+      const { data: sess } = await this._axiosWithRetry(() =>
+        axios.post(`${url}/api/session`, {}, { headers: this._headers(), timeout: 15000 })
+      );
       const sid = sess.sid;
       if (!sid) throw new Error('ViGen tidak mengembalikan session ID');
 

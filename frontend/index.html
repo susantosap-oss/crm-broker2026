@@ -2187,6 +2187,18 @@
           <p style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:8px;margin-bottom:0"><i class="fa-solid fa-info-circle" style="margin-right:4px"></i>Pilih 1–4 foto sekaligus. Ketuk foto untuk <strong style="color:#D4A853">★ Jadikan Utama</strong>.</p>
         </div>
 
+        <!-- Lokasi: Kota & Kecamatan (untuk SEO URL web) -->
+        <div style="margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label class="form-label">Nama Kota</label>
+            <input id="pf-kota" class="form-input" type="text" placeholder="Contoh: Surabaya"/>
+          </div>
+          <div>
+            <label class="form-label">Area / Kecamatan</label>
+            <input id="pf-kecamatan" class="form-input" type="text" placeholder="Contoh: Pakuwon"/>
+          </div>
+        </div>
+
         <!-- Notes (opsional) -->
         <div style="margin-bottom:20px">
           <label class="form-label">Catatan Internal <span style="color:rgba(255,255,255,0.4);font-size:11px">(opsional)</span></label>
@@ -2267,6 +2279,7 @@
             </div>
           </div>
           <p id="pd-developer" style="color:#D4A853;font-size:13px;font-weight:600;margin:0 0 4px"></p>
+          <p id="pd-lokasi" style="color:rgba(255,255,255,0.5);font-size:12px;margin:0 0 8px;display:none">📍 <span id="pd-lokasi-text"></span></p>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <span id="pd-tipe-badge" style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(43,123,255,0.15);color:#60a5fa"></span>
             <span id="pd-cara-badge" style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.6)"></span>

@@ -335,6 +335,8 @@ const COLUMNS = {
     'Koordinator2_Nama', // Y  ★ Nama koordinator 2 (tandem)
     'Foto_3_URL',        // Z  ★ Foto ketiga
     'Foto_4_URL',        // AA ★ Foto keempat
+    'Kota',              // AB ★ Nama Kota (untuk SEO URL web)
+    'Kecamatan',         // AC ★ Area/Kecamatan (untuk SEO URL web)
   ],
 
   // ★ PRIMARY — Shortlink tracking per agen

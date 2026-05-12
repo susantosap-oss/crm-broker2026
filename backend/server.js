@@ -190,6 +190,27 @@ async function migrateHeaders() {
     { sheet: SHEETS.RENTAL_STATUS,  cols: COLUMNS.RENTAL_STATUS },
   ];
 
+  // PROJECTS: enforce exact header (bukan append-only) agar tidak ada kolom duplikat
+  try {
+    const projRows = await sheetsService.getRange(SHEETS.PROJECTS);
+    if (projRows?.[0]) {
+      const existing = projRows[0];
+      const exactLen = COLUMNS.PROJECTS.length;
+      const mismatch = existing.length !== exactLen ||
+        COLUMNS.PROJECTS.some((col, i) => existing[i] !== col);
+      if (mismatch) {
+        // Tulis exact header; jika header lama lebih panjang, isi sisa dengan '' untuk hapus kolom ekstra
+        const writeHeader = existing.length > exactLen
+          ? [...COLUMNS.PROJECTS, ...new Array(existing.length - exactLen).fill('')]
+          : [...COLUMNS.PROJECTS];
+        await sheetsService.updateRow(SHEETS.PROJECTS, 1, writeHeader);
+        console.log(`✅ [Migrate] PROJECTS header corrected (was ${existing.length} cols → ${exactLen} cols)`);
+      }
+    }
+  } catch (e) {
+    console.warn('[Migrate] PROJECTS skipped:', e.message);
+  }
+
   // PAYMENT_STAGES: schema redesign — force replace header row (no production data yet)
   try {
     await sheetsService.updateRow(SHEETS.PAYMENT_STAGES, 1, COLUMNS.PAYMENT_STAGES);
