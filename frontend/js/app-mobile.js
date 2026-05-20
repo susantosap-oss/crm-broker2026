@@ -3364,6 +3364,46 @@ function autoGenerateJudul() {
 // Track edit mode
 let _editListingId = null;
 
+// ── Draft auto-save (persist form saat switch app di mobile) ──────────────
+const _LISTING_DRAFT_KEY = 'crm_listing_draft_v1';
+const _LISTING_DRAFT_FIELDS = [
+  'add-tipe','add-transaksi','add-judul','add-kota','add-kecamatan',
+  'add-harga','add-harga-permeter','add-deskripsi','add-caption',
+  'add-nama-pemilik','add-gmaps-personal'
+];
+
+function _saveDraftListing() {
+  if (_editListingId) return; // jangan simpan draft saat mode edit listing lama
+  const draft = {};
+  _LISTING_DRAFT_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) draft[id] = el.value;
+  });
+  try { localStorage.setItem(_LISTING_DRAFT_KEY, JSON.stringify(draft)); } catch(e) {}
+}
+
+function _restoreDraftListing() {
+  try {
+    const raw = localStorage.getItem(_LISTING_DRAFT_KEY);
+    if (!raw) return false;
+    const draft = JSON.parse(raw);
+    let hasData = false;
+    _LISTING_DRAFT_FIELDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && draft[id]) { el.value = draft[id]; hasData = true; }
+    });
+    const hEl  = document.getElementById('add-harga');
+    const pmEl = document.getElementById('add-harga-permeter');
+    if (hEl  && hEl.value)  previewHargaFormat(hEl,  'add-harga-preview');
+    if (pmEl && pmEl.value) previewHargaFormat(pmEl, 'add-harga-pm-preview');
+    return hasData;
+  } catch(e) { return false; }
+}
+
+function _clearDraftListing() {
+  try { localStorage.removeItem(_LISTING_DRAFT_KEY); } catch(e) {}
+}
+
 function _clearListingForm() {
   _editListingId = null;
   ['add-tipe','add-transaksi','add-judul','add-kota','add-kecamatan',
@@ -3392,12 +3432,15 @@ function _clearListingForm() {
 
 function resetListingModal() {
   _clearListingForm();
+  _clearDraftListing();
   closeModal('modal-add-listing');
 }
 
 function openNewListing() {
   _clearListingForm();
+  const restored = _restoreDraftListing();
   openModal('modal-add-listing');
+  if (restored) showToast('Draft dipulihkan — lanjut input', 'info');
 }
 
 // Open Edit Listing — pre-fill form with existing data
@@ -6997,3 +7040,11 @@ function _showExportScopeModal(sheet) {
 }
 // ── Expose showToast untuk pa-dashboard.js ──────────────
 window.showToast = showToast;
+
+// ── Auto-save draft listing: event delegation pada modal ──
+(function _initListingDraftAutoSave() {
+  const modal = document.getElementById('modal-add-listing');
+  if (!modal) return;
+  modal.addEventListener('input',  _saveDraftListing);
+  modal.addEventListener('change', _saveDraftListing);
+})();
