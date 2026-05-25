@@ -28,3 +28,8 @@ backend/sa-key.json
 _backup_v6_*/
 apply_fixes_v6.py
 .aider*
+
+# --- LOCAL ONLY ---
+CRM_MindMap*
+docx_gen/
+tutorial-agen.html
