@@ -546,13 +546,16 @@
   <div id="page-calculator" class="page">
     <div style="padding:20px 16px 12px">
       <h2 style="font-family:'DM Serif Display',serif;font-size:22px;color:#fff;margin-bottom:4px">Kalkulator Properti</h2>
-      <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:16px">Simulasi KPR &amp; Penilaian Appraisal</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <button id="calc-tab-kpr" onclick="switchCalcTab('kpr')" style="padding:11px;border-radius:12px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#D4A853;color:#0D1526">
-          <i class="fa-solid fa-house-chimney" style="margin-right:6px"></i>KPR
+      <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:16px">Simulasi KPR, Appraisal &amp; Investasi Properti</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <button id="calc-tab-kpr" onclick="switchCalcTab('kpr')" style="padding:11px;border-radius:12px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#D4A853;color:#0D1526">
+          <i class="fa-solid fa-house-chimney" style="margin-right:4px"></i>KPR
         </button>
-        <button id="calc-tab-appraisal" onclick="switchCalcTab('appraisal')" style="padding:11px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1)">
-          <i class="fa-solid fa-scale-balanced" style="margin-right:6px"></i>Appraisal
+        <button id="calc-tab-appraisal" onclick="switchCalcTab('appraisal')" style="padding:11px;border-radius:12px;cursor:pointer;font-size:12px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1)">
+          <i class="fa-solid fa-scale-balanced" style="margin-right:4px"></i>Appraisal
+        </button>
+        <button id="calc-tab-investasi" onclick="switchCalcTab('investasi')" style="padding:11px;border-radius:12px;cursor:pointer;font-size:12px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1)">
+          <i class="fa-solid fa-chart-line" style="margin-right:4px"></i>Investasi
         </button>
       </div>
     </div>
@@ -809,6 +812,160 @@
         <p style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.5;margin:0">Hasil appraisal bersifat estimasi internal. Nilai final harus dikonfirmasi oleh appraisal resmi bersertifikat.</p>
       </div>
     </div>
+  </div>
+
+  <!-- INVESTASI PROPERTI Section -->
+  <div id="calc-investasi" style="display:none;padding:0 16px 100px">
+
+    <!-- Jenis Properti -->
+    <div style="margin-bottom:16px">
+      <p style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Jenis Properti</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button id="inv-prop-rumah" onclick="invSelectProp('rumah')" style="padding:10px 8px;border-radius:12px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#D4A853;color:#0D1526;display:flex;flex-direction:column;align-items:center;gap:3px">
+          <span style="font-size:18px">🏠</span><span>Rumah Tinggal</span>
+        </button>
+        <button id="inv-prop-apartemen" onclick="invSelectProp('apartemen')" style="padding:10px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:12px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.55);display:flex;flex-direction:column;align-items:center;gap:3px">
+          <span style="font-size:18px">🏢</span><span>Apartemen</span>
+        </button>
+        <button id="inv-prop-ruko" onclick="invSelectProp('ruko')" style="padding:10px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:12px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.55);display:flex;flex-direction:column;align-items:center;gap:3px">
+          <span style="font-size:18px">🏪</span><span>Ruko / Komersial</span>
+        </button>
+        <button id="inv-prop-kos" onclick="invSelectProp('kos')" style="padding:10px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:12px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.55);display:flex;flex-direction:column;align-items:center;gap:3px">
+          <span style="font-size:18px">🛏️</span><span>Rumah Kos</span>
+        </button>
+        <button id="inv-prop-gudang" onclick="invSelectProp('gudang')" style="grid-column:1/-1;padding:10px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:12px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.55);display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px">
+          <span style="font-size:18px">🏭</span><span>Gudang / Industrial</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bagian 1: Modal Awal -->
+    <div style="background:#0D1526;border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid rgba(212,168,83,0.2)">
+      <p style="font-size:11px;color:#D4A853;margin-bottom:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em"><i class="fa-solid fa-coins" style="margin-right:6px"></i>Modal Awal</p>
+      <div style="display:grid;gap:10px">
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Harga Beli Properti <span style="color:#f87171">*</span></label>
+          <div style="position:relative">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.35);font-size:12px">Rp</span>
+            <input type="text" id="inv-harga-beli" inputmode="numeric" placeholder="2.500.000.000" oninput="invFormatInput(this);invAutoCalc()" style="width:100%;background:#080E1A;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px 10px 32px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <label style="font-size:11px;color:rgba(255,255,255,0.5)">Biaya Awal (BPHTB + Notaris + Renovasi)</label>
+            <div style="display:flex;background:#080E1A;border-radius:8px;padding:3px;border:1px solid rgba(255,255,255,0.08);flex-shrink:0;margin-left:8px">
+              <button id="inv-ba-btn-manual" onclick="invToggleBiayaAwal('manual')" style="padding:3px 9px;border-radius:5px;border:none;cursor:pointer;font-size:10px;font-weight:700;background:#1C2D52;color:#fff">Manual</button>
+              <button id="inv-ba-btn-auto" onclick="invToggleBiayaAwal('auto')" style="padding:3px 9px;border-radius:5px;border:none;cursor:pointer;font-size:10px;font-weight:600;background:transparent;color:rgba(255,255,255,0.4)">Auto 10%</button>
+            </div>
+          </div>
+          <div style="position:relative">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.35);font-size:12px">Rp</span>
+            <input type="text" id="inv-biaya-awal" inputmode="numeric" placeholder="125.000.000" oninput="invFormatInput(this)" style="width:100%;background:#080E1A;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px 10px 32px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+          <div id="inv-ba-hint" style="display:none;font-size:10px;color:#D4A853;margin-top:4px">Dihitung otomatis: 10% × Harga Beli</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bagian 2: Pendapatan Sewa -->
+    <div style="background:#0D1526;border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid rgba(212,168,83,0.2)">
+      <p style="font-size:11px;color:#D4A853;margin-bottom:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em"><i class="fa-solid fa-key" style="margin-right:6px"></i>Pendapatan Sewa</p>
+      <div style="display:grid;gap:10px">
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Estimasi Harga Sewa per Tahun</label>
+          <div style="position:relative">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.35);font-size:12px">Rp</span>
+            <input type="text" id="inv-sewa-tahun" inputmode="numeric" placeholder="120.000.000" oninput="invFormatInput(this);invAutoCalc()" style="width:100%;background:#080E1A;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px 10px 32px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <label style="font-size:11px;color:rgba(255,255,255,0.5)">Biaya Operasional Tahunan (IPL/Maint + Vacancy + Komisi)</label>
+            <div style="display:flex;background:#080E1A;border-radius:8px;padding:3px;border:1px solid rgba(255,255,255,0.08);flex-shrink:0;margin-left:8px">
+              <button id="inv-ops-btn-manual" onclick="invToggleBiayaOps('manual')" style="padding:3px 9px;border-radius:5px;border:none;cursor:pointer;font-size:10px;font-weight:700;background:#1C2D52;color:#fff">Manual</button>
+              <button id="inv-ops-btn-auto" onclick="invToggleBiayaOps('auto')" style="padding:3px 9px;border-radius:5px;border:none;cursor:pointer;font-size:10px;font-weight:600;background:transparent;color:rgba(255,255,255,0.4)">Auto 20%</button>
+            </div>
+          </div>
+          <div style="position:relative">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.35);font-size:12px">Rp</span>
+            <input type="text" id="inv-biaya-ops" inputmode="numeric" placeholder="24.000.000" oninput="invFormatInput(this)" style="width:100%;background:#080E1A;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px 10px 32px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+          <div id="inv-ops-hint" style="display:none;font-size:10px;color:#D4A853;margin-top:4px">Dihitung otomatis: 20% × Harga Sewa</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bagian 3: Proyeksi Jual -->
+    <div style="background:#0D1526;border-radius:14px;padding:14px;margin-bottom:16px;border:1px solid rgba(139,92,246,0.2)">
+      <p style="font-size:11px;color:#a78bfa;margin-bottom:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em"><i class="fa-solid fa-arrow-trend-up" style="margin-right:6px"></i>Proyeksi Capital Gain</p>
+      <div style="display:grid;gap:12px">
+
+        <!-- Skenario Kenaikan -->
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:8px;display:block">Estimasi Kenaikan Harga / Tahun</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+            <button id="inv-growth-4" onclick="invSelectGrowth(4)" style="padding:9px 4px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;background:#131F38;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <span style="font-size:15px">🏘️</span>
+              <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.85)">4% / thn</span>
+              <span style="font-size:9px;color:#a78bfa;font-weight:600">Konservatif</span>
+              <span style="font-size:9px;color:rgba(255,255,255,0.3)">Kawasan Matang</span>
+            </button>
+            <button id="inv-growth-8" onclick="invSelectGrowth(8)" style="padding:9px 4px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;background:#131F38;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <span style="font-size:15px">🏗️</span>
+              <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.85)">8% / thn</span>
+              <span style="font-size:9px;color:#a78bfa;font-weight:600">Moderat</span>
+              <span style="font-size:9px;color:rgba(255,255,255,0.3)">Berkembang</span>
+            </button>
+            <button id="inv-growth-12" onclick="invSelectGrowth(12)" style="padding:9px 4px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;background:#131F38;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <span style="font-size:15px">🚀</span>
+              <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.85)">12% / thn</span>
+              <span style="font-size:9px;color:#a78bfa;font-weight:600">Agresif</span>
+              <span style="font-size:9px;color:rgba(255,255,255,0.3)">Kawasan Sunrise</span>
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:rgba(255,255,255,0.4);flex-shrink:0">Manual:</span>
+            <div style="position:relative;flex:1">
+              <input type="number" id="inv-growth-manual" placeholder="contoh: 10" min="0" max="50" step="0.5" oninput="invSelectGrowth(parseFloat(this.value)||0,true)" style="width:100%;background:#080E1A;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 40px 8px 10px;color:#fff;font-size:13px;box-sizing:border-box">
+              <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:rgba(255,255,255,0.35)">%/thn</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Harga Jual (auto atau manual) -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <label style="font-size:11px;color:rgba(255,255,255,0.5)">Estimasi Harga Jual di Masa Depan</label>
+            <span id="inv-jual-hint" style="display:none;font-size:10px;color:#a78bfa">Dari proyeksi compounding</span>
+          </div>
+          <div style="position:relative">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.35);font-size:12px">Rp</span>
+            <input type="text" id="inv-harga-jual" inputmode="numeric" placeholder="Pilih skenario atau isi manual" oninput="invFormatInput(this);invOnJualManual()" style="width:100%;background:#080E1A;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px 10px 32px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+
+        <!-- Slider Tahun -->
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Target Tahun Penjualan</label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="range" id="inv-target-tahun" min="1" max="20" value="5" oninput="document.getElementById('inv-tahun-val').textContent=this.value+' Thn';invUpdateHargaJual()" style="flex:1;accent-color:#a78bfa">
+            <span id="inv-tahun-val" style="min-width:48px;font-size:14px;font-weight:700;color:#a78bfa;text-align:right">5 Thn</span>
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:3px">Biaya jual diperhitungkan otomatis: PPh 2,5% dari harga jual</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Tombol Hitung -->
+    <button onclick="hitungInvestasi()" style="width:100%;padding:15px;border-radius:14px;border:none;cursor:pointer;font-size:14px;font-weight:700;background:#D4A853;color:#0D1526;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="fa-solid fa-calculator"></i> Hitung Yield &amp; ROI
+    </button>
+    <p style="font-size:10px;color:rgba(255,255,255,0.25);text-align:center;margin-bottom:16px">Isi minimal Harga Beli untuk menghitung</p>
+
+    <!-- Result Section -->
+    <div id="inv-result" style="display:none"></div>
+
   </div>
   <!-- PAGE: Legal Perjanjian -->
   <div id="page-legal" class="page" style="display:none;padding:16px;max-width:600px;margin:0 auto">
@@ -2626,6 +2783,7 @@ const KPR_BANKS = [
   {nama:'BTN KMG', tipe:'kmg',     bunga:9.50, maxTenor:15},
 ];
 let _kprTab = 'konven';
+let _kprLastResult = null;
 
 function kprFmtRp(n) {
   if (!n || isNaN(n)) return 'Rp 0';
@@ -2646,15 +2804,20 @@ function initCalcPage() {
 function switchCalcTab(tab) {
   document.getElementById('calc-kpr').style.display = tab === 'kpr' ? 'block' : 'none';
   document.getElementById('calc-appraisal').style.display = tab === 'appraisal' ? 'block' : 'none';
-  const kprBtn = document.getElementById('calc-tab-kpr');
-  const aprBtn = document.getElementById('calc-tab-appraisal');
-  if (tab === 'kpr') {
-    kprBtn.style.background='#D4A853'; kprBtn.style.color='#0D1526'; kprBtn.style.border='none';
-    aprBtn.style.background='#131F38'; aprBtn.style.color='rgba(255,255,255,0.6)'; aprBtn.style.border='1px solid rgba(255,255,255,0.1)';
-  } else {
-    aprBtn.style.background='#D4A853'; aprBtn.style.color='#0D1526'; aprBtn.style.border='none';
-    kprBtn.style.background='#131F38'; kprBtn.style.color='rgba(255,255,255,0.6)'; kprBtn.style.border='1px solid rgba(255,255,255,0.1)';
-  }
+  document.getElementById('calc-investasi').style.display = tab === 'investasi' ? 'block' : 'none';
+  const tabs = {
+    kpr: document.getElementById('calc-tab-kpr'),
+    appraisal: document.getElementById('calc-tab-appraisal'),
+    investasi: document.getElementById('calc-tab-investasi'),
+  };
+  const activeColors = { kpr:'#D4A853', appraisal:'#D4A853', investasi:'#D4A853' };
+  Object.entries(tabs).forEach(([t, btn]) => {
+    if (t === tab) {
+      btn.style.background = activeColors[t]; btn.style.color = '#0D1526'; btn.style.border = 'none';
+    } else {
+      btn.style.background = '#131F38'; btn.style.color = 'rgba(255,255,255,0.6)'; btn.style.border = '1px solid rgba(255,255,255,0.1)';
+    }
+  });
 }
 
 // ── KPR ─────────────────────────────────────────────────
@@ -2738,6 +2901,7 @@ function updateKprPlafon() {
 
 function hitungKPR() {
   let cicilan, plafonUsed, tenorUsed, bungaUsed;
+  let hargaProperti = 0, uangMuka = 0;
   if (_kprTab === 'takeover') {
     plafonUsed = parseFloat((document.getElementById('kpr-sisa-pokok')?.value || '').replace(/\D/g,'')) || 0;
     tenorUsed  = parseInt(document.getElementById('kpr-tenor-sisa')?.value) || 10;
@@ -2748,6 +2912,8 @@ function hitungKPR() {
   } else {
     const harga = parseFloat((document.getElementById('kpr-harga')?.value || '').replace(/\D/g,'')) || 0;
     const dp    = parseFloat((document.getElementById('kpr-dp')?.value || '').replace(/\D/g,'')) || 0;
+    hargaProperti = harga;
+    uangMuka      = dp;
     plafonUsed  = Math.max(0, harga - dp);
     tenorUsed   = parseInt(document.getElementById('kpr-tenor')?.value) || 20;
     bungaUsed   = parseFloat(document.getElementById('kpr-bunga')?.value) || 7.5;
@@ -2787,6 +2953,13 @@ function hitungKPR() {
     </tr>`;
   }
   const marginLabel = _kprTab === 'syariah' ? 'Margin' : 'Bunga';
+
+  // Simpan untuk PDF
+  _kprLastResult = {
+    tab: _kprTab, cicilan, plafonUsed, tenorUsed, bungaUsed,
+    totalKredit, biayaProvisi, biayaAdmin, biayaNotaris, biayaBPHTB, biayaAsuransi, totalBiaya,
+    hargaProperti, uangMuka,
+  };
 
   const resultEl = document.getElementById('kpr-result');
   resultEl.innerHTML = `
@@ -2832,6 +3005,9 @@ function hitungKPR() {
         </table>
       </div>
     </div>
+    <button onclick="saveKprPDF()" id="kpr-pdf-btn" style="width:100%;margin-top:12px;padding:14px;border-radius:13px;border:none;cursor:pointer;font-size:14px;font-weight:700;background:#D4A853;color:#0D1526;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="fa-solid fa-file-pdf"></i> Download Laporan PDF
+    </button>
   `;
   resultEl.style.display = 'block';
   setTimeout(() => resultEl.scrollIntoView({behavior:'smooth', block:'start'}), 50);
@@ -2843,6 +3019,154 @@ function toggleKprAmor() {
   const open = el.style.display === 'none';
   el.style.display = open ? 'block' : 'none';
   if (icon) icon.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+// ── KPR PDF EXPORT ──────────────────────────────────────
+async function saveKprPDF() {
+  const r = _kprLastResult;
+  if (!r) return;
+
+  const u          = STATE.user || {};
+  const agenNama   = u.nama        || '';
+  const agenWA     = u.no_wa_biz   || u.no_wa || '';
+  const agenKantor = u.nama_kantor || '';
+  const tanggal    = new Date().toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const tipeLabel  = r.tab === 'syariah' ? 'KPR Syariah (Murabahah)' : r.tab === 'kmg' ? 'KPR Multiguna (KMG)' : r.tab === 'takeover' ? 'Take Over KPR' : 'KPR Konvensional (Anuitas)';
+  const marginLabel = r.tab === 'syariah' ? 'Margin' : 'Bunga';
+
+  const biayaItems = [
+    ['Biaya Provisi (~1%)', r.biayaProvisi],
+    ['Biaya Admin (~0.5%)', r.biayaAdmin],
+    ['Biaya Notaris & PPAT (~2%)', r.biayaNotaris],
+    ['BPHTB + AJB (~3%)', r.biayaBPHTB],
+    ['Asuransi Jiwa + Kebakaran (~3.5%)', r.biayaAsuransi],
+  ];
+
+  const printHtml = `
+  <div id="kpr-print-card" style="width:660px;background:#fff;padding:20px 24px;font-family:'DM Sans',Arial,sans-serif;color:#111;box-sizing:border-box">
+
+    <!-- Header -->
+    <div style="background:#0D1526;border-radius:12px;padding:20px 24px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <p style="font-size:10px;color:#D4A853;letter-spacing:.1em;font-weight:700;margin:0 0 4px;text-transform:uppercase">Laporan Simulasi Kredit Properti</p>
+        <p style="font-size:20px;font-weight:700;color:#fff;margin:0">${tipeLabel}</p>
+      </div>
+      <div style="text-align:right">
+        <p style="font-size:15px;font-weight:700;color:#D4A853;margin:0">Mansion Realty</p>
+        <p style="font-size:10px;color:rgba(255,255,255,0.5);margin:3px 0 0">${tanggal}</p>
+      </div>
+    </div>
+
+    <!-- Info Agen -->
+    ${agenNama||agenWA||agenKantor ? `
+    <div style="background:#faf7ee;border-left:4px solid #D4A853;border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:16px">
+      <p style="font-size:9px;color:#9a7a20;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Info Agen</p>
+      ${agenNama   ? `<p style="font-size:14px;font-weight:700;color:#1a1a2e;margin:0 0 3px">${agenNama}</p>` : ''}
+      ${agenWA     ? `<p style="font-size:12px;color:#555;margin:0 0 2px">WA: ${agenWA}</p>` : ''}
+      ${agenKantor ? `<p style="font-size:12px;color:#555;margin:0">${agenKantor}</p>` : ''}
+    </div>` : ''}
+
+    <!-- Cicilan Utama -->
+    <div style="background:linear-gradient(135deg,#0D1526,#1C2D52);border-radius:12px;padding:20px 24px;margin-bottom:16px;text-align:center">
+      <p style="font-size:11px;color:rgba(255,255,255,0.5);margin:0 0 6px">Cicilan per Bulan</p>
+      <p style="font-size:36px;font-weight:800;color:#D4A853;margin:0 0 12px">${kprFmtRpFull(r.cicilan)}</p>
+      <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:12px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.08);padding:4px 14px;border-radius:20px">Tenor ${r.tenorUsed} Tahun (${r.tenorUsed*12} Bulan)</span>
+        <span style="font-size:12px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.08);padding:4px 14px;border-radius:20px">${marginLabel} ${r.bungaUsed.toFixed(2)}%/thn</span>
+      </div>
+    </div>
+
+    <!-- Harga Properti + Uang Muka (non-takeover only) -->
+    ${r.hargaProperti > 0 ? `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div style="background:#f7f8fb;border:1px solid #dde0ea;border-radius:10px;padding:12px 14px">
+        <p style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px">Harga Properti</p>
+        <p style="font-size:16px;font-weight:800;color:#0D1526;margin:0">${kprFmtRpFull(r.hargaProperti)}</p>
+      </div>
+      <div style="background:#f7f8fb;border:1px solid #dde0ea;border-radius:10px;padding:12px 14px">
+        <p style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px">Uang Muka (DP)</p>
+        <p style="font-size:16px;font-weight:800;color:#166534;margin:0">${kprFmtRpFull(r.uangMuka)}</p>
+        <p style="font-size:9px;color:#aaa;margin:2px 0 0">${r.hargaProperti > 0 ? Math.round((r.uangMuka/r.hargaProperti)*100) : 0}% dari Harga Properti</p>
+      </div>
+    </div>` : ''}
+
+    <!-- 3 Info Box -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="border:1px solid #dde0ea;border-top:3px solid #D4A853;border-radius:0 0 10px 10px;padding:14px;text-align:center">
+        <p style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Plafon KPR</p>
+        <p style="font-size:15px;font-weight:800;color:#0D1526;margin:0">${kprFmtRp(r.plafonUsed)}</p>
+        <p style="font-size:9px;color:#aaa;margin:3px 0 0">Pokok Pinjaman</p>
+      </div>
+      <div style="border:1px solid #dde0ea;border-top:3px solid #D4A853;border-radius:0 0 10px 10px;padding:14px;text-align:center">
+        <p style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Total ${marginLabel}</p>
+        <p style="font-size:15px;font-weight:800;color:#991b1b;margin:0">${kprFmtRp(r.totalKredit-r.plafonUsed)}</p>
+        <p style="font-size:9px;color:#aaa;margin:3px 0 0">Selama ${r.tenorUsed} Thn</p>
+      </div>
+      <div style="border:1px solid #dde0ea;border-top:3px solid #2B7BFF;border-radius:0 0 10px 10px;padding:14px;text-align:center">
+        <p style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Total Kredit</p>
+        <p style="font-size:15px;font-weight:800;color:#1d4ed8;margin:0">${kprFmtRp(r.totalKredit)}</p>
+        <p style="font-size:9px;color:#aaa;margin:3px 0 0">Pokok + ${marginLabel}</p>
+      </div>
+    </div>
+
+    <!-- Biaya Cash di Depan -->
+    <div style="background:#f7f8fb;border:1px solid #dde0ea;border-radius:10px;padding:14px 16px;margin-bottom:16px">
+      <p style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px">Estimasi Biaya Cash di Depan</p>
+      <table style="width:100%;border-collapse:collapse">
+        ${biayaItems.map(([l,v])=>`<tr>
+          <td style="padding:4px 0;font-size:12px;color:#666;width:65%">${l}</td>
+          <td style="padding:4px 0;font-size:12px;color:#111;font-weight:600;text-align:right">${kprFmtRpFull(v)}</td>
+        </tr>`).join('')}
+        <tr style="border-top:1px solid #dde0ea">
+          <td style="padding:8px 0 4px;font-size:13px;color:#0D1526;font-weight:700">Subtotal Biaya</td>
+          <td style="padding:8px 0 4px;font-size:13px;color:#D4A853;font-weight:700;text-align:right">${kprFmtRpFull(r.totalBiaya)}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Grand Total -->
+    <div style="background:#faf7ee;border:1px solid #e8d9a0;border-radius:10px;padding:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <p style="font-size:11px;color:#9a7a20;font-weight:700;margin:0 0 2px">Total Keseluruhan</p>
+        <p style="font-size:10px;color:#aaa;margin:0">Kredit + Biaya Cash di Depan</p>
+      </div>
+      <p style="font-size:22px;font-weight:800;color:#9a6f00;margin:0">${kprFmtRpFull(r.totalKredit+r.totalBiaya)}</p>
+    </div>
+
+    <!-- Footer -->
+    <div style="border-top:1px solid #e0e0e8;padding-top:12px;display:flex;justify-content:space-between;align-items:center">
+      <p style="font-size:10px;color:#aaa;margin:0">Hasil bersifat estimasi. Suku bunga aktual dapat berbeda tergantung kebijakan bank. Konsultasikan dengan bank penyedia KPR.</p>
+      <p style="font-size:10px;color:#D4A853;font-weight:700;margin:0;flex-shrink:0;margin-left:16px">Mansion Realty &copy; ${new Date().getFullYear()}</p>
+    </div>
+  </div>`;
+
+  const btn = document.getElementById('kpr-pdf-btn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Membuat PDF...'; }
+
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:fixed;top:-9999px;left:-9999px;z-index:-1;';
+  wrapper.innerHTML = printHtml;
+  document.body.appendChild(wrapper);
+
+  try {
+    const canvas = await html2canvas(wrapper.firstElementChild, { scale:2, useCORS:true, backgroundColor:'#ffffff', logging:false });
+    const { jsPDF } = window.jspdf;
+    const pdf   = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const scale = Math.min(pageW / canvas.width, pageH / canvas.height);
+    const imgW  = canvas.width  * scale;
+    const imgH  = canvas.height * scale;
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, imgH);
+    const namePart = agenNama ? agenNama.replace(/\s+/g,'_') : 'KPR';
+    pdf.save(`Simulasi_KPR_${namePart}_${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.pdf`);
+    showToast('PDF berhasil diunduh!', 'success');
+  } catch(e) {
+    showToast('Gagal membuat PDF: ' + e.message, 'error');
+  } finally {
+    document.body.removeChild(wrapper);
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Laporan PDF'; }
+  }
 }
 
 // ── APPRAISAL ────────────────────────────────────────────
@@ -3018,6 +3342,535 @@ function hitungAppraisalCRM() {
   resultEl.innerHTML = infoBlock + html + saveBar;
   resultEl.style.display = 'block';
   setTimeout(() => resultEl.scrollIntoView({behavior:'smooth', block:'start'}), 50);
+}
+
+// ═══════════════════════════════════════════════════════════
+// CALCULATOR — INVESTASI PROPERTI (Yield & ROI)
+// ═══════════════════════════════════════════════════════════
+let _invJenisProp = 'rumah';
+
+const INV_STANDARDS = {
+  rumah:     { label:'Rumah Tinggal',       kurang:3,  sehat:5  },
+  apartemen: { label:'Apartemen',            kurang:5,  sehat:7  },
+  ruko:      { label:'Ruko / Komersial',     kurang:6,  sehat:8  },
+  kos:       { label:'Rumah Kos (Coliving)', kurang:8,  sehat:11 },
+  gudang:    { label:'Gudang / Industrial',  kurang:6,  sehat:9  },
+};
+
+function invFmtRp(n) {
+  if (!n || isNaN(n)) return 'Rp 0';
+  if (n >= 1e12) return 'Rp ' + (n/1e12).toFixed(2).replace(/\.?0+$/,'') + ' T';
+  if (n >= 1e9)  return 'Rp ' + (n/1e9).toFixed(2).replace(/\.?0+$/,'')  + ' M';
+  if (n >= 1e6)  return 'Rp ' + (n/1e6).toFixed(1).replace('.0','')       + ' Jt';
+  return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+}
+function invFmtRpFull(n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
+function invParseRp(s) { return parseInt((s||'').replace(/\D/g,'')) || 0; }
+
+function invFormatInput(el) {
+  const raw = el.value.replace(/\D/g,'');
+  el.value = raw ? parseInt(raw).toLocaleString('id-ID') : '';
+}
+
+let _invBiayaAwalMode = 'manual';
+let _invBiayaOpsMode  = 'manual';
+let _invGrowthRate    = null;
+let _invLastResult    = null;
+
+function invSelectGrowth(rate, isManual = false) {
+  _invGrowthRate = rate > 0 ? rate : null;
+  [4, 8, 12].forEach(r => {
+    const btn = document.getElementById('inv-growth-' + r);
+    if (!btn) return;
+    const active = (r === rate && !isManual);
+    btn.style.background = active ? '#1C2D52' : '#131F38';
+    btn.style.border = active ? '1px solid #a78bfa' : '1px solid rgba(255,255,255,0.1)';
+  });
+  if (!isManual) {
+    const m = document.getElementById('inv-growth-manual');
+    if (m) m.value = rate;
+  }
+  invUpdateHargaJual();
+}
+
+function invOnJualManual() {
+  _invGrowthRate = null;
+  [4, 8, 12].forEach(r => {
+    const btn = document.getElementById('inv-growth-' + r);
+    if (!btn) return;
+    btn.style.background = '#131F38';
+    btn.style.border = '1px solid rgba(255,255,255,0.1)';
+  });
+  const m = document.getElementById('inv-growth-manual');
+  if (m) m.value = '';
+  const jualEl = document.getElementById('inv-harga-jual');
+  jualEl.style.color = '#fff'; jualEl.style.background = '#080E1A';
+  const hint = document.getElementById('inv-jual-hint');
+  if (hint) hint.style.display = 'none';
+}
+
+function invUpdateHargaJual() {
+  if (!_invGrowthRate) return;
+  const hargaBeli = invParseRp(document.getElementById('inv-harga-beli').value);
+  if (!hargaBeli) return;
+  const tahun = parseInt(document.getElementById('inv-target-tahun').value) || 5;
+  const projected = Math.round(hargaBeli * Math.pow(1 + _invGrowthRate / 100, tahun));
+  const jualEl = document.getElementById('inv-harga-jual');
+  jualEl.value = projected.toLocaleString('id-ID');
+  jualEl.style.color = '#c4b5fd'; jualEl.style.background = '#130e20';
+  const hint = document.getElementById('inv-jual-hint');
+  if (hint) hint.style.display = 'block';
+}
+
+function invToggleBiayaAwal(mode) {
+  _invBiayaAwalMode = mode;
+  const btnM = document.getElementById('inv-ba-btn-manual');
+  const btnA = document.getElementById('inv-ba-btn-auto');
+  const inp  = document.getElementById('inv-biaya-awal');
+  const hint = document.getElementById('inv-ba-hint');
+  if (mode === 'auto') {
+    btnA.style.background='#D4A853'; btnA.style.color='#0D1526';
+    btnM.style.background='transparent'; btnM.style.color='rgba(255,255,255,0.4)';
+    inp.readOnly = true; inp.style.background='#1a1400'; inp.style.color='#fcd34d';
+    hint.style.display='block';
+    invAutoCalc();
+  } else {
+    btnM.style.background='#1C2D52'; btnM.style.color='#fff';
+    btnA.style.background='transparent'; btnA.style.color='rgba(255,255,255,0.4)';
+    inp.readOnly = false; inp.style.background='#080E1A'; inp.style.color='#fff';
+    hint.style.display='none';
+  }
+}
+
+function invToggleBiayaOps(mode) {
+  _invBiayaOpsMode = mode;
+  const btnM = document.getElementById('inv-ops-btn-manual');
+  const btnA = document.getElementById('inv-ops-btn-auto');
+  const inp  = document.getElementById('inv-biaya-ops');
+  const hint = document.getElementById('inv-ops-hint');
+  if (mode === 'auto') {
+    btnA.style.background='#D4A853'; btnA.style.color='#0D1526';
+    btnM.style.background='transparent'; btnM.style.color='rgba(255,255,255,0.4)';
+    inp.readOnly = true; inp.style.background='#1a1400'; inp.style.color='#fcd34d';
+    hint.style.display='block';
+    invAutoCalc();
+  } else {
+    btnM.style.background='#1C2D52'; btnM.style.color='#fff';
+    btnA.style.background='transparent'; btnA.style.color='rgba(255,255,255,0.4)';
+    inp.readOnly = false; inp.style.background='#080E1A'; inp.style.color='#fff';
+    hint.style.display='none';
+  }
+}
+
+function invAutoCalc() {
+  if (_invBiayaAwalMode === 'auto') {
+    const beli = invParseRp(document.getElementById('inv-harga-beli').value);
+    const val  = Math.round(beli * 0.10);
+    document.getElementById('inv-biaya-awal').value = val ? val.toLocaleString('id-ID') : '';
+  }
+  if (_invBiayaOpsMode === 'auto') {
+    const sewa = invParseRp(document.getElementById('inv-sewa-tahun').value);
+    const val  = Math.round(sewa * 0.20);
+    document.getElementById('inv-biaya-ops').value = val ? val.toLocaleString('id-ID') : '';
+  }
+  invUpdateHargaJual();
+}
+
+function invSelectProp(tipe) {
+  _invJenisProp = tipe;
+  ['rumah','apartemen','ruko','kos','gudang'].forEach(t => {
+    const btn = document.getElementById('inv-prop-' + t);
+    if (!btn) return;
+    if (t === tipe) {
+      btn.style.background = '#D4A853'; btn.style.color = '#0D1526'; btn.style.border = 'none';
+    } else {
+      btn.style.background = '#131F38'; btn.style.color = 'rgba(255,255,255,0.55)'; btn.style.border = '1px solid rgba(255,255,255,0.1)';
+    }
+  });
+}
+
+function _invYieldColor(pct, tipe) {
+  const s = INV_STANDARDS[tipe] || INV_STANDARDS.rumah;
+  if (pct < s.kurang) return { bg:'rgba(239,68,68,0.12)', border:'rgba(239,68,68,0.35)', text:'#ef4444', label:'KURANG', icon:'⚠️' };
+  if (pct < s.sehat)  return { bg:'rgba(245,158,11,0.12)', border:'rgba(245,158,11,0.35)', text:'#f59e0b', label:'SEHAT', icon:'✅' };
+  return { bg:'rgba(16,185,129,0.12)', border:'rgba(16,185,129,0.35)', text:'#10b981', label:'SANGAT IDEAL', icon:'🌟' };
+}
+
+function _invKesimpulan(grossYield, netROI, roiJual, cagr, tipe, targetTahun) {
+  const s = INV_STANDARDS[tipe] || INV_STANDARDS.rumah;
+  const c = _invYieldColor(grossYield, tipe);
+  const hasSewa = grossYield > 0;
+  const hasJual = roiJual !== null;
+
+  let lines = [];
+  if (hasSewa) {
+    lines.push(`Properti ini memiliki <strong>Gross Yield ${grossYield.toFixed(2)}%</strong> — masuk kategori <strong style="color:${c.text}">${c.label}</strong> untuk jenis <strong>${s.label}</strong>.`);
+    if (netROI > 0) lines.push(`Net ROI Sewa sebesar <strong>${netROI.toFixed(2)}%</strong>/tahun setelah memperhitungkan biaya operasional.`);
+  }
+  if (hasJual && roiJual > 0) {
+    lines.push(`Potensi Capital Gain <strong>${roiJual.toFixed(1)}%</strong> dalam <strong>${targetTahun} tahun</strong> (CAGR ${cagr.toFixed(1)}%/thn).`);
+    if (cagr >= 10) lines.push('Pertumbuhan kapital di atas rata-rata — <strong style="color:#10b981">sangat direkomendasikan untuk investasi jangka panjang.</strong>');
+    else if (cagr >= 6) lines.push('Pertumbuhan kapital cukup kompetitif dibanding instrumen investasi konvensional.');
+  }
+  if (!hasSewa && !hasJual) lines.push('Isi data sewa atau proyeksi jual untuk mendapatkan analisis lengkap.');
+  return lines.join(' ');
+}
+
+function hitungInvestasi() {
+  const hargaBeli  = invParseRp(document.getElementById('inv-harga-beli').value);
+  const biayaAwal  = invParseRp(document.getElementById('inv-biaya-awal').value);
+  const sewa       = invParseRp(document.getElementById('inv-sewa-tahun').value);
+  const biayaOps   = invParseRp(document.getElementById('inv-biaya-ops').value);
+  const hargaJual  = invParseRp(document.getElementById('inv-harga-jual').value);
+  const targetTahun = parseInt(document.getElementById('inv-target-tahun').value) || 5;
+  const tipe = _invJenisProp;
+
+  if (!hargaBeli) { showToast('Harga Beli wajib diisi', 'error'); return; }
+
+  const totalModal = hargaBeli + biayaAwal;
+  const grossYield = (sewa > 0 && hargaBeli > 0) ? (sewa / hargaBeli) * 100 : 0;
+  const netIncome  = sewa - biayaOps;
+  const netROI     = (sewa > 0 && totalModal > 0) ? (netIncome / totalModal) * 100 : 0;
+
+  let roiJual = null, cagr = 0, biayaJual = 0, netHasilJual = 0;
+  if (hargaJual > 0) {
+    biayaJual    = hargaJual * 0.025;
+    netHasilJual = hargaJual - biayaJual;
+    roiJual      = ((netHasilJual - totalModal) / totalModal) * 100;
+    cagr = targetTahun > 0 ? (Math.pow(netHasilJual / totalModal, 1 / targetTahun) - 1) * 100 : 0;
+  }
+
+  const s     = INV_STANDARDS[tipe];
+  const cGross = _invYieldColor(grossYield, tipe);
+  const cNet   = _invYieldColor(netROI, tipe);
+
+  // ── 3 Kartu Hasil ──
+  const cardGross = `
+    <div style="background:${cGross.bg};border:1px solid ${cGross.border};border-radius:14px;padding:16px;text-align:center">
+      <div style="font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
+        <i class="fa-solid fa-percent" style="margin-right:4px"></i>Gross Yield
+      </div>
+      <div style="font-size:32px;font-weight:800;color:${cGross.text};line-height:1">${grossYield > 0 ? grossYield.toFixed(2)+'%' : '—'}</div>
+      <div style="font-size:11px;color:${cGross.text};margin-top:6px;font-weight:700">${cGross.icon} ${cGross.label}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px">Sewa ÷ Harga Beli</div>
+    </div>`;
+
+  const cardNet = `
+    <div style="background:${cNet.bg};border:1px solid ${cNet.border};border-radius:14px;padding:16px;text-align:center">
+      <div style="font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
+        <i class="fa-solid fa-coins" style="margin-right:4px"></i>Net ROI Sewa
+      </div>
+      <div style="font-size:32px;font-weight:800;color:${cNet.text};line-height:1">${netROI !== 0 ? netROI.toFixed(2)+'%' : '—'}</div>
+      <div style="font-size:11px;color:${cNet.text};margin-top:6px;font-weight:700">${cNet.icon} ${cNet.label}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px">Net Income ÷ Total Modal</div>
+    </div>`;
+
+  const roiColor = roiJual !== null ? (roiJual > 50 ? '#10b981' : roiJual > 0 ? '#f59e0b' : '#ef4444') : 'rgba(255,255,255,0.3)';
+  const cardJual = `
+    <div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);border-radius:14px;padding:16px;text-align:center">
+      <div style="font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
+        <i class="fa-solid fa-arrow-trend-up" style="margin-right:4px"></i>ROI Capital Gain
+      </div>
+      <div style="font-size:32px;font-weight:800;color:${roiColor};line-height:1">${roiJual !== null ? roiJual.toFixed(1)+'%' : '—'}</div>
+      <div style="font-size:11px;color:#a78bfa;margin-top:6px;font-weight:700">CAGR ${cagr > 0 ? cagr.toFixed(1)+'%/thn' : '—'}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px">Dalam ${targetTahun} Tahun</div>
+    </div>`;
+
+  // ── Breakdown Detail ──
+  const breakdownSewa = sewa > 0 ? `
+    <div style="background:#0D1526;border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06)">
+      <p style="font-size:11px;color:#D4A853;font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Detail ROI Sewa</p>
+      <div style="display:grid;gap:6px;font-size:12px">
+        <div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.5)">Harga Beli</span><span style="color:#fff">${invFmtRp(hargaBeli)}</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.5)">+ Biaya Awal</span><span style="color:#fff">${invFmtRp(biayaAwal)}</span></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.08);padding-top:6px"><span style="color:#fff;font-weight:700">Total Modal</span><span style="color:#D4A853;font-weight:700">${invFmtRp(totalModal)}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:rgba(255,255,255,0.5)">Pendapatan Sewa/Thn</span><span style="color:#10b981">${invFmtRp(sewa)}</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.5)">- Biaya Operasional</span><span style="color:#ef4444">(${invFmtRp(biayaOps)})</span></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.08);padding-top:6px"><span style="color:#fff;font-weight:700">Net Income/Thn</span><span style="color:${netIncome>=0?'#10b981':'#ef4444'};font-weight:700">${invFmtRp(netIncome)}</span></div>
+      </div>
+    </div>` : '';
+
+  const breakdownJual = roiJual !== null ? `
+    <div style="background:#0D1526;border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06)">
+      <p style="font-size:11px;color:#a78bfa;font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Detail Capital Gain</p>
+      <div style="display:grid;gap:6px;font-size:12px">
+        <div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.5)">Harga Jual</span><span style="color:#fff">${invFmtRp(hargaJual)}</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.5)">- Biaya Jual (PPh 2,5%)</span><span style="color:#ef4444">(${invFmtRp(biayaJual)})</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.5)">Net Hasil Jual</span><span style="color:#fff">${invFmtRp(netHasilJual)}</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.5)">- Total Modal Awal</span><span style="color:#ef4444">(${invFmtRp(totalModal)})</span></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.08);padding-top:6px"><span style="color:#fff;font-weight:700">Capital Gain</span><span style="color:${(netHasilJual-totalModal)>=0?'#10b981':'#ef4444'};font-weight:700">${invFmtRp(netHasilJual - totalModal)}</span></div>
+      </div>
+    </div>` : '';
+
+  // ── Proyeksi Tahunan ──
+  let proyeksiHtml = '';
+  const rateProyeksi = _invGrowthRate || (cagr > 0 ? cagr : 0);
+  if (hargaBeli > 0 && rateProyeksi > 0 && targetTahun > 0) {
+    const maxHarga = Math.round(hargaBeli * Math.pow(1 + rateProyeksi / 100, targetTahun));
+    let rows = '';
+    for (let y = 1; y <= targetTahun; y++) {
+      const hp       = Math.round(hargaBeli * Math.pow(1 + rateProyeksi / 100, y));
+      const gainPct  = ((hp - hargaBeli) / hargaBeli * 100).toFixed(1);
+      const barPct   = Math.round((hp / maxHarga) * 100);
+      const isLast   = (y === targetTahun);
+      rows += `<tr style="background:${isLast?'rgba(212,168,83,0.07)':'transparent'}">
+        <td style="padding:6px 10px;font-size:11px;color:${isLast?'#D4A853':'rgba(255,255,255,0.55)'};font-weight:${isLast?'700':'400'};border-bottom:1px solid rgba(255,255,255,0.04);white-space:nowrap">${isLast?'★ ':''}Thn ${y}</td>
+        <td style="padding:6px 10px;font-size:11px;color:${isLast?'#D4A853':'#fff'};font-weight:${isLast?'700':'400'};border-bottom:1px solid rgba(255,255,255,0.04);white-space:nowrap">${invFmtRp(hp)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.04)">
+          <div style="display:flex;align-items:center;gap:5px">
+            <div style="flex:1;background:#1C2D52;border-radius:3px;height:5px;min-width:40px;overflow:hidden">
+              <div style="width:${barPct}%;height:100%;background:${isLast?'#D4A853':'#a78bfa'};border-radius:3px;transition:width .3s"></div>
+            </div>
+            <span style="font-size:10px;color:${isLast?'#D4A853':'#a78bfa'};min-width:38px;text-align:right;font-weight:${isLast?'700':'400'}">+${gainPct}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }
+    proyeksiHtml = `
+      <div style="background:#0D1526;border-radius:12px;overflow:hidden;margin-bottom:12px;border:1px solid rgba(139,92,246,0.2)">
+        <div style="padding:12px 12px 8px;display:flex;align-items:center;justify-content:space-between">
+          <p style="font-size:11px;color:#a78bfa;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0"><i class="fa-solid fa-chart-line" style="margin-right:6px"></i>Proyeksi Nilai Properti / Thn</p>
+          <span style="font-size:10px;color:rgba(255,255,255,0.3)">${rateProyeksi.toFixed(1)}%/thn compounding</span>
+        </div>
+        <div style="max-height:280px;overflow-y:auto">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:#080E1A;position:sticky;top:0">
+              <th style="padding:7px 10px;text-align:left;font-size:10px;color:rgba(255,255,255,0.35);font-weight:600">Tahun</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;color:rgba(255,255,255,0.35);font-weight:600">Nilai Properti</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;color:rgba(255,255,255,0.35);font-weight:600">Kenaikan dari Beli</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  // ── Tabel Perbandingan Standar Industri ──
+  const stdRows = Object.entries(INV_STANDARDS).map(([t, st]) => {
+    const isActive = t === tipe;
+    const rowBg = isActive ? 'rgba(212,168,83,0.08)' : 'transparent';
+    const rowBorder = isActive ? '1px solid rgba(212,168,83,0.3)' : '1px solid rgba(255,255,255,0.05)';
+    return `<tr style="background:${rowBg}">
+      <td style="padding:9px 10px;border:${rowBorder};font-size:12px;color:${isActive?'#D4A853':'rgba(255,255,255,0.6)'};font-weight:${isActive?'700':'400'}">${isActive?'▶ ':''  }${st.label}</td>
+      <td style="padding:9px 10px;border:${rowBorder};text-align:center;font-size:12px;color:#ef4444">&lt; ${st.kurang}%</td>
+      <td style="padding:9px 10px;border:${rowBorder};text-align:center;font-size:12px;color:#f59e0b">${st.kurang}% – ${st.sehat}%</td>
+      <td style="padding:9px 10px;border:${rowBorder};text-align:center;font-size:12px;color:#10b981">&gt; ${st.sehat}%</td>
+    </tr>`;
+  }).join('');
+
+  const tabelStd = `
+    <div style="background:#0D1526;border-radius:12px;overflow:hidden;margin-bottom:12px;border:1px solid rgba(255,255,255,0.07)">
+      <p style="font-size:11px;color:rgba(255,255,255,0.45);font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:12px 12px 8px">Standar Gross Yield Indonesia</p>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#080E1A">
+            <th style="padding:8px 10px;text-align:left;font-size:10px;color:rgba(255,255,255,0.35);font-weight:600;border:1px solid rgba(255,255,255,0.05)">Jenis</th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;color:#ef4444;font-weight:600;border:1px solid rgba(255,255,255,0.05)">Kurang</th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;color:#f59e0b;font-weight:600;border:1px solid rgba(255,255,255,0.05)">Sehat</th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;color:#10b981;font-weight:600;border:1px solid rgba(255,255,255,0.05)">Sangat Ideal</th>
+          </tr>
+        </thead>
+        <tbody>${stdRows}</tbody>
+      </table>
+    </div>`;
+
+  // ── Kesimpulan ──
+  const kesimpulan = `
+    <div style="background:rgba(212,168,83,0.07);border:1px solid rgba(212,168,83,0.2);border-radius:12px;padding:14px;margin-bottom:16px">
+      <p style="font-size:11px;color:#D4A853;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px"><i class="fa-solid fa-lightbulb" style="margin-right:6px"></i>Analisis Singkat</p>
+      <p style="font-size:13px;color:rgba(255,255,255,0.8);line-height:1.6;margin:0">${_invKesimpulan(grossYield, netROI, roiJual, cagr, tipe, targetTahun)}</p>
+    </div>`;
+
+  _invLastResult = {
+    tipe, s, hargaBeli, biayaAwal, sewa, biayaOps, hargaJual, targetTahun,
+    totalModal, netIncome, grossYield, netROI, roiJual, cagr,
+    biayaJual, netHasilJual, rateProyeksi, cGross, cNet,
+  };
+
+  const resultEl = document.getElementById('inv-result');
+  resultEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">${cardGross}${cardNet}${cardJual}</div>
+    ${breakdownSewa}
+    ${breakdownJual}
+    ${proyeksiHtml}
+    ${tabelStd}
+    ${kesimpulan}
+    <div style="background:#131F38;border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.06);display:flex;gap:10px;margin-bottom:12px">
+      <span style="font-size:15px;flex-shrink:0">⚖️</span>
+      <p style="font-size:11px;color:rgba(255,255,255,0.35);line-height:1.5;margin:0">Hasil bersifat estimasi berdasarkan input pengguna. Tidak termasuk inflasi, risiko pasar, atau pajak penghasilan lainnya. Konsultasikan dengan konsultan properti atau pajak sebelum keputusan investasi.</p>
+    </div>
+    <button onclick="saveInvestasiPDF()" id="inv-pdf-btn" style="width:100%;padding:14px;border-radius:13px;border:none;cursor:pointer;font-size:14px;font-weight:700;background:#D4A853;color:#0D1526;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="fa-solid fa-file-pdf"></i> Download Laporan PDF
+    </button>`;
+  resultEl.style.display = 'block';
+  setTimeout(() => resultEl.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
+}
+
+// ── INVESTASI PDF EXPORT ────────────────────────────────
+async function saveInvestasiPDF() {
+  const r = _invLastResult;
+  if (!r) return;
+
+  const u          = STATE.user || {};
+  const agenNama   = u.nama        || '';
+  const agenWA     = u.no_wa_biz   || u.no_wa || '';
+  const agenKantor = u.nama_kantor || '';
+  const tanggal    = new Date().toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // helper colors for print
+  const pColor = c => c.text === '#ef4444' ? '#dc2626' : c.text === '#f59e0b' ? '#b45309' : '#059669';
+  const grossColor   = pColor(r.cGross);
+  const netColor     = pColor(r.cNet);
+  const capitalColor = r.roiJual !== null ? (r.roiJual > 30 ? '#059669' : r.roiJual > 0 ? '#b45309' : '#dc2626') : '#aaa';
+
+  // ── Proyeksi rows untuk PDF ──
+  let pdfProyeksiRows = '';
+  if (r.rateProyeksi > 0 && r.hargaBeli > 0) {
+    for (let y = 1; y <= r.targetTahun; y++) {
+      const hp      = Math.round(r.hargaBeli * Math.pow(1 + r.rateProyeksi / 100, y));
+      const gainPct = ((hp - r.hargaBeli) / r.hargaBeli * 100).toFixed(1);
+      const isLast  = y === r.targetTahun;
+      pdfProyeksiRows += `<tr style="background:${isLast?'#faf3e0':'#fff'}">
+        <td style="padding:5px 8px;border:1px solid #e8e8e8;font-size:11px;color:${isLast?'#9a6f00':'#444'};font-weight:${isLast?'700':'400'}">${isLast?'★ ':''}Tahun ${y}</td>
+        <td style="padding:5px 8px;border:1px solid #e8e8e8;font-size:11px;color:${isLast?'#9a6f00':'#222'};font-weight:${isLast?'700':'400'}">${invFmtRpFull(hp)}</td>
+        <td style="padding:5px 8px;border:1px solid #e8e8e8;font-size:11px;color:${isLast?'#9a6f00':'#555'};text-align:right;font-weight:${isLast?'700':'400'}">+${gainPct}%</td>
+      </tr>`;
+    }
+  }
+
+  // ── Standar industri rows untuk PDF ──
+  const pdfStdRows = Object.entries(INV_STANDARDS).map(([t, st]) => {
+    const isActive = t === r.tipe;
+    return `<tr style="background:${isActive?'#faf3e0':'#fff'}">
+      <td style="padding:5px 8px;border:1px solid #e8e8e8;font-size:11px;color:${isActive?'#9a6f00':'#444'};font-weight:${isActive?'700':'400'}">${isActive?'▶ ':''}${st.label}</td>
+      <td style="padding:5px 8px;border:1px solid #e8e8e8;font-size:11px;color:#dc2626;text-align:center">&lt; ${st.kurang}%</td>
+      <td style="padding:5px 8px;border:1px solid #e8e8e8;font-size:11px;color:#b45309;text-align:center">${st.kurang}%–${st.sehat}%</td>
+      <td style="padding:5px 8px;border:1px solid #e8e8e8;font-size:11px;color:#059669;text-align:center">&gt; ${st.sehat}%</td>
+    </tr>`;
+  }).join('');
+
+  const kesimpulanText = _invKesimpulan(r.grossYield, r.netROI, r.roiJual, r.cagr, r.tipe, r.targetTahun)
+    .replace(/<[^>]+>/g, '');
+
+  const printHtml = `
+  <div id="inv-print-card" style="width:660px;background:#fff;padding:20px 24px;font-family:'DM Sans',Arial,sans-serif;color:#111;box-sizing:border-box">
+    <div style="background:#0D1526;border-radius:10px;padding:14px 20px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <p style="font-size:9px;color:#D4A853;letter-spacing:.1em;font-weight:700;margin:0 0 2px;text-transform:uppercase">Laporan Analisis Investasi Properti</p>
+        <p style="font-size:17px;font-weight:700;color:#fff;margin:0">Yield &amp; ROI Report</p>
+      </div>
+      <div style="text-align:right">
+        <p style="font-size:13px;font-weight:700;color:#D4A853;margin:0">Mansion Realty</p>
+        <p style="font-size:9px;color:rgba(255,255,255,0.5);margin:2px 0 0">${tanggal}</p>
+      </div>
+    </div>
+    ${agenNama||agenWA||agenKantor ? `
+    <div style="background:#faf7ee;border-left:4px solid #D4A853;border-radius:0 6px 6px 0;padding:8px 14px;margin-bottom:10px">
+      <p style="font-size:8px;color:#9a7a20;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px">Info Agen</p>
+      ${agenNama   ? `<p style="font-size:13px;font-weight:700;color:#1a1a2e;margin:0 0 2px">${agenNama}</p>` : ''}
+      ${agenWA     ? `<p style="font-size:11px;color:#555;margin:0 0 1px">WA: ${agenWA}</p>` : ''}
+      ${agenKantor ? `<p style="font-size:11px;color:#555;margin:0">${agenKantor}</p>` : ''}
+    </div>` : ''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="background:#f7f8fb;border:1px solid #dde0ea;border-radius:8px;padding:10px 12px">
+        <p style="font-size:8px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Data Properti</p>
+        <table style="width:100%;border-collapse:collapse">
+          <tr><td style="padding:2px 0;font-size:10px;color:#888;width:48%">Jenis</td><td style="padding:2px 0;font-size:10px;color:#111;font-weight:600">${r.s.label}</td></tr>
+          <tr><td style="padding:2px 0;font-size:10px;color:#888">Harga Beli</td><td style="padding:2px 0;font-size:10px;color:#111;font-weight:600">${invFmtRpFull(r.hargaBeli)}</td></tr>
+          ${r.biayaAwal?`<tr><td style="padding:2px 0;font-size:10px;color:#888">Biaya Awal</td><td style="padding:2px 0;font-size:10px;color:#111;font-weight:600">${invFmtRpFull(r.biayaAwal)}</td></tr>`:''}
+          <tr><td style="padding:2px 0;font-size:10px;color:#888">Total Modal</td><td style="padding:2px 0;font-size:11px;color:#0D1526;font-weight:700">${invFmtRpFull(r.totalModal)}</td></tr>
+        </table>
+      </div>
+      <div style="background:#f7f8fb;border:1px solid #dde0ea;border-radius:8px;padding:10px 12px">
+        <p style="font-size:8px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Pendapatan &amp; Target</p>
+        <table style="width:100%;border-collapse:collapse">
+          ${r.sewa?`<tr><td style="padding:2px 0;font-size:10px;color:#888;width:48%">Sewa/Thn</td><td style="padding:2px 0;font-size:10px;color:#111;font-weight:600">${invFmtRpFull(r.sewa)}</td></tr>`:''}
+          ${r.biayaOps?`<tr><td style="padding:2px 0;font-size:10px;color:#888">Biaya Ops</td><td style="padding:2px 0;font-size:10px;color:#111;font-weight:600">${invFmtRpFull(r.biayaOps)}</td></tr>`:''}
+          ${r.hargaJual?`<tr><td style="padding:2px 0;font-size:10px;color:#888">Target Jual</td><td style="padding:2px 0;font-size:10px;color:#111;font-weight:600">${invFmtRpFull(r.hargaJual)}</td></tr>`:''}
+          ${r.hargaJual?`<tr><td style="padding:2px 0;font-size:10px;color:#888">Horizon</td><td style="padding:2px 0;font-size:10px;color:#111;font-weight:600">${r.targetTahun} Tahun</td></tr>`:''}
+        </table>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="border:1px solid #dde0ea;border-top:3px solid #D4A853;border-radius:0 0 8px 8px;padding:10px;text-align:center">
+        <p style="font-size:8px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px">Gross Yield</p>
+        <p style="font-size:22px;font-weight:800;color:${grossColor};margin:0">${r.grossYield>0?r.grossYield.toFixed(2)+'%':'—'}</p>
+        <p style="font-size:9px;color:${grossColor};margin:3px 0 0;font-weight:700">${r.cGross.label}</p>
+      </div>
+      <div style="border:1px solid #dde0ea;border-top:3px solid #D4A853;border-radius:0 0 8px 8px;padding:10px;text-align:center">
+        <p style="font-size:8px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px">Net ROI Sewa</p>
+        <p style="font-size:22px;font-weight:800;color:${netColor};margin:0">${r.netROI!==0?r.netROI.toFixed(2)+'%':'—'}</p>
+        <p style="font-size:9px;color:${netColor};margin:3px 0 0;font-weight:700">${r.cNet.label}</p>
+      </div>
+      <div style="border:1px solid #dde0ea;border-top:3px solid #7c3aed;border-radius:0 0 8px 8px;padding:10px;text-align:center">
+        <p style="font-size:8px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px">ROI Capital Gain</p>
+        <p style="font-size:22px;font-weight:800;color:${capitalColor};margin:0">${r.roiJual!==null?r.roiJual.toFixed(1)+'%':'—'}</p>
+        <p style="font-size:9px;color:#7c3aed;margin:3px 0 0;font-weight:700">CAGR ${r.cagr>0?r.cagr.toFixed(1)+'%/thn':'—'}</p>
+      </div>
+    </div>
+    ${pdfProyeksiRows ? `
+    <div style="background:#f7f8fb;border:1px solid #dde0ea;border-radius:8px;padding:10px 12px;margin-bottom:10px">
+      <p style="font-size:8px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Proyeksi Nilai Properti (${r.rateProyeksi.toFixed(1)}%/thn)</p>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#edeef4">
+          <th style="padding:4px 6px;text-align:left;font-size:9px;color:#555;font-weight:600;border:1px solid #e0e0e8">Tahun</th>
+          <th style="padding:4px 6px;text-align:left;font-size:9px;color:#555;font-weight:600;border:1px solid #e0e0e8">Nilai Properti</th>
+          <th style="padding:4px 6px;text-align:right;font-size:9px;color:#555;font-weight:600;border:1px solid #e0e0e8">Kenaikan</th>
+        </tr></thead>
+        <tbody>${pdfProyeksiRows}</tbody>
+      </table>
+    </div>` : ''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="background:#f7f8fb;border:1px solid #dde0ea;border-radius:8px;padding:10px 12px">
+        <p style="font-size:8px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Standar Gross Yield Indonesia</p>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#edeef4">
+            <th style="padding:3px 6px;text-align:left;font-size:8px;color:#555;font-weight:600;border:1px solid #e0e0e8">Jenis</th>
+            <th style="padding:3px 6px;text-align:center;font-size:8px;color:#dc2626;font-weight:600;border:1px solid #e0e0e8">Kurang</th>
+            <th style="padding:3px 6px;text-align:center;font-size:8px;color:#b45309;font-weight:600;border:1px solid #e0e0e8">Sehat</th>
+            <th style="padding:3px 6px;text-align:center;font-size:8px;color:#059669;font-weight:600;border:1px solid #e0e0e8">Ideal</th>
+          </tr></thead>
+          <tbody>${pdfStdRows}</tbody>
+        </table>
+      </div>
+      <div style="background:#faf7ee;border:1px solid #e8d9a0;border-radius:8px;padding:10px 12px">
+        <p style="font-size:8px;color:#9a7a20;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Analisis Singkat</p>
+        <p style="font-size:10px;color:#333;line-height:1.6;margin:0">${kesimpulanText}</p>
+      </div>
+    </div>
+    <div style="border-top:1px solid #e0e0e8;padding-top:8px;display:flex;justify-content:space-between;align-items:center">
+      <p style="font-size:8px;color:#aaa;margin:0">Hasil bersifat estimasi. Bukan dokumen investasi resmi.</p>
+      <p style="font-size:9px;color:#D4A853;font-weight:700;margin:0">Mansion Realty &copy; ${new Date().getFullYear()}</p>
+    </div>
+  </div>`;
+
+  const btn = document.getElementById('inv-pdf-btn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Membuat PDF...'; }
+
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:fixed;top:-9999px;left:-9999px;z-index:-1;';
+  wrapper.innerHTML = printHtml;
+  document.body.appendChild(wrapper);
+
+  try {
+    const canvas  = await html2canvas(wrapper.firstElementChild, { scale:2, useCORS:true, backgroundColor:'#ffffff', logging:false });
+    const { jsPDF } = window.jspdf;
+    const pdf   = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const scale = Math.min(pageW / canvas.width, pageH / canvas.height);
+    const imgW  = canvas.width  * scale;
+    const imgH  = canvas.height * scale;
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, imgH);
+    const namePart = agenNama ? agenNama.replace(/\s+/g,'_') : 'Investasi';
+    pdf.save(`Laporan_Investasi_${namePart}_${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.pdf`);
+    showToast('PDF berhasil diunduh!', 'success');
+  } catch(e) {
+    showToast('Gagal membuat PDF: ' + e.message, 'error');
+  } finally {
+    document.body.removeChild(wrapper);
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Laporan PDF'; }
+  }
 }
 
 // ── APPRAISAL EXPORT ────────────────────────────────────

@@ -154,7 +154,7 @@ app.use('/public/api/v1', require('./routes/public.routes'));
 
 // ── Health Check ───────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', app: process.env.APP_NAME, timestamp: new Date().toISOString(), version: '2.0.0' });
+  res.json({ status: 'OK', app: process.env.APP_NAME, timestamp: new Date().toISOString(), version: APP_VERSION });
 });
 
 // ── Global Error Handler ───────────────────────────────────
