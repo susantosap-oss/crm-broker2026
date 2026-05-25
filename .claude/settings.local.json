@@ -86,7 +86,17 @@
       "Read(//home/susantomansion/**)",
       "Bash(/home/susantomansion/google-cloud-sdk/bin/gcloud builds *)",
       "Bash(bash *)",
-      "Bash(xargs ls *)"
+      "Bash(xargs ls *)",
+      "Bash(npx --prefix /c/Users/mansion/web-mansion2026 tsc --noEmit --project /c/Users/mansion/web-mansion2026/tsconfig.json)",
+      "PowerShell(git *)",
+      "Bash(wait)",
+      "Bash(npm show *)",
+      "Bash(awk -F: '$2 ~ /^  <\\\\/div>$/')",
+      "Bash(xargs cat *)",
+      "WebFetch(domain:script.google.com)",
+      "WebFetch(domain:script.googleusercontent.com)",
+      "Bash(sqlite3 \"C:/Users/mansion/my-video-app/vidgen_users.db\" \"SELECT id, username, role, is_active FROM users;\")",
+      "Bash(xargs -P4 '-I{}' gcloud run revisions delete '{}' --region=asia-southeast2 --project=crm-broker2026 --quiet)"
     ]
   }
 }
