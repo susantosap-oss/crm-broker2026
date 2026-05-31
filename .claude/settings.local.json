@@ -96,7 +96,9 @@
       "WebFetch(domain:script.google.com)",
       "WebFetch(domain:script.googleusercontent.com)",
       "Bash(sqlite3 \"C:/Users/mansion/my-video-app/vidgen_users.db\" \"SELECT id, username, role, is_active FROM users;\")",
-      "Bash(xargs -P4 '-I{}' gcloud run revisions delete '{}' --region=asia-southeast2 --project=crm-broker2026 --quiet)"
+      "Bash(xargs -P4 '-I{}' gcloud run revisions delete '{}' --region=asia-southeast2 --project=crm-broker2026 --quiet)",
+      "Bash(mkdir -p /home/susantomansion/tutorials/vigen)",
+      "Bash(mv /home/susantomansion/crm-broker2026/frontend/tutorial-vigen.html /home/susantomansion/tutorials/vigen/index.html)"
     ]
   }
 }
