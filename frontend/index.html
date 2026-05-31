@@ -640,7 +640,7 @@
             <label id="kpr-bunga-label" class="form-label" style="margin-bottom:0">Bunga / Tahun</label>
             <div style="display:flex;gap:4px">
               <button id="kpr-bunga-btn-auto" onclick="setKprBungaMode('auto')" style="padding:4px 10px;border-radius:20px;border:none;cursor:pointer;font-size:11px;font-weight:600;background:#D4A853;color:#0D1526">Auto %</button>
-              <button id="kpr-bunga-btn-manual" onclick="setKprBungaMode('manual')" style="padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;font-size:11px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.5)">Manual Rp</button>
+              <button id="kpr-bunga-btn-manual" onclick="setKprBungaMode('manual')" style="padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;font-size:11px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.5)">Manual %</button>
             </div>
           </div>
           <div id="kpr-bunga-auto-wrap">
@@ -654,11 +654,11 @@
           </div>
           <div id="kpr-bunga-manual-wrap" style="display:none">
             <div style="position:relative">
-              <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.4);font-size:12px;font-weight:700">Rp</span>
-              <input id="kpr-bunga-manual" type="text" inputmode="numeric" class="form-input" style="padding-left:38px" placeholder="Misal: 3.500.000"
-                oninput="this.value=this.value.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.')"/>
+              <input id="kpr-bunga-manual" type="text" inputmode="decimal" class="form-input" style="padding-right:38px" placeholder="Misal: 8.5"
+                oninput="this.value=this.value.replace(/[^0-9.,]/g,'')"/>
+              <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.4);font-size:12px;font-weight:700">%</span>
             </div>
-            <p style="font-size:10px;color:rgba(255,255,255,0.35);margin:5px 0 0">Nominal bunga flat per bulan dalam Rupiah</p>
+            <p style="font-size:10px;color:rgba(255,255,255,0.35);margin:5px 0 0">Persentase bunga per tahun</p>
           </div>
         </div>
       </div>
@@ -690,7 +690,7 @@
             <label class="form-label" style="margin-bottom:0">Bunga Bank Baru</label>
             <div style="display:flex;gap:4px">
               <button id="kpr-bunga-baru-btn-auto" onclick="setKprBungaBaruMode('auto')" style="padding:4px 10px;border-radius:20px;border:none;cursor:pointer;font-size:11px;font-weight:600;background:#D4A853;color:#0D1526">Auto %</button>
-              <button id="kpr-bunga-baru-btn-manual" onclick="setKprBungaBaruMode('manual')" style="padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;font-size:11px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.5)">Manual Rp</button>
+              <button id="kpr-bunga-baru-btn-manual" onclick="setKprBungaBaruMode('manual')" style="padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;font-size:11px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.5)">Manual %</button>
             </div>
           </div>
           <div id="kpr-bunga-baru-auto-wrap">
@@ -704,11 +704,11 @@
           </div>
           <div id="kpr-bunga-baru-manual-wrap" style="display:none">
             <div style="position:relative">
-              <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.4);font-size:12px;font-weight:700">Rp</span>
-              <input id="kpr-bunga-baru-manual" type="text" inputmode="numeric" class="form-input" style="padding-left:38px" placeholder="Misal: 3.500.000"
-                oninput="this.value=this.value.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.')"/>
+              <input id="kpr-bunga-baru-manual" type="text" inputmode="decimal" class="form-input" style="padding-right:38px" placeholder="Misal: 8.5"
+                oninput="this.value=this.value.replace(/[^0-9.,]/g,'')"/>
+              <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.4);font-size:12px;font-weight:700">%</span>
             </div>
-            <p style="font-size:10px;color:rgba(255,255,255,0.35);margin:5px 0 0">Nominal bunga flat per bulan dalam Rupiah</p>
+            <p style="font-size:10px;color:rgba(255,255,255,0.35);margin:5px 0 0">Persentase bunga per tahun</p>
           </div>
         </div>
       </div>
@@ -2964,8 +2964,6 @@ function updateKprPlafon() {
 function hitungKPR() {
   let cicilan, plafonUsed, tenorUsed, bungaUsed;
   let hargaProperti = 0, uangMuka = 0;
-  let bungaManualRp = 0, useBungaManual = false;
-
   const namaUser        = (document.getElementById('kpr-nama-user')?.value || '').trim();
   const propertiDiminati = (document.getElementById('kpr-properti')?.value || '').trim();
 
@@ -2974,16 +2972,13 @@ function hitungKPR() {
     tenorUsed  = parseInt(document.getElementById('kpr-tenor-sisa')?.value) || 10;
     if (plafonUsed <= 0) { showToast('Isi sisa pokok KPR terlebih dahulu', 'error'); return; }
     if (_kprBungaBaruMode === 'manual') {
-      bungaManualRp  = parseFloat((document.getElementById('kpr-bunga-baru-manual')?.value || '').replace(/\D/g,'')) || 0;
-      useBungaManual = true;
-      bungaUsed      = 0;
-      if (bungaManualRp <= 0) { showToast('Isi nominal bunga manual terlebih dahulu', 'error'); return; }
-      cicilan = Math.round(plafonUsed / (tenorUsed * 12) + bungaManualRp);
+      bungaUsed = parseFloat((document.getElementById('kpr-bunga-baru-manual')?.value || '').replace(',', '.')) || 0;
+      if (bungaUsed <= 0) { showToast('Isi persentase bunga manual terlebih dahulu', 'error'); return; }
     } else {
       bungaUsed = parseFloat(document.getElementById('kpr-bunga-baru')?.value) || 7.5;
-      const i = (bungaUsed/100)/12; const n = tenorUsed*12;
-      cicilan = Math.round((plafonUsed * i) / (1 - Math.pow(1+i,-n)));
     }
+    const i = (bungaUsed/100)/12; const n = tenorUsed*12;
+    cicilan = Math.round((plafonUsed * i) / (1 - Math.pow(1+i,-n)));
   } else {
     const harga = parseFloat((document.getElementById('kpr-harga')?.value || '').replace(/\D/g,'')) || 0;
     const dp    = parseFloat((document.getElementById('kpr-dp')?.value || '').replace(/\D/g,'')) || 0;
@@ -2993,20 +2988,17 @@ function hitungKPR() {
     tenorUsed   = parseInt(document.getElementById('kpr-tenor')?.value) || 20;
     if (plafonUsed <= 0) { showToast('Isi harga properti dan uang muka terlebih dahulu', 'error'); return; }
     if (_kprBungaMode === 'manual') {
-      bungaManualRp  = parseFloat((document.getElementById('kpr-bunga-manual')?.value || '').replace(/\D/g,'')) || 0;
-      useBungaManual = true;
-      bungaUsed      = 0;
-      if (bungaManualRp <= 0) { showToast('Isi nominal bunga manual terlebih dahulu', 'error'); return; }
-      cicilan = Math.round(plafonUsed / (tenorUsed * 12) + bungaManualRp);
+      bungaUsed = parseFloat((document.getElementById('kpr-bunga-manual')?.value || '').replace(',', '.')) || 0;
+      if (bungaUsed <= 0) { showToast('Isi persentase bunga manual terlebih dahulu', 'error'); return; }
     } else {
       bungaUsed = parseFloat(document.getElementById('kpr-bunga')?.value) || 7.5;
-      if (_kprTab === 'syariah') {
-        const totalMargin = plafonUsed * (bungaUsed/100) * tenorUsed;
-        cicilan = Math.round((plafonUsed + totalMargin) / (tenorUsed * 12));
-      } else {
-        const i = (bungaUsed/100)/12; const n = tenorUsed*12;
-        cicilan = Math.round((plafonUsed * i) / (1 - Math.pow(1+i,-n)));
-      }
+    }
+    if (_kprTab === 'syariah') {
+      const totalMargin = plafonUsed * (bungaUsed/100) * tenorUsed;
+      cicilan = Math.round((plafonUsed + totalMargin) / (tenorUsed * 12));
+    } else {
+      const i = (bungaUsed/100)/12; const n = tenorUsed*12;
+      cicilan = Math.round((plafonUsed * i) / (1 - Math.pow(1+i,-n)));
     }
   }
 
@@ -3021,14 +3013,11 @@ function hitungKPR() {
   let amorRows = '';
   let sisa = plafonUsed;
   const bungaBln = bungaUsed / 100 / 12;
-  const pokokFlatBln = useBungaManual ? Math.round(plafonUsed / (tenorUsed * 12)) : 0;
   for (let i = 1; i <= tenorUsed * 12; i++) {
-    const bungaAmt = useBungaManual
-      ? bungaManualRp
-      : _kprTab === 'syariah'
-        ? Math.round((totalKredit - plafonUsed) / (tenorUsed * 12))
-        : Math.round(sisa * bungaBln);
-    const pokokAmt = useBungaManual ? pokokFlatBln : cicilan - bungaAmt;
+    const bungaAmt = _kprTab === 'syariah'
+      ? Math.round((totalKredit - plafonUsed) / (tenorUsed * 12))
+      : Math.round(sisa * bungaBln);
+    const pokokAmt = cicilan - bungaAmt;
     sisa -= pokokAmt;
     amorRows += `<tr style="background:${i%2===0?'#0D1526':'#131F38'}">
       <td style="padding:5px 8px;color:rgba(255,255,255,0.4)">${i}</td>
@@ -3044,7 +3033,7 @@ function hitungKPR() {
   _kprLastResult = {
     tab: _kprTab, cicilan, plafonUsed, tenorUsed, bungaUsed,
     totalKredit, biayaProvisi, biayaAdmin, biayaNotaris, biayaBPHTB, biayaAsuransi, totalBiaya,
-    hargaProperti, uangMuka, useBungaManual, bungaManualRp,
+    hargaProperti, uangMuka,
     namaUser, propertiDiminati,
   };
 
@@ -3055,7 +3044,7 @@ function hitungKPR() {
       <p style="font-size:32px;font-weight:700;color:#D4A853;margin-bottom:8px">${kprFmtRpFull(cicilan)}</p>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📅 ${tenorUsed} thn (${tenorUsed*12} bln)</span>
-        <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📊 ${useBungaManual ? kprFmtRpFull(bungaManualRp)+'/bln (flat)' : bungaUsed.toFixed(2)+'%/thn'}</span>
+        <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📊 ${bungaUsed.toFixed(2)}%/thn</span>
         ${_kprTab==='syariah'?'<span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">☪️ Murabahah</span>':''}
       </div>
     </div>
@@ -3167,7 +3156,7 @@ async function saveKprPDF() {
       <p style="font-size:36px;font-weight:800;color:#D4A853;margin:0 0 12px">${kprFmtRpFull(r.cicilan)}</p>
       <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
         <span style="font-size:12px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.08);padding:4px 14px;border-radius:20px">Tenor ${r.tenorUsed} Tahun (${r.tenorUsed*12} Bulan)</span>
-        <span style="font-size:12px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.08);padding:4px 14px;border-radius:20px">${r.useBungaManual ? marginLabel+' '+kprFmtRpFull(r.bungaManualRp)+'/bln (flat)' : marginLabel+' '+r.bungaUsed.toFixed(2)+'%/thn'}</span>
+        <span style="font-size:12px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.08);padding:4px 14px;border-radius:20px">${marginLabel} ${r.bungaUsed.toFixed(2)}%/thn</span>
       </div>
     </div>
 
