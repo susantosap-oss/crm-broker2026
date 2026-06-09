@@ -651,6 +651,7 @@
             <div style="display:flex;gap:4px">
               <button id="kpr-bunga-btn-auto" onclick="setKprBungaMode('auto')" style="padding:4px 10px;border-radius:20px;border:none;cursor:pointer;font-size:11px;font-weight:600;background:#D4A853;color:#0D1526">Auto %</button>
               <button id="kpr-bunga-btn-manual" onclick="setKprBungaMode('manual')" style="padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;font-size:11px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.5)">Manual %</button>
+              <button id="kpr-bunga-btn-bertahap" onclick="setKprBungaMode('bertahap')" style="padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;font-size:11px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.5)">Bertahap</button>
             </div>
           </div>
           <div id="kpr-bunga-auto-wrap">
@@ -675,6 +676,15 @@
 
       <!-- Take Over form -->
       <div id="kpr-form-takeover" class="card" style="margin-bottom:14px;display:none;flex-direction:column;gap:14px">
+        <!-- Sub-type toggle -->
+        <div>
+          <label class="form-label">Jenis Take Over</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button id="kpr-to-btn-ajb" onclick="switchToSubtype('to-ajb')" style="padding:10px 6px;border-radius:12px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#D4A853;color:#0D1526">Take Over AJB</button>
+            <button id="kpr-to-btn-to" onclick="switchToSubtype('to')" style="padding:10px 6px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:12px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.5)">Take Over</button>
+          </div>
+          <p id="kpr-to-desc" style="font-size:10px;color:rgba(255,255,255,0.3);margin:5px 0 0">Biaya: Provisi, Admin, Notaris, BPHTB, Asuransi (~10%)</p>
+        </div>
         <div>
           <label class="form-label">Sisa Pokok KPR Saat Ini</label>
           <div style="position:relative">
@@ -701,6 +711,7 @@
             <div style="display:flex;gap:4px">
               <button id="kpr-bunga-baru-btn-auto" onclick="setKprBungaBaruMode('auto')" style="padding:4px 10px;border-radius:20px;border:none;cursor:pointer;font-size:11px;font-weight:600;background:#D4A853;color:#0D1526">Auto %</button>
               <button id="kpr-bunga-baru-btn-manual" onclick="setKprBungaBaruMode('manual')" style="padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;font-size:11px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.5)">Manual %</button>
+              <button id="kpr-bunga-baru-btn-bertahap" onclick="setKprBungaBaruMode('bertahap')" style="padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;font-size:11px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.5)">Bertahap</button>
             </div>
           </div>
           <div id="kpr-bunga-baru-auto-wrap">
@@ -721,6 +732,16 @@
             <p style="font-size:10px;color:rgba(255,255,255,0.35);margin:5px 0 0">Persentase bunga per tahun</p>
           </div>
         </div>
+      </div>
+
+      <!-- Bunga Bertahap Periods -->
+      <div id="kpr-bertahap-wrap" class="card" style="display:none;margin-bottom:14px;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin:0">🔢 Periode Bunga Bertahap</p>
+          <button onclick="addKprPeriode()" style="background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);border-radius:8px;padding:5px 12px;color:#D4A853;font-size:11px;font-weight:600;cursor:pointer">+ Periode</button>
+        </div>
+        <div id="kpr-periodes-list"></div>
+        <p style="font-size:10px;color:rgba(255,255,255,0.25);margin:0">Kolom terakhir otomatis dikunci ke tenor</p>
       </div>
 
       <!-- Bank presets -->
@@ -2849,6 +2870,9 @@ let _kprTab = 'konven';
 let _kprLastResult = null;
 let _kprBungaMode = 'auto';
 let _kprBungaBaruMode = 'auto';
+let _kprToSubtype = 'to-ajb'; // 'to-ajb' = Take Over + AJB, 'to' = Take Over only
+let _kprBungaBertahap = false;
+let _kprPeriodes = [{ sampai:3, bunga:3.99 }, { sampai:6, bunga:6.99 }, { sampai:10, bunga:9.99 }];
 
 function kprFmtRp(n) {
   if (!n || isNaN(n)) return 'Rp 0';
@@ -2900,6 +2924,14 @@ function switchKprTab(tab) {
   if (takeoverForm) takeoverForm.style.display = tab === 'takeover' ? 'flex' : 'none';
   const bungaLabel = document.getElementById('kpr-bunga-label');
   if (bungaLabel) bungaLabel.textContent = tab === 'syariah' ? 'Margin / Tahun' : 'Bunga / Tahun';
+  // Hide bertahap button for syariah; reset bertahap mode
+  const btnB = document.getElementById('kpr-bunga-btn-bertahap');
+  if (btnB) btnB.style.display = tab === 'syariah' ? 'none' : 'inline-block';
+  if (tab === 'syariah' && _kprBungaBertahap) {
+    _kprBungaBertahap = false;
+    setKprBungaMode('auto');
+  }
+  if (_kprBungaBertahap) renderKprPeriodes();
   renderKprBanks();
   const resultEl = document.getElementById('kpr-result');
   if (resultEl) resultEl.style.display = 'none';
@@ -2940,20 +2972,110 @@ function setKprBungaMode(mode) {
   _kprBungaMode = mode;
   document.getElementById('kpr-bunga-auto-wrap').style.display   = mode === 'auto'   ? 'block' : 'none';
   document.getElementById('kpr-bunga-manual-wrap').style.display = mode === 'manual' ? 'block' : 'none';
-  const bAuto   = document.getElementById('kpr-bunga-btn-auto');
-  const bManual = document.getElementById('kpr-bunga-btn-manual');
-  if (bAuto)   { bAuto.style.background = mode==='auto' ? '#D4A853':'#131F38'; bAuto.style.color = mode==='auto' ? '#0D1526':'rgba(255,255,255,0.5)'; bAuto.style.border = mode==='auto' ? 'none':'1px solid rgba(255,255,255,0.15)'; }
-  if (bManual) { bManual.style.background = mode==='manual' ? '#D4A853':'#131F38'; bManual.style.color = mode==='manual' ? '#0D1526':'rgba(255,255,255,0.5)'; bManual.style.border = mode==='manual' ? 'none':'1px solid rgba(255,255,255,0.15)'; }
+  ['auto','manual','bertahap'].forEach(m => {
+    const b = document.getElementById('kpr-bunga-btn-' + m);
+    if (b) { b.style.background = m===mode?'#D4A853':'#131F38'; b.style.color = m===mode?'#0D1526':'rgba(255,255,255,0.5)'; b.style.border = m===mode?'none':'1px solid rgba(255,255,255,0.15)'; }
+  });
+  _kprBungaBertahap = mode === 'bertahap';
+  const w = document.getElementById('kpr-bertahap-wrap');
+  if (w) w.style.display = _kprBungaBertahap ? 'flex' : 'none';
+  if (_kprBungaBertahap) renderKprPeriodes();
+}
+
+function _getTenorForPeriodes() {
+  return _kprTab === 'takeover'
+    ? (parseInt(document.getElementById('kpr-tenor-sisa')?.value) || 10)
+    : (parseInt(document.getElementById('kpr-tenor')?.value) || 20);
+}
+
+function renderKprPeriodes() {
+  const list = document.getElementById('kpr-periodes-list');
+  if (!list) return;
+  const tenor = _getTenorForPeriodes();
+  if (_kprPeriodes.length > 0) _kprPeriodes[_kprPeriodes.length - 1].sampai = tenor;
+  list.innerHTML = _kprPeriodes.map((p, i) => {
+    const dari   = i === 0 ? 1 : _kprPeriodes[i-1].sampai + 1;
+    const isLast = i === _kprPeriodes.length - 1;
+    const canDel = !isLast && _kprPeriodes.length > 2;
+    return `<div style="display:grid;grid-template-columns:auto 80px auto 80px ${canDel?'32px':'32px'};gap:6px;align-items:center;margin-bottom:6px">
+      <span style="font-size:11px;color:rgba(255,255,255,0.4);white-space:nowrap">Th ${dari} –</span>
+      <input type="number" value="${p.sampai}" min="${dari}" max="${tenor}" ${isLast?'disabled':''}
+        style="background:#131F38;border:1px solid rgba(255,255,255,${isLast?'0.07':'0.15'});border-radius:8px;padding:7px 8px;font-size:12px;color:${isLast?'rgba(255,255,255,0.35)':'#fff'};width:100%"
+        oninput="updateKprPeriode(${i},'sampai',this.value)"/>
+      <span style="font-size:11px;color:rgba(255,255,255,0.4)">@</span>
+      <div style="position:relative">
+        <input type="number" value="${p.bunga}" step="0.01" min="0.1" max="30"
+          style="background:#131F38;border:1px solid rgba(212,168,83,0.3);border-radius:8px;padding:7px 22px 7px 8px;font-size:12px;color:#D4A853;font-weight:600;width:100%"
+          oninput="updateKprPeriode(${i},'bunga',this.value)"/>
+        <span style="position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:10px;color:rgba(255,255,255,0.3)">%</span>
+      </div>
+      ${canDel ? `<button onclick="removeKprPeriode(${i})" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;width:32px;height:32px;color:#f87171;cursor:pointer;font-size:14px;line-height:1">×</button>` : '<div></div>'}
+    </div>`;
+  }).join('');
+}
+
+function updateKprPeriode(idx, field, val) {
+  const tenor = _getTenorForPeriodes();
+  let num = parseFloat(String(val).replace(',','.')) || 0;
+  if (field === 'sampai') {
+    num = Math.max(1, Math.min(num, tenor - 1));
+    _kprPeriodes[idx].sampai = num;
+    // ensure subsequent periods are valid
+    for (let i = idx + 1; i < _kprPeriodes.length - 1; i++) {
+      if (_kprPeriodes[i].sampai <= _kprPeriodes[i-1].sampai) _kprPeriodes[i].sampai = _kprPeriodes[i-1].sampai + 1;
+    }
+    _kprPeriodes[_kprPeriodes.length - 1].sampai = tenor;
+  } else {
+    _kprPeriodes[idx].bunga = num;
+  }
+  renderKprPeriodes();
+}
+
+function addKprPeriode() {
+  if (_kprPeriodes.length >= 6) { showToast('Maksimal 6 periode', 'error'); return; }
+  const tenor = _getTenorForPeriodes();
+  const last = _kprPeriodes[_kprPeriodes.length - 1];
+  const prev = _kprPeriodes.length >= 2 ? _kprPeriodes[_kprPeriodes.length - 2].sampai : 0;
+  const dari = prev + 1;
+  if (last.sampai - dari < 2) { showToast('Tenor terlalu pendek untuk periode baru', 'error'); return; }
+  const mid = dari + Math.floor((last.sampai - dari) / 2);
+  const newBunga = parseFloat((last.bunga + 1).toFixed(2));
+  _kprPeriodes.splice(_kprPeriodes.length - 1, 0, { sampai: mid, bunga: last.bunga });
+  _kprPeriodes[_kprPeriodes.length - 1].bunga = newBunga;
+  _kprPeriodes[_kprPeriodes.length - 1].sampai = tenor;
+  renderKprPeriodes();
+}
+
+function removeKprPeriode(idx) {
+  if (_kprPeriodes.length <= 2 || idx === _kprPeriodes.length - 1) return;
+  _kprPeriodes.splice(idx, 1);
+  _kprPeriodes[_kprPeriodes.length - 1].sampai = _getTenorForPeriodes();
+  renderKprPeriodes();
+}
+
+function switchToSubtype(subtype) {
+  _kprToSubtype = subtype;
+  const btnAjb = document.getElementById('kpr-to-btn-ajb');
+  const btnTo  = document.getElementById('kpr-to-btn-to');
+  const desc   = document.getElementById('kpr-to-desc');
+  const isAjb  = subtype === 'to-ajb';
+  if (btnAjb) { btnAjb.style.background = isAjb ? '#D4A853':'#131F38'; btnAjb.style.color = isAjb ? '#0D1526':'rgba(255,255,255,0.5)'; btnAjb.style.border = isAjb ? 'none':'1px solid rgba(255,255,255,0.1)'; }
+  if (btnTo)  { btnTo.style.background  = !isAjb ? '#D4A853':'#131F38'; btnTo.style.color  = !isAjb ? '#0D1526':'rgba(255,255,255,0.5)'; btnTo.style.border  = !isAjb ? 'none':'1px solid rgba(255,255,255,0.1)'; }
+  if (desc)   desc.textContent = isAjb ? 'Biaya: Provisi, Admin, Notaris, BPHTB, Asuransi (~10%)' : 'Biaya: Provisi, Admin, Notaris, Asuransi, Roya (maks. 5%)';
 }
 
 function setKprBungaBaruMode(mode) {
   _kprBungaBaruMode = mode;
   document.getElementById('kpr-bunga-baru-auto-wrap').style.display   = mode === 'auto'   ? 'block' : 'none';
   document.getElementById('kpr-bunga-baru-manual-wrap').style.display = mode === 'manual' ? 'block' : 'none';
-  const bAuto   = document.getElementById('kpr-bunga-baru-btn-auto');
-  const bManual = document.getElementById('kpr-bunga-baru-btn-manual');
-  if (bAuto)   { bAuto.style.background = mode==='auto' ? '#D4A853':'#131F38'; bAuto.style.color = mode==='auto' ? '#0D1526':'rgba(255,255,255,0.5)'; bAuto.style.border = mode==='auto' ? 'none':'1px solid rgba(255,255,255,0.15)'; }
-  if (bManual) { bManual.style.background = mode==='manual' ? '#D4A853':'#131F38'; bManual.style.color = mode==='manual' ? '#0D1526':'rgba(255,255,255,0.5)'; bManual.style.border = mode==='manual' ? 'none':'1px solid rgba(255,255,255,0.15)'; }
+  ['auto','manual','bertahap'].forEach(m => {
+    const b = document.getElementById('kpr-bunga-baru-btn-' + m);
+    if (b) { b.style.background = m===mode?'#D4A853':'#131F38'; b.style.color = m===mode?'#0D1526':'rgba(255,255,255,0.5)'; b.style.border = m===mode?'none':'1px solid rgba(255,255,255,0.15)'; }
+  });
+  _kprBungaBertahap = mode === 'bertahap';
+  const w = document.getElementById('kpr-bertahap-wrap');
+  if (w) w.style.display = _kprBungaBertahap ? 'flex' : 'none';
+  if (_kprBungaBertahap) renderKprPeriodes();
 }
 
 function updateSliderGradient(id, min, max) {
@@ -2994,14 +3116,16 @@ function hitungKPR() {
     plafonUsed = parseFloat((document.getElementById('kpr-sisa-pokok')?.value || '').replace(/\D/g,'')) || 0;
     tenorUsed  = parseInt(document.getElementById('kpr-tenor-sisa')?.value) || 10;
     if (plafonUsed <= 0) { showToast('Isi sisa pokok KPR terlebih dahulu', 'error'); return; }
-    if (_kprBungaBaruMode === 'manual') {
-      bungaUsed = parseFloat((document.getElementById('kpr-bunga-baru-manual')?.value || '').replace(',', '.')) || 0;
-      if (bungaUsed <= 0) { showToast('Isi persentase bunga manual terlebih dahulu', 'error'); return; }
-    } else {
-      bungaUsed = parseFloat(document.getElementById('kpr-bunga-baru')?.value) || 7.5;
+    if (!_kprBungaBertahap) {
+      if (_kprBungaBaruMode === 'manual') {
+        bungaUsed = parseFloat((document.getElementById('kpr-bunga-baru-manual')?.value || '').replace(',', '.')) || 0;
+        if (bungaUsed <= 0) { showToast('Isi persentase bunga manual terlebih dahulu', 'error'); return; }
+      } else {
+        bungaUsed = parseFloat(document.getElementById('kpr-bunga-baru')?.value) || 7.5;
+      }
+      const i = (bungaUsed/100)/12; const n = tenorUsed*12;
+      cicilan = Math.round((plafonUsed * i) / (1 - Math.pow(1+i,-n)));
     }
-    const i = (bungaUsed/100)/12; const n = tenorUsed*12;
-    cicilan = Math.round((plafonUsed * i) / (1 - Math.pow(1+i,-n)));
   } else {
     const harga = parseFloat((document.getElementById('kpr-harga')?.value || '').replace(/\D/g,'')) || 0;
     const dp    = parseFloat((document.getElementById('kpr-dp')?.value || '').replace(/\D/g,'')) || 0;
@@ -3010,66 +3134,164 @@ function hitungKPR() {
     plafonUsed  = Math.max(0, harga - dp);
     tenorUsed   = parseInt(document.getElementById('kpr-tenor')?.value) || 20;
     if (plafonUsed <= 0) { showToast('Isi harga properti dan uang muka terlebih dahulu', 'error'); return; }
-    if (_kprBungaMode === 'manual') {
-      bungaUsed = parseFloat((document.getElementById('kpr-bunga-manual')?.value || '').replace(',', '.')) || 0;
-      if (bungaUsed <= 0) { showToast('Isi persentase bunga manual terlebih dahulu', 'error'); return; }
-    } else {
-      bungaUsed = parseFloat(document.getElementById('kpr-bunga')?.value) || 7.5;
-    }
-    if (_kprTab === 'syariah') {
-      const totalMargin = plafonUsed * (bungaUsed/100) * tenorUsed;
-      cicilan = Math.round((plafonUsed + totalMargin) / (tenorUsed * 12));
-    } else {
-      const i = (bungaUsed/100)/12; const n = tenorUsed*12;
-      cicilan = Math.round((plafonUsed * i) / (1 - Math.pow(1+i,-n)));
+    if (_kprTab === 'syariah' || !_kprBungaBertahap) {
+      if (_kprBungaMode === 'manual') {
+        bungaUsed = parseFloat((document.getElementById('kpr-bunga-manual')?.value || '').replace(',', '.')) || 0;
+        if (bungaUsed <= 0) { showToast('Isi persentase bunga manual terlebih dahulu', 'error'); return; }
+      } else {
+        bungaUsed = parseFloat(document.getElementById('kpr-bunga')?.value) || 7.5;
+      }
+      if (_kprTab === 'syariah') {
+        const totalMargin = plafonUsed * (bungaUsed/100) * tenorUsed;
+        cicilan = Math.round((plafonUsed + totalMargin) / (tenorUsed * 12));
+      } else {
+        const i = (bungaUsed/100)/12; const n = tenorUsed*12;
+        cicilan = Math.round((plafonUsed * i) / (1 - Math.pow(1+i,-n)));
+      }
     }
   }
 
-  const totalKredit    = cicilan * tenorUsed * 12;
-  const biayaProvisi   = Math.round(plafonUsed * 0.010);
-  const biayaAdmin     = Math.round(plafonUsed * 0.005);
-  const biayaNotaris   = Math.round(plafonUsed * 0.020);
-  const biayaBPHTB     = Math.round(plafonUsed * 0.030);
-  const biayaAsuransi  = Math.round(plafonUsed * 0.035);
-  const totalBiaya     = biayaProvisi + biayaAdmin + biayaNotaris + biayaBPHTB + biayaAsuransi;
+  // ── Bunga Bertahap — stepped amortization ──────────────
+  let periodeResults = null;
+  let totalKredit;
+  if (_kprBungaBertahap && _kprTab !== 'syariah') {
+    if (_kprPeriodes.some(p => !p.bunga || p.bunga <= 0)) {
+      showToast('Isi bunga semua periode bertahap', 'error'); return;
+    }
+    let saldoBertahap = plafonUsed;
+    periodeResults = [];
+    let mc = 0;
+    totalKredit = 0;
+    for (let p = 0; p < _kprPeriodes.length; p++) {
+      const pr    = _kprPeriodes[p];
+      const dari  = p === 0 ? 1 : _kprPeriodes[p-1].sampai + 1;
+      const bulanPr = (pr.sampai - dari + 1) * 12;
+      const sisaBulan = tenorUsed * 12 - mc;
+      if (sisaBulan <= 0) break;
+      const bBln = (pr.bunga / 100) / 12;
+      const cP = bBln > 0
+        ? Math.round((saldoBertahap * bBln) / (1 - Math.pow(1 + bBln, -sisaBulan)))
+        : Math.round(saldoBertahap / sisaBulan);
+      periodeResults.push({ label:`Th ${dari}–${pr.sampai}`, bunga:pr.bunga, cicilan:cP, dari, sampai:pr.sampai });
+      const actualBulan = Math.min(bulanPr, sisaBulan);
+      for (let m = 0; m < actualBulan; m++) {
+        mc++;
+        const bA = Math.round(saldoBertahap * bBln);
+        saldoBertahap = Math.max(0, saldoBertahap - Math.max(0, cP - bA));
+        totalKredit += cP;
+      }
+    }
+    cicilan   = periodeResults[0]?.cicilan || 0;
+    bungaUsed = _kprPeriodes[0].bunga;
+  } else {
+    totalKredit = cicilan * tenorUsed * 12;
+  }
 
+  // ── Biaya ───────────────────────────────────────────────
+  let biayaProvisi, biayaAdmin, biayaNotaris, biayaBPHTB, biayaAsuransi, biayaRoya, totalBiaya, biayaDisplay;
+  if (_kprTab === 'takeover' && _kprToSubtype === 'to') {
+    biayaProvisi  = Math.round(plafonUsed * 0.005);
+    biayaAdmin    = Math.round(plafonUsed * 0.005);
+    biayaNotaris  = Math.round(plafonUsed * 0.020);
+    biayaAsuransi = Math.round(plafonUsed * 0.020);
+    biayaRoya     = Math.round(plafonUsed * 0.005);
+    biayaBPHTB    = 0;
+    totalBiaya    = Math.min(biayaProvisi + biayaAdmin + biayaNotaris + biayaAsuransi + biayaRoya, Math.round(plafonUsed * 0.05));
+    biayaDisplay  = [['Biaya Provisi (~0.5%)',biayaProvisi],['Biaya Admin (~0.5%)',biayaAdmin],['Biaya Notaris (~2%)',biayaNotaris],['Asuransi (~2%)',biayaAsuransi],['Roya (~0.5%)',biayaRoya]];
+  } else {
+    biayaProvisi  = Math.round(plafonUsed * 0.010);
+    biayaAdmin    = Math.round(plafonUsed * 0.005);
+    biayaNotaris  = Math.round(plafonUsed * 0.020);
+    biayaBPHTB    = Math.round(plafonUsed * 0.030);
+    biayaAsuransi = Math.round(plafonUsed * 0.035);
+    biayaRoya     = 0;
+    totalBiaya    = biayaProvisi + biayaAdmin + biayaNotaris + biayaBPHTB + biayaAsuransi;
+    biayaDisplay  = [['Biaya Provisi (~1%)',biayaProvisi],['Biaya Admin (~0.5%)',biayaAdmin],['Biaya Notaris & PPAT (~2%)',biayaNotaris],['BPHTB + AJB (~3%)',biayaBPHTB],['Asuransi Jiwa + Kebakaran (~3.5%)',biayaAsuransi]];
+  }
+
+  // ── Amortisasi ──────────────────────────────────────────
   let amorRows = '';
-  let sisa = plafonUsed;
-  const bungaBln = bungaUsed / 100 / 12;
-  for (let i = 1; i <= tenorUsed * 12; i++) {
-    const bungaAmt = _kprTab === 'syariah'
-      ? Math.round((totalKredit - plafonUsed) / (tenorUsed * 12))
-      : Math.round(sisa * bungaBln);
-    const pokokAmt = cicilan - bungaAmt;
-    sisa -= pokokAmt;
-    amorRows += `<tr style="background:${i%2===0?'#0D1526':'#131F38'}">
-      <td style="padding:5px 8px;color:rgba(255,255,255,0.4)">${i}</td>
-      <td style="padding:5px 8px;text-align:right;font-weight:600;color:#D4A853">${kprFmtRp(cicilan)}</td>
-      <td style="padding:5px 8px;text-align:right;color:#4ade80">${kprFmtRp(pokokAmt)}</td>
-      <td style="padding:5px 8px;text-align:right;color:#f87171">${kprFmtRp(bungaAmt)}</td>
-      <td style="padding:5px 8px;text-align:right;color:rgba(255,255,255,0.4)">${kprFmtRp(Math.max(0,sisa))}</td>
-    </tr>`;
+  if (_kprBungaBertahap && periodeResults) {
+    let sisaB = plafonUsed;
+    let mc2 = 0;
+    for (let p = 0; p < _kprPeriodes.length; p++) {
+      const pr    = _kprPeriodes[p];
+      const dari  = p === 0 ? 1 : _kprPeriodes[p-1].sampai + 1;
+      const bulanPr = (pr.sampai - dari + 1) * 12;
+      const sisaBulan = tenorUsed * 12 - mc2;
+      if (sisaBulan <= 0) break;
+      const bBln = (pr.bunga / 100) / 12;
+      const cP = periodeResults[p]?.cicilan || 0;
+      const actualBulan = Math.min(bulanPr, sisaBulan);
+      for (let m = 0; m < actualBulan; m++) {
+        mc2++;
+        const bA = Math.round(sisaB * bBln);
+        const pA = Math.max(0, cP - bA);
+        sisaB = Math.max(0, sisaB - pA);
+        amorRows += `<tr style="background:${mc2%2===0?'#0D1526':'#131F38'}">
+          <td style="padding:5px 8px;color:rgba(255,255,255,0.4)">${mc2}</td>
+          <td style="padding:5px 8px;text-align:right;font-weight:600;color:#D4A853">${kprFmtRp(cP)}</td>
+          <td style="padding:5px 8px;text-align:right;color:#4ade80">${kprFmtRp(pA)}</td>
+          <td style="padding:5px 8px;text-align:right;color:#f87171">${kprFmtRp(bA)}</td>
+          <td style="padding:5px 8px;text-align:right;color:rgba(255,255,255,0.4)">${kprFmtRp(sisaB)}</td>
+        </tr>`;
+      }
+    }
+  } else {
+    let sisa = plafonUsed;
+    const bungaBln = bungaUsed / 100 / 12;
+    for (let i = 1; i <= tenorUsed * 12; i++) {
+      const bungaAmt = _kprTab === 'syariah'
+        ? Math.round((totalKredit - plafonUsed) / (tenorUsed * 12))
+        : Math.round(sisa * bungaBln);
+      const pokokAmt = cicilan - bungaAmt;
+      sisa -= pokokAmt;
+      amorRows += `<tr style="background:${i%2===0?'#0D1526':'#131F38'}">
+        <td style="padding:5px 8px;color:rgba(255,255,255,0.4)">${i}</td>
+        <td style="padding:5px 8px;text-align:right;font-weight:600;color:#D4A853">${kprFmtRp(cicilan)}</td>
+        <td style="padding:5px 8px;text-align:right;color:#4ade80">${kprFmtRp(pokokAmt)}</td>
+        <td style="padding:5px 8px;text-align:right;color:#f87171">${kprFmtRp(bungaAmt)}</td>
+        <td style="padding:5px 8px;text-align:right;color:rgba(255,255,255,0.4)">${kprFmtRp(Math.max(0,sisa))}</td>
+      </tr>`;
+    }
   }
+
   const marginLabel = _kprTab === 'syariah' ? 'Margin' : 'Bunga';
 
   // Simpan untuk PDF
   _kprLastResult = {
-    tab: _kprTab, cicilan, plafonUsed, tenorUsed, bungaUsed,
-    totalKredit, biayaProvisi, biayaAdmin, biayaNotaris, biayaBPHTB, biayaAsuransi, totalBiaya,
-    hargaProperti, uangMuka,
+    tab: _kprTab, toSubtype: _kprToSubtype, bertahap: _kprBungaBertahap, periodeResults,
+    cicilan, plafonUsed, tenorUsed, bungaUsed,
+    totalKredit, biayaProvisi, biayaAdmin, biayaNotaris, biayaBPHTB, biayaAsuransi, biayaRoya, totalBiaya,
+    biayaDisplay, hargaProperti, uangMuka,
     namaUser, propertiDiminati,
   };
 
   const resultEl = document.getElementById('kpr-result');
   resultEl.innerHTML = `
     <div style="background:linear-gradient(135deg,#1C2D52,#131F38);border-radius:18px;padding:20px;margin-bottom:12px;border:1px solid rgba(212,168,83,0.2)">
-      <p style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:4px">Cicilan per Bulan</p>
-      <p style="font-size:32px;font-weight:700;color:#D4A853;margin-bottom:8px">${kprFmtRpFull(cicilan)}</p>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
-        <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📅 ${tenorUsed} thn (${tenorUsed*12} bln)</span>
-        <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📊 ${bungaUsed.toFixed(2)}%/thn</span>
-        ${_kprTab==='syariah'?'<span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">☪️ Murabahah</span>':''}
-      </div>
+      ${_kprBungaBertahap && periodeResults ? `
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">🔢 Cicilan per Periode (Bertahap)</p>
+        ${periodeResults.map((pr,i) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${i===periodeResults.length-1?'10':'6'}px">
+            <div>
+              <span style="font-size:12px;color:rgba(255,255,255,0.55)">${pr.label}</span>
+              <span style="font-size:11px;color:rgba(255,255,255,0.3);margin-left:6px">@ ${pr.bunga.toFixed(2)}%</span>
+            </div>
+            <span style="font-size:${i===0?'20':'17'}px;font-weight:700;color:#D4A853">${kprFmtRp(pr.cicilan)}<span style="font-size:10px;color:rgba(255,255,255,0.4);font-weight:400">/bln</span></span>
+          </div>`).join('')}
+        <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:8px;margin-top:4px">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📅 ${tenorUsed} thn · Bunga bertahap</span>
+        </div>
+      ` : `
+        <p style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:4px">Cicilan per Bulan</p>
+        <p style="font-size:32px;font-weight:700;color:#D4A853;margin-bottom:8px">${kprFmtRpFull(cicilan)}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📅 ${tenorUsed} thn (${tenorUsed*12} bln)</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📊 ${bungaUsed.toFixed(2)}%/thn</span>
+          ${_kprTab==='syariah'?'<span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">☪️ Murabahah</span>':''}
+        </div>
+      `}
     </div>
     <div class="card" style="margin-bottom:12px">
       <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Total Kredit (via Cicilan)</p>
@@ -3079,7 +3301,7 @@ function hitungKPR() {
     </div>
     <div class="card" style="margin-bottom:12px">
       <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Biaya Cash di Depan ⚡</p>
-      ${[['Biaya Provisi (~1%)',biayaProvisi],['Biaya Admin (~0.5%)',biayaAdmin],['Biaya Notaris & PPAT (~2%)',biayaNotaris],['BPHTB + AJB (~3%)',biayaBPHTB],['Asuransi Jiwa + Kebakaran (~3.5%)',biayaAsuransi]].map(([l,v])=>`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;color:rgba(255,255,255,0.5)">${l}</span><span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.8)">${kprFmtRp(v)}</span></div>`).join('')}
+      ${biayaDisplay.map(([l,v])=>`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;color:rgba(255,255,255,0.5)">${l}</span><span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.8)">${kprFmtRp(v)}</span></div>`).join('')}
       <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:4px;border-top:1px solid rgba(255,255,255,0.07)"><span style="font-weight:700;color:#fff">Subtotal Biaya</span><span style="font-weight:700;color:#D4A853;font-size:15px">${kprFmtRpFull(totalBiaya)}</span></div>
     </div>
     <div style="background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(212,168,83,0.05));border:1px solid rgba(212,168,83,0.25);border-radius:18px;padding:16px 20px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
@@ -3130,10 +3352,11 @@ async function saveKprPDF() {
   const agenWA     = u.no_wa_biz   || u.no_wa || '';
   const agenKantor = u.nama_kantor || '';
   const tanggal    = new Date().toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  const tipeLabel  = r.tab === 'syariah' ? 'KPR Syariah (Murabahah)' : r.tab === 'kmg' ? 'KPR Multiguna (KMG)' : r.tab === 'takeover' ? 'Take Over KPR' : 'KPR Konvensional (Anuitas)';
+  const tipeBase   = r.tab === 'syariah' ? 'KPR Syariah (Murabahah)' : r.tab === 'kmg' ? 'KPR Multiguna (KMG)' : r.tab === 'takeover' ? (r.toSubtype === 'to' ? 'Take Over KPR' : 'Take Over KPR + AJB') : 'KPR Konvensional (Anuitas)';
+  const tipeLabel  = r.bertahap ? tipeBase + ' — Bunga Bertahap' : tipeBase;
   const marginLabel = r.tab === 'syariah' ? 'Margin' : 'Bunga';
 
-  const biayaItems = [
+  const biayaItems = r.biayaDisplay || [
     ['Biaya Provisi (~1%)', r.biayaProvisi],
     ['Biaya Admin (~0.5%)', r.biayaAdmin],
     ['Biaya Notaris & PPAT (~2%)', r.biayaNotaris],
@@ -3175,12 +3398,23 @@ async function saveKprPDF() {
 
     <!-- Cicilan Utama -->
     <div style="background:linear-gradient(135deg,#0D1526,#1C2D52);border-radius:12px;padding:20px 24px;margin-bottom:16px;text-align:center">
-      <p style="font-size:11px;color:rgba(255,255,255,0.5);margin:0 0 6px">Cicilan per Bulan</p>
-      <p style="font-size:36px;font-weight:800;color:#D4A853;margin:0 0 12px">${kprFmtRpFull(r.cicilan)}</p>
-      <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
-        <span style="font-size:12px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.08);padding:4px 14px;border-radius:20px">Tenor ${r.tenorUsed} Tahun (${r.tenorUsed*12} Bulan)</span>
-        <span style="font-size:12px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.08);padding:4px 14px;border-radius:20px">${marginLabel} ${r.bungaUsed.toFixed(2)}%/thn</span>
-      </div>
+      ${r.bertahap && r.periodeResults ? `
+        <p style="font-size:10px;color:rgba(255,255,255,0.5);margin:0 0 10px;letter-spacing:.06em;text-transform:uppercase">Cicilan per Periode (Bunga Bertahap)</p>
+        ${r.periodeResults.map((pr,i) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;${i<r.periodeResults.length-1?'border-bottom:1px solid rgba(255,255,255,0.06)':''}">
+          <span style="font-size:12px;color:rgba(255,255,255,0.55)">${pr.label} @ ${pr.bunga.toFixed(2)}%</span>
+          <span style="font-size:${i===0?'18':'15'}px;font-weight:700;color:#D4A853">${kprFmtRpFull(pr.cicilan)}<span style="font-size:9px;color:rgba(255,255,255,0.4);font-weight:400">/bln</span></span>
+        </div>`).join('')}
+        <div style="margin-top:10px;display:flex;justify-content:center">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 12px;border-radius:20px">Tenor ${r.tenorUsed} Tahun</span>
+        </div>
+      ` : `
+        <p style="font-size:11px;color:rgba(255,255,255,0.5);margin:0 0 6px">Cicilan per Bulan</p>
+        <p style="font-size:36px;font-weight:800;color:#D4A853;margin:0 0 12px">${kprFmtRpFull(r.cicilan)}</p>
+        <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+          <span style="font-size:12px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.08);padding:4px 14px;border-radius:20px">Tenor ${r.tenorUsed} Tahun (${r.tenorUsed*12} Bulan)</span>
+          <span style="font-size:12px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.08);padding:4px 14px;border-radius:20px">${marginLabel} ${r.bungaUsed.toFixed(2)}%/thn</span>
+        </div>
+      `}
     </div>
 
     <!-- Harga Properti + Uang Muka (non-takeover only) -->
