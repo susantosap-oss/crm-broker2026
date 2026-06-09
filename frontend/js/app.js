@@ -235,6 +235,7 @@ async function navigateTo(page) {
     sosmed:    'Sosmed Hub',
     whatsapp:  'WA Center',
     pipeline:  'Pipeline Kanban',
+    komisi:    'Request Komisi',
   };
   setText('page-title', titles[page] || page);
   STATE.currentPage = page;
@@ -248,6 +249,7 @@ async function navigateTo(page) {
   if (page === 'whatsapp')  await loadWaLeadsSelect();
   if (page === 'legal')     await loadLegalDocs();
   if (page === 'rental')    await loadRentals();
+  if (page === 'komisi' && typeof loadKomisiPage === 'function') await loadKomisiPage();
 
   // Scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -330,8 +332,42 @@ async function loadDashboard() {
     // Legal widget (non-blocking)
     if (typeof loadDashboardLegalWidget === 'function') loadDashboardLegalWidget();
 
+    // Komisi widget (non-blocking)
+    loadDashboardKomisiWidget();
+
   } catch (e) {
     showToast('Gagal memuat dashboard: ' + e.message, 'error');
+  }
+}
+
+async function loadDashboardKomisiWidget() {
+  const widget = document.getElementById('dash-komisi-widget');
+  const list   = document.getElementById('dash-komisi-list');
+  if (!widget || !list) return;
+
+  try {
+    const res   = await API.get('/komisi/gform');
+    const items = (res.data || []).slice(0, 5);
+
+    if (!items.length) { widget.style.display = 'none'; return; }
+
+    const statusColor = { Pending:'#fbbf24', YA:'#34d399', 'Co Broke':'#60a5fa' };
+    list.innerHTML = items.map(k => {
+      const sc      = statusColor[k.status_data] || '#94a3b8';
+      const nominal = k.komisi_nominal ? 'Rp ' + Number(k.komisi_nominal).toLocaleString('id-ID') : '—';
+      const label   = k.status_data === 'YA' ? 'Disetujui' : (k.status_data || 'Pending');
+      return `<div style="background:#131F38;border-radius:12px;padding:10px 14px;border:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(k.alamat || '—')}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${nominal} · ${escHtml(k.tanggal_transaksi || '')}</div>
+        </div>
+        <span style="font-size:10px;font-weight:700;color:${sc};background:${sc}22;border-radius:6px;padding:3px 8px;flex-shrink:0;margin-left:10px">${escHtml(label)}</span>
+      </div>`;
+    }).join('');
+
+    widget.style.display = 'block';
+  } catch (e) {
+    widget.style.display = 'none';
   }
 }
 

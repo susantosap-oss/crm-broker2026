@@ -235,10 +235,27 @@ function hitungTanggalSelesaiUI() {
   display.textContent = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+async function triggerRentalReminder() {
+  const btn = document.getElementById('btn-trigger-rental-reminder');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:5px"></i>Mengirim...'; }
+  try {
+    await API.post('/admin/trigger-rental-reminder', {});
+    showToast('Reminder sewa berhasil dikirim', 'success');
+  } catch (e) {
+    showToast('Gagal kirim reminder: ' + (e.message || ''), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-bell" style="margin-right:5px"></i>Kirim Reminder'; }
+  }
+}
+
 async function loadRentals() {
   const list = document.getElementById('rental-list');
   if (!list) return;
   list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px 0;font-size:13px">Memuat...</div>';
+
+  // Tampilkan tombol trigger hanya untuk superadmin
+  const triggerBtn = document.getElementById('btn-trigger-rental-reminder');
+  if (triggerBtn) triggerBtn.style.display = (STATE?.user?.role === 'superadmin') ? 'inline-flex' : 'none';
 
   try {
     const qs = _rentalFilter ? `?status=${_rentalFilter}` : '';

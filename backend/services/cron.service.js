@@ -129,20 +129,20 @@ async function checkRentalReminders() {
       const diffDays = Math.round((endDate - today) / (1000 * 60 * 60 * 24));
       const agent    = agentMap[rental.Agen_ID] || {};
 
-      // Reminder 90 hari
-      if (diffDays === 90 && rental.Reminder_90_Sent !== 'TRUE') {
-        await kirimReminderSewa(agent, rental, 90, 'normal');
+      // Reminder 90 hari (trigger saat diffDays <= 90 agar tidak miss jika cron sempat down)
+      if (diffDays <= 90 && diffDays > 30 && rental.Reminder_90_Sent !== 'TRUE') {
+        await kirimReminderSewa(agent, rental, diffDays, 'normal');
         const newRow = COLUMNS.RENTAL_STATUS.map(c => c === 'Reminder_90_Sent' ? 'TRUE' : (rental[c] || ''));
         await sheetsService.updateRow(SHEETS.RENTAL_STATUS, rental._rowIdx, newRow);
-        console.log(`[CRON] Reminder 90 hari dikirim untuk rental ${rental.ID}`);
+        console.log(`[CRON] Reminder 90 hari dikirim untuk rental ${rental.ID} (sisa ${diffDays} hari)`);
       }
 
       // Reminder 30 hari
-      if (diffDays === 30 && rental.Reminder_30_Sent !== 'TRUE') {
-        await kirimReminderSewa(agent, rental, 30, 'urgent');
+      if (diffDays <= 30 && diffDays > 0 && rental.Reminder_30_Sent !== 'TRUE') {
+        await kirimReminderSewa(agent, rental, diffDays, 'urgent');
         const newRow = COLUMNS.RENTAL_STATUS.map(c => c === 'Reminder_30_Sent' ? 'TRUE' : (rental[c] || ''));
         await sheetsService.updateRow(SHEETS.RENTAL_STATUS, rental._rowIdx, newRow);
-        console.log(`[CRON] Reminder 30 hari dikirim untuk rental ${rental.ID}`);
+        console.log(`[CRON] Reminder 30 hari dikirim untuk rental ${rental.ID} (sisa ${diffDays} hari)`);
       }
     }
 
@@ -174,7 +174,27 @@ async function kirimReminderSewa(agent, rental, hariLagi, tone) {
     }
   }
 
-  // Push notification in-app
+  // In-app notification (bell icon di CRM)
+  if (rental.Agen_ID) {
+    try {
+      const createNotification = getCreateNotification();
+      await createNotification({
+        tipe: 'reminder',
+        judul: tone === 'urgent' ? `⚠️ Sewa berakhir ${hariLagi} hari lagi` : `📋 Reminder Sewa — ${hariLagi} hari lagi`,
+        pesan: `Masa sewa ${rental.Nama_Penyewa} di ${rental.Alamat_Sewa} berakhir pada ${tglSelesai} (${hariLagi} hari lagi). Segera hubungi penyewa.`,
+        from_user_id: 'system',
+        from_user_nama: 'Sistem CRM',
+        to_user_id: rental.Agen_ID,
+        to_role: '',
+        link_type: 'rental',
+        link_id: rental.ID,
+      });
+    } catch (e) {
+      console.error('[CRON] Gagal buat notif in-app rental:', e.message);
+    }
+  }
+
+  // Web push notification (Android/browser)
   if (rental.Agen_ID) {
     try {
       await pushService.sendToUser(rental.Agen_ID, {

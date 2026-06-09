@@ -7,10 +7,27 @@
 const express = require('express');
 const router  = express.Router();
 const { v4: uuidv4 } = require('uuid');
+const axios   = require('axios');
 const { authMiddleware, requireMinRole } = require('../middleware/auth.middleware');
 const sheetsService = require('../services/sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 const { createNotification } = require('./notifications.routes');
+
+const GFORM_SHEET_ID = process.env.KOMISI_GFORM_SHEET_ID || '';
+
+// Parse CSV baris tunggal (handle quoted fields dengan koma di dalamnya)
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur.trim());
+  return result;
+}
 
 router.use(authMiddleware);
 
@@ -34,6 +51,78 @@ router.get('/', async (req, res) => {
     data.sort((a, b) => new Date(b.Created_At) - new Date(a.Created_At));
     res.json({ success: true, data, count: data.length });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// GET /komisi/gform — baca dari Google Form responses sheet (publik)
+router.get('/gform', async (req, res) => {
+  // Hardcode fallback jika env var belum ter-load
+  const sheetId = GFORM_SHEET_ID || '193lcLmru7ghRSz-ChZz8sTA7sNTL35a6BYgriaomUU4';
+  try {
+    // range=A:O agar kolom Status Data (O) ikut ter-export
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&range=A:O`;
+    const resp = await axios.get(url, {
+      timeout: 12000,
+      responseType: 'text',
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      maxRedirects: 5,
+    });
+
+    const lines = (resp.data || '').replace(/\r/g, '').split('\n').filter(l => l.trim());
+    if (lines.length < 2) return res.json({ success: true, data: [] });
+
+    // Header-based mapping — robust terhadap perubahan urutan kolom
+    const header = parseCSVLine(lines[0]);
+    const idx = {};
+    header.forEach((h, i) => { idx[h.trim()] = i; });
+    const col = (row, name) => (row[idx[name]] || '').trim();
+
+    const { role, nama } = req.user;
+    const adminRoles = ['superadmin','principal','business_manager','admin','kantor'];
+    const isAdmin    = adminRoles.includes(role);
+    const userNama   = (nama || '').toLowerCase();
+
+    console.log('[GFORM] headers:', header);
+    console.log('[GFORM] total rows:', lines.length - 1, '| user:', userNama, '| isAdmin:', isAdmin);
+
+    const data = lines.slice(1)
+      .map(l => parseCSVLine(l))
+      .filter(r => r.length >= 5 && r.some(c => c.trim()))
+      .filter(r => {
+        if (isAdmin) return true;
+        const aL = col(r, 'Nama Agen Listing').toLowerCase();
+        const aS = col(r, 'Nama Agen Selling').toLowerCase();
+        return aL.includes(userNama) || aS.includes(userNama) ||
+               userNama.includes(aL.split(' ')[0]) || userNama.includes(aS.split(' ')[0]);
+      })
+      .map(r => {
+        const harga  = parseFloat(col(r, 'Harga Transaksi').replace(/\D/g,'')) || 0;
+        const persen = parseFloat(col(r, 'Prosentase Komisi')) || 0;
+        const statusData = col(r, 'Status Data');
+        return {
+          no_transaksi:      col(r, 'Nomer Transaksi'),
+          timestamp:         col(r, 'Timestamp'),
+          tanggal_transaksi: col(r, 'Tanggal Transaksi'),
+          jenis:             col(r, 'Jenis Transaksi'),
+          alamat:            col(r, 'Alamat Transaksi'),
+          harga,
+          status_transaksi:  col(r, 'Status Transaksi'),
+          persen_komisi:     persen,
+          nama_penjual:      col(r, 'Nama Penjual'),
+          agen_listing:      col(r, 'Nama Agen Listing'),
+          nama_pembeli:      col(r, 'Nama Pembeli'),
+          agen_selling:      col(r, 'Nama Agen Selling'),
+          status_data:       statusData || 'Pending',
+          komisi_nominal:    Math.round(harga * persen / 100),
+        };
+      })
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    console.log('[GFORM] data returned:', data.length, 'rows');
+    res.json({ success: true, data });
+  } catch (e) {
+    console.error('[GFORM] fetch error:', e.message, e.stack?.split('\n')[1]);
+    res.status(500).json({ success: false, message: e.message, data: [] });
+  }
 });
 
 // GET /komisi/stats — untuk admin dashboard

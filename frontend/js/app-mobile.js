@@ -2078,18 +2078,61 @@ async function doChangeStatus(newScore) {
 }
 
 // ─────────────────────────────────────────────────────────
-// KOMISI FORM — Native
+// KOMISI — Google Form + GForm Reader
 // ─────────────────────────────────────────────────────────
 const KOMISI_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSde2vDLLWK2sw8j872-iponBxnfzNwU5Z_0IvlDuk2AyqQPiQ/viewform?embedded=true';
 
 function openKomisiForm() {
   const iframe = document.getElementById('komisi-iframe');
   if (iframe) {
-    // Set setiap kali buka supaya tidak blank
     iframe.src = 'about:blank';
     setTimeout(() => { iframe.src = KOMISI_FORM_URL; }, 50);
   }
   openModal('modal-komisi');
+}
+
+async function loadKomisiPage() {
+  const list = document.getElementById('komisi-page-list');
+  if (!list) return;
+  list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:30px 0;font-size:13px">Memuat...</div>';
+
+  try {
+    const res  = await API.get('/komisi/gform');
+    const data = res.data || [];
+
+    if (!data.length) {
+      list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px 0;font-size:13px">Belum ada data transaksi</div>';
+      return;
+    }
+
+    const statusColor = { Pending:'#fbbf24', YA:'#34d399' };
+    const jenisColor  = { Jual:'#60a5fa', Sewa:'#34d399', Primary:'#a78bfa' };
+
+    list.innerHTML = data.map(k => {
+      const nominal  = k.komisi_nominal ? 'Rp ' + Number(k.komisi_nominal).toLocaleString('id-ID') : '—';
+      const harga    = k.harga ? 'Rp ' + Number(k.harga).toLocaleString('id-ID') : '—';
+      const tgl      = k.tanggal_transaksi || '';
+      const sc       = statusColor[k.status_data] || '#94a3b8';
+      const jc       = jenisColor[k.jenis] || '#94a3b8';
+      const statusLabel = k.status_data === 'YA' ? 'Disetujui' : (k.status_data || 'Pending');
+      return `<div style="background:#131F38;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.07);margin-bottom:8px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div style="min-width:0;flex:1">
+            <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(k.alamat || '—')}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:3px">${escapeHtml(k.nama_penjual||'')}${k.nama_pembeli ? ' → '+escapeHtml(k.nama_pembeli) : ''}</div>
+            <div style="font-size:12px;font-weight:700;color:#D4A853">${nominal} <span style="font-weight:400;color:rgba(255,255,255,0.3);font-size:10px">(dari ${harga})</span></div>
+          </div>
+          <div style="flex-shrink:0;text-align:right">
+            <span style="display:inline-block;font-size:10px;font-weight:700;color:${jc};background:${jc}22;border-radius:6px;padding:3px 8px;margin-bottom:4px">${escapeHtml(k.jenis||'')}</span>
+            <div style="font-size:10px;color:rgba(255,255,255,0.3)">${tgl}</div>
+            <span style="display:inline-block;font-size:10px;font-weight:700;color:${sc};background:${sc}22;border-radius:6px;padding:2px 7px;margin-top:4px">${escapeHtml(statusLabel)}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = `<div style="text-align:center;color:#f87171;padding:30px 0;font-size:13px">Gagal memuat: ${escapeHtml(e.message)}</div>`;
+  }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -2460,6 +2503,9 @@ async function loadDashboard() {
 
     // Legal widget — semua role (filter milik sendiri di backend)
     if (typeof loadDashboardLegalWidget === 'function') loadDashboardLegalWidget();
+
+    // Komisi widget — baca dari Google Form responses sheet
+    if (typeof loadDashboardKomisiWidget === 'function') loadDashboardKomisiWidget();
 
   } catch (e) {
     console.error('[CRM] Dashboard load error:', e.message, e.stack);
@@ -3767,7 +3813,7 @@ async function navigateTo(page) {
     b.className = b.id === `nav-${page}` ? 'nav-btn active' : 'nav-btn';
   });
 
-  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Aktivitas', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti' };
+  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Aktivitas', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti', komisi:'Request Komisi' };
   setEl('page-title', titles[page] || page);
   STATE.currentPage = page;
 
@@ -3811,6 +3857,7 @@ async function navigateTo(page) {
   if (page === 'pipeline')    await loadPipeline();
   if (page === 'whatsapp')    await loadWaLeadsSelect();
   if (page === 'wa-contacts') await loadWAContacts();
+  if (page === 'komisi')      await loadKomisiPage();
 }
 
 // ─────────────────────────────────────────────────────────
