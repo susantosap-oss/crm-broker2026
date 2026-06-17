@@ -640,10 +640,11 @@ async function loadListings() {
   grid.innerHTML = '<div class="skeleton" style="height:100px;border-radius:14px"></div>'.repeat(3);
 
   const seoBulkBtn = document.getElementById('btn-seo-bulk');
-  if (seoBulkBtn) {
-    const r = STATE.user?.role;
-    seoBulkBtn.style.display = ['superadmin','principal'].includes(r) ? 'inline-flex' : 'none';
-  }
+  const regenJudulBtn = document.getElementById('btn-regen-judul');
+  const _adminRolesList = ['superadmin','admin','principal','kantor'];
+  const r = STATE.user?.role;
+  if (seoBulkBtn)    seoBulkBtn.style.display    = ['superadmin','principal'].includes(r) ? 'inline-flex' : 'none';
+  if (regenJudulBtn) regenJudulBtn.style.display = _adminRolesList.includes(r) ? 'inline-flex' : 'none';
   const exportListingsBtn = document.getElementById('btn-export-listings');
   if (exportListingsBtn) {
     exportListingsBtn.style.display = 'inline-flex';
