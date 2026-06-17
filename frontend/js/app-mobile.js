@@ -1353,13 +1353,32 @@ function autoJudulListing(id) {
   const l = _allListings.find(x => x.ID === id);
   if (!l) return;
   const statusMap = { 'Jual': 'Dijual', 'Sewa': 'Disewa', 'Dijual': 'Dijual', 'Disewa': 'Disewa', 'Disewakan': 'Disewa' };
-  const status = statusMap[l.Status_Transaksi] || l.Status_Transaksi || '';
-  const kt     = l.Kamar_Tidur ? `${l.Kamar_Tidur}KT ` : '';
-  const lokasi = [l.Kecamatan, l.Kota].filter(Boolean).join(' ');
-  const harga  = l.Harga_Format || formatRupiah(l.Harga);
-  const judul  = `${l.Tipe_Properti||''} ${status} ${kt}di ${lokasi} — ${harga}`.replace(/\s+/g,' ').trim();
-  const input  = document.getElementById('ld-judul-input');
+  const status   = statusMap[l.Status_Transaksi] || l.Status_Transaksi || '';
+  const karakter = l.Karakter_Properti ? l.Karakter_Properti + ' ' : '';
+  const kt       = l.Kamar_Tidur ? `${l.Kamar_Tidur}KT ` : '';
+  const lokasi   = [l.Kecamatan, l.Kota].filter(Boolean).join(' ');
+  const harga    = l.Harga_Format || formatRupiah(l.Harga);
+  const judul    = `${l.Tipe_Properti||''} ${karakter}${status} ${kt}di ${lokasi} — ${harga}`.replace(/\s+/g,' ').trim();
+  const input    = document.getElementById('ld-judul-input');
   if (input) input.value = judul;
+}
+
+async function bulkRegenerateJudul() {
+  const btn    = document.getElementById('regen-judul-btn');
+  const status = document.getElementById('regen-judul-status');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Memproses...'; }
+  if (status) { status.style.display = 'block'; status.textContent = 'Menghubungi server...'; }
+  try {
+    const res = await API.post('/listings/bulk-regenerate-judul', {});
+    if (status) status.textContent = `✅ Selesai: ${res.updated} judul diperbarui dari ${res.total} listing.`;
+    showToast(`Regenerasi selesai — ${res.updated} judul diperbarui`, 'success');
+    await loadListings();
+  } catch (e) {
+    if (status) status.textContent = '❌ Gagal: ' + e.message;
+    showToast('Gagal regenerasi: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-arrows-rotate" style="margin-right:6px"></i>Regenerasi Judul Semua Listing'; }
+  }
 }
 
 async function saveJudulListing(id) {
@@ -3313,6 +3332,7 @@ function renderLeadsList(leads) {
 // SEO JUDUL HELPER
 // ─────────────────────────────────────────────────────────
 function buildJudulSeoChips() {
+  const karakter  = (document.getElementById('add-karakter')?.value || '').trim();
   const tipe      = (document.getElementById('add-tipe')?.value || '').trim();
   const transaksi = (document.getElementById('add-transaksi')?.value || '').trim();
   const kota      = (document.getElementById('add-kota')?.value || '').trim();
@@ -3321,6 +3341,7 @@ function buildJudulSeoChips() {
   const deskripsi = (document.getElementById('add-deskripsi')?.value || '');
   const chips = [];
 
+  if (karakter)  chips.push(karakter);
   if (tipe)      chips.push(tipe);
   if (transaksi) chips.push(transaksi === 'Jual' ? 'Dijual' : 'Disewa');
 
@@ -3375,6 +3396,7 @@ function insertJudulChip(chip) {
 }
 
 function autoGenerateJudul() {
+  const karakter  = (document.getElementById('add-karakter')?.value || '').trim();
   const tipe      = (document.getElementById('add-tipe')?.value || '').trim();
   const transaksi = (document.getElementById('add-transaksi')?.value || '').trim();
   const kota      = (document.getElementById('add-kota')?.value || '').trim();
@@ -3386,18 +3408,19 @@ function autoGenerateJudul() {
 
   const parts = [];
   if (tipe)      parts.push(tipe);
+  if (karakter)  parts.push(karakter);
   if (transaksi) parts.push(transaksi === 'Jual' ? 'Dijual' : 'Disewa');
   const ktM = deskripsi.match(/(\d+)\s*KT\b/i);
-  if (ktM) parts.push(ktM[1] + 'KT');
-  if (kecamatan) parts.push(kecamatan);
+  if (ktM)       parts.push(ktM[1] + 'KT');
+  if (kecamatan) parts.push('di ' + kecamatan);
   if (kota)      parts.push(kota);
   if (hargaRaw) {
     const n = parseInt(hargaRaw);
     if (n >= 1000000000) {
       const v = n / 1000000000;
-      parts.push((Number.isInteger(v) ? v : v.toFixed(1)) + ' M');
+      parts.push('—', (Number.isInteger(v) ? v : v.toFixed(1)) + ' M');
     } else if (n >= 1000000) {
-      parts.push(Math.round(n / 1000000) + ' Juta');
+      parts.push('—', Math.round(n / 1000000) + ' Juta');
     }
   }
   document.getElementById('add-judul').value = parts.join(' ');
@@ -3413,7 +3436,7 @@ let _editListingId = null;
 // ── Draft auto-save (persist form saat switch app di mobile) ──────────────
 const _LISTING_DRAFT_KEY = 'crm_listing_draft_v1';
 const _LISTING_DRAFT_FIELDS = [
-  'add-tipe','add-transaksi','add-judul','add-kota','add-kecamatan',
+  'add-tipe','add-transaksi','add-karakter','add-judul','add-kota','add-kecamatan',
   'add-harga','add-harga-permeter','add-deskripsi','add-caption',
   'add-nama-pemilik','add-gmaps-personal'
 ];
@@ -3452,7 +3475,7 @@ function _clearDraftListing() {
 
 function _clearListingForm() {
   _editListingId = null;
-  ['add-tipe','add-transaksi','add-judul','add-kota','add-kecamatan',
+  ['add-tipe','add-transaksi','add-karakter','add-judul','add-kota','add-kecamatan',
    'add-harga','add-harga-permeter','add-deskripsi','add-caption',
    'add-nama-pemilik','add-gmaps-personal'].forEach(id => {
     const el = document.getElementById(id);
@@ -3505,6 +3528,7 @@ function openEditListing(listingId) {
   // Pre-fill all fields
   setVal('add-tipe',       l.Tipe_Properti     || '');
   setVal('add-transaksi',  l.Status_Transaksi  || '');
+  setVal('add-karakter',   l.Karakter_Properti || '');
   setVal('add-judul',      l.Judul             || '');
   setVal('add-kota',       l.Kota              || '');
   setVal('add-kecamatan',  l.Kecamatan         || '');
@@ -3561,6 +3585,7 @@ async function submitAddListing() {
   formData.append('Harga',            harga);
   formData.append('Deskripsi',           getVal('add-deskripsi'));
   formData.append('Caption_Sosmed',      getVal('add-caption'));
+  formData.append('Karakter_Properti',   getVal('add-karakter').trim());
   formData.append('Nama_Pemilik',        getVal('add-nama-pemilik').trim());
   formData.append('Link_GMaps_Personal', getVal('add-gmaps-personal').trim());
   formData.append('Harga_Format',        formatRupiah(harga));

@@ -108,7 +108,8 @@ const COLUMNS = {
     'Notes',              // AO
     'Project_ID',         // AP  ★ FK ke PROJECTS (jika listing dibuat dari proyek primary)
     'Link_GMaps_Personal', // AQ ★ Link Google Maps pribadi agen — hanya CRM pemilik, tidak ke publik/web
-    'Nama_Pemilik',       // AR ★ Nama pemilik/vendor properti
+    'Nama_Pemilik',        // AR ★ Nama pemilik/vendor properti
+    'Karakter_Properti',   // AS ★ Karakter/kelebihan utama properti (untuk SEO judul)
   ],
 
   LEADS: [

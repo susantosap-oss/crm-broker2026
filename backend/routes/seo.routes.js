@@ -21,9 +21,11 @@ const STATUS_MAP = {
 };
 
 function buildTitle(l, template, trend = '') {
-  const status = STATUS_MAP[l.Status_Transaksi] || l.Status_Transaksi || '';
-  const kt     = l.Kamar_Tidur ? `${l.Kamar_Tidur}KT ` : '';
+  const status   = STATUS_MAP[l.Status_Transaksi] || l.Status_Transaksi || '';
+  const kt       = l.Kamar_Tidur ? `${l.Kamar_Tidur}KT ` : '';
+  const karakter = l.Karakter_Properti ? l.Karakter_Properti + ' ' : '';
   return template
+    .replace(/\{Karakter\}/g,  karakter)
     .replace(/\{Tipe\}/g,      l.Tipe_Properti || '')
     .replace(/\{Status\}/g,    status)
     .replace(/\{KT\}/g,        kt)
@@ -86,7 +88,7 @@ router.get('/trends', authMiddleware, guard, async (req, res) => {
 // ── GET /bulk-preview?template=...&trend=... ──
 router.get('/bulk-preview', authMiddleware, guard, async (req, res) => {
   try {
-    const template = (req.query.template || '{Tipe} {Status} {KT}di {Kecamatan} {Kota} — {Harga}').trim();
+    const template = (req.query.template || '{Tipe} {Karakter}{Status} {KT}di {Kecamatan} {Kota} — {Harga}').trim();
     const trend    = (req.query.trend || '').trim();
     const onlyBlank = req.query.only_blank === '1';
 

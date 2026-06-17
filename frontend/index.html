@@ -1633,6 +1633,16 @@
           <i class="fa-solid fa-wand-magic-sparkles" style="margin-right:6px"></i>Proses Semua Foto Profil via Canva
         </button>
       </div>
+      <!-- Superadmin: Bulk Regenerasi Judul SEO -->
+      <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:rgba(212,168,83,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🔄 Regenerasi Judul SEO</div>
+        <p style="font-size:10px;color:rgba(255,255,255,0.3);margin:0 0 10px">Perbarui judul semua listing ke format baru: <em>Tipe + Karakter + Dijual/Disewa + di Lokasi — Harga</em></p>
+        <div id="regen-judul-status" style="display:none;background:#131F38;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:rgba(255,255,255,0.6);line-height:1.5"></div>
+        <button onclick="bulkRegenerateJudul()" id="regen-judul-btn"
+          style="width:100%;padding:12px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:12px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-arrows-rotate" style="margin-right:6px"></i>Regenerasi Judul Semua Listing
+        </button>
+      </div>
       <div style="display:flex;gap:10px;padding-top:4px">
         <button onclick="closeModal('modal-settings')" class="btn-ghost" style="flex:1">Batal</button>
         <button onclick="saveSettings()" class="btn-gold" style="flex:1"><i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan</button>
@@ -1713,13 +1723,19 @@
           </p>
         </div>
       </div>
+      <!-- KARAKTER PROPERTI (SEO) -->
+      <div>
+        <label class="form-label">Karakter / Kelebihan Utama <span style="color:rgba(212,168,83,0.5);font-size:9px;font-weight:600">SEO</span></label>
+        <input id="add-karakter" type="text" maxlength="40" placeholder='"Minimalis 2 Lantai", "Siap Huni Strategis", "Dekat Jalan Tol", "Murah Siap Usaha"' class="form-input" oninput="buildJudulSeoChips()"/>
+        <p style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:4px;margin-bottom:0"><i class="fa-solid fa-tag" style="margin-right:4px;color:rgba(212,168,83,0.3)"></i>Menjadi awalan judul: <em>Rumah <strong style="color:rgba(212,168,83,0.7)">Minimalis 2 Lantai</strong> Dijual di ...</em></p>
+      </div>
       <!-- JUDUL SEO -->
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <label class="form-label" style="margin-bottom:0">Judul Listing * <span style="color:rgba(212,168,83,0.5);font-size:9px;font-weight:600">SEO</span></label>
           <button type="button" onclick="autoGenerateJudul()" style="background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);border-radius:8px;color:#D4A853;font-size:10px;font-weight:600;padding:4px 10px;cursor:pointer"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:4px"></i>Auto Judul</button>
         </div>
-        <input id="add-judul" type="text" placeholder="Rumah Dijual 3KT Wonokromo Surabaya 750 Juta" class="form-input" onfocus="buildJudulSeoChips()"/>
+        <input id="add-judul" type="text" placeholder="Rumah Minimalis 2 Lantai Dijual di Wonokromo Surabaya — 750 Juta" class="form-input" onfocus="buildJudulSeoChips()"/>
         <div id="judul-seo-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
         <p style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:5px;margin-bottom:0"><i class="fa-solid fa-tag" style="margin-right:4px;color:rgba(212,168,83,0.4)"></i>Ketuk chip untuk sisipkan kata ke judul</p>
       </div>

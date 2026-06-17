@@ -15,7 +15,7 @@ const captionService  = require('../services/caption.service');
 const cloudinaryService = require('../services/cloudinary.service');
 const multer = require('multer');
 const sheetsService = require('../services/sheets.service');
-const { SHEETS } = require('../config/sheets.config');
+const { SHEETS, COLUMNS } = require('../config/sheets.config');
 const { createNotification } = require('./notifications.routes');
 
 const upload = multer({ dest: '/tmp/uploads/' });
@@ -397,6 +397,68 @@ router.get('/pdf', async (req, res) => {
   } catch (e) {
     console.error('[PDF ERROR]', e.message, e.stack);
     if (!res.headersSent) res.status(500).json({ success: false, message: e.message, stack: e.stack });
+  }
+});
+
+// POST /bulk-regenerate-judul — regenerasi judul semua listing ke format SEO baru
+// Harus di atas /:id agar tidak ditangkap sebagai ID
+router.post('/bulk-regenerate-judul', requireRole(['superadmin','admin','principal','kantor']), async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.LISTING);
+    if (!rows || rows.length < 2) return res.json({ updated: 0, total: 0 });
+
+    const statusMap = { Jual: 'Dijual', Sewa: 'Disewa', Dijual: 'Dijual', Disewa: 'Disewa', Disewakan: 'Disewa' };
+    const judulIdx   = COLUMNS.LISTING.indexOf('Judul');
+    const tipeIdx    = COLUMNS.LISTING.indexOf('Tipe_Properti');
+    const statusIdx  = COLUMNS.LISTING.indexOf('Status_Transaksi');
+    const ktIdx      = COLUMNS.LISTING.indexOf('Kamar_Tidur');
+    const kecIdx     = COLUMNS.LISTING.indexOf('Kecamatan');
+    const kotaIdx    = COLUMNS.LISTING.indexOf('Kota');
+    const hargaFmtIdx = COLUMNS.LISTING.indexOf('Harga_Format');
+    const karakterIdx = COLUMNS.LISTING.indexOf('Karakter_Properti');
+
+    const batchData = [];
+    const dataRows  = rows.slice(1); // skip header
+
+    dataRows.forEach((row, i) => {
+      const tipe      = (row[tipeIdx]    || '').trim();
+      const status    = statusMap[(row[statusIdx] || '').trim()] || (row[statusIdx] || '').trim();
+      const karakter  = karakterIdx >= 0 ? (row[karakterIdx] || '').trim() : '';
+      const kt        = (row[ktIdx]      || '').trim();
+      const kecamatan = (row[kecIdx]     || '').trim();
+      const kota      = (row[kotaIdx]    || '').trim();
+      const harga     = (row[hargaFmtIdx] || '').trim();
+
+      if (!tipe && !status) return; // skip baris kosong
+
+      const parts = [];
+      if (tipe)      parts.push(tipe);
+      if (karakter)  parts.push(karakter);
+      if (status)    parts.push(status);
+      if (kt)        parts.push(kt + 'KT');
+      const lokasi = [kecamatan, kota].filter(Boolean).join(' ');
+      if (lokasi)    parts.push('di ' + lokasi);
+      if (harga)     parts.push('—', harga);
+
+      const newJudul = parts.join(' ').replace(/\s+/g, ' ').trim();
+      const oldJudul = (row[judulIdx] || '').trim();
+      if (!newJudul || newJudul === oldJudul) return;
+
+      const sheetRow = i + 2; // +1 header, +1 karena 1-based
+      const colLetter = judulIdx < 26
+        ? String.fromCharCode(65 + judulIdx)
+        : 'A' + String.fromCharCode(65 + (judulIdx - 26));
+      batchData.push({ range: `${SHEETS.LISTING}!${colLetter}${sheetRow}`, values: [[newJudul]] });
+    });
+
+    if (batchData.length > 0) {
+      await sheetsService.batchUpdate(batchData);
+    }
+
+    res.json({ success: true, updated: batchData.length, total: dataRows.length });
+  } catch (e) {
+    console.error('[BULK-REGEN-JUDUL]', e.message);
+    res.status(500).json({ success: false, message: e.message });
   }
 });
 
