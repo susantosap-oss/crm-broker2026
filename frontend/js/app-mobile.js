@@ -109,7 +109,8 @@ function openSettings() {
   setStatus(d.status || 'Aktif');
   // Tampilkan danger zone untuk superadmin
   const dz = document.getElementById('superadmin-danger-zone');
-  if (dz) dz.style.display = (STATE.user?.role === 'superadmin') ? 'block' : 'none';
+  const _adminRoles = ['superadmin','admin','principal','kantor'];
+  if (dz) dz.style.display = _adminRoles.includes(STATE.user?.role) ? 'block' : 'none';
   openModal('modal-settings');
 }
 
