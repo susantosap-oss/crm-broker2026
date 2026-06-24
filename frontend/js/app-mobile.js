@@ -1419,8 +1419,12 @@ function _buildShareText(listing, isOwnerOrCoOwner = false) {
   const agentWA    = STATE.user?.no_wa    || STATE.user?.No_WA    || '';
   const agentWABiz = STATE.user?.no_wa_biz || '';
   const agentId    = STATE.user?.id || listing.Agen_ID || '';
-  const waClean    = agentWA.replace(/\D/g, '');
-  const waBizClean = agentWABiz.replace(/\D/g, '');
+  let waClean    = agentWA.replace(/\D/g, '');
+  if (waClean.startsWith('0')) waClean = '62' + waClean.slice(1);
+  else if (waClean && !waClean.startsWith('62')) waClean = '62' + waClean;
+  let waBizClean = agentWABiz.replace(/\D/g, '');
+  if (waBizClean.startsWith('0')) waBizClean = '62' + waBizClean.slice(1);
+  else if (waBizClean && !waBizClean.startsWith('62')) waBizClean = '62' + waBizClean;
   const lokasi    = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ');
 
   // Parse spek dari deskripsi (fallback untuk listing lama)
@@ -1604,7 +1608,9 @@ async function doShareWAStatus(type = 'wa') {
 function _buildStatusText(listing, isOwner = false, waNum = '') {
   const harga  = listing.Harga_Format || formatRupiah(listing.Harga);
   const lokasi = [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ');
-  const wa     = (waNum || STATE.user?.no_wa || '').replace(/\D/g, '');
+  let wa     = (waNum || STATE.user?.no_wa || '').replace(/\D/g, '');
+  if (wa.startsWith('0')) wa = '62' + wa.slice(1);
+  else if (wa && !wa.startsWith('62')) wa = '62' + wa;
   const slug   = _makeSlug(listing.Judul || '', listing.ID || '');
 
   const _desc  = listing.Deskripsi || '';
@@ -5627,8 +5633,12 @@ function _buildProjectShareText(project) {
   const cara        = (project.Cara_Bayar || '').replace(/,/g, ', ');
   const agentNama   = STATE.user?.nama || '';
   const agentKantor = (STATE.user?.nama_kantor || '').replace(/^MANSION\s*:\s*/i, 'Mansion ').trim();
-  const agentWA     = (STATE.user?.no_wa || STATE.user?.No_WA || '').replace(/\D/g, '');
-  const agentWABiz  = (STATE.user?.no_wa_biz || '').replace(/\D/g, '');
+  let agentWA     = (STATE.user?.no_wa || STATE.user?.No_WA || '').replace(/\D/g, '');
+  if (agentWA.startsWith('0')) agentWA = '62' + agentWA.slice(1);
+  else if (agentWA && !agentWA.startsWith('62')) agentWA = '62' + agentWA;
+  let agentWABiz  = (STATE.user?.no_wa_biz || '').replace(/\D/g, '');
+  if (agentWABiz.startsWith('0')) agentWABiz = '62' + agentWABiz.slice(1);
+  else if (agentWABiz && !agentWABiz.startsWith('62')) agentWABiz = '62' + agentWABiz;
   const agentId     = STATE.user?.id || '';
 
   const projectSlug = _makeSlug(project.Nama_Proyek || '', project.ID || '');
@@ -5757,7 +5767,9 @@ async function doShareProjectWAStatus(type = 'wa') {
 // Caption ringkas Primary untuk WA My Status (max 10 baris & 700 char)
 function _buildProjectStatusText(project, waNum = '') {
   const tipeEmoji = { Rumah: '🏡', Ruko: '🏪', Apartemen: '🏢', Gudang: '🏭' }[project.Tipe_Properti] || '🏠';
-  const wa        = (waNum || STATE.user?.no_wa || '').replace(/\D/g, '');
+  let wa        = (waNum || STATE.user?.no_wa || '').replace(/\D/g, '');
+  if (wa.startsWith('0')) wa = '62' + wa.slice(1);
+  else if (wa && !wa.startsWith('62')) wa = '62' + wa;
   const cara      = (project.Cara_Bayar || '').replace(/,/g, ' / ');
   const slug      = _makeSlug(project.Nama_Proyek || '', project.ID || '');
 
