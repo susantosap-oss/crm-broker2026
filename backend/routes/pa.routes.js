@@ -381,7 +381,7 @@ router.get('/vigen/media/:listingId', authenticate, async (req, res) => {
 // POST /vigen/render — trigger render video (agen klik "Create Ads Content")
 router.post('/vigen/render', authenticate, async (req, res) => {
   try {
-    const { listing_id, listing_type, mood, duration } = req.body;
+    const { listing_id, listing_type, mood, duration, voiceover_script, voiceover_audio_url } = req.body;
 
     if (!listing_id) return res.status(400).json({ success: false, message: 'listing_id wajib' });
 
@@ -433,13 +433,17 @@ router.post('/vigen/render', authenticate, async (req, res) => {
       ? { ID: agentRow[0], Nama: agentRow[1], No_WA: agentRow[4], No_WA_Business: agentRow[16] }
       : { ID: req.user.id, Nama: req.user.nama };
 
+    console.log(`[ViGen/render] listing=${listing_id} vo_url=${voiceover_audio_url || 'NONE'}`);
+
     const result = await vigenService.triggerRender({
-      listingId:   listing_id,
-      listingType: listing_type || 'secondary',
-      mood:        mood || 'mewah',
-      duration:    Number(duration) || 30,
+      listingId:        listing_id,
+      listingType:      listing_type || 'secondary',
+      mood:             mood || 'mewah',
+      duration:         Number(duration) || 30,
       listing,
       agent,
+      voiceoverScript:   voiceover_script   || null,
+      voiceoverAudioUrl: voiceover_audio_url || null,
     });
 
     res.json(result);

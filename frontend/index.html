@@ -1484,6 +1484,9 @@
         <div>
           <h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff">🎬 Buat Konten Iklan</h3>
           <div id="vigen-listing-label" style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px"></div>
+          <div id="vigen-vo-indicator" style="margin-top:4px;font-size:10px;font-weight:700;color:#4ade80;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);border-radius:6px;padding:2px 8px;align-items:center;gap:4px;display:none">
+            <i class="fa-solid fa-microphone"></i><span id="vigen-vo-label">Voice Over terpasang</span>
+          </div>
         </div>
         <button onclick="closeModal('modal-vigen')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button>
       </div>
@@ -1548,6 +1551,204 @@
         <div id="vigen-jobs-list" style="display:flex;flex-direction:column;gap:8px">
           <div style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;padding:16px">Belum ada riwayat render</div>
         </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- AI SCRIPT — Voice Over Generator -->
+<div id="modal-ai-script" class="modal-overlay">
+  <div class="modal-sheet" style="max-width:600px">
+    <div class="mheader">
+      <div class="drag-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff"><i class="fa-solid fa-microphone-lines" style="color:#D4A853;margin-right:8px"></i>AI Script Generator</h3>
+          <div id="ai-script-listing-label" style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px"></div>
+        </div>
+        <button onclick="closeModal('modal-ai-script')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="mbody">
+
+      <!-- Durasi -->
+      <div>
+        <label class="form-label">Durasi Script</label>
+        <div style="display:flex;gap:8px">
+          <button id="aiscript-dur-15" onclick="aiScriptSetDuration(15)"
+            style="flex:1;padding:10px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.6);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s">
+            <div style="font-size:16px;margin-bottom:2px">⚡</div>15 detik
+          </button>
+          <button id="aiscript-dur-30" onclick="aiScriptSetDuration(30)"
+            style="flex:1;padding:10px;border-radius:10px;border:2px solid #D4A853;background:rgba(212,168,83,0.12);color:#D4A853;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s">
+            <div style="font-size:16px;margin-bottom:2px">🎬</div>30 detik
+          </button>
+          <button id="aiscript-dur-60" onclick="aiScriptSetDuration(60)"
+            style="flex:1;padding:10px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.6);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s">
+            <div style="font-size:16px;margin-bottom:2px">🎥</div>60 detik
+          </button>
+        </div>
+      </div>
+
+      <!-- Gaya / Style -->
+      <div>
+        <label class="form-label">Gaya Script</label>
+        <div style="display:flex;gap:8px">
+          <button id="aiscript-style-profesional" onclick="aiScriptSetStyle('profesional')"
+            style="flex:1;padding:10px;border-radius:10px;border:2px solid #D4A853;background:rgba(212,168,83,0.12);color:#D4A853;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s">
+            <div style="font-size:15px;margin-bottom:2px">👔</div>Profesional
+          </button>
+          <button id="aiscript-style-casual" onclick="aiScriptSetStyle('casual')"
+            style="flex:1;padding:10px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.6);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s">
+            <div style="font-size:15px;margin-bottom:2px">😊</div>Casual
+          </button>
+          <button id="aiscript-style-mewah" onclick="aiScriptSetStyle('mewah')"
+            style="flex:1;padding:10px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.6);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s">
+            <div style="font-size:15px;margin-bottom:2px">✨</div>Mewah
+          </button>
+        </div>
+      </div>
+
+      <!-- Generate Button -->
+      <button id="aiscript-generate-btn" onclick="generateAIScript()"
+        style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#D4A853,#A87B30);border:none;color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.3px;transition:all .2s">
+        <i class="fa-solid fa-wand-magic-sparkles" style="margin-right:8px"></i>Generate Script
+      </button>
+
+      <!-- Result -->
+      <div id="aiscript-result" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <label class="form-label" style="margin:0">Script Voice Over</label>
+          <span id="aiscript-meta" style="font-size:10px;color:rgba(212,168,83,0.7);font-weight:600"></span>
+        </div>
+        <textarea id="aiscript-text" rows="8" class="form-input"
+          style="resize:vertical;font-size:13px;line-height:1.7;letter-spacing:0.1px"></textarea>
+
+        <!-- Action Buttons -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+          <button onclick="copyAIScript()"
+            style="padding:11px;border-radius:12px;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:12px;font-weight:600;cursor:pointer">
+            <i class="fa-regular fa-copy" style="margin-right:5px"></i>Salin Script
+          </button>
+          <button onclick="downloadAIScript()"
+            style="padding:11px;border-radius:12px;background:rgba(43,123,255,0.1);border:1px solid rgba(43,123,255,0.25);color:#60a5fa;font-size:12px;font-weight:600;cursor:pointer">
+            <i class="fa-solid fa-download" style="margin-right:5px"></i>Download .txt
+          </button>
+        </div>
+        <!-- VOICE OVER SECTION -->
+        <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.07);padding-top:16px">
+          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">
+            <i class="fa-solid fa-microphone" style="color:#D4A853;margin-right:6px"></i>Voice Over
+          </div>
+
+          <!-- Tab selector: Logic 1 vs Logic 2 -->
+          <div style="display:flex;gap:6px;margin-bottom:14px">
+            <button id="vo-tab-ai" onclick="voTabSwitch('ai')"
+              style="flex:1;padding:9px 6px;border-radius:10px;border:2px solid #D4A853;background:rgba(212,168,83,0.12);color:#D4A853;font-size:11px;font-weight:700;cursor:pointer">
+              <i class="fa-solid fa-robot" style="margin-right:4px"></i>AI Voice
+            </button>
+            <button id="vo-tab-self" onclick="voTabSwitch('self')"
+              style="flex:1;padding:9px 6px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.5);font-size:11px;font-weight:700;cursor:pointer">
+              <i class="fa-solid fa-user-microphone" style="margin-right:4px"></i>Rekam / Upload
+            </button>
+          </div>
+
+          <!-- LOGIC 1: AI TTS -->
+          <div id="vo-panel-ai">
+            <label class="form-label" style="margin-bottom:8px">Pilih Suara</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+              <button id="vo-voice-female_normal" onclick="voSetVoice('female_normal')"
+                style="padding:10px 6px;border-radius:10px;border:2px solid #D4A853;background:rgba(212,168,83,0.12);color:#D4A853;font-size:11px;font-weight:600;cursor:pointer">
+                <div style="font-size:18px;margin-bottom:3px">👩</div>Gadis Normal
+              </button>
+              <button id="vo-voice-male_normal" onclick="voSetVoice('male_normal')"
+                style="padding:10px 6px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;cursor:pointer">
+                <div style="font-size:18px;margin-bottom:3px">👨</div>Ardi Normal
+              </button>
+              <button id="vo-voice-female_energik" onclick="voSetVoice('female_energik')"
+                style="padding:10px 6px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;cursor:pointer">
+                <div style="font-size:18px;margin-bottom:3px">⚡</div>Gadis Energik
+              </button>
+              <button id="vo-voice-male_karismatik" onclick="voSetVoice('male_karismatik')"
+                style="padding:10px 6px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;cursor:pointer">
+                <div style="font-size:18px;margin-bottom:3px">🎯</div>Ardi Karismatik
+              </button>
+              <button id="vo-voice-female_elegan" onclick="voSetVoice('female_elegan')"
+                style="padding:10px 6px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;cursor:pointer">
+                <div style="font-size:18px;margin-bottom:3px">🌸</div>Gadis Elegan
+              </button>
+              <button id="vo-voice-male_ceria" onclick="voSetVoice('male_ceria')"
+                style="padding:10px 6px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:#131F38;color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;cursor:pointer">
+                <div style="font-size:18px;margin-bottom:3px">😄</div>Ardi Ceria
+              </button>
+            </div>
+            <button id="vo-tts-btn" onclick="generateTTSVoice()"
+              style="width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#D4A853,#A87B30);border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+              <i class="fa-solid fa-play" style="margin-right:6px"></i>Generate AI Voice
+            </button>
+          </div>
+
+          <!-- LOGIC 2: Self VO + Enhance -->
+          <div id="vo-panel-self" style="display:none">
+            <div style="background:#131F38;border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.07);margin-bottom:10px">
+              <!-- Record -->
+              <div style="margin-bottom:12px">
+                <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:8px;font-weight:600">1. Rekam Suara</div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <button id="vo-rec-btn" onclick="voToggleRecord()"
+                    style="padding:10px 16px;border-radius:10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35);color:#f87171;font-size:12px;font-weight:600;cursor:pointer">
+                    <i class="fa-solid fa-circle" style="margin-right:5px;font-size:10px"></i>Mulai Rekam
+                  </button>
+                  <div id="vo-rec-timer" style="font-size:12px;color:rgba(255,255,255,0.4);font-family:monospace;display:none">00:00</div>
+                </div>
+                <div id="vo-waveform" style="height:40px;background:rgba(212,168,83,0.05);border-radius:8px;margin-top:8px;display:none;overflow:hidden;position:relative">
+                  <canvas id="vo-waveform-canvas" style="width:100%;height:100%"></canvas>
+                </div>
+              </div>
+              <!-- Upload -->
+              <div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:8px;font-weight:600">2. Atau Upload File Audio</div>
+                <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:rgba(43,123,255,0.08);border:1px dashed rgba(43,123,255,0.3);color:#60a5fa;font-size:12px;font-weight:600;cursor:pointer">
+                  <i class="fa-solid fa-file-audio"></i>
+                  <span id="vo-upload-label">Pilih file MP3 / WAV / M4A</span>
+                  <input type="file" id="vo-file-input" accept="audio/*" onchange="voFileSelected(this)" style="display:none"/>
+                </label>
+              </div>
+            </div>
+            <!-- Audio preview sebelum enhance -->
+            <div id="vo-self-preview" style="display:none;margin-bottom:10px">
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:6px;font-weight:600">Preview (sebelum enhance):</div>
+              <audio id="vo-self-audio" controls style="width:100%;height:36px;border-radius:8px"></audio>
+            </div>
+            <button id="vo-enhance-btn" onclick="enhanceSelfVoice()" style="display:none;width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#D4A853,#A87B30);border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+              <i class="fa-solid fa-wand-magic-sparkles" style="margin-right:6px"></i>Enhance Suara (AI Processing)
+            </button>
+          </div>
+
+          <!-- Audio Result (shared untuk kedua logic) -->
+          <div id="vo-result" style="display:none;margin-top:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div style="font-size:11px;color:#4ade80;font-weight:700"><i class="fa-solid fa-check-circle" style="margin-right:4px"></i>Voice Over Siap</div>
+              <span id="vo-result-meta" style="font-size:10px;color:rgba(255,255,255,0.4)"></span>
+            </div>
+            <audio id="vo-result-audio" controls style="width:100%;height:36px;border-radius:8px;margin-bottom:10px"></audio>
+            <button onclick="sendVoiceToViGen()"
+              style="width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
+              <i class="fa-solid fa-clapperboard" style="margin-right:6px"></i>Kirim ke ViGen (dengan Voice Over)
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Kirim ke ViGen tanpa VO -->
+        <button onclick="sendScriptToViGen()"
+          style="width:100%;padding:11px;border-radius:12px;background:rgba(212,168,83,0.07);border:1px solid rgba(212,168,83,0.2);color:rgba(212,168,83,0.7);font-size:12px;font-weight:600;cursor:pointer;margin-top:10px">
+          <i class="fa-solid fa-clapperboard" style="margin-right:6px"></i>Kirim ke ViGen (tanpa Voice Over)
+        </button>
+        <p style="font-size:10px;color:rgba(255,255,255,0.2);text-align:center;margin:6px 0 0">
+          Script juga bisa di-paste langsung ke HeyGen, ElevenLabs, atau tools AI Avatar lainnya.
+        </p>
       </div>
 
     </div>
@@ -2614,6 +2815,11 @@
         <button id="pd-vigen-btn" onclick="openViGenProject()"
           style="display:none;width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px">
           <i class="fa-solid fa-clapperboard" style="margin-right:6px"></i>Buat Konten Iklan (ViGen)
+        </button>
+        <!-- AI Script Button (koordinator dan ke atas) -->
+        <button id="pd-aiscript-btn" onclick="openAIScriptProject()"
+          style="display:none;width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px">
+          <i class="fa-solid fa-microphone-lines" style="margin-right:6px"></i>AI Script (Voice Over / HeyGen)
         </button>
 
         <!-- PA OpenClaw Section (koordinator dan ke atas) -->

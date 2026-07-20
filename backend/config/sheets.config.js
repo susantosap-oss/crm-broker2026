@@ -470,6 +470,8 @@ const COLUMNS = {
     'Finished_At',      // J
     'Error_Msg',        // K
     'Callback_Received',// L  TRUE/FALSE
+    'SID',              // M  ViGen session ID (diisi saat render mulai)
+    'Voiceover_URL',    // N  Cloudinary URL audio VO (jika ada)
   ],
 
   // ★ PUSH_SUBSCRIPTIONS — Persistent web push subscriptions per user

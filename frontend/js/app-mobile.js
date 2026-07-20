@@ -846,6 +846,9 @@ async function openListingDetail(id) {
       <button onclick="openViGen('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-solid fa-clapperboard" style="margin-right:6px"></i>Buat Konten Iklan (ViGen)
       </button>
+      <button onclick="openAIScript('${escapeHtml(id)}','secondary')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
+        <i class="fa-solid fa-microphone-lines" style="margin-right:6px"></i>AI Script (Voice Over / HeyGen)
+      </button>
 
       <!-- OpenClaw Personal Assistant -->
       ${STATE.user ? `
@@ -913,11 +916,13 @@ function loadSimilarListings(current) {
 // ══════════════════════════════════════════════════════════
 
 const _viGen = {
-  listingId:   null,
-  listingTitle: null,
-  listingType: 'secondary',  // 'secondary' | 'primary'
-  mood:        'mewah',
-  duration:    30,
+  listingId:        null,
+  listingTitle:     null,
+  listingType:      'secondary',  // 'secondary' | 'primary'
+  mood:             'mewah',
+  duration:         30,
+  voiceoverScript:  null,
+  voiceoverAudioUrl: null,
 };
 window._viGen = _viGen; // expose agar pa-dashboard.js bisa baca state
 
@@ -925,10 +930,12 @@ async function openViGen(listingId) {
   const listing = _allListings.find(l => l.ID === listingId);
   if (!listing) return;
 
-  _viGen.listingId    = listingId;
-  _viGen.listingTitle = listing.Judul || listingId;
-  _viGen.listingType  = 'secondary';
-  _viGen.listingData  = listing;   // simpan data listing untuk media fallback
+  _viGen.listingId       = listingId;
+  _viGen.listingTitle    = listing.Judul || listingId;
+  _viGen.listingType     = 'secondary';
+  _viGen.listingData     = listing;
+  _viGen.voiceoverAudioUrl = null;   // reset VO saat buka ViGen manual
+  _viGen.voiceoverScript   = null;
 
   viGenSetMood('mewah');
   viGenSetDuration(30);
@@ -938,6 +945,10 @@ async function openViGen(listingId) {
 
   const btn = document.getElementById('vigen-submit-btn');
   if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-clapperboard" style="margin-right:8px"></i>Mulai Render Video'; }
+
+  // Sembunyikan VO indicator (render manual = tanpa VO)
+  const voInd = document.getElementById('vigen-vo-indicator');
+  if (voInd) voInd.style.display = 'none';
 
   // Tutup parent modal dulu agar tidak tumpuk (bug: vigen muncul di belakang listing-detail)
   closeModal('modal-listing-detail');
@@ -955,10 +966,12 @@ async function openViGenProject() {
 
   const projId = _currentProjectId; // capture sebelum close modal
 
-  _viGen.listingId    = projId;
-  _viGen.listingTitle = project.Nama_Proyek || projId;
-  _viGen.listingType  = 'primary';
-  _viGen.listingData  = project;   // simpan data untuk media fallback
+  _viGen.listingId       = projId;
+  _viGen.listingTitle    = project.Nama_Proyek || projId;
+  _viGen.listingType     = 'primary';
+  _viGen.listingData     = project;
+  _viGen.voiceoverAudioUrl = null;   // reset VO saat buka ViGen manual
+  _viGen.voiceoverScript   = null;
 
   viGenSetMood('mewah');
   viGenSetDuration(30);
@@ -968,6 +981,10 @@ async function openViGenProject() {
 
   const btn = document.getElementById('vigen-submit-btn');
   if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-clapperboard" style="margin-right:8px"></i>Mulai Render Video'; }
+
+  // Sembunyikan VO indicator
+  const voInd = document.getElementById('vigen-vo-indicator');
+  if (voInd) voInd.style.display = 'none';
 
   // Tutup modal-project-detail dulu agar vigen muncul di depan
   closeModal('modal-project-detail');
@@ -1155,35 +1172,443 @@ async function deleteViGenJob(jobId) {
   }
 }
 
-async function submitViGenRender() {
-  if (!_viGen.listingId) return;
+// submitViGenRender() didefinisikan di pa-dashboard.js (load terakhir, jadi aktif)
 
-  const btn = document.getElementById('vigen-submit-btn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Mengirim ke engine…'; }
+// ── End ViGen ──────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════
+// AI SCRIPT — Voice Over Generator
+// ══════════════════════════════════════════════════════════
+const _aiScript = {
+  listingId:   null,
+  listingType: 'secondary',
+  duration:    30,
+  style:       'profesional',
+  lastScript:  '',
+  listingTitle: '',
+};
+
+function openAIScript(listingId, listingType = 'secondary') {
+  const listing = _allListings.find(l => l.ID === listingId);
+  if (!listing) { showToast('Data tidak ditemukan', 'error'); return; }
+
+  _aiScript.listingId   = listingId;
+  _aiScript.listingType = listingType;
+  _aiScript.listingTitle = listing.Judul || listingId;
+  _aiScript.lastScript  = '';
+
+  const lbl = document.getElementById('ai-script-listing-label');
+  if (lbl) lbl.textContent = listing.Kode_Listing ? `${listing.Kode_Listing} · ${listing.Judul || ''}` : listing.Judul || '';
+
+  _aiScriptResetUI();
+  closeModal('modal-listing-detail');
+  setTimeout(() => openModal('modal-ai-script'), 320);
+}
+
+function openAIScriptProject() {
+  const project = _projectsData.find(p => p.ID === _currentProjectId);
+  if (!project) { showToast('Data proyek tidak ditemukan', 'error'); return; }
+
+  _aiScript.listingId   = _currentProjectId;
+  _aiScript.listingType = 'primary';
+  _aiScript.listingTitle = project.Nama_Proyek || _currentProjectId;
+  _aiScript.lastScript  = '';
+
+  const lbl = document.getElementById('ai-script-listing-label');
+  if (lbl) lbl.textContent = `[Primary] ${project.Kode_Proyek ? project.Kode_Proyek + ' · ' : ''}${project.Nama_Proyek || ''}`;
+
+  _aiScriptResetUI();
+  closeModal('modal-project-detail');
+  setTimeout(() => openModal('modal-ai-script'), 320);
+}
+
+function _aiScriptResetUI() {
+  aiScriptSetDuration(30);
+  aiScriptSetStyle('profesional');
+  const resultEl = document.getElementById('aiscript-result');
+  if (resultEl) resultEl.style.display = 'none';
+  const genBtn = document.getElementById('aiscript-generate-btn');
+  if (genBtn) { genBtn.disabled = false; genBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" style="margin-right:8px"></i>Generate Script'; }
+}
+
+function aiScriptSetDuration(dur) {
+  _aiScript.duration = dur;
+  [15, 30, 60].forEach(d => {
+    const btn = document.getElementById(`aiscript-dur-${d}`);
+    if (!btn) return;
+    btn.style.border     = d === dur ? '2px solid #D4A853' : '2px solid rgba(255,255,255,0.1)';
+    btn.style.background = d === dur ? 'rgba(212,168,83,0.12)' : '#131F38';
+    btn.style.color      = d === dur ? '#D4A853' : 'rgba(255,255,255,0.6)';
+  });
+}
+
+function aiScriptSetStyle(style) {
+  _aiScript.style = style;
+  ['profesional', 'casual', 'mewah'].forEach(s => {
+    const btn = document.getElementById(`aiscript-style-${s}`);
+    if (!btn) return;
+    btn.style.border     = s === style ? '2px solid #D4A853' : '2px solid rgba(255,255,255,0.1)';
+    btn.style.background = s === style ? 'rgba(212,168,83,0.12)' : '#131F38';
+    btn.style.color      = s === style ? '#D4A853' : 'rgba(255,255,255,0.6)';
+  });
+}
+
+async function generateAIScript() {
+  if (!_aiScript.listingId) return;
+
+  const genBtn   = document.getElementById('aiscript-generate-btn');
+  const resultEl = document.getElementById('aiscript-result');
+
+  if (genBtn) { genBtn.disabled = true; genBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Generating…'; }
+  if (resultEl) resultEl.style.display = 'none';
 
   try {
-    const res = await API.post('/pa/vigen/render', {
-      listing_id:   _viGen.listingId,
-      listing_type: _viGen.listingType || 'secondary',
-      mood:         _viGen.mood,
-      duration:     _viGen.duration,
+    const res = await API.post('/ai-script/generate', {
+      listing_id:   _aiScript.listingId,
+      listing_type: _aiScript.listingType,
+      duration:     _aiScript.duration,
+      style:        _aiScript.style,
     });
 
     if (!res.success) throw new Error(res.message);
 
-    showToast(`✅ ${res.message || 'Render dimulai!'}`, 'success');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-check" style="margin-right:8px"></i>Job Dikirim — Menunggu Hasil'; btn.style.background = 'rgba(34,197,94,0.2)'; btn.style.border = '1px solid rgba(34,197,94,0.3)'; btn.style.color = '#4ade80'; }
+    const { script, word_count, estimated_seconds } = res.data;
+    _aiScript.lastScript = script;
 
-    // Refresh job list setelah 1 detik
-    setTimeout(() => _viGenLoadJobs(_viGen.listingId), 1000);
+    const textEl = document.getElementById('aiscript-text');
+    const metaEl = document.getElementById('aiscript-meta');
+    if (textEl) textEl.value = script;
+    if (metaEl) metaEl.textContent = `~${word_count} kata · ±${estimated_seconds} detik`;
+    if (resultEl) resultEl.style.display = '';
+
+    if (genBtn) { genBtn.disabled = false; genBtn.innerHTML = '<i class="fa-solid fa-rotate-right" style="margin-right:8px"></i>Generate Ulang'; }
+    showToast('Script berhasil di-generate!', 'success');
 
   } catch (e) {
     showToast(`❌ ${e.message}`, 'error');
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-clapperboard" style="margin-right:8px"></i>Mulai Render Video'; }
+    if (genBtn) { genBtn.disabled = false; genBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" style="margin-right:8px"></i>Generate Script'; }
   }
 }
 
-// ── End ViGen ──────────────────────────────────────────────
+async function copyAIScript() {
+  const textEl = document.getElementById('aiscript-text');
+  if (!textEl || !textEl.value.trim()) return;
+  try {
+    await navigator.clipboard.writeText(textEl.value);
+    showToast('✅ Script disalin!', 'success');
+  } catch (_) {
+    textEl.select();
+    document.execCommand('copy');
+    showToast('✅ Script disalin!', 'success');
+  }
+}
+
+function downloadAIScript() {
+  const textEl = document.getElementById('aiscript-text');
+  if (!textEl || !textEl.value.trim()) return;
+  const filename = `script_vo_${(_aiScript.listingTitle || 'listing').replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${_aiScript.duration}s.txt`;
+  const blob     = new Blob([textEl.value], { type: 'text/plain;charset=utf-8' });
+  const url      = URL.createObjectURL(blob);
+  const a        = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function sendScriptToViGen() {
+  const textEl = document.getElementById('aiscript-text');
+  const script = textEl?.value?.trim() || '';
+  if (!script) { showToast('Generate script dulu sebelum dikirim ke ViGen', 'error'); return; }
+
+  // Simpan script ke state ViGen agar bisa dipakai saat render
+  _viGen.voiceoverScript = script;
+  _viGen.listingId       = _aiScript.listingId;
+  _viGen.listingType     = _aiScript.listingType;
+  _viGen.listingTitle    = _aiScript.listingTitle;
+
+  // Persiapkan ViGen modal
+  const lbl = document.getElementById('vigen-listing-label');
+  if (lbl) lbl.textContent = _aiScript.listingType === 'primary'
+    ? `[Primary] ${_aiScript.listingTitle}`
+    : _aiScript.listingTitle;
+
+  viGenSetMood('mewah');
+  viGenSetDuration(_aiScript.duration === 60 ? 60 : _aiScript.duration === 15 ? 15 : 30);
+
+  const btn = document.getElementById('vigen-submit-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-clapperboard" style="margin-right:8px"></i>Mulai Render Video'; }
+
+  closeModal('modal-ai-script');
+  setTimeout(() => {
+    openModal('modal-vigen');
+    _viGenLoadMedia(_aiScript.listingId, null);
+    _viGenLoadJobs(_aiScript.listingId);
+  }, 320);
+}
+
+// ══════════════════════════════════════════════════════════
+// VOICE OVER — Logic 1 (AI TTS) + Logic 2 (Self Record/Upload + Enhance)
+// ══════════════════════════════════════════════════════════
+const _voState = {
+  tab:         'ai',        // 'ai' | 'self'
+  voice:       'female_normal', // voice key untuk TTS
+  audioUrl:    null,        // URL Cloudinary hasil TTS atau enhance
+  // self-record
+  mediaRecorder: null,
+  recordChunks:  [],
+  recordBlob:    null,
+  selfBlob:      null,      // blob dari record atau upload
+  timerInterval: null,
+  timerSec:      0,
+  analyser:      null,
+  animFrame:     null,
+};
+
+function voTabSwitch(tab) {
+  _voState.tab = tab;
+  const tabs   = { ai: 'vo-tab-ai', self: 'vo-tab-self' };
+  const panels = { ai: 'vo-panel-ai', self: 'vo-panel-self' };
+
+  Object.keys(tabs).forEach(t => {
+    const btn = document.getElementById(tabs[t]);
+    const pan = document.getElementById(panels[t]);
+    if (btn) {
+      btn.style.border     = t === tab ? '2px solid #D4A853' : '2px solid rgba(255,255,255,0.1)';
+      btn.style.background = t === tab ? 'rgba(212,168,83,0.12)' : '#131F38';
+      btn.style.color      = t === tab ? '#D4A853' : 'rgba(255,255,255,0.5)';
+    }
+    if (pan) pan.style.display = t === tab ? '' : 'none';
+  });
+}
+
+function voSetVoice(key) {
+  _voState.voice = key;
+  ['female_normal','male_normal','female_energik','male_karismatik','female_elegan','male_ceria'].forEach(k => {
+    const btn = document.getElementById(`vo-voice-${k}`);
+    if (!btn) return;
+    btn.style.border     = k === key ? '2px solid #D4A853' : '2px solid rgba(255,255,255,0.1)';
+    btn.style.background = k === key ? 'rgba(212,168,83,0.12)' : '#131F38';
+    btn.style.color      = k === key ? '#D4A853' : 'rgba(255,255,255,0.5)';
+  });
+}
+
+async function generateTTSVoice() {
+  const script = document.getElementById('aiscript-text')?.value?.trim();
+  if (!script) { showToast('Generate script dulu sebelum membuat Voice Over', 'error'); return; }
+
+  const btn = document.getElementById('vo-tts-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Generating voice…'; }
+
+  const resultEl = document.getElementById('vo-result');
+  if (resultEl) resultEl.style.display = 'none';
+
+  try {
+    const res = await API.post('/voice/generate-tts', {
+      script,
+      voice:      _voState.voice,
+      listing_id: _aiScript.listingId,
+    });
+
+    if (!res.success) throw new Error(res.message);
+
+    _voState.audioUrl = res.audio_url;
+    _voAudioResult(res.audio_url, `${res.voice} · ${res.size_kb} KB`);
+    showToast('✅ AI Voice berhasil di-generate!', 'success');
+
+  } catch (e) {
+    showToast(`❌ ${e.message}`, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-play" style="margin-right:6px"></i>Generate AI Voice'; }
+  }
+}
+
+// ── Logic 2: Self Record ─────────────────────────────────
+
+async function voToggleRecord() {
+  if (_voState.mediaRecorder && _voState.mediaRecorder.state === 'recording') {
+    _voStopRecord();
+  } else {
+    _voStartRecord();
+  }
+}
+
+async function _voStartRecord() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _voState.recordChunks = [];
+    _voState.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+    _voState.mediaRecorder.ondataavailable = e => { if (e.data.size > 0) _voState.recordChunks.push(e.data); };
+    _voState.mediaRecorder.onstop = () => {
+      _voState.selfBlob = new Blob(_voState.recordChunks, { type: 'audio/webm' });
+      stream.getTracks().forEach(t => t.stop());
+      _voShowSelfPreview(_voState.selfBlob);
+    };
+
+    _voState.mediaRecorder.start(100);
+    _voState.timerSec = 0;
+    _voState.timerInterval = setInterval(() => {
+      _voState.timerSec++;
+      const m = String(Math.floor(_voState.timerSec/60)).padStart(2,'0');
+      const s = String(_voState.timerSec%60).padStart(2,'0');
+      const el = document.getElementById('vo-rec-timer');
+      if (el) el.textContent = `${m}:${s}`;
+    }, 1000);
+
+    // Waveform visualizer
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    const src = audioCtx.createMediaStreamSource(stream);
+    src.connect(analyser);
+    _voState.analyser = analyser;
+    _voDrawWaveform();
+
+    const btn = document.getElementById('vo-rec-btn');
+    if (btn) { btn.style.background = 'rgba(239,68,68,0.3)'; btn.style.borderColor = '#f87171'; btn.innerHTML = '<i class="fa-solid fa-stop" style="margin-right:5px"></i>Stop Rekam'; }
+    document.getElementById('vo-rec-timer').style.display = '';
+    document.getElementById('vo-waveform').style.display = '';
+
+  } catch (e) {
+    showToast('Akses mikrofon ditolak. Periksa izin browser.', 'error');
+  }
+}
+
+function _voStopRecord() {
+  if (_voState.mediaRecorder) _voState.mediaRecorder.stop();
+  clearInterval(_voState.timerInterval);
+  cancelAnimationFrame(_voState.animFrame);
+
+  const btn = document.getElementById('vo-rec-btn');
+  if (btn) { btn.style.background = 'rgba(239,68,68,0.15)'; btn.style.borderColor = 'rgba(239,68,68,0.35)'; btn.innerHTML = '<i class="fa-solid fa-circle" style="margin-right:5px;font-size:10px"></i>Rekam Ulang'; }
+}
+
+function _voDrawWaveform() {
+  const canvas = document.getElementById('vo-waveform-canvas');
+  if (!canvas || !_voState.analyser) return;
+  const ctx    = canvas.getContext('2d');
+  const data   = new Uint8Array(_voState.analyser.frequencyBinCount);
+
+  function draw() {
+    _voState.animFrame = requestAnimationFrame(draw);
+    _voState.analyser.getByteTimeDomainData(data);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#D4A853';
+    ctx.lineWidth   = 2;
+    ctx.beginPath();
+    const sliceW = canvas.width / data.length;
+    let x = 0;
+    for (let i = 0; i < data.length; i++) {
+      const v = data[i] / 128;
+      const y = v * canvas.height / 2;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      x += sliceW;
+    }
+    ctx.stroke();
+  }
+  draw();
+}
+
+function voFileSelected(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  _voState.selfBlob = file;
+  _voShowSelfPreview(file);
+  const lbl = document.getElementById('vo-upload-label');
+  if (lbl) lbl.textContent = file.name;
+}
+
+function _voShowSelfPreview(blob) {
+  const url     = URL.createObjectURL(blob);
+  const audio   = document.getElementById('vo-self-audio');
+  const preview = document.getElementById('vo-self-preview');
+  const enhBtn  = document.getElementById('vo-enhance-btn');
+  if (audio)   { audio.src = url; }
+  if (preview) preview.style.display = '';
+  if (enhBtn)  enhBtn.style.display  = '';
+}
+
+async function enhanceSelfVoice() {
+  if (!_voState.selfBlob) { showToast('Rekam atau upload audio dulu', 'error'); return; }
+
+  const btn = document.getElementById('vo-enhance-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Processing…'; }
+  document.getElementById('vo-result').style.display = 'none';
+
+  try {
+    const formData = new FormData();
+    formData.append('audio', _voState.selfBlob, 'voiceover.webm');
+    formData.append('listing_id', _aiScript.listingId);
+
+    const token = localStorage.getItem('crm_token') || sessionStorage.getItem('crm_token') || '';
+    const resp  = await fetch('/api/v1/voice/enhance', {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body:    formData,
+    });
+    const res = await resp.json();
+    if (!res.success) throw new Error(res.message);
+
+    _voState.audioUrl = res.audio_url;
+    _voAudioResult(res.audio_url, `Enhanced · ${res.original_kb}KB → ${res.enhanced_kb}KB`);
+    showToast('✅ Suara berhasil di-enhance!', 'success');
+
+  } catch (e) {
+    showToast(`❌ ${e.message}`, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" style="margin-right:6px"></i>Enhance Suara (AI Processing)'; }
+  }
+}
+
+function _voAudioResult(url, meta) {
+  const resultEl  = document.getElementById('vo-result');
+  const audioEl   = document.getElementById('vo-result-audio');
+  const metaEl    = document.getElementById('vo-result-meta');
+  if (audioEl)  audioEl.src = url;
+  if (metaEl)   metaEl.textContent = meta || '';
+  if (resultEl) resultEl.style.display = '';
+}
+
+function sendVoiceToViGen() {
+  console.log('[VO→ViGen] _voState.audioUrl =', _voState.audioUrl);
+  if (!_voState.audioUrl) { showToast('Generate atau enhance suara dulu', 'error'); return; }
+
+  const script = document.getElementById('aiscript-text')?.value?.trim() || '';
+  _viGen.voiceoverScript   = script;
+  _viGen.voiceoverAudioUrl = _voState.audioUrl;
+  _viGen.listingId         = _aiScript.listingId;
+  _viGen.listingType       = _aiScript.listingType;
+  _viGen.listingTitle      = _aiScript.listingTitle;
+  // Backup ke sessionStorage — tahan terhadap state reset
+  sessionStorage.setItem('crm_pending_vo_url',     _voState.audioUrl    || '');
+  sessionStorage.setItem('crm_pending_vo_listing',  _aiScript.listingId || '');
+  console.log('[VO→ViGen] _viGen.voiceoverAudioUrl set to', _viGen.voiceoverAudioUrl);
+
+  const lbl = document.getElementById('vigen-listing-label');
+  if (lbl) lbl.textContent = _aiScript.listingType === 'primary'
+    ? `[Primary] ${_aiScript.listingTitle}`
+    : _aiScript.listingTitle;
+
+  viGenSetMood('mewah');
+  viGenSetDuration(_aiScript.duration === 60 ? 60 : _aiScript.duration === 15 ? 15 : 30);
+
+  const btn = document.getElementById('vigen-submit-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-microphone" style="margin-right:6px"></i><i class="fa-solid fa-clapperboard" style="margin-right:8px"></i>Render Video + Voice Over'; }
+
+  // Tampilkan VO indicator di modal ViGen
+  const voInd = document.getElementById('vigen-vo-indicator');
+  if (voInd) voInd.style.display = 'inline-flex';
+
+  closeModal('modal-ai-script');
+  setTimeout(() => {
+    openModal('modal-vigen');
+    _viGenLoadMedia(_aiScript.listingId, null);
+    _viGenLoadJobs(_aiScript.listingId);
+  }, 320);
+}
+
+// ── End Voice Over ─────────────────────────────────────────
+
+// ── End AI Script ──────────────────────────────────────────
 
 async function copyCaption() {
   const el = document.getElementById('ld-caption');
@@ -5511,11 +5936,11 @@ async function openProjectDetail(id) {
   document.getElementById('pd-shortlink-box').style.display = 'none';
   document.getElementById('pd-referral-list').innerHTML = '';
 
-  // Tombol ViGen — tampil untuk koordinator dan ke atas
+  // Tombol ViGen & AI Script — tampil untuk koordinator dan ke atas
   const viGenBtn = document.getElementById('pd-vigen-btn');
-  if (viGenBtn) {
-    viGenBtn.style.display = '';
-  }
+  if (viGenBtn) viGenBtn.style.display = '';
+  const aiScriptBtn = document.getElementById('pd-aiscript-btn');
+  if (aiScriptBtn) aiScriptBtn.style.display = '';
 
   // Seksi PA OpenClaw — disembunyikan untuk agen dan koordinator
   const paSection = document.getElementById('pd-pa-section');

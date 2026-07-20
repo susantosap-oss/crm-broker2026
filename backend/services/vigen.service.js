@@ -86,7 +86,7 @@ class ViGenService {
   /**
    * Trigger render video ke mansion-vidgen.
    */
-  async triggerRender({ listingId, listingType, mood, duration, listing, agent }) {
+  async triggerRender({ listingId, listingType, mood, duration, listing, agent, voiceoverScript = null, voiceoverAudioUrl = null }) {
     const jobId = uuidv4();
     const now   = new Date().toISOString();
 
@@ -106,12 +106,13 @@ class ViGenService {
     await sheetsService.appendRow(SHEETS.VIGEN_JOBS, [
       jobId, listingId, listing.Judul || listingId,
       'pending', '', mood, String(duration), agent.ID || '',
-      now, '', '', 'FALSE',
+      now, '', '', 'FALSE', '', voiceoverAudioUrl || '',
     ]);
 
     // ── Jalankan render async (fire-and-forget) ───────────────
     this._executeRender({
       jobId, listingId, listingType, mood, duration, listing, agent, photos, videoClips,
+      voiceoverAudioUrl,
     }).catch(err => console.error(`[ViGen] Job ${jobId} error:`, err.message));
 
     return {
@@ -122,7 +123,7 @@ class ViGenService {
     };
   }
 
-  async _executeRender({ jobId, listingId, listingType, mood, duration, listing, agent, photos, videoClips }) {
+  async _executeRender({ jobId, listingId, listingType, mood, duration, listing, agent, photos, videoClips, voiceoverAudioUrl }) {
     const url = process.env.VIGEN_URL;
     try {
       await this._updateJobStatus(jobId, 'rendering');
@@ -161,15 +162,26 @@ class ViGenService {
       if (photoPaths.length === 0) throw new Error('Tidak ada foto berhasil diupload ke ViGen');
       console.log(`[ViGen] Upload selesai: ${photoPaths.length} foto berhasil →`, JSON.stringify(photoPaths));
 
-      // 4. Upload BGM — random track + random start trim
+      // 4. Upload BGM — trim + mix VO (jika ada) sebelum upload ke ViGen
       let bgmPath = null;
       try {
         const tracks  = BGM_TRACKS[mood] || BGM_TRACKS.mewah;
         const bgmUrl  = tracks[Math.floor(Math.random() * tracks.length)];
         const bgmRes  = await axios.get(bgmUrl, { responseType: 'arraybuffer', timeout: 30000 });
-        const trimmed = await this._trimBgm(Buffer.from(bgmRes.data), duration, sid);
-        const bgmFd   = new FormData();
-        bgmFd.append('file', trimmed, { filename: 'bgm.mp3', contentType: 'audio/mpeg' });
+        let bgmBuffer = await this._trimBgm(Buffer.from(bgmRes.data), duration, sid);
+
+        // Mix VO ke dalam BGM sebelum dikirim ke ViGen (audio-only, tidak re-encode video)
+        if (voiceoverAudioUrl) {
+          try {
+            bgmBuffer = await this._mixBgmWithVo(bgmBuffer, voiceoverAudioUrl, sid);
+            console.log(`[ViGen] Job ${jobId} VO+BGM mixed OK`);
+          } catch (e) {
+            console.warn(`[ViGen] Job ${jobId} VO mix gagal, lanjut tanpa VO:`, e.message);
+          }
+        }
+
+        const bgmFd = new FormData();
+        bgmFd.append('file', bgmBuffer, { filename: 'bgm.mp3', contentType: 'audio/mpeg' });
         bgmFd.append('file_type', 'bgm');
         const { data: bgmUp } = await axios.post(`${url}/api/upload/${sid}`, bgmFd, {
           headers: { ...this._headers(), ...bgmFd.getHeaders() }, timeout: 30000,
@@ -232,7 +244,7 @@ class ViGenService {
         n_captions:      nCaptions,
         caption_align:   'Left',
         ...(bgmPath  ? { bgm_path: bgmPath, bgm_volume: 0.4 } : {}),
-        ...(logoPath ? { logo_path: logoPath }                : {}),
+        ...(logoPath ? { logo_path: logoPath }                 : {}),
       }, { headers: this._headers(), timeout: 30000 });
 
       console.log(`[ViGen] Job ${jobId} render dimulai sid=${sid} n_captions=${nCaptions} desc="${description.replace(/\n/g,'|')}"`);
@@ -314,16 +326,13 @@ class ViGenService {
 
           const st = (data.status || '').toLowerCase();
           if (st === 'done' || st === 'completed' || st === 'finished') {
-            // Download video → upload ke Cloudinary
+            // Download video dari ViGen (sudah mengandung VO karena di-mix sebelum render)
             const videoResp = await axios.get(`${url}/api/download/${sid}`, {
               headers: this._headers(), responseType: 'arraybuffer', timeout: 120000,
             });
             const listingId = row[1];
-            const videoUrl  = await cloudinaryService.uploadVideoBuffer(
-              Buffer.from(videoResp.data),
-              listingId,
-              `ads_${jobId}`
-            );
+            const videoBuffer = Buffer.from(videoResp.data);
+            const videoUrl = await cloudinaryService.uploadVideoBuffer(videoBuffer, listingId, `ads_${jobId}`);
             await this._updateJobStatus(jobId, 'done', videoUrl, null);
             if (listingId && videoUrl) await this._updateListingVideoAdsUrl(listingId, videoUrl);
             console.log(`[ViGen] Job ${jobId} DONE → ${videoUrl}`);
@@ -436,6 +445,64 @@ class ViGenService {
           reject(err);
         })
         .run();
+    });
+  }
+
+  /**
+   * Mix voiceover ke dalam BGM (audio-only) sebelum dikirim ke ViGen.
+   * - Saat VO aktif : BGM duck ke 15%, VO 110%
+   * - Setelah VO selesai: BGM fade naik kembali ke 100% dalam 2 detik
+   */
+  async _mixBgmWithVo(bgmBuffer, voUrl, sid) {
+    const tmpBgm = path.join(os.tmpdir(), `bgm_${sid}.mp3`);
+    const tmpVo  = path.join(os.tmpdir(), `vo_${sid}.mp3`);
+    const tmpOut = path.join(os.tmpdir(), `bgm_vo_${sid}.mp3`);
+
+    const voRes = await axios.get(voUrl, { responseType: 'arraybuffer', timeout: 30000 });
+    fs.writeFileSync(tmpBgm, bgmBuffer);
+    fs.writeFileSync(tmpVo, Buffer.from(voRes.data));
+
+    // Deteksi durasi VO agar BGM fade-back setelah VO selesai
+    const voDur = await this._getAudioDuration(tmpVo);
+    // BGM: 0.15 saat VO aktif, naik linear ke 1.0 dalam 2 detik setelah VO selesai
+    const bgmVol = voDur > 0
+      ? `if(lt(t,${voDur.toFixed(3)}),0.15,min(1.0,0.15+0.85*((t-${voDur.toFixed(3)})/2.0)))`
+      : '0.15';
+
+    return new Promise((resolve, reject) => {
+      ffmpeg()
+        .input(tmpBgm)
+        .input(tmpVo)
+        .complexFilter([
+          `[0:a]volume='${bgmVol}'[bgm]`,
+          '[1:a]volume=1.1[vo]',
+          '[bgm][vo]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]',
+        ])
+        .outputOptions(['-map [aout]', '-c:a libmp3lame', '-b:a 128k'])
+        .output(tmpOut)
+        .on('end', () => {
+          try {
+            const buf = fs.readFileSync(tmpOut);
+            resolve(buf);
+          } finally {
+            [tmpBgm, tmpVo, tmpOut].forEach(f => fs.unlink(f, () => {}));
+          }
+        })
+        .on('error', (err) => {
+          [tmpBgm, tmpVo, tmpOut].forEach(f => fs.unlink(f, () => {}));
+          reject(err);
+        })
+        .run();
+    });
+  }
+
+  /** Ambil durasi audio file menggunakan ffprobe */
+  _getAudioDuration(filePath) {
+    return new Promise((resolve) => {
+      ffmpeg.ffprobe(filePath, (err, meta) => {
+        if (err || !meta?.format?.duration) return resolve(0);
+        resolve(parseFloat(meta.format.duration) || 0);
+      });
     });
   }
 

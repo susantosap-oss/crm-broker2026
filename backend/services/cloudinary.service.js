@@ -237,6 +237,28 @@ class CloudinaryService {
   }
 
   // ═══════════════════════════════════════════════════════════
+  /**
+   * Upload audio buffer (MP3) ke Cloudinary untuk Voice Over.
+   * resource_type 'video' dipakai karena Cloudinary tangani audio sebagai video.
+   */
+  async uploadVoiceOver(buffer, listingId, publicIdSuffix = '') {
+    return new Promise((resolve, reject) => {
+      const publicId = `vo_${publicIdSuffix || Date.now()}`;
+      const { Readable } = require('stream');
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          resource_type: 'video',
+          folder:        `${ROOT}/${listingId}/voiceover`,
+          public_id:     publicId,
+          tags:          [listingId, 'voiceover'],
+          format:        'mp3',
+        },
+        (err, result) => err ? reject(err) : resolve(result.secure_url)
+      );
+      Readable.from(buffer).pipe(stream);
+    });
+  }
+
   // DELETE
   // ═══════════════════════════════════════════════════════════
 

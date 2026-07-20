@@ -1013,13 +1013,32 @@ async function submitViGenRender(listingId) {
       if (btn) btn.textContent = '⏳ Mengirim job render...';
     }
 
+    // ── Ambil VO URL: dari _viGen state atau sessionStorage fallback ──
+    let voiceoverAudioUrl = window._viGen?.voiceoverAudioUrl || null;
+    if (!voiceoverAudioUrl) {
+      const savedUrl     = sessionStorage.getItem('crm_pending_vo_url');
+      const savedListing = sessionStorage.getItem('crm_pending_vo_listing');
+      if (savedUrl && savedListing === listingId) {
+        voiceoverAudioUrl = savedUrl;
+        console.log('[ViGen] VO URL recovered from sessionStorage:', savedUrl);
+      }
+    }
+    console.log('[submitViGenRender] listingId=', listingId, 'voiceoverAudioUrl=', voiceoverAudioUrl);
+
     // ── Trigger render ────────────────────────────────────
-    const res = await window.API.post('/pa/vigen/render', {
+    const payload = {
       listing_id:   listingId,
       listing_type: window._viGen?.listingType || 'secondary',
       mood,
       duration: parseInt(duration),
-    });
+    };
+    if (voiceoverAudioUrl) payload.voiceover_audio_url = voiceoverAudioUrl;
+
+    const res = await window.API.post('/pa/vigen/render', payload);
+
+    // Bersihkan sessionStorage setelah render berhasil dikirim
+    sessionStorage.removeItem('crm_pending_vo_url');
+    sessionStorage.removeItem('crm_pending_vo_listing');
 
     document.getElementById('pa-vigen-modal')?.remove();
     _showPAToast(`✅ ${res.message || 'Video render dimulai! Notifikasi akan muncul saat selesai.'}`, 'success');

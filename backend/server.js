@@ -122,6 +122,10 @@ app.use('/api/v1/rental',         require('./routes/rental.routes'));
 app.use('/api/v1/wa-contacts',    require('./routes/wa-contacts.routes'));
 // ★ SEO — Bulk Title Generator
 app.use('/api/v1/seo',            require('./routes/seo.routes'));
+// ★ AI Script — Voice Over Generator (Groq)
+app.use('/api/v1/ai-script',      require('./routes/ai-script.routes'));
+// ★ Voice — TTS (Google Cloud TTS) + Voice Enhancement (FFmpeg)
+app.use('/api/v1/voice',          require('./routes/voice.routes'));
 // ★ Excel Export
 app.use('/api/v1/export',         require('./routes/export.routes'));
 // ★ Payment Stages
@@ -199,6 +203,7 @@ async function migrateHeaders() {
     { sheet: SHEETS.LISTING,        cols: COLUMNS.LISTING },
     { sheet: SHEETS.AGENTS,         cols: COLUMNS.AGENTS },
     { sheet: SHEETS.RENTAL_STATUS,  cols: COLUMNS.RENTAL_STATUS },
+    { sheet: SHEETS.VIGEN_JOBS,     cols: COLUMNS.VIGEN_JOBS },
   ];
 
   // PROJECTS: enforce exact header (bukan append-only) agar tidak ada kolom duplikat
