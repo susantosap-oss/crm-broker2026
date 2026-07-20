@@ -1,10 +1,15 @@
 /**
- * TTS Service — MsEdgeTTS dengan toStreamRaw() agar SSML prosody dikirim as-is.
- * toStream() wrap ulang teks sehingga <prosody> tidak bisa dipakai;
- * toStreamRaw() kirim full SSML langsung ke Edge TTS tanpa wrapping.
+ * TTS Service — msedge-tts (normal voice) + FFmpeg pitch/rate post-process
+ * Edge TTS tidak support SSML prosody injection via toStream().
+ * Solusi: generate audio normal, lalu shift pitch & rate via FFmpeg asetrate+atempo.
  */
-const { MsEdgeTTS, OUTPUT_FORMAT } = require('ms-edge-tts');
+const { MsEdgeTTS, OUTPUT_FORMAT } = require('msedge-tts');
+const ffmpeg = require('fluent-ffmpeg');
+const fs     = require('fs');
+const os     = require('os');
+const path   = require('path');
 
+// pitch & rate dalam persen (integer). 0 = tidak ada perubahan.
 const VOICES = {
   male_normal:     { name: 'id-ID-ArdiNeural',  label: 'Ardi — Normal',            pitch:   0, rate:   0 },
   male_karismatik: { name: 'id-ID-ArdiNeural',  label: 'Ardi — Karismatik/Berat',  pitch: -10, rate:  -5 },
@@ -14,52 +19,70 @@ const VOICES = {
   female_elegan:   { name: 'id-ID-GadisNeural', label: 'Gadis — Elegan/Santai',   pitch:  -5, rate:  -8 },
 };
 
-function _sanitize(text) {
-  return (text || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+const SAMPLE_RATE = 24000; // output rate msedge-tts 24kHz
+
+async function _ttsNormal(text, voiceName) {
+  const tts = new MsEdgeTTS();
+  await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
+  const { audioStream } = tts.toStream(text);
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    audioStream.on('data',  c  => chunks.push(c));
+    audioStream.on('end',   () => resolve(Buffer.concat(chunks)));
+    audioStream.on('error', reject);
+  });
 }
 
-function _pct(n) {
-  const r = Math.round(n);
-  return (r >= 0 ? '+' : '') + r + '%';
-}
+/**
+ * Pitch shift via asetrate: mengubah pitch DAN speed, lalu atempo mengkompensasi
+ * speed dan menerapkan rate yang diinginkan.
+ *
+ * pitchFactor = 1 + pitch/100   (mis. -10% → 0.9, +10% → 1.1)
+ * rateFactor  = 1 + rate/100    (mis. -5%  → 0.95, +10% → 1.1)
+ *
+ * Filter: asetrate=SR*pitchFactor, atempo=rateFactor/pitchFactor, aresample=SR
+ */
+function _applyPitchRate(buf, pitchPct, ratePct) {
+  const pitchFactor = 1 + pitchPct / 100;
+  const rateFactor  = 1 + ratePct  / 100;
+  const newRate     = Math.round(SAMPLE_RATE * pitchFactor);
+  const tempo       = rateFactor / pitchFactor;
 
-function _buildSsml(text, voiceName, pitch, rate) {
-  const clean = _sanitize(text);
-  const inner = (pitch === 0 && rate === 0)
-    ? clean
-    : `<prosody pitch="${_pct(pitch)}" rate="${_pct(rate)}">${clean}</prosody>`;
+  const tmpIn  = path.join(os.tmpdir(), `tts_in_${Date.now()}.mp3`);
+  const tmpOut = path.join(os.tmpdir(), `tts_out_${Date.now()}.mp3`);
+  fs.writeFileSync(tmpIn, buf);
 
-  return (
-    `<speak version="1.0"` +
-    ` xmlns="http://www.w3.org/2001/10/synthesis"` +
-    ` xmlns:mstts="https://www.w3.org/2001/10/synthesis/mstts"` +
-    ` xml:lang="id-ID">` +
-    `<voice name="${voiceName}">${inner}</voice>` +
-    `</speak>`
-  );
+  return new Promise((resolve, reject) => {
+    ffmpeg(tmpIn)
+      .audioFilters([
+        `asetrate=${newRate}`,
+        `atempo=${tempo.toFixed(6)}`,
+        `aresample=${SAMPLE_RATE}`,
+      ])
+      .audioCodec('libmp3lame')
+      .audioBitrate('96k')
+      .output(tmpOut)
+      .on('end', () => {
+        try   { resolve(fs.readFileSync(tmpOut)); }
+        finally { [tmpIn, tmpOut].forEach(f => fs.unlink(f, () => {})); }
+      })
+      .on('error', err => {
+        [tmpIn, tmpOut].forEach(f => fs.unlink(f, () => {}));
+        reject(err);
+      })
+      .run();
+  });
 }
 
 class TTSService {
   async synthesize(text, voiceKey = 'female_normal') {
     const voice = VOICES[voiceKey] || VOICES.female_normal;
-    const ssml  = _buildSsml(text, voice.name, voice.pitch, voice.rate);
 
-    const tts = new MsEdgeTTS();
-    await tts.setMetadata(voice.name, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+    const rawBuf = await _ttsNormal(text, voice.name);
 
-    const stream = tts.toStreamRaw(ssml);
+    if (voice.pitch === 0 && voice.rate === 0) return rawBuf;
 
-    return new Promise((resolve, reject) => {
-      const chunks = [];
-      stream.on('data',  c   => chunks.push(c));
-      stream.on('end',   ()  => resolve(Buffer.concat(chunks)));
-      stream.on('error', reject);
-    });
+    return _applyPitchRate(rawBuf, voice.pitch, voice.rate);
   }
 
   static getVoiceOptions() {
