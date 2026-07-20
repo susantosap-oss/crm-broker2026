@@ -1,32 +1,38 @@
 /**
- * TTS Service — Direct WebSocket ke Microsoft Edge TTS
- * Bypass msedge-tts agar bisa kirim full SSML dengan <prosody> pitch/rate.
+ * TTS Service — MsEdgeTTS dengan toStreamRaw() agar SSML prosody dikirim as-is.
+ * toStream() wrap ulang teks sehingga <prosody> tidak bisa dipakai;
+ * toStreamRaw() kirim full SSML langsung ke Edge TTS tanpa wrapping.
  */
-const WebSocket = require('ws'); // transitive dep dari msedge-tts
-const { randomBytes } = require('crypto');
-
-const EDGE_TTS_WS      = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readspeaker/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4';
-const OUTPUT_FORMAT    = 'audio-24khz-96kbitrate-mono-mp3';
-const TTS_TIMEOUT_MS   = 30000;
+const { MsEdgeTTS, OUTPUT_FORMAT } = require('msedge-tts');
 
 const VOICES = {
-  male_normal:     { name: 'id-ID-ArdiNeural',  label: 'Ardi — Normal',           pitch: null,   rate: null   },
-  male_karismatik: { name: 'id-ID-ArdiNeural',  label: 'Ardi — Karismatik/Berat', pitch: '-10%', rate: '-5%'  },
-  male_ceria:      { name: 'id-ID-ArdiNeural',  label: 'Ardi — Ceria',            pitch: '+10%', rate: '+10%' },
-  female_normal:   { name: 'id-ID-GadisNeural', label: 'Gadis — Normal',          pitch: null,   rate: null   },
-  female_energik:  { name: 'id-ID-GadisNeural', label: 'Gadis — Energik/Muda',   pitch: '+12%', rate: '+10%' },
-  female_elegan:   { name: 'id-ID-GadisNeural', label: 'Gadis — Elegan/Santai',  pitch: '-5%',  rate: '-8%'  },
+  male_normal:     { name: 'id-ID-ArdiNeural',  label: 'Ardi — Normal',            pitch:   0, rate:   0 },
+  male_karismatik: { name: 'id-ID-ArdiNeural',  label: 'Ardi — Karismatik/Berat',  pitch: -10, rate:  -5 },
+  male_ceria:      { name: 'id-ID-ArdiNeural',  label: 'Ardi — Ceria',             pitch: +10, rate: +10 },
+  female_normal:   { name: 'id-ID-GadisNeural', label: 'Gadis — Normal',           pitch:   0, rate:   0 },
+  female_energik:  { name: 'id-ID-GadisNeural', label: 'Gadis — Energik/Muda',    pitch: +12, rate: +10 },
+  female_elegan:   { name: 'id-ID-GadisNeural', label: 'Gadis — Elegan/Santai',   pitch:  -5, rate:  -8 },
 };
 
-function _buildSsml(text, voiceName, pitch, rate) {
-  const prosodyAttrs = [
-    pitch ? `pitch="${pitch}"` : '',
-    rate  ? `rate="${rate}"`   : '',
-  ].filter(Boolean).join(' ');
+function _sanitize(text) {
+  return (text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
 
-  const inner = prosodyAttrs
-    ? `<prosody ${prosodyAttrs}>${text}</prosody>`
-    : text;
+function _pct(n) {
+  const r = Math.round(n);
+  return (r >= 0 ? '+' : '') + r + '%';
+}
+
+function _buildSsml(text, voiceName, pitch, rate) {
+  const clean = _sanitize(text);
+  const inner = (pitch === 0 && rate === 0)
+    ? clean
+    : `<prosody pitch="${_pct(pitch)}" rate="${_pct(rate)}">${clean}</prosody>`;
 
   return (
     `<speak version="1.0"` +
@@ -38,85 +44,22 @@ function _buildSsml(text, voiceName, pitch, rate) {
   );
 }
 
-function _synthesize(ssml) {
-  const connId = randomBytes(16).toString('hex');
-  const url    = `${EDGE_TTS_WS}&ConnectionId=${connId}`;
-
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(url, {
-      host:   'speech.platform.bing.com',
-      origin: 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold',
-    });
-
-    const chunks = [];
-    let done     = false;
-
-    const finish = (err) => {
-      if (done) return;
-      done = true;
-      try { ws.terminate(); } catch (_) {}
-      if (err) return reject(err);
-      if (chunks.length === 0) return reject(new Error('Edge TTS: tidak ada audio data diterima'));
-      resolve(Buffer.concat(chunks));
-    };
-
-    const timer = setTimeout(() => finish(new Error('Edge TTS timeout')), TTS_TIMEOUT_MS);
-
-    ws.on('open', () => {
-      const ts = new Date().toISOString();
-
-      // 1. speech.config
-      ws.send(
-        `X-Timestamp:${ts}\r\n` +
-        `Content-Type:application/json; charset=utf-8\r\n` +
-        `Path:speech.config\r\n\r\n` +
-        JSON.stringify({ context: { synthesis: { audio: {
-          metadataoptions: { sentenceBoundaryEnabled: 'false', wordBoundaryEnabled: 'false' },
-          outputFormat:    OUTPUT_FORMAT,
-        }}}})
-      );
-
-      // 2. ssml
-      const reqId = randomBytes(16).toString('hex');
-      ws.send(
-        `X-RequestId:${reqId}\r\n` +
-        `Content-Type:application/ssml+xml\r\n` +
-        `X-Timestamp:${new Date().toISOString()}\r\n` +
-        `Path:ssml\r\n\r\n` +
-        ssml
-      );
-    });
-
-    ws.on('message', (data, isBinary) => {
-      if (isBinary) {
-        // format: [2-byte header-len][header bytes][audio bytes]
-        const headerLen = data.readUInt16BE(0);
-        const audio     = data.slice(2 + headerLen);
-        if (audio.length > 0) chunks.push(audio);
-      } else {
-        if (data.toString().includes('Path:turn.end')) {
-          clearTimeout(timer);
-          finish();
-        }
-      }
-    });
-
-    ws.on('error', err => { clearTimeout(timer); finish(err); });
-
-    ws.on('close', (code) => {
-      clearTimeout(timer);
-      // jika sudah ada chunks tapi belum resolve (turn.end terlewat)
-      if (!done && chunks.length > 0) finish();
-      else if (!done) finish(new Error(`Edge TTS: koneksi ditutup (${code})`));
-    });
-  });
-}
-
 class TTSService {
   async synthesize(text, voiceKey = 'female_normal') {
     const voice = VOICES[voiceKey] || VOICES.female_normal;
     const ssml  = _buildSsml(text, voice.name, voice.pitch, voice.rate);
-    return _synthesize(ssml);
+
+    const tts = new MsEdgeTTS();
+    await tts.setMetadata(voice.name, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+
+    const stream = tts.toStreamRaw(ssml);
+
+    return new Promise((resolve, reject) => {
+      const chunks = [];
+      stream.on('data',  c   => chunks.push(c));
+      stream.on('end',   ()  => resolve(Buffer.concat(chunks)));
+      stream.on('error', reject);
+    });
   }
 
   static getVoiceOptions() {
