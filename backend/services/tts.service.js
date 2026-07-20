@@ -3,7 +3,7 @@
  * toStream() wrap ulang teks sehingga <prosody> tidak bisa dipakai;
  * toStreamRaw() kirim full SSML langsung ke Edge TTS tanpa wrapping.
  */
-const { MsEdgeTTS, OUTPUT_FORMAT } = require('msedge-tts');
+const { MsEdgeTTS, OUTPUT_FORMAT } = require('ms-edge-tts');
 
 const VOICES = {
   male_normal:     { name: 'id-ID-ArdiNeural',  label: 'Ardi — Normal',            pitch:   0, rate:   0 },
