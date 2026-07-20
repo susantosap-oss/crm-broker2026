@@ -3,7 +3,7 @@
  * Bypass msedge-tts agar bisa kirim full SSML dengan <prosody> pitch/rate.
  */
 const WebSocket = require('ws'); // transitive dep dari msedge-tts
-const { randomUUID } = require('crypto');
+const { randomBytes } = require('crypto');
 
 const EDGE_TTS_WS      = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readspeaker/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4';
 const OUTPUT_FORMAT    = 'audio-24khz-96kbitrate-mono-mp3';
@@ -39,19 +39,13 @@ function _buildSsml(text, voiceName, pitch, rate) {
 }
 
 function _synthesize(ssml) {
-  const connId = randomUUID().replace(/-/g, '');
+  const connId = randomBytes(16).toString('hex');
   const url    = `${EDGE_TTS_WS}&ConnectionId=${connId}`;
 
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url, {
-      headers: {
-        'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
-        'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Cache-Control':   'no-cache',
-        'Pragma':          'no-cache',
-        'Origin':          'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold',
-      },
+      host:   'speech.platform.bing.com',
+      origin: 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold',
     });
 
     const chunks = [];
@@ -83,7 +77,7 @@ function _synthesize(ssml) {
       );
 
       // 2. ssml
-      const reqId = randomUUID().replace(/-/g, '');
+      const reqId = randomBytes(16).toString('hex');
       ws.send(
         `X-RequestId:${reqId}\r\n` +
         `Content-Type:application/ssml+xml\r\n` +
