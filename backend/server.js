@@ -132,6 +132,8 @@ app.use('/api/v1/export',         require('./routes/export.routes'));
 app.use('/api/v1/payment',        require('./routes/payment.routes'));
 // ★ Canvasing
 app.use('/api/v1/canvasing',      require('./routes/canvasing.routes'));
+// ★ Property Search Engine (Phase 1: Structured Search)
+app.use('/api/v1/search',         require('./routes/search.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)
 app.post('/api/v1/admin/trigger-rental-reminder', require('./middleware/auth.middleware').authMiddleware, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: 'Forbidden' });

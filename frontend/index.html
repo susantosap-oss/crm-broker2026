@@ -107,6 +107,10 @@
     input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
     input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#D4A853;border:2px solid #080E1A;cursor:pointer}
     input[type=range]{-webkit-appearance:none;appearance:none;outline:none}
+    .se-price-chip{background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:4px 8px;color:rgba(255,255,255,0.55);font-size:11px;cursor:pointer}
+    .se-price-chip:hover,.se-price-chip.active{background:rgba(212,168,83,0.15);border-color:rgba(212,168,83,0.4);color:#D4A853}
+    .se-br-chip,.se-bath-chip{background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:4px 8px;color:rgba(255,255,255,0.55);font-size:11px;cursor:pointer;flex:1;min-width:0}
+    .se-br-chip.active,.se-bath-chip.active{background:rgba(212,168,83,0.2);border-color:#D4A853;color:#D4A853;font-weight:600}
   </style>
 </head>
 <body class="min-h-screen overflow-x-hidden">
@@ -151,7 +155,7 @@
       </button>
     </div>
     <p class="text-center mt-8" style="color:rgba(255,255,255,0.2);font-size:12px">Hanya untuk agen & admin terdaftar</p>
-    <p class="text-center mt-2" style="color:rgba(212,168,83,0.5);font-size:11px;letter-spacing:0.08em" id="login-version-label">Mansion CRM v1.1.1</p>
+    <p class="text-center mt-2" style="color:rgba(212,168,83,0.5);font-size:11px;letter-spacing:0.08em" id="login-version-label">Mansion CRM v__APP_VERSION__</p>
   </div>
 </div>
 
@@ -175,6 +179,9 @@
         <span id="notif-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:#EF4444;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;align-items:center;justify-content:center;line-height:16px;text-align:center">0</span></button>
         <button onclick="refreshData()" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:transparent;border:none;cursor:pointer">
           <i id="refresh-icon" class="fa-solid fa-rotate" style="color:rgba(255,255,255,0.4);font-size:13px"></i>
+        </button>
+        <button onclick="navigateTo('search')" id="topnav-search-btn" title="Property Search" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:transparent;border:none;cursor:pointer">
+          <i class="fa-solid fa-magnifying-glass" style="color:rgba(255,255,255,0.65);font-size:14px"></i>
         </button>
         <button onclick="toggleSidebar()" style="width:36px;height:36px;border-radius:50%;background:rgba(212,168,83,0.15);border:1.5px solid rgba(212,168,83,0.35);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;flex-shrink:0">
           <img id="topnav-avatar-img" src="" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:none"/>
@@ -1324,6 +1331,172 @@
     </div>
   </div>
 
+  <!-- PROPERTY SEARCH ENGINE -->
+  <div id="page-search" class="page" style="display:none;padding:16px;padding-bottom:100px">
+
+    <!-- AI mode toggle -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <button id="se-ai-toggle" type="button" onclick="seToggleAiMode()"
+        style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;border:1px solid rgba(212,168,83,0.35);background:rgba(212,168,83,0.08);color:rgba(212,168,83,0.8);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:36px">
+        ✦ Cari dengan AI
+      </button>
+    </div>
+
+    <!-- Normal search bar -->
+    <div id="se-normal-bar" style="position:relative;margin-bottom:12px">
+      <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.35);font-size:14px"></i>
+      <input id="se-keyword" type="text" placeholder="Cari properti, lokasi, tipe..." autocomplete="off"
+        style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:12px 14px 12px 40px;color:#fff;font-size:14px;outline:none;box-sizing:border-box"
+        oninput="seDebounceSearch()" onfocus="this.style.borderColor='rgba(212,168,83,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+      <button id="se-clear-btn" onclick="seClearKeyword()" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.35);font-size:13px">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- AI search bar (hidden by default) -->
+    <div id="se-ai-bar" style="display:none;margin-bottom:12px">
+      <div style="display:flex;gap:8px">
+        <div style="position:relative;flex:1">
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:14px">✦</span>
+          <input id="se-ai-query" type="text" placeholder='cth: "rumah 3 kamar Citraland harga di bawah 3 M"' autocomplete="off"
+            style="width:100%;background:#131F38;border:2px solid rgba(212,168,83,0.4);border-radius:14px;padding:12px 14px 12px 38px;color:#fff;font-size:13px;outline:none;box-sizing:border-box"
+            onfocus="this.style.borderColor='rgba(212,168,83,0.8)'" onblur="this.style.borderColor='rgba(212,168,83,0.4)'"
+            onkeydown="if(event.key==='Enter') seRunAiSearch()"/>
+        </div>
+        <button onclick="seRunAiSearch()" id="se-ai-btn"
+          style="padding:0 18px;background:#D4A853;border:none;border-radius:14px;color:#fff;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap">
+          Cari
+        </button>
+      </div>
+      <div id="se-ai-chips" style="display:none;margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+        <span style="font-size:11px;color:rgba(255,255,255,0.4)">Filter terdeteksi:</span>
+      </div>
+    </div>
+
+    <!-- Quick filter row -->
+    <div style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">
+      <select id="se-property-type" onchange="seRunSearch()" style="background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 10px;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0">
+        <option value="">Semua Tipe</option>
+      </select>
+      <select id="se-transaction" onchange="seRunSearch()" style="background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 10px;color:#fff;font-size:12px;cursor:pointer;flex-shrink:0">
+        <option value="">Jual & Sewa</option>
+        <option value="Jual">Dijual</option>
+        <option value="Sewa">Disewakan</option>
+      </select>
+      <select id="se-city" onchange="seRunSearch()" style="background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 10px;color:#fff;font-size:12px;cursor:pointer;flex-shrink:0">
+        <option value="">Semua Kota</option>
+      </select>
+      <button onclick="seToggleAdvanced()" id="se-adv-btn" style="background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 12px;color:rgba(255,255,255,0.65);font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0">
+        <i class="fa-solid fa-sliders" style="margin-right:5px"></i>Filter
+      </button>
+    </div>
+
+    <!-- Advanced filter panel (collapsible) -->
+    <div id="se-advanced" style="display:none;background:#0D1526;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px;margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Area / Kecamatan</label>
+          <select id="se-area" onchange="seRunSearch()" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 10px;color:#fff;font-size:12px">
+            <option value="">Semua Area</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Status Listing</label>
+          <select id="se-status" onchange="seRunSearch()" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 10px;color:#fff;font-size:12px">
+            <option value="">Semua Status</option>
+            <option value="Aktif">Aktif</option>
+            <option value="Terjual">Terjual</option>
+            <option value="Disewa">Disewa</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:6px">Rentang Harga</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="se-price-min" type="number" placeholder="Min" onchange="seRunSearch()"
+            style="flex:1;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 10px;color:#fff;font-size:12px;min-width:0"/>
+          <span style="color:rgba(255,255,255,0.3);font-size:12px">—</span>
+          <input id="se-price-max" type="number" placeholder="Max" onchange="seRunSearch()"
+            style="flex:1;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 10px;color:#fff;font-size:12px;min-width:0"/>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <button onclick="seSetPrice(0,500000000)" class="se-price-chip">≤ 500Jt</button>
+          <button onclick="seSetPrice(500000000,1000000000)" class="se-price-chip">500Jt–1M</button>
+          <button onclick="seSetPrice(1000000000,3000000000)" class="se-price-chip">1M–3M</button>
+          <button onclick="seSetPrice(3000000000,0)" class="se-price-chip">≥ 3M</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:6px">Min Kamar Tidur</label>
+          <div style="display:flex;gap:5px">
+            <button onclick="seSetBR(0)" class="se-br-chip active" data-br="0">Any</button>
+            <button onclick="seSetBR(1)" class="se-br-chip" data-br="1">1+</button>
+            <button onclick="seSetBR(2)" class="se-br-chip" data-br="2">2+</button>
+            <button onclick="seSetBR(3)" class="se-br-chip" data-br="3">3+</button>
+            <button onclick="seSetBR(4)" class="se-br-chip" data-br="4">4+</button>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:6px">Min Kamar Mandi</label>
+          <div style="display:flex;gap:5px">
+            <button onclick="seSetBath(0)" class="se-bath-chip active" data-bath="0">Any</button>
+            <button onclick="seSetBath(1)" class="se-bath-chip" data-bath="1">1+</button>
+            <button onclick="seSetBath(2)" class="se-bath-chip" data-bath="2">2+</button>
+            <button onclick="seSetBath(3)" class="se-bath-chip" data-bath="3">3+</button>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Luas Tanah (m²)</label>
+          <div style="display:flex;gap:6px">
+            <input id="se-lt-min" type="number" placeholder="Min" onchange="seRunSearch()" style="flex:1;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:7px 8px;color:#fff;font-size:12px;min-width:0"/>
+            <input id="se-lt-max" type="number" placeholder="Max" onchange="seRunSearch()" style="flex:1;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:7px 8px;color:#fff;font-size:12px;min-width:0"/>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Luas Bangunan (m²)</label>
+          <div style="display:flex;gap:6px">
+            <input id="se-lb-min" type="number" placeholder="Min" onchange="seRunSearch()" style="flex:1;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:7px 8px;color:#fff;font-size:12px;min-width:0"/>
+            <input id="se-lb-max" type="number" placeholder="Max" onchange="seRunSearch()" style="flex:1;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:7px 8px;color:#fff;font-size:12px;min-width:0"/>
+          </div>
+        </div>
+      </div>
+      <button onclick="seResetFilters()" style="width:100%;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:9px;color:#f87171;font-size:13px;cursor:pointer">
+        <i class="fa-solid fa-rotate-left" style="margin-right:6px"></i>Reset Semua Filter
+      </button>
+    </div>
+
+    <!-- Result header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div id="se-result-count" style="font-size:13px;color:rgba(255,255,255,0.5)">Memuat...</div>
+      <select id="se-sort" onchange="seRunSearch()" style="background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:6px 10px;color:#fff;font-size:12px;cursor:pointer">
+        <option value="terbaru">Terbaru</option>
+        <option value="terlama">Terlama</option>
+        <option value="harga_termurah">Harga ↑</option>
+        <option value="harga_termahal">Harga ↓</option>
+        <option value="terpopuler">Terpopuler</option>
+      </select>
+    </div>
+
+    <!-- Results grid -->
+    <div id="se-results" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+
+    <!-- Pagination -->
+    <div id="se-pagination" style="display:none;margin-top:20px">
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px">
+        <button id="se-prev-btn" onclick="sePrevPage()" style="background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 16px;color:#fff;font-size:13px;cursor:pointer">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <span id="se-page-info" style="font-size:13px;color:rgba(255,255,255,0.6)">Halaman 1 / 1</span>
+        <button id="se-next-btn" onclick="seNextPage()" style="background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 16px;color:#fff;font-size:13px;cursor:pointer">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- BOTTOM NAV -->
   <nav id="bottom-nav" style="position:fixed;bottom:0;left:0;right:0;z-index:40;background:rgba(13,21,38,0.97);border-top:1px solid rgba(255,255,255,0.07);backdrop-filter:blur(12px);padding-bottom:env(safe-area-inset-bottom,0px)">
     <div style="display:flex;align-items:center;height:56px;max-width:520px;margin:0 auto">
@@ -1364,6 +1537,7 @@
     <nav style="flex:1;padding:12px;display:flex;flex-direction:column;gap:2px">
       <button onclick="navigateTo('dashboard');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-chart-pie" style="color:#D4A853;width:16px;text-align:center"></i><span>Dashboard</span></button>
       <button onclick="navigateTo('listings');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-building" style="color:#2B7BFF;width:16px;text-align:center"></i><span>Listing Properti</span></button>
+      <button onclick="navigateTo('search');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-magnifying-glass" style="color:#22C55E;width:16px;text-align:center"></i><span>Property Search</span><span style="margin-left:auto;font-size:9px;background:rgba(34,197,94,0.15);color:#22C55E;padding:2px 6px;border-radius:20px;font-weight:700">SEARCH</span></button>
         <a class="sidebar-link" id="sb-primary" onclick="navigateTo('primary');closeSidebar()" style="display:none">
           <i class="fa-solid fa-star" style="width:18px;color:#D4A853"></i>
           <span>Primary</span>
@@ -4372,10 +4546,10 @@ async function saveInvestasiPDF() {
         <p style="font-size:22px;font-weight:800;color:${netColor};margin:0">${r.netROI!==0?r.netROI.toFixed(2)+'%':'—'}</p>
         <p style="font-size:9px;color:${netColor};margin:3px 0 0;font-weight:700">${r.cNet.label}</p>
       </div>
-      <div style="border:1px solid #dde0ea;border-top:3px solid #7c3aed;border-radius:0 0 8px 8px;padding:10px;text-align:center">
+      <div style="border:1px solid #dde0ea;border-top:3px solid #D4A853;border-radius:0 0 8px 8px;padding:10px;text-align:center">
         <p style="font-size:8px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px">ROI Capital Gain</p>
         <p style="font-size:22px;font-weight:800;color:${capitalColor};margin:0">${r.roiJual!==null?r.roiJual.toFixed(1)+'%':'—'}</p>
-        <p style="font-size:9px;color:#7c3aed;margin:3px 0 0;font-weight:700">CAGR ${r.cagr>0?r.cagr.toFixed(1)+'%/thn':'—'}</p>
+        <p style="font-size:9px;color:#D4A853;margin:3px 0 0;font-weight:700">CAGR ${r.cagr>0?r.cagr.toFixed(1)+'%/thn':'—'}</p>
       </div>
     </div>
     ${pdfProyeksiRows ? `

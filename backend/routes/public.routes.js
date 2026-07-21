@@ -20,6 +20,8 @@ const { publicApiKey } = require('../middleware/auth.middleware');
 const listingsService  = require('../services/listings.service');
 const projectsService  = require('../services/projects.service');
 const sheetsService    = require('../services/sheets.service');
+const searchService    = require('../services/search.service');
+const { extractFilter } = require('../services/ai-filter.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 
 // Helper: build foto_gallery from Foto_Gallery JSON or fallback to Foto_2/3_URL
@@ -240,6 +242,117 @@ router.get('/projects/:id', async (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ── GET /search ───────────────────────────────────────────
+// Property Search Engine — Public API
+// Filters: keyword, property_type, transaction_type, city, area,
+//   cluster, developer, price_min, price_max, bedroom_min,
+//   bathroom_min, land_area_min, land_area_max,
+//   building_area_min, building_area_max, status, featured
+// Pagination: page, limit (max 100)
+// Sort: terbaru | terlama | harga_termurah | harga_termahal | terpopuler
+router.get('/search', async (req, res) => {
+  try {
+    const result = await searchService.search(req.query, { publicOnly: true });
+    res.json({
+      success: true,
+      ...result,
+      meta: {
+        source:    'Mansion Property Search Engine v1.0',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('[PUBLIC SEARCH GET]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── POST /search ──────────────────────────────────────────
+// AI-Ready endpoint: AI layer POST JSON filter ke sini.
+// Contoh body: { "property_type": "Rumah", "area": "Citraland",
+//   "price_max": 3000000000, "bedroom_min": 3 }
+router.post('/search', async (req, res) => {
+  try {
+    const params = { ...req.query, ...req.body };
+    const result = await searchService.search(params, { publicOnly: true });
+    res.json({
+      success: true,
+      ...result,
+      meta: {
+        source:    'Mansion Property Search Engine v1.0',
+        filter:    params,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('[PUBLIC SEARCH POST]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── GET /search/options ───────────────────────────────────
+// Filter options untuk UI dropdown website publik
+router.get('/search/options', async (req, res) => {
+  try {
+    const options = await searchService.getFilterOptions({ publicOnly: true });
+    res.json({ success: true, data: options });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── POST /ai-search ───────────────────────────────────────
+// AI Search Layer: natural language → filter → search results
+// Body: { query: string, page?: number, limit?: number, sort?: string }
+// Rate limit: 20 req/menit per IP (lebih ketat karena hit Groq API)
+const aiSearchLimiter = require('express-rate-limit')({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Terlalu banyak AI search request, coba lagi dalam 1 menit' },
+});
+
+router.post('/ai-search', aiSearchLimiter, async (req, res) => {
+  const { query, page = 1, limit = 12, sort = 'terbaru' } = req.body || {};
+
+  if (!query || typeof query !== 'string' || !query.trim()) {
+    return res.status(400).json({ success: false, message: 'Field "query" wajib diisi' });
+  }
+
+  try {
+    const { filter, raw_query, ai_extracted, fallback } = await extractFilter(query.trim());
+
+    // Merge AI filter + pagination params
+    const searchParams = {
+      ...filter,
+      page:  Number(page)  || 1,
+      limit: Math.min(Number(limit) || 12, 50),
+      sort,
+    };
+
+    const result = await searchService.search(searchParams, { publicOnly: true });
+
+    res.json({
+      success: true,
+      ...result,
+      ai: {
+        raw_query,
+        extracted_filter: filter,
+        ai_raw:           ai_extracted || null,
+        fallback:         fallback || false,
+      },
+      meta: {
+        source:    'Mansion AI Property Search v1.0',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('[PUBLIC AI-SEARCH]', err.message);
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

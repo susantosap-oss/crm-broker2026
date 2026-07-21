@@ -236,6 +236,7 @@ async function navigateTo(page) {
     whatsapp:  'WA Center',
     pipeline:  'Pipeline Kanban',
     komisi:    'Request Komisi',
+    search:    'Property Search',
   };
   setText('page-title', titles[page] || page);
   STATE.currentPage = page;
@@ -250,6 +251,7 @@ async function navigateTo(page) {
   if (page === 'legal')     await loadLegalDocs();
   if (page === 'rental')    await loadRentals();
   if (page === 'komisi' && typeof loadKomisiPage === 'function') await loadKomisiPage();
+  if (page === 'search') await loadSearchPage();
 
   // Scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1929,3 +1931,353 @@ document.addEventListener('click', (e) => {
 // const tidak otomatis jadi window.X — harus di-assign manual
 window.API   = API;
 window.STATE = STATE;
+
+// ══════════════════════════════════════════════════════════
+// PROPERTY SEARCH ENGINE — Phase 2 UI
+// ══════════════════════════════════════════════════════════
+
+const SE = {
+  page:         1,
+  limit:        20,
+  totalPages:   1,
+  bedroomMin:   0,
+  bathroomMin:  0,
+  debounceTimer: null,
+  optionsLoaded: false,
+};
+
+async function loadSearchPage() {
+  if (!SE.optionsLoaded) {
+    await seLoadOptions();
+    SE.optionsLoaded = true;
+  }
+  await seRunSearch();
+}
+
+async function seLoadOptions() {
+  try {
+    const res = await API.get('/search/options');
+    const data = res.data || {};
+
+    const ptSel   = document.getElementById('se-property-type');
+    const citySel = document.getElementById('se-city');
+    const areaSel = document.getElementById('se-area');
+    if (!ptSel || !citySel || !areaSel) return;
+
+    // Clear and repopulate (in case page revisited)
+    [ptSel, citySel, areaSel].forEach(sel => {
+      while (sel.options.length > 1) sel.remove(1);
+    });
+
+    (data.property_types || []).forEach(t => {
+      ptSel.appendChild(Object.assign(document.createElement('option'), { value: t, textContent: t }));
+    });
+    (data.cities || []).forEach(c => {
+      citySel.appendChild(Object.assign(document.createElement('option'), { value: c, textContent: c }));
+    });
+    (data.areas || []).forEach(a => {
+      areaSel.appendChild(Object.assign(document.createElement('option'), { value: a, textContent: a }));
+    });
+  } catch (e) {
+    console.error('[SE] load options failed:', e.message);
+  }
+}
+
+function seDebounceSearch() {
+  const kw = document.getElementById('se-keyword').value;
+  const clearBtn = document.getElementById('se-clear-btn');
+  if (clearBtn) clearBtn.style.display = kw ? 'flex' : 'none';
+  clearTimeout(SE.debounceTimer);
+  SE.debounceTimer = setTimeout(() => {
+    SE.page = 1;
+    seRunSearch();
+  }, 400);
+}
+
+function seClearKeyword() {
+  const kw = document.getElementById('se-keyword');
+  const clearBtn = document.getElementById('se-clear-btn');
+  if (kw) kw.value = '';
+  if (clearBtn) clearBtn.style.display = 'none';
+  SE.page = 1;
+  seRunSearch();
+}
+
+async function seRunSearch() {
+  const params     = seBuildParams();
+  const countEl    = document.getElementById('se-result-count');
+  const resultsEl  = document.getElementById('se-results');
+  if (!countEl || !resultsEl) return;
+
+  countEl.textContent = 'Mencari...';
+  resultsEl.innerHTML = '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.3)"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px"></i></div>';
+
+  try {
+    // Build query string, skip empty values
+    const qs = Object.entries(params)
+      .filter(([, v]) => v !== '' && v !== 0 && v !== undefined)
+      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+      .join('&');
+
+    const res = await API.get('/search?' + qs);
+    const { total, page, total_pages, results } = res;
+
+    SE.totalPages = total_pages || 1;
+    SE.page       = page;
+
+    countEl.innerHTML = total > 0
+      ? `<strong style="color:#fff">${total.toLocaleString('id-ID')}</strong> listing ditemukan`
+      : 'Tidak ada listing ditemukan';
+
+    seRenderResults(results || []);
+    seRenderPagination(page, total_pages || 1, total);
+  } catch (e) {
+    countEl.textContent = 'Gagal memuat hasil';
+    resultsEl.innerHTML = `<div style="text-align:center;padding:40px 0;color:#f87171;font-size:13px">
+      <i class="fa-solid fa-triangle-exclamation" style="display:block;font-size:28px;margin-bottom:8px"></i>
+      ${escHtml(e.message)}</div>`;
+  }
+}
+
+function seBuildParams() {
+  return {
+    keyword:           (document.getElementById('se-keyword')?.value || '').trim(),
+    property_type:     document.getElementById('se-property-type')?.value || '',
+    transaction_type:  document.getElementById('se-transaction')?.value || '',
+    city:              document.getElementById('se-city')?.value || '',
+    area:              document.getElementById('se-area')?.value || '',
+    status:            document.getElementById('se-status')?.value || '',
+    price_min:         document.getElementById('se-price-min')?.value || '',
+    price_max:         document.getElementById('se-price-max')?.value || '',
+    bedroom_min:       SE.bedroomMin  > 0 ? SE.bedroomMin  : '',
+    bathroom_min:      SE.bathroomMin > 0 ? SE.bathroomMin : '',
+    land_area_min:     document.getElementById('se-lt-min')?.value || '',
+    land_area_max:     document.getElementById('se-lt-max')?.value || '',
+    building_area_min: document.getElementById('se-lb-min')?.value || '',
+    building_area_max: document.getElementById('se-lb-max')?.value || '',
+    sort:              document.getElementById('se-sort')?.value || 'terbaru',
+    page:              SE.page,
+    limit:             SE.limit,
+  };
+}
+
+function seRenderResults(results) {
+  const el = document.getElementById('se-results');
+  if (!el) return;
+
+  if (!results.length) {
+    el.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:56px 16px;color:rgba(255,255,255,0.3)">
+        <i class="fa-solid fa-building-circle-xmark" style="font-size:44px;display:block;margin-bottom:14px;opacity:0.35"></i>
+        <p style="font-size:14px;margin-bottom:6px;color:rgba(255,255,255,0.5)">Tidak ada hasil yang ditemukan</p>
+        <p style="font-size:12px;opacity:0.5">Coba ubah filter atau kata kunci pencarian</p>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = results.map(r => seRenderCard(r)).join('');
+}
+
+function seRenderCard(r) {
+  const statusColors = {
+    Aktif: '#22C55E', Terjual: '#D4A853', Tersewa: '#3B82F6',
+    Ditarik: '#64748B', Disewa: '#3B82F6', Nonaktif: '#64748B',
+  };
+  const statusColor  = statusColors[r.status] || '#64748B';
+  const harga        = r.harga_format || (r.harga ? formatHarga(r.harga) : 'Hubungi Kami');
+
+  const specs = [];
+  if (r.luas_tanah    > 0) specs.push(`LT ${r.luas_tanah}m²`);
+  if (r.luas_bangunan > 0) specs.push(`LB ${r.luas_bangunan}m²`);
+  if (r.kamar_tidur   > 0) specs.push(`${r.kamar_tidur} KT`);
+  if (r.kamar_mandi   > 0) specs.push(`${r.kamar_mandi} KM`);
+  if (r.garasi        > 0) specs.push(`${r.garasi} Garasi`);
+
+  const id = escHtml(r.id || '');
+  return `
+    <div class="card-glass rounded-xl overflow-hidden" style="cursor:pointer" onclick="seOpenDetail('${id}')">
+      <div style="position:relative;height:120px;background:#162040;overflow:hidden">
+        ${r.foto_utama
+          ? `<img src="${escHtml(r.foto_utama)}" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>`
+          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;opacity:0.12"><i class="fa-solid fa-building" style="font-size:36px;color:#fff"></i></div>`
+        }
+        <div style="position:absolute;top:6px;left:6px;display:flex;gap:4px;flex-wrap:wrap">
+          <span style="font-size:9px;padding:2px 6px;border-radius:6px;font-weight:600;color:#fff;background:${statusColor}cc">${escHtml(r.status || '')}</span>
+          ${r.transaction_type ? `<span style="font-size:9px;padding:2px 6px;border-radius:6px;color:#fff;background:rgba(43,123,255,0.75)">${escHtml(r.transaction_type)}</span>` : ''}
+        </div>
+        ${r.featured ? `<div style="position:absolute;top:6px;right:6px;background:#D4A853;border-radius:6px;padding:2px 6px;font-size:9px;font-weight:700;color:#0D1526">★</div>` : ''}
+      </div>
+      <div style="padding:10px">
+        <p style="font-weight:600;color:#fff;font-size:12px;line-height:1.35;margin-bottom:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${escHtml(r.judul || 'Tanpa Judul')}</p>
+        <p style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          <i class="fa-solid fa-location-dot" style="color:#D4A853;margin-right:3px;font-size:9px"></i>${escHtml(r.kota || '')}${r.kecamatan ? ', ' + escHtml(r.kecamatan) : ''}
+        </p>
+        <p style="font-size:13px;font-weight:700;color:#D4A853;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${escHtml(harga)}</p>
+        ${specs.length ? `<p style="font-size:10px;color:rgba(255,255,255,0.35)">${escHtml(specs.join(' · '))}</p>` : ''}
+      </div>
+    </div>`;
+}
+
+function seOpenDetail(id) {
+  // Navigasi ke halaman listings dan buka detail listing
+  navigateTo('listings').then(() => {
+    if (typeof openListingDetail === 'function') openListingDetail(id);
+  });
+}
+
+function seRenderPagination(page, totalPages, total) {
+  const pag = document.getElementById('se-pagination');
+  if (!pag) return;
+
+  if (!totalPages || totalPages <= 1) { pag.style.display = 'none'; return; }
+
+  pag.style.display = 'block';
+  const info    = document.getElementById('se-page-info');
+  const prevBtn = document.getElementById('se-prev-btn');
+  const nextBtn = document.getElementById('se-next-btn');
+  if (info)    info.textContent    = `Halaman ${page} / ${totalPages}`;
+  if (prevBtn) { prevBtn.disabled = page <= 1; prevBtn.style.opacity = page <= 1 ? '0.4' : '1'; }
+  if (nextBtn) { nextBtn.disabled = page >= totalPages; nextBtn.style.opacity = page >= totalPages ? '0.4' : '1'; }
+}
+
+function sePrevPage() {
+  if (SE.page > 1) {
+    SE.page--;
+    seRunSearch();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function seNextPage() {
+  if (SE.page < SE.totalPages) {
+    SE.page++;
+    seRunSearch();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function seToggleAdvanced() {
+  const panel = document.getElementById('se-advanced');
+  const btn   = document.getElementById('se-adv-btn');
+  if (!panel || !btn) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display  = isOpen ? 'none' : 'block';
+  btn.style.borderColor = isOpen ? 'rgba(255,255,255,0.1)' : 'rgba(212,168,83,0.5)';
+  btn.style.color       = isOpen ? 'rgba(255,255,255,0.65)' : '#D4A853';
+}
+
+function seSetPrice(min, max) {
+  const minEl = document.getElementById('se-price-min');
+  const maxEl = document.getElementById('se-price-max');
+  if (minEl) minEl.value = min || '';
+  if (maxEl) maxEl.value = max || '';
+  document.querySelectorAll('.se-price-chip').forEach(b => b.classList.remove('active'));
+  if (event && event.currentTarget) event.currentTarget.classList.add('active');
+  SE.page = 1;
+  seRunSearch();
+}
+
+function seSetBR(n) {
+  SE.bedroomMin = n;
+  document.querySelectorAll('.se-br-chip').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.br) === n);
+  });
+  SE.page = 1;
+  seRunSearch();
+}
+
+function seSetBath(n) {
+  SE.bathroomMin = n;
+  document.querySelectorAll('.se-bath-chip').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.bath) === n);
+  });
+  SE.page = 1;
+  seRunSearch();
+}
+
+function seResetFilters() {
+  const ids = ['se-keyword','se-property-type','se-transaction','se-city','se-area',
+    'se-status','se-price-min','se-price-max','se-lt-min','se-lt-max','se-lb-min','se-lb-max'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const sortEl = document.getElementById('se-sort');
+  if (sortEl) sortEl.value = 'terbaru';
+  const clearBtn = document.getElementById('se-clear-btn');
+  if (clearBtn) clearBtn.style.display = 'none';
+  SE.bedroomMin  = 0;
+  SE.bathroomMin = 0;
+  SE.page        = 1;
+  document.querySelectorAll('.se-br-chip').forEach(b => b.classList.toggle('active', b.dataset.br   === '0'));
+  document.querySelectorAll('.se-bath-chip').forEach(b => b.classList.toggle('active', b.dataset.bath === '0'));
+  document.querySelectorAll('.se-price-chip').forEach(b => b.classList.remove('active'));
+  seRunSearch();
+}
+
+// ── AI Search Mode ─────────────────────────────────────────
+SE.aiMode = false;
+
+function seToggleAiMode() {
+  SE.aiMode = !SE.aiMode;
+  const toggle = document.getElementById('se-ai-toggle');
+  const normalBar = document.getElementById('se-normal-bar');
+  const aiBar = document.getElementById('se-ai-bar');
+  const filterRow = document.getElementById('se-normal-bar')?.nextElementSibling;
+
+  if (SE.aiMode) {
+    toggle.style.background = '#D4A853';
+    toggle.style.color = '#fff';
+    toggle.style.borderColor = '#D4A853';
+    toggle.textContent = '✦ Mode AI Aktif';
+    normalBar.style.display = 'none';
+    aiBar.style.display = 'block';
+    document.getElementById('se-ai-query').focus();
+  } else {
+    toggle.style.background = 'transparent';
+    toggle.style.color = 'rgba(255,255,255,0.5)';
+    toggle.style.borderColor = 'rgba(255,255,255,0.15)';
+    toggle.textContent = '✦ Cari dengan AI';
+    normalBar.style.display = 'block';
+    aiBar.style.display = 'none';
+    document.getElementById('se-ai-chips').style.display = 'none';
+  }
+}
+
+async function seRunAiSearch() {
+  const query = document.getElementById('se-ai-query')?.value?.trim();
+  if (!query) return;
+
+  const btn = document.getElementById('se-ai-btn');
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  const resultsEl = document.getElementById('se-results');
+  if (resultsEl) resultsEl.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.4)"><div class="spinner" style="margin:0 auto 12px"></div><p>AI sedang menganalisis...</p></div>';
+
+  try {
+    const data = await API.post('/search/ai', { query, page: SE.page, limit: SE.limit, sort: document.getElementById('se-sort')?.value || 'terbaru' });
+
+    if (data.ai && !data.ai.fallback) {
+      const chips = document.getElementById('se-ai-chips');
+      chips.style.display = 'flex';
+      const entries = Object.entries(data.ai.extracted_filter || {});
+      chips.innerHTML = '<span style="font-size:11px;color:rgba(255,255,255,0.4)">Filter terdeteksi:</span>' +
+        entries.map(([k,v]) => `<span style="font-size:11px;background:rgba(212,168,83,0.15);color:#D4A853;border:1px solid rgba(212,168,83,0.4);padding:2px 8px;border-radius:12px">${k.replace(/_/g,' ')}: ${v}</span>`).join('');
+    }
+
+    SE.totalPages = data.total_pages || 1;
+    const countEl = document.getElementById('se-result-count');
+    if (countEl) {
+      const total = data.total || 0;
+      countEl.innerHTML = total
+        ? `<strong style="color:#fff">${total.toLocaleString('id-ID')}</strong> listing ditemukan`
+        : 'Tidak ada listing ditemukan';
+    }
+    seRenderResults(data.results || []);
+    seRenderPagination(data.page, data.total_pages || 1, data.total || 0);
+  } catch(e) {
+    if (resultsEl) resultsEl.innerHTML = `<div style="text-align:center;padding:40px;color:#f87171"><p>AI Search gagal: ${e.message}</p></div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Cari';
+  }
+}
+
