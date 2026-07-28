@@ -132,6 +132,8 @@ app.use('/api/v1/export',         require('./routes/export.routes'));
 app.use('/api/v1/payment',        require('./routes/payment.routes'));
 // ★ Canvasing
 app.use('/api/v1/canvasing',      require('./routes/canvasing.routes'));
+// ★ Fitur Asset — Properti Lelang / Eksekusi
+app.use('/api/v1/assets',         require('./routes/assets.routes'));
 // ★ Property Search Engine (Phase 1: Structured Search)
 app.use('/api/v1/search',         require('./routes/search.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)
@@ -282,6 +284,9 @@ async function migrateHeaders() {
     { sheet: SHEETS.PAYMENT_STAGES,  cols: COLUMNS.PAYMENT_STAGES },
     // ★ Fitur 6 — Canvasing
     { sheet: SHEETS.CANVASING,       cols: COLUMNS.CANVASING },
+    // ★ Fitur Asset — Properti Lelang
+    { sheet: SHEETS.ASSETS,          cols: COLUMNS.ASSETS },
+    { sheet: SHEETS.ASSET_EDITORS,   cols: COLUMNS.ASSET_EDITORS },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)

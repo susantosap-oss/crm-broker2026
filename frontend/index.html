@@ -539,6 +539,119 @@
       <p style="font-size:15px;margin:0">Belum ada proyek</p>
     </div>
   </section>
+
+  <!-- ★ ASSET PAGE — Properti Lelang / Eksekusi ───────────── -->
+  <section id="page-asset" class="page" style="display:none;padding:16px;overflow-y:auto;position:relative">
+
+    <!-- Hero -->
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <h1 style="font-family:'DM Serif Display',serif;font-size:22px;color:#fff;margin:0 0 4px">
+            ⚖️ Properti Lelang
+          </h1>
+          <p style="color:rgba(255,255,255,0.45);font-size:13px;margin:0">Aset Eksekusi Bank — Harga di Bawah Pasar</p>
+          <p style="color:#f59e0b;font-size:12px;margin:4px 0 0"><span id="asset-total-count">—</span> aset tersedia</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button id="btn-asset-editors" onclick="openAssetEditors()"
+            style="display:none;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);padding:9px 12px;border-radius:10px;font-size:12px;cursor:pointer">
+            <i class="fa-solid fa-user-pen"></i> Editor
+          </button>
+          <button id="btn-sync-asset" onclick="syncAssetsFromSource(false)"
+            style="display:none;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;padding:9px 13px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer">
+            <i class="fa-solid fa-arrows-rotate"></i> Sync Data
+          </button>
+          <button id="btn-reset-sync-asset" onclick="syncAssetsFromSource(true)"
+            style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:9px 13px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer"
+            title="Hapus semua data lama lalu import ulang dari sumber">
+            <i class="fa-solid fa-trash-can-arrow-up"></i> Reset & Sync
+          </button>
+          <button id="btn-add-asset" onclick="openAddAsset()"
+            style="display:none;background:#D4A853;color:#0D1526;border:none;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;align-items:center;gap:8px">
+            <i class="fa-solid fa-plus"></i> Tambah Aset
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <input id="asset-search" type="text" placeholder="🔍 Cari aset / debitur / bank..."
+        oninput="filterAssets()"
+        style="flex:1;min-width:180px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 14px;color:#fff;font-size:13px;outline:none"/>
+      <!-- Dropdown Tipe -->
+      <div style="position:relative" id="asset-wrap-filter-tipe">
+        <button onclick="toggleAssetDropdown('tipe')"
+          style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;min-width:130px;justify-content:space-between">
+          <span id="asset-filter-tipe-label">Semua Tipe</span>
+          <i class="fa-solid fa-chevron-down" style="font-size:10px;color:#f59e0b"></i>
+        </button>
+        <input type="hidden" id="asset-filter-tipe" value=""/>
+        <div id="asset-dropdown-tipe" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#131F38;border:1px solid rgba(245,158,11,0.25);border-radius:10px;z-index:999;min-width:140px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+          <div onclick="setAssetFilter('tipe','','Semua Tipe')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">Semua Tipe</div>
+          <div onclick="setAssetFilter('tipe','Rumah','Rumah')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">🏡 Rumah</div>
+          <div onclick="setAssetFilter('tipe','Ruko','Ruko')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">🏪 Ruko</div>
+          <div onclick="setAssetFilter('tipe','Apartemen','Apartemen')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">🏢 Apartemen</div>
+          <div onclick="setAssetFilter('tipe','Tanah','Tanah')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">🌿 Tanah</div>
+          <div onclick="setAssetFilter('tipe','Gudang','Gudang')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">🏭 Gudang</div>
+          <div onclick="setAssetFilter('tipe','Kios','Kios')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">🏬 Kios</div>
+        </div>
+      </div>
+      <!-- Dropdown Status (hanya untuk editor) -->
+      <div style="position:relative;display:none" id="asset-wrap-filter-status">
+        <button onclick="toggleAssetDropdown('status')"
+          style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between">
+          <span id="asset-filter-status-label">Semua Status</span>
+          <i class="fa-solid fa-chevron-down" style="font-size:10px;color:#f59e0b"></i>
+        </button>
+        <input type="hidden" id="asset-filter-status" value=""/>
+        <div id="asset-dropdown-status" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#131F38;border:1px solid rgba(245,158,11,0.25);border-radius:10px;z-index:999;min-width:150px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+          <div onclick="setAssetFilter('status','','Semua Status')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">Semua Status</div>
+          <div onclick="setAssetFilter('status','Publish','Publish')" style="padding:10px 14px;color:#4ade80;font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">● Publish</div>
+          <div onclick="setAssetFilter('status','Draft','Draft')" style="padding:10px 14px;color:#94a3b8;font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">● Draft</div>
+        </div>
+      </div>
+      <!-- Dropdown Kota Jawa Timur -->
+      <div style="position:relative" id="asset-wrap-filter-kota">
+        <button onclick="toggleAssetDropdown('kota')"
+          style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;min-width:130px;justify-content:space-between">
+          <span id="asset-filter-kota-label">📍 Kota</span>
+          <i class="fa-solid fa-chevron-down" style="font-size:10px;color:#f59e0b"></i>
+        </button>
+        <input type="hidden" id="asset-filter-kota" value=""/>
+        <div id="asset-dropdown-kota" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#131F38;border:1px solid rgba(245,158,11,0.25);border-radius:10px;z-index:999;min-width:160px;max-height:280px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+          <div onclick="setAssetFilter('kota','','📍 Kota')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">Semua Kota</div>
+        </div>
+      </div>
+      <!-- Dropdown Bank / Balai Lelang -->
+      <div style="position:relative" id="asset-wrap-filter-bank">
+        <button onclick="toggleAssetDropdown('bank')"
+          style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;min-width:130px;justify-content:space-between">
+          <span id="asset-filter-bank-label">🏦 Bank</span>
+          <i class="fa-solid fa-chevron-down" style="font-size:10px;color:#f59e0b"></i>
+        </button>
+        <input type="hidden" id="asset-filter-bank" value=""/>
+        <div id="asset-dropdown-bank" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#131F38;border:1px solid rgba(245,158,11,0.25);border-radius:10px;z-index:999;min-width:180px;max-height:280px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+          <div onclick="setAssetFilter('bank','','🏦 Bank')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">Semua Bank</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid Card -->
+    <div id="asset-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+      <div class="skeleton-card" style="height:280px;border-radius:16px;background:rgba(255,255,255,0.04)"></div>
+      <div class="skeleton-card" style="height:280px;border-radius:16px;background:rgba(255,255,255,0.04)"></div>
+    </div>
+
+    <!-- Empty state -->
+    <div id="asset-empty" style="display:none;text-align:center;padding:60px 20px;color:rgba(255,255,255,0.3)">
+      <i class="fa-solid fa-gavel" style="font-size:40px;margin-bottom:12px;display:block"></i>
+      <p style="font-size:15px;margin:0">Belum ada data aset lelang</p>
+      <p style="font-size:12px;margin:8px 0 0">Klik "Sync Data" untuk import dari sumber</p>
+    </div>
+  </section>
+
   <div id="page-member" class="page" style="display:none;padding:16px">
     <div style="padding:16px 16px 0">
       <div id="member-search-wrap" style="position:relative;margin-bottom:12px">
@@ -1504,6 +1617,7 @@
       <button class="nav-btn" id="nav-listings" onclick="navigateTo('listings')"><i class="fa-solid fa-building"></i><span>Listing</span></button>
       <button class="nav-btn" id="nav-calculator" onclick="navigateTo('calculator')"><i class="fa-solid fa-calculator"></i><span>Kalkulator</span></button>
       <button class="nav-btn" id="nav-primary" onclick="navigateTo('primary')" style="display:none"><i class="fa-solid fa-star"></i><span>Primary</span></button>
+      <button class="nav-btn" id="nav-asset" onclick="navigateTo('asset')" style="display:none"><i class="fa-solid fa-gavel"></i><span>Asset</span></button>
       <div style="flex:1;position:relative;min-width:0">
         <button onclick="openQuickAdd()" style="width:52px;height:52px;border-radius:50%;background:#D4A853;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(212,168,83,0.35);position:absolute;bottom:6px;left:50%;transform:translateX(-50%)" onmousedown="this.style.transform='translateX(-50%) scale(0.92)'" onmouseup="this.style.transform='translateX(-50%) scale(1)'">
           <i class="fa-solid fa-plus" style="color:#0D1526;font-size:20px"></i>
@@ -1542,6 +1656,11 @@
           <i class="fa-solid fa-star" style="width:18px;color:#D4A853"></i>
           <span>Primary</span>
           <span style="margin-left:auto;font-size:10px;background:rgba(212,168,83,0.2);color:#D4A853;padding:2px 7px;border-radius:20px;font-weight:700">NEW</span>
+        </a>
+        <a class="sidebar-link" id="sb-asset" onclick="navigateTo('asset');closeSidebar()" style="display:none;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'">
+          <i class="fa-solid fa-gavel" style="color:#f59e0b;width:16px;text-align:center"></i>
+          <span>Properti Lelang</span>
+          <span style="margin-left:auto;font-size:9px;background:rgba(245,158,11,0.2);color:#f59e0b;padding:1px 6px;border-radius:20px;font-weight:700">ASSET</span>
         </a>
 
         <!-- ★ Personal Assistant (OpenClaw) -->
@@ -4756,6 +4875,389 @@ async function saveApraisalResult(type) {
     <span id="app-version-label" style="font-size:10px;color:rgba(255,255,255,0.18);letter-spacing:0.05em">v—</span>
   </div>
   <!-- Force SW cache bust: unregister SW lama lalu register ulang -->
+  <script>
+  <!-- ══════════════════════════════════════════════════════
+       MODAL ASSET FORM — Tambah / Edit Aset
+  ══════════════════════════════════════════════════════ -->
+  <div id="modal-asset-form" class="modal-overlay" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.7);overflow-y:auto;padding:16px 16px 80px;-webkit-overflow-scrolling:touch">
+    <div class="modal-sheet" style="background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:20px;max-width:560px;margin:0 auto;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#131F38,#0D1526);padding:20px;border-bottom:1px solid rgba(255,255,255,0.07);position:relative">
+        <div style="width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 14px"></div>
+        <h3 id="asset-form-title" style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff;margin:0;padding-right:36px">⚖️ Tambah Aset Lelang</h3>
+        <button onclick="closeModal('modal-asset-form')" style="position:absolute;top:12px;right:12px;width:32px;height:32px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:50%;color:rgba(255,255,255,0.7);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+      <div style="padding:20px;max-height:80vh;overflow-y:auto">
+        <input type="hidden" id="asset-form-id"/>
+
+        <!-- Nama Aset -->
+        <div style="margin-bottom:14px">
+          <label class="form-label">Nama Aset / Properti <span style="color:#ef4444">*</span></label>
+          <input id="af-nama" class="form-input" type="text" placeholder="Contoh: Rumah 2 Lt, Jl. Mawar No.5"/>
+        </div>
+
+        <!-- Tipe + Debitur -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label class="form-label">Tipe Properti</label>
+            <select id="af-tipe" class="form-input">
+              <option value="Rumah">🏡 Rumah</option>
+              <option value="Ruko">🏪 Ruko</option>
+              <option value="Apartemen">🏢 Apartemen</option>
+              <option value="Gudang">🏭 Gudang</option>
+              <option value="Tanah">🌿 Tanah</option>
+              <option value="Kios">🏬 Kios</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Nama Debitur</label>
+            <input id="af-debitur" class="form-input" type="text" placeholder="Nama nasabah/debitur"/>
+          </div>
+        </div>
+
+        <!-- Bank + No Perkara -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label class="form-label">Bank / Kreditur</label>
+            <input id="af-bank" class="form-input" type="text" placeholder="Contoh: Bank BRI"/>
+          </div>
+          <div>
+            <label class="form-label">No. Perkara</label>
+            <input id="af-perkara" class="form-input" type="text" placeholder="Nomor perkara lelang"/>
+          </div>
+        </div>
+
+        <!-- Alamat -->
+        <div style="margin-bottom:14px">
+          <label class="form-label">Alamat Lengkap</label>
+          <textarea id="af-alamat" class="form-input" rows="2" placeholder="Alamat properti..."></textarea>
+        </div>
+
+        <!-- Kecamatan + Kota + Provinsi -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label class="form-label">Kecamatan</label>
+            <input id="af-kecamatan" class="form-input" type="text" placeholder="Kecamatan"/>
+          </div>
+          <div>
+            <label class="form-label">Kota / Kabupaten</label>
+            <input id="af-kota" class="form-input" type="text" placeholder="Kota"/>
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="form-label">Provinsi</label>
+          <input id="af-provinsi" class="form-input" type="text" placeholder="Provinsi"/>
+        </div>
+
+        <!-- Luas + Sertifikat -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+          <div>
+            <label class="form-label">Luas Tanah (m²)</label>
+            <input id="af-lt" class="form-input" type="text" placeholder="120"/>
+          </div>
+          <div>
+            <label class="form-label">Luas Bangunan (m²)</label>
+            <input id="af-lb" class="form-input" type="text" placeholder="90"/>
+          </div>
+          <div>
+            <label class="form-label">Sertifikat</label>
+            <input id="af-sertifikat" class="form-input" type="text" placeholder="SHM / HGB"/>
+          </div>
+        </div>
+
+        <!-- Harga Section -->
+        <div style="background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:14px;margin-bottom:14px">
+          <p style="color:#f59e0b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px">💰 Data Harga</p>
+          <div style="margin-bottom:10px">
+            <label class="form-label">Harga Limit Lelang</label>
+            <input id="af-harga-limit" class="form-input" type="text" placeholder="500000000" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
+            <span style="font-size:11px;color:#f59e0b;margin-top:3px;display:block" id="af-harga-limit-preview"></span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label class="form-label">Est. Harga Pasar Real <span style="color:rgba(245,158,11,0.6);font-size:10px">(input CRM)</span></label>
+              <input id="af-est-pasar" class="form-input" type="text" placeholder="700000000" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
+            </div>
+            <div>
+              <label class="form-label">Est. Harga Eksekusi <span style="color:rgba(245,158,11,0.6);font-size:10px">(input CRM)</span></label>
+              <input id="af-est-eksekusi" class="form-input" type="text" placeholder="450000000" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Keterangan Debitur -->
+        <div style="margin-bottom:14px">
+          <label class="form-label">Keterangan Tentang Debitur <span style="color:rgba(255,255,255,0.4);font-size:11px">(input CRM — tidak tampil di web)</span></label>
+          <textarea id="af-keterangan-debitur" class="form-input" rows="3" placeholder="Catatan internal tentang debitur, kondisi aset, riwayat, dll..."></textarea>
+        </div>
+
+        <!-- Foto Upload (max 3) -->
+        <div style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <label class="form-label" style="margin-bottom:0">Foto Properti <span style="color:rgba(255,255,255,0.4);font-size:11px">(max 3 foto)</span></label>
+            <button type="button" onclick="triggerAssetPhotoUpload(0)" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:8px;color:#f59e0b;font-size:10px;font-weight:600;padding:4px 10px;cursor:pointer"><i class="fa-solid fa-images" style="margin-right:4px"></i>Pilih Semua</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            <!-- Foto 1 (Utama) -->
+            <div id="af-foto1-container" onclick="triggerAssetPhotoUpload(1)"
+              style="height:100px;border:2px dashed rgba(245,158,11,0.4);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden">
+              <img id="af-foto1-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
+              <i id="af-foto1-icon" class="fa-solid fa-image" style="font-size:18px;color:#f59e0b;position:relative;z-index:1"></i>
+              <span style="font-size:9px;color:rgba(255,255,255,0.4);position:relative;z-index:1">Foto Utama</span>
+              <button id="af-foto1-del" onclick="event.stopPropagation();clearAssetPhoto(1)" style="display:none;position:absolute;top:4px;right:4px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:10px">✕</button>
+            </div>
+            <!-- Foto 2 -->
+            <div id="af-foto2-container" onclick="triggerAssetPhotoUpload(2)"
+              style="height:100px;border:2px dashed rgba(255,255,255,0.1);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden">
+              <img id="af-foto2-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
+              <i id="af-foto2-icon" class="fa-solid fa-image" style="font-size:18px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
+              <span style="font-size:9px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto 2</span>
+              <button id="af-foto2-del" onclick="event.stopPropagation();clearAssetPhoto(2)" style="display:none;position:absolute;top:4px;right:4px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:10px">✕</button>
+            </div>
+            <!-- Foto 3 -->
+            <div id="af-foto3-container" onclick="triggerAssetPhotoUpload(3)"
+              style="height:100px;border:2px dashed rgba(255,255,255,0.1);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden">
+              <img id="af-foto3-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
+              <i id="af-foto3-icon" class="fa-solid fa-image" style="font-size:18px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
+              <span style="font-size:9px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto 3</span>
+              <button id="af-foto3-del" onclick="event.stopPropagation();clearAssetPhoto(3)" style="display:none;position:absolute;top:4px;right:4px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:10px">✕</button>
+            </div>
+          </div>
+          <input id="af-photo-input" type="file" accept="image/*" multiple style="display:none" onchange="handleAssetPhotoSelect(event)"/>
+          <input type="hidden" id="af-foto1-clear" value=""/>
+          <input type="hidden" id="af-foto2-clear" value=""/>
+          <input type="hidden" id="af-foto3-clear" value=""/>
+        </div>
+
+        <!-- Notes -->
+        <div style="margin-bottom:20px">
+          <label class="form-label">Catatan Internal <span style="color:rgba(255,255,255,0.4);font-size:11px">(opsional)</span></label>
+          <input id="af-notes" class="form-input" type="text" placeholder="Catatan internal..."/>
+        </div>
+
+        <!-- Buttons -->
+        <div style="display:flex;gap:10px">
+          <button onclick="submitAssetForm()"
+            style="flex:1;background:#D4A853;color:#0D1526;border:none;padding:14px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer">
+            <span id="asset-form-btn-text">💾 Simpan Aset</span>
+          </button>
+          <button onclick="closeModal('modal-asset-form')"
+            style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);padding:14px 20px;border-radius:12px;font-size:14px;cursor:pointer">
+            Batal
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       MODAL ASSET DETAIL
+  ══════════════════════════════════════════════════════ -->
+  <div id="modal-asset-detail" class="modal-overlay" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.85);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 80px">
+    <div style="background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:20px;max-width:540px;margin:0 auto;overflow:hidden">
+
+      <!-- Foto Header -->
+      <div style="position:relative">
+        <div style="height:200px;background:#131F38;position:relative;overflow:hidden">
+          <img id="ad-foto1" src="" alt="" style="width:100%;height:100%;object-fit:cover"/>
+          <!-- Thumbnails foto 2, 3 -->
+          <div style="position:absolute;bottom:10px;right:10px;display:flex;gap:6px">
+            <img id="ad-foto3-thumb" src="" alt="" style="width:52px;height:52px;border-radius:8px;object-fit:cover;border:2px solid rgba(255,255,255,0.2);display:none;cursor:pointer" onclick="toggleAssetDetailPhoto(3)"/>
+            <img id="ad-foto2-thumb" src="" alt="" style="width:52px;height:52px;border-radius:8px;object-fit:cover;border:2px solid rgba(255,255,255,0.2);display:none;cursor:pointer" onclick="toggleAssetDetailPhoto(2)"/>
+          </div>
+          <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(13,21,38,0.9) 0%,transparent 50%)"></div>
+          <!-- Badges -->
+          <div id="ad-status-badge" style="position:absolute;top:12px;left:12px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700"></div>
+          <div id="ad-web-badge" style="display:none;position:absolute;top:12px;left:80px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid rgba(96,165,250,0.3)">🌐 Web</div>
+          <!-- Banner LELANG -->
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px 14px 6px">
+            <span style="font-size:10px;font-weight:800;color:#f59e0b;text-transform:uppercase;letter-spacing:1.5px">⚖️ PROPERTI LELANG EKSEKUSI</span>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-asset-detail')" style="position:absolute;top:12px;right:12px;width:32px;height:32px;background:rgba(0,0,0,0.5);border:none;border-radius:50%;color:#fff;cursor:pointer;font-size:16px;z-index:10">✕</button>
+      </div>
+
+      <div style="padding:20px">
+        <!-- Header -->
+        <div style="margin-bottom:14px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">
+            <div style="flex:1">
+              <p id="ad-kode" style="color:rgba(255,255,255,0.35);font-size:10px;margin:0 0 4px;text-transform:uppercase;letter-spacing:1px"></p>
+              <h2 id="ad-nama" style="font-family:'DM Serif Display',serif;font-size:19px;color:#fff;margin:0"></h2>
+            </div>
+            <!-- Admin actions -->
+            <div id="ad-admin-actions" style="display:none;gap:6px;flex-shrink:0">
+              <button onclick="editCurrentAsset()" style="background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.3);color:#D4A853;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer">✏️ Edit</button>
+            </div>
+          </div>
+          <p id="ad-bank" style="color:#f59e0b;font-size:13px;font-weight:600;margin:0 0 4px"></p>
+          <p id="ad-lokasi" style="color:rgba(255,255,255,0.5);font-size:12px;margin:0 0 8px">📍 <span id="ad-lokasi-text"></span></p>
+          <span id="ad-tipe-badge" style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(245,158,11,0.15);color:#f59e0b"></span>
+        </div>
+
+        <!-- Harga Cards -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:12px">
+            <p style="color:rgba(255,255,255,0.45);font-size:10px;margin:0 0 2px;text-transform:uppercase;letter-spacing:1px">Harga Limit</p>
+            <p id="ad-harga-limit" style="color:#f59e0b;font-size:16px;font-weight:700;margin:0"></p>
+          </div>
+          <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:12px">
+            <p style="color:rgba(255,255,255,0.45);font-size:10px;margin:0 0 2px;text-transform:uppercase;letter-spacing:1px">Est. Harga Pasar</p>
+            <p id="ad-est-pasar" style="color:#4ade80;font-size:15px;font-weight:700;margin:0"></p>
+          </div>
+        </div>
+        <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:12px;margin-bottom:14px">
+          <p style="color:rgba(255,255,255,0.45);font-size:10px;margin:0 0 2px;text-transform:uppercase;letter-spacing:1px">Est. Harga Eksekusi</p>
+          <p id="ad-est-eksekusi" style="color:#a78bfa;font-size:15px;font-weight:700;margin:0"></p>
+        </div>
+
+        <!-- Detail Info -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;margin-bottom:14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <p style="color:rgba(255,255,255,0.35);font-size:10px;margin:0 0 2px;text-transform:uppercase;letter-spacing:0.8px">No. Perkara</p>
+              <p id="ad-perkara" style="color:rgba(255,255,255,0.8);font-size:13px;margin:0;font-weight:500"></p>
+            </div>
+            <div>
+              <p style="color:rgba(255,255,255,0.35);font-size:10px;margin:0 0 2px;text-transform:uppercase;letter-spacing:0.8px">Nama Debitur</p>
+              <p id="ad-debitur-nama" style="color:rgba(255,255,255,0.8);font-size:13px;margin:0;font-weight:500"></p>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05)">
+            <p style="color:rgba(255,255,255,0.35);font-size:10px;margin:0 0 2px;text-transform:uppercase;letter-spacing:0.8px">Spesifikasi</p>
+            <p id="ad-spek" style="color:rgba(255,255,255,0.7);font-size:13px;margin:0"></p>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05)">
+            <p style="color:rgba(255,255,255,0.35);font-size:10px;margin:0 0 2px;text-transform:uppercase;letter-spacing:0.8px">Alamat</p>
+            <p id="ad-alamat" style="color:rgba(255,255,255,0.7);font-size:13px;margin:0"></p>
+          </div>
+        </div>
+
+        <!-- Keterangan Debitur (internal, hanya editor) -->
+        <div id="ad-keterangan-debitur-wrap" style="display:none;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:12px;padding:14px;margin-bottom:14px">
+          <p style="color:rgba(239,68,68,0.7);font-size:10px;margin:0 0 4px;text-transform:uppercase;letter-spacing:1px;font-weight:700">🔒 Keterangan Internal Debitur</p>
+          <p id="ad-keterangan-debitur" style="color:rgba(255,255,255,0.75);font-size:13px;line-height:1.7;white-space:pre-wrap;margin:0"></p>
+        </div>
+
+        <!-- Notes -->
+        <div style="display:none" id="ad-notes-wrap">
+          <p style="color:rgba(255,255,255,0.35);font-size:10px;margin:0 0 2px;text-transform:uppercase;letter-spacing:0.8px">Catatan</p>
+          <p id="ad-notes" style="color:rgba(255,255,255,0.5);font-size:12px;margin:0 0 14px"></p>
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <button onclick="shareAssetWA()"
+            style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+            <i class="fa-brands fa-whatsapp"></i> Share WA
+          </button>
+          <button onclick="openAssetContent()"
+            style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);color:#a78bfa;padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Buat Caption
+          </button>
+        </div>
+
+        <!-- Publish toggle (admin+) -->
+        <button id="ad-publish-btn" onclick="toggleAssetPublish()"
+          style="display:none;width:100%;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);color:#4ade80;padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px">
+          🌐 Publish ke Web
+        </button>
+
+        <!-- Source info badge -->
+        <div id="ad-source-wrap" style="display:none;background:rgba(96,165,250,0.05);border:1px solid rgba(96,165,250,0.15);border-radius:10px;padding:10px 14px;margin-bottom:10px">
+          <p style="color:rgba(96,165,250,0.8);font-size:11px;margin:0"><i class="fa-solid fa-database" style="margin-right:5px"></i>Data diimpor dari Google Sheet sumber • gunakan Sync untuk update</p>
+        </div>
+
+        <!-- Delete (admin+) -->
+        <button id="ad-delete-btn" onclick="deleteCurrentAsset()" style="display:none;width:100%;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#ef4444;padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer">
+          🗑️ Hapus Aset
+        </button>
+        <div style="height:20px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       MODAL ASSET CONTENT / CAPTION
+  ══════════════════════════════════════════════════════ -->
+  <div id="modal-asset-content" class="modal-overlay" style="display:none;position:fixed;inset:0;z-index:210;background:rgba(0,0,0,0.85);overflow-y:auto;padding:16px">
+    <div style="background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:20px;max-width:540px;margin:0 auto;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#131F38,#0D1526);padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:17px;color:#fff;margin:0">📣 Caption Sosmed — Lelang</h3>
+        <button onclick="closeModal('modal-asset-content')" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div style="padding:18px">
+        <!-- Platform tabs -->
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <button id="asc-tab-instagram" onclick="switchAssetPlatform('instagram')"
+            style="padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(212,168,83,0.2);color:#D4A853;border:1px solid rgba(212,168,83,0.3)">
+            <i class="fa-brands fa-instagram"></i> Instagram
+          </button>
+          <button id="asc-tab-facebook" onclick="switchAssetPlatform('facebook')"
+            style="padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,0.5);border:1px solid transparent">
+            <i class="fa-brands fa-facebook"></i> Facebook
+          </button>
+          <button id="asc-tab-tiktok" onclick="switchAssetPlatform('tiktok')"
+            style="padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,0.5);border:1px solid transparent">
+            <i class="fa-brands fa-tiktok"></i> TikTok
+          </button>
+          <button id="asc-tab-wa" onclick="switchAssetPlatform('wa')"
+            style="padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,0.5);border:1px solid transparent">
+            <i class="fa-brands fa-whatsapp"></i> WA
+          </button>
+        </div>
+        <!-- Caption text -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;max-height:300px;overflow-y:auto;margin-bottom:14px">
+          <pre id="asc-caption-text" style="color:rgba(255,255,255,0.8);font-size:13px;line-height:1.7;white-space:pre-wrap;margin:0;font-family:inherit"></pre>
+        </div>
+        <!-- Action buttons -->
+        <div style="display:flex;gap:8px">
+          <button onclick="copyAssetCaption()"
+            style="flex:1;background:#D4A853;color:#0D1526;border:none;padding:12px;border-radius:12px;font-weight:700;font-size:13px;cursor:pointer">
+            📋 Copy Caption
+          </button>
+          <button onclick="regenerateAssetCaption()"
+            style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);padding:12px 16px;border-radius:12px;font-size:13px;cursor:pointer">
+            🔄 Re-generate
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       MODAL ASSET EDITORS — Manajemen akses edit
+  ══════════════════════════════════════════════════════ -->
+  <div id="modal-asset-editors" class="modal-overlay" style="display:none;position:fixed;inset:0;z-index:210;background:rgba(0,0,0,0.85);overflow-y:auto;padding:16px">
+    <div style="background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:20px;max-width:480px;margin:0 auto;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#131F38,#0D1526);padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:17px;color:#fff;margin:0">👤 Editor Aset</h3>
+        <button onclick="closeModal('modal-asset-editors')" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div style="padding:18px">
+        <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0 0 14px;line-height:1.6">User di bawah ini dapat menginput / mengedit data aset selain Superadmin, Admin, Principal, dan BM.</p>
+
+        <!-- Tambah editor -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:16px">
+          <p style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:600;margin:0 0 10px">Tambah Editor</p>
+          <div style="position:relative;margin-bottom:10px">
+            <input id="ae-search-user" class="form-input" type="text" placeholder="🔍 Cari nama atau email agen..." oninput="searchAssetEditorUser()" style="width:100%;box-sizing:border-box"/>
+            <div id="ae-search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;z-index:999;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)"></div>
+          </div>
+          <input type="hidden" id="ae-agen-id"/>
+          <input type="hidden" id="ae-agen-nama"/>
+          <button onclick="addAssetEditor()"
+            style="width:100%;background:#D4A853;color:#0D1526;border:none;padding:10px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">
+            + Tambah Editor
+          </button>
+        </div>
+
+        <!-- Daftar editor -->
+        <p style="color:rgba(255,255,255,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px">Editor Saat Ini</p>
+        <div id="ae-editors-list"></div>
+      </div>
+    </div>
+  </div>
+
   <script>
   (function() {
     const CURRENT_SW_VERSION = document.querySelector('meta[name="app-version"]')?.content || '1.1.5';

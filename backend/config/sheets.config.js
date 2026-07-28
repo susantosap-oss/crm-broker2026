@@ -57,6 +57,9 @@ const SHEETS = {
   // ★ Fitur 5 — Laporan Transaksi
   PAYMENT_STAGES: 'PAYMENT_STAGES',
   CANVASING:      'CANVASING',
+  // ★ Fitur Asset — Properti Lelang / Eksekusi
+  ASSETS:         'ASSETS',
+  ASSET_EDITORS:  'ASSET_EDITORS',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -559,6 +562,56 @@ const COLUMNS = {
     'Listing_ID',        // O  FK ke LISTING jika sudah dikonversi
     'Created_At',        // P
     'Updated_At',        // Q
+  ],
+
+  // ★ ASSETS — Properti Lelang / Eksekusi (import dari external GSheet)
+  ASSETS: [
+    'ID',                 // A  UUID
+    'Kode_Asset',         // B  AST-RMH-2026-001
+    'Tanggal_Input',      // C  YYYY-MM-DD
+    'Tipe_Properti',      // D  Rumah|Ruko|Tanah|Apartemen|Gudang|Kios
+    'Nama_Asset',         // E  Nama/judul properti
+    'Nama_Debitur',       // F  Nama debitur (dari source)
+    'No_Perkara',         // G  Nomor perkara lelang
+    'Bank_Kreditur',      // H  Nama bank/kreditur
+    'Alamat',             // I  Alamat lengkap
+    'Kecamatan',          // J
+    'Kota',               // K
+    'Provinsi',           // L
+    'Luas_Tanah',         // M  dalam m2
+    'Luas_Bangunan',      // N  dalam m2
+    'Sertifikat',         // O  SHM|HGB|AJB|SHSRS
+    'Harga_Limit_Lelang', // P  Nominal (angka)
+    'Harga_Limit_Format', // Q  Format: Rp X M
+    'Est_Harga_Pasar',    // R  Estimasi harga pasar real (manual CRM)
+    'Est_Harga_Pasar_Format', // S
+    'Est_Harga_Eksekusi', // T  Estimasi harga eksekusi (manual CRM)
+    'Est_Harga_Eksekusi_Format', // U
+    'Keterangan_Debitur', // V  Keterangan tentang debitur (manual CRM)
+    'Foto_1_URL',         // W
+    'Foto_2_URL',         // X
+    'Foto_3_URL',         // Y
+    'Cloudinary_IDs',     // Z
+    'Caption_Sosmed',     // AA
+    'Status',             // AB  Draft|Publish
+    'Tampilkan_di_Web',   // AC  TRUE|FALSE
+    'Source_Row_ID',      // AD  ID unik dari external sheet (dedup)
+    'Source_Data',        // AE  JSON raw row dari external sheet
+    'Created_By_ID',      // AF
+    'Created_By_Nama',    // AG
+    'Created_At',         // AH
+    'Updated_At',         // AI
+    'Notes',              // AJ
+  ],
+
+  // ★ ASSET_EDITORS — User non-default yang diberi akses edit asset
+  ASSET_EDITORS: [
+    'ID',           // A  UUID
+    'Agen_ID',      // B  FK ke AGENTS
+    'Agen_Nama',    // C  denormalized
+    'Added_By_ID',  // D  siapa yang menambahkan
+    'Added_By_Nama',// E
+    'Created_At',   // F
   ],
 
   // ★ PAYMENT_STAGES — Tahap pembayaran per transaksi (1 row per lead)

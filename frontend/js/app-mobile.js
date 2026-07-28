@@ -4309,6 +4309,7 @@ async function navigateTo(page) {
   }
   if (page === 'team')      await loadTeamPage();
   if (page === 'primary')   await loadPrimaryPage();
+  if (page === 'asset')     await loadAssetPage();
   if (page === 'member')    await loadMemberPage();
   if (page === 'legal')       await loadLegalDocs();
   if (page === 'rental')      await loadRentals();
@@ -5087,6 +5088,9 @@ function checkAdminMenu() {
   if (_pRoles.includes(STATE.user?.role)) {
     document.getElementById('nav-primary')?.style.removeProperty('display');
     document.getElementById('sb-primary')?.style.removeProperty('display');
+    // Asset: visible for all logged-in users
+    document.getElementById('nav-asset')?.style.removeProperty('display');
+    document.getElementById('sb-asset')?.style.removeProperty('display');
   }
   if (['superadmin','principal','kantor','admin'].includes(STATE.user?.role)) {
     const _ab = document.getElementById('btn-add-project');
@@ -7559,3 +7563,795 @@ window.showToast = showToast;
   modal.addEventListener('input',  _saveDraftListing);
   modal.addEventListener('change', _saveDraftListing);
 })();
+
+// ═══════════════════════════════════════════════════════════
+// FITUR ASSET — Properti Lelang / Eksekusi
+// ═══════════════════════════════════════════════════════════
+
+let _assetsData = [];
+let _currentAsset = null;
+let _assetPhotoPending = { 1: null, 2: null, 3: null }; // { slot: File }
+let _assetCanEdit = false;
+
+const MANAGE_ROLES_ASSET  = ['superadmin', 'principal', 'kantor', 'business_manager', 'admin'];
+const PUBLISH_ROLES_ASSET = ['superadmin', 'principal', 'kantor', 'admin'];
+const SYNC_ROLES_ASSET    = ['superadmin', 'principal', 'kantor'];
+
+// ── Load Asset Page ───────────────────────────────────────
+async function loadAssetPage() {
+  const role = STATE.user?.role;
+
+  // Cek apakah user bisa edit (role atau editor list)
+  _assetCanEdit = MANAGE_ROLES_ASSET.includes(role);
+  if (!_assetCanEdit) {
+    try {
+      const res = await API.get('/assets/editors');
+      _assetCanEdit = (res.data || []).some(e => e.Agen_ID === STATE.user?.id);
+    } catch (_) {}
+  }
+
+  // Show/hide tombol sesuai akses
+  const addBtn = document.getElementById('btn-add-asset');
+  if (addBtn) addBtn.style.display = _assetCanEdit ? 'flex' : 'none';
+
+  const syncBtn = document.getElementById('btn-sync-asset');
+  if (syncBtn) syncBtn.style.display = SYNC_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
+  const resetSyncBtn = document.getElementById('btn-reset-sync-asset');
+  if (resetSyncBtn) resetSyncBtn.style.display = SYNC_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
+
+  const editorsBtn = document.getElementById('btn-asset-editors');
+  if (editorsBtn) editorsBtn.style.display = ['superadmin','principal','kantor','admin'].includes(role) ? 'inline-flex' : 'none';
+
+  const filterStatusWrap = document.getElementById('asset-wrap-filter-status');
+  if (filterStatusWrap) filterStatusWrap.style.display = _assetCanEdit ? '' : 'none';
+
+  await fetchAssets();
+}
+
+// ── Fetch Assets ──────────────────────────────────────────
+async function fetchAssets(silent = false) {
+  if (!silent) renderAssetSkeletons();
+  try {
+    const params = new URLSearchParams();
+    const search = document.getElementById('asset-search')?.value?.trim();
+    const tipe   = document.getElementById('asset-filter-tipe')?.value;
+    const status = document.getElementById('asset-filter-status')?.value;
+    if (search) params.set('search', search);
+    if (tipe)   params.set('tipe', tipe);
+    if (status) params.set('status', status);
+
+    const res = await API.get('/assets?' + params.toString());
+    _assetsData = res.data || [];
+    populateAssetFilters();
+    renderAssetGrid(_assetsData);
+  } catch (e) {
+    showToast('Gagal load aset: ' + e.message, 'error');
+    renderAssetGrid([]);
+  }
+}
+
+function renderAssetSkeletons() {
+  const grid = document.getElementById('asset-grid');
+  if (!grid) return;
+  grid.innerHTML = [1, 2, 3].map(() =>
+    `<div style="height:280px;border-radius:16px;background:rgba(255,255,255,0.04);animation:pulse 1.5s infinite"></div>`
+  ).join('');
+  const empty = document.getElementById('asset-empty');
+  if (empty) empty.style.display = 'none';
+}
+
+function renderAssetGrid(assets) {
+  const grid    = document.getElementById('asset-grid');
+  const empty   = document.getElementById('asset-empty');
+  const countEl = document.getElementById('asset-total-count');
+  if (countEl) countEl.textContent = assets.length;
+  if (!grid) return;
+  if (!assets.length) {
+    grid.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  grid.innerHTML = assets.map(a => buildAssetCard(a)).join('');
+}
+
+function buildAssetCard(a) {
+  const statusColor = a.Status === 'Publish' ? '#4ade80' : '#94a3b8';
+  const statusBg    = a.Status === 'Publish' ? 'rgba(34,197,94,0.12)' : 'rgba(148,163,184,0.1)';
+  const tipeEmoji   = { Rumah:'🏡', Ruko:'🏪', Apartemen:'🏢', Gudang:'🏭', Tanah:'🌿', Kios:'🏬' }[a.Tipe_Properti] || '🏠';
+  const foto        = a.Foto_1_URL || '';
+  const lokasi      = [a.Kecamatan, a.Kota].filter(Boolean).join(', ');
+  const limitFmt    = a.Harga_Limit_Format || (parseInt(a.Harga_Limit_Lelang) > 0 ? a.Harga_Limit_Lelang : '—');
+  const _fmLuas = v => { const n = parseFloat(v); return (!v || !n) ? '—' : `${Number.isInteger(n) ? n : n.toFixed(1).replace('.', ',')}m²`; };
+  const lt   = _fmLuas(a.Luas_Tanah);
+  const lb   = _fmLuas(a.Luas_Bangunan);
+  const sert = (a.Sertifikat && a.Sertifikat !== '0') ? a.Sertifikat : '—';
+  // Rasio Sisa Pokok dari Source_Data
+  const _srcData = (() => { try { return JSON.parse(a.Source_Data || '{}'); } catch(_) { return {}; } })();
+  const _ratio   = _srcData.liquidRatio || 0;
+  const ratioFmt = _ratio ? (Number.isInteger(_ratio) ? String(_ratio) : _ratio.toFixed(1).replace('.', ',')) : '';
+
+  return `
+  <div onclick="openAssetDetail('${escapeHtml(a.ID)}')"
+    style="background:#0D1E36;border:1px solid rgba(255,255,255,0.07);border-radius:16px;overflow:hidden;cursor:pointer;transition:all 0.2s"
+    onmouseenter="this.style.borderColor='rgba(212,168,83,0.35)'"
+    onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'">
+    <!-- Foto -->
+    <div style="height:150px;background:#131F38;position:relative;overflow:hidden">
+      ${foto
+        ? `<img src="${escapeHtml(foto)}" alt="" style="width:100%;height:100%;object-fit:cover"/>`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:38px">${tipeEmoji}</div>`}
+      <span style="position:absolute;top:8px;left:8px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:${statusBg};color:${statusColor};border:1px solid ${statusColor}33">${a.Status || 'Draft'}</span>
+      ${a.Tampilkan_di_Web === 'TRUE' ? `<span style="position:absolute;top:8px;left:${a.Status === 'Publish' ? '78px' : '70px'};padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid rgba(96,165,250,0.3)">🌐 Web</span>` : ''}
+      <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(13,21,38,0.95),transparent);padding:8px 10px 6px">
+        <span style="font-size:9px;font-weight:800;color:#f59e0b;text-transform:uppercase;letter-spacing:1px">⚖️ LELANG EKSEKUSI</span>
+      </div>
+      ${a.Foto_2_URL ? `<img src="${escapeHtml(a.Foto_2_URL)}" style="position:absolute;bottom:22px;right:8px;width:42px;height:42px;border-radius:7px;object-fit:cover;border:2px solid rgba(255,255,255,0.2)"/>` : ''}
+    </div>
+    <!-- Content -->
+    <div style="padding:12px">
+      <p style="color:rgba(255,255,255,0.35);font-size:9px;margin:0 0 2px;text-transform:uppercase;letter-spacing:1px">${escapeHtml(a.Kode_Asset)}</p>
+      <h3 style="font-family:'DM Serif Display',serif;font-size:14px;color:#fff;margin:0 0 2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${escapeHtml(a.Nama_Asset || a.Nama_Debitur || 'Aset Lelang')}</h3>
+      ${a.Bank_Kreditur ? `<p style="color:#D4A853;font-size:11px;font-weight:600;margin:0 0 2px">🏦 ${escapeHtml(a.Bank_Kreditur)}</p>` : ''}
+      ${lokasi ? `<p style="color:rgba(255,255,255,0.4);font-size:10px;margin:0 0 4px">📍 ${escapeHtml(lokasi)}</p>` : '<div style="margin-bottom:4px"></div>'}
+      <p style="color:rgba(255,255,255,0.35);font-size:10px;margin:0 0 6px">LT ${escapeHtml(lt)} · LB ${escapeHtml(lb)} · ${escapeHtml(sert)}</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+        <div>
+          <p style="color:#f59e0b;font-size:13px;font-weight:700;margin:0">Limit: ${escapeHtml(limitFmt)}</p>
+          <p style="color:rgba(255,255,255,0.4);font-size:10px;margin:2px 0 0">${tipeEmoji} ${escapeHtml(a.Tipe_Properti || '—')}${ratioFmt ? ` · Rasio <span style="color:#f87171">${escapeHtml(ratioFmt)}</span>` : ''}</p>
+        </div>
+        <div style="background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:5px 10px;font-size:11px;color:#D4A853;font-weight:600">Detail →</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function filterAssets() {
+  if (!_assetsData?.length) return;
+  const search = (document.getElementById('asset-search')?.value || '').toLowerCase();
+  const tipe   = document.getElementById('asset-filter-tipe')?.value   || '';
+  const status = document.getElementById('asset-filter-status')?.value  || '';
+  const kota   = document.getElementById('asset-filter-kota')?.value    || '';
+  const bank   = document.getElementById('asset-filter-bank')?.value    || '';
+
+  const filtered = _assetsData.filter(a => {
+    const matchS  = !search || [a.Nama_Asset, a.Nama_Debitur, a.Bank_Kreditur, a.Kota, a.Kecamatan, a.No_Perkara].join(' ').toLowerCase().includes(search);
+    const matchT  = !tipe   || a.Tipe_Properti === tipe;
+    const matchSt = !status || a.Status === status;
+    const matchK  = !kota   || a.Kota === kota;
+    const matchB  = !bank   || a.Bank_Kreditur === bank;
+    return matchS && matchT && matchSt && matchK && matchB;
+  });
+  renderAssetGrid(filtered);
+}
+
+// ── Dropdown filter ──────────────────────────────────────
+function toggleAssetDropdown(type) {
+  const el = document.getElementById(`asset-dropdown-${type}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function setAssetFilter(type, value, label) {
+  const inp = document.getElementById(`asset-filter-${type}`);
+  const lbl = document.getElementById(`asset-filter-${type}-label`);
+  if (inp) inp.value = value;
+  if (lbl) lbl.textContent = label;
+  const dd = document.getElementById(`asset-dropdown-${type}`);
+  if (dd) dd.style.display = 'none';
+  filterAssets();
+}
+
+function populateAssetFilters() {
+  const JATIM_KOTA = new Set(['surabaya','malang','kediri','blitar','madiun','mojokerto','pasuruan','probolinggo','batu']);
+  const JATIM_KAB  = new Set(['pacitan','ponorogo','trenggalek','tulungagung','blitar','kediri','malang','lumajang','jember','banyuwangi','bondowoso','situbondo','probolinggo','pasuruan','sidoarjo','mojokerto','jombang','nganjuk','madiun','magetan','ngawi','bojonegoro','tuban','lamongan','gresik','bangkalan','sampang','pamekasan','sumenep']);
+  const ALL_JATIM  = new Set([...JATIM_KOTA, ...JATIM_KAB]);
+
+  const getLabel = (kota) => {
+    const raw = kota.toLowerCase();
+    if (raw.startsWith('kota '))        return 'Kota ' + kota.slice(5).trim();
+    if (raw.match(/^kab(upaten)?\. ?/)) return 'Kab. ' + kota.replace(/^kab(upaten)?\. ?/i, '').trim();
+    const key = raw.trim();
+    const cap = kota.charAt(0).toUpperCase() + kota.slice(1);
+    if (JATIM_KOTA.has(key) && !JATIM_KAB.has(key)) return 'Kota ' + cap;
+    if (JATIM_KAB.has(key)  && !JATIM_KOTA.has(key)) return 'Kab. ' + cap;
+    return cap;
+  };
+
+  const isJatim = (kota) => {
+    const key = kota.toLowerCase().replace(/^(kota|kab(upaten)?\.?)\s+/, '').trim();
+    return ALL_JATIM.has(key);
+  };
+
+  const kotaSet = new Set();
+  const bankSet = new Set();
+  (_assetsData || []).forEach(a => {
+    if (a.Kota && isJatim(a.Kota)) kotaSet.add(a.Kota);
+    if (a.Bank_Kreditur) bankSet.add(a.Bank_Kreditur);
+  });
+
+  const ddStyle = 'padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer';
+
+  const makeItem = (label, onClick) => {
+    const div = document.createElement('div');
+    div.textContent = label;
+    div.style.cssText = ddStyle;
+    div.addEventListener('click', onClick);
+    div.addEventListener('mouseenter', () => { div.style.background = 'rgba(245,158,11,0.1)'; });
+    div.addEventListener('mouseleave', () => { div.style.background = ''; });
+    return div;
+  };
+
+  const kotaDd = document.getElementById('asset-dropdown-kota');
+  if (kotaDd) {
+    kotaDd.innerHTML = '';
+    kotaDd.appendChild(makeItem('Semua Kota', () => setAssetFilter('kota', '', '📍 Kota')));
+    [...kotaSet].sort((a, b) => getLabel(a).localeCompare(getLabel(b))).forEach(k => {
+      const lbl = getLabel(k);
+      kotaDd.appendChild(makeItem(lbl, () => setAssetFilter('kota', k, lbl)));
+    });
+  }
+
+  const bankDd = document.getElementById('asset-dropdown-bank');
+  if (bankDd) {
+    bankDd.innerHTML = '';
+    bankDd.appendChild(makeItem('Semua Bank', () => setAssetFilter('bank', '', '🏦 Bank')));
+    [...bankSet].sort().forEach(b => {
+      bankDd.appendChild(makeItem(b, () => setAssetFilter('bank', b, b)));
+    });
+  }
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#asset-wrap-filter-tipe') && !e.target.closest('#asset-wrap-filter-status') &&
+      !e.target.closest('#asset-wrap-filter-kota') && !e.target.closest('#asset-wrap-filter-bank')) {
+    ['tipe', 'status', 'kota', 'bank'].forEach(t => {
+      const el = document.getElementById(`asset-dropdown-${t}`);
+      if (el) el.style.display = 'none';
+    });
+  }
+});
+
+// ── Open Detail ───────────────────────────────────────────
+async function openAssetDetail(id) {
+  _currentAsset = null;
+  const modal = document.getElementById('modal-asset-detail');
+  if (!modal) return;
+  openModal('modal-asset-detail');
+  document.getElementById('ad-foto1').src = '';
+  document.getElementById('ad-nama').textContent = 'Memuat…';
+
+  try {
+    const res = await API.get(`/assets/${id}`);
+    const a = res.data;
+    _currentAsset = a;
+
+    // Foto
+    const foto1 = document.getElementById('ad-foto1');
+    if (a.Foto_1_URL) { foto1.src = a.Foto_1_URL; foto1.style.display = ''; }
+    else { foto1.style.display = 'none'; }
+    const thumb2 = document.getElementById('ad-foto2-thumb');
+    const thumb3 = document.getElementById('ad-foto3-thumb');
+    if (thumb2) { if (a.Foto_2_URL) { thumb2.src = a.Foto_2_URL; thumb2.style.display = ''; } else { thumb2.style.display = 'none'; } }
+    if (thumb3) { if (a.Foto_3_URL) { thumb3.src = a.Foto_3_URL; thumb3.style.display = ''; } else { thumb3.style.display = 'none'; } }
+
+    // Status badge
+    const sBadge = document.getElementById('ad-status-badge');
+    if (sBadge) {
+      sBadge.textContent = a.Status || 'Draft';
+      sBadge.style.background = a.Status === 'Publish' ? 'rgba(34,197,94,0.2)' : 'rgba(148,163,184,0.15)';
+      sBadge.style.color = a.Status === 'Publish' ? '#4ade80' : '#94a3b8';
+    }
+    const wBadge = document.getElementById('ad-web-badge');
+    if (wBadge) {
+      wBadge.style.display = a.Tampilkan_di_Web === 'TRUE' ? '' : 'none';
+    }
+
+    // Info fields
+    setText('ad-kode', a.Kode_Asset || '');
+    setText('ad-nama', a.Nama_Asset || a.Nama_Debitur || 'Aset Lelang');
+    setText('ad-bank', a.Bank_Kreditur ? `🏦 ${a.Bank_Kreditur}` : '');
+    const lokasiEl = document.getElementById('ad-lokasi');
+    if (lokasiEl) {
+      const lok = [a.Kecamatan, a.Kota, a.Provinsi].filter(Boolean).join(', ');
+      lokasiEl.style.display = lok ? '' : 'none';
+      setText('ad-lokasi-text', lok);
+    }
+    setText('ad-tipe-badge', `${({Rumah:'🏡',Ruko:'🏪',Apartemen:'🏢',Gudang:'🏭',Tanah:'🌿',Kios:'🏬'}[a.Tipe_Properti]||'🏠')} ${a.Tipe_Properti||''}`);
+    setText('ad-perkara', a.No_Perkara || '—');
+    setText('ad-debitur-nama', a.Nama_Debitur || '—');
+    setText('ad-harga-limit', a.Harga_Limit_Format || a.Harga_Limit_Lelang || 'On Request');
+    setText('ad-est-pasar', a.Est_Harga_Pasar_Format || a.Est_Harga_Pasar || '—');
+    setText('ad-est-eksekusi', a.Est_Harga_Eksekusi_Format || a.Est_Harga_Eksekusi || '—');
+    setText('ad-spek', [
+      a.Luas_Tanah ? `LT: ${a.Luas_Tanah} m²` : '',
+      a.Luas_Bangunan ? `LB: ${a.Luas_Bangunan} m²` : '',
+      a.Sertifikat || '',
+    ].filter(Boolean).join(' · ') || '—');
+    const kerEl = document.getElementById('ad-keterangan-debitur-wrap');
+    if (kerEl) {
+      const kd = a.Keterangan_Debitur;
+      kerEl.style.display = kd ? '' : 'none';
+      setText('ad-keterangan-debitur', kd || '');
+    }
+    setText('ad-alamat', a.Alamat || '—');
+    setText('ad-notes', a.Notes || '—');
+
+    // Admin actions
+    const role = STATE.user?.role;
+    const adminActions = document.getElementById('ad-admin-actions');
+    if (adminActions) adminActions.style.display = _assetCanEdit ? 'flex' : 'none';
+
+    // Publish button
+    const pubBtn = document.getElementById('ad-publish-btn');
+    if (pubBtn) {
+      const isPublish = a.Status === 'Publish';
+      pubBtn.textContent = isPublish ? '🔒 Sembunyikan' : '🌐 Publish ke Web';
+      pubBtn.style.color  = isPublish ? '#f87171' : '#4ade80';
+      pubBtn.style.borderColor = isPublish ? 'rgba(248,113,113,0.3)' : 'rgba(34,197,94,0.3)';
+      pubBtn.style.background  = isPublish ? 'rgba(248,113,113,0.08)' : 'rgba(34,197,94,0.08)';
+      pubBtn.style.display = PUBLISH_ROLES_ASSET.includes(role) ? '' : 'none';
+    }
+
+    // Delete button
+    const delBtn = document.getElementById('ad-delete-btn');
+    if (delBtn) delBtn.style.display = PUBLISH_ROLES_ASSET.includes(role) ? '' : 'none';
+
+    // Sync source data
+    const srcWrap = document.getElementById('ad-source-wrap');
+    if (srcWrap) srcWrap.style.display = a.Source_Row_ID ? '' : 'none';
+
+  } catch (e) {
+    showToast('Gagal load detail aset: ' + e.message, 'error');
+    closeModal('modal-asset-detail');
+  }
+}
+
+function toggleAssetDetailPhoto(slot) {
+  const foto = document.getElementById('ad-foto1');
+  if (!_currentAsset) return;
+  const url = slot === 2 ? _currentAsset.Foto_2_URL : slot === 3 ? _currentAsset.Foto_3_URL : _currentAsset.Foto_1_URL;
+  if (foto && url) foto.src = url;
+}
+
+// ── Open Content / Caption Modal ─────────────────────────
+async function openAssetContent() {
+  if (!_currentAsset) return;
+  const modal = document.getElementById('modal-asset-content');
+  if (!modal) return;
+  openModal('modal-asset-content');
+  document.getElementById('asc-caption-text').textContent = 'Memuat…';
+
+  try {
+    const res = await API.get(`/assets/${_currentAsset.ID}/bundle`);
+    const bundle = res.data;
+    window._assetBundle = bundle;
+    switchAssetPlatform('instagram');
+  } catch (e) {
+    showToast('Gagal load caption: ' + e.message, 'error');
+  }
+}
+
+function switchAssetPlatform(key) {
+  window._assetPlatform = key;
+  const bundle = window._assetBundle;
+  if (!bundle) return;
+  const map = { instagram: bundle.caption_ig, facebook: bundle.caption_fb, tiktok: bundle.caption_tiktok, wa: bundle.caption_wa };
+  document.getElementById('asc-caption-text').textContent = map[key] || '';
+
+  ['instagram','facebook','tiktok','wa'].forEach(p => {
+    const btn = document.getElementById(`asc-tab-${p}`);
+    if (btn) {
+      btn.style.background = p === key ? 'rgba(212,168,83,0.2)' : 'transparent';
+      btn.style.color = p === key ? '#D4A853' : 'rgba(255,255,255,0.5)';
+      btn.style.border = p === key ? '1px solid rgba(212,168,83,0.3)' : '1px solid transparent';
+    }
+  });
+}
+
+async function copyAssetCaption() {
+  const text = document.getElementById('asc-caption-text')?.textContent;
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Caption disalin!');
+  } catch (_) {
+    showToast('Gagal copy caption', 'error');
+  }
+}
+
+async function regenerateAssetCaption() {
+  if (!_currentAsset) return;
+  try {
+    const res = await API.post(`/assets/${_currentAsset.ID}/caption`);
+    window._assetBundle = res.data;
+    switchAssetPlatform(window._assetPlatform || 'instagram');
+    showToast('Caption berhasil di-generate ulang!');
+  } catch (e) {
+    showToast('Gagal generate caption: ' + e.message, 'error');
+  }
+}
+
+// ── Share WA ──────────────────────────────────────────────
+function shareAssetWA() {
+  if (!_currentAsset) return;
+  const a = _currentAsset;
+  const teks = `🏠 *PROPERTI LELANG EKSEKUSI*\n${a.Nama_Asset || a.Nama_Debitur || ''}\n📍 ${[a.Kecamatan, a.Kota].filter(Boolean).join(', ')}\n🏦 ${a.Bank_Kreditur || ''}\n💰 Limit: ${a.Harga_Limit_Format || 'On Request'}\n\nInfo lebih lanjut hubungi kami!`;
+  const noWa = (STATE.user?.no_wa || '').replace(/[^0-9]/g, '');
+  const url = noWa ? `https://wa.me/${noWa}?text=${encodeURIComponent(teks)}` : `https://wa.me/?text=${encodeURIComponent(teks)}`;
+  window.open(url, '_blank');
+}
+
+// ── Add / Edit Form ───────────────────────────────────────
+function openAddAsset() {
+  if (!_assetCanEdit) { showToast('Akses ditolak', 'error'); return; }
+  document.getElementById('asset-form-id').value = '';
+  document.getElementById('asset-form-title').textContent = '⚖️ Tambah Aset Lelang';
+  document.getElementById('asset-form-btn-text').textContent = '💾 Simpan Aset';
+
+  // Reset fields
+  ['af-nama','af-debitur','af-perkara','af-bank','af-alamat','af-kecamatan','af-kota',
+   'af-provinsi','af-lt','af-lb','af-sertifikat','af-harga-limit','af-est-pasar',
+   'af-est-eksekusi','af-keterangan-debitur','af-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('af-tipe').value = 'Rumah';
+
+  _assetPhotoPending = { 1: null, 2: null, 3: null };
+  [1,2,3].forEach(i => {
+    setAssetPhotoPreview(i, '');
+  });
+
+  openModal('modal-asset-form');
+}
+
+function editCurrentAsset() {
+  if (!_currentAsset || !_assetCanEdit) return;
+  const a = _currentAsset;
+  document.getElementById('asset-form-id').value = a.ID;
+  document.getElementById('asset-form-title').textContent = '✏️ Edit Aset Lelang';
+  document.getElementById('asset-form-btn-text').textContent = '💾 Simpan Perubahan';
+
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  setVal('af-nama', a.Nama_Asset);
+  setVal('af-debitur', a.Nama_Debitur);
+  setVal('af-perkara', a.No_Perkara);
+  setVal('af-bank', a.Bank_Kreditur);
+  setVal('af-alamat', a.Alamat);
+  setVal('af-kecamatan', a.Kecamatan);
+  setVal('af-kota', a.Kota);
+  setVal('af-provinsi', a.Provinsi);
+  setVal('af-lt', a.Luas_Tanah);
+  setVal('af-lb', a.Luas_Bangunan);
+  setVal('af-sertifikat', a.Sertifikat);
+  setVal('af-harga-limit', a.Harga_Limit_Lelang);
+  setVal('af-est-pasar', a.Est_Harga_Pasar);
+  setVal('af-est-eksekusi', a.Est_Harga_Eksekusi);
+  setVal('af-keterangan-debitur', a.Keterangan_Debitur);
+  setVal('af-notes', a.Notes);
+  document.getElementById('af-tipe').value = a.Tipe_Properti || 'Rumah';
+
+  _assetPhotoPending = { 1: null, 2: null, 3: null };
+  setAssetPhotoPreview(1, a.Foto_1_URL || '');
+  setAssetPhotoPreview(2, a.Foto_2_URL || '');
+  setAssetPhotoPreview(3, a.Foto_3_URL || '');
+
+  closeModal('modal-asset-detail');
+  openModal('modal-asset-form');
+}
+
+async function submitAssetForm() {
+  const id = document.getElementById('asset-form-id').value.trim();
+  const isEdit = !!id;
+
+  const getVal = (elId) => (document.getElementById(elId)?.value || '').trim();
+
+  const data = {
+    Tipe_Properti:       getVal('af-tipe'),
+    Nama_Asset:          getVal('af-nama'),
+    Nama_Debitur:        getVal('af-debitur'),
+    No_Perkara:          getVal('af-perkara'),
+    Bank_Kreditur:       getVal('af-bank'),
+    Alamat:              getVal('af-alamat'),
+    Kecamatan:           getVal('af-kecamatan'),
+    Kota:                getVal('af-kota'),
+    Provinsi:            getVal('af-provinsi'),
+    Luas_Tanah:          getVal('af-lt'),
+    Luas_Bangunan:       getVal('af-lb'),
+    Sertifikat:          getVal('af-sertifikat'),
+    Harga_Limit_Lelang:  getVal('af-harga-limit').replace(/[^0-9]/g, ''),
+    Est_Harga_Pasar:     getVal('af-est-pasar').replace(/[^0-9]/g, ''),
+    Est_Harga_Eksekusi:  getVal('af-est-eksekusi').replace(/[^0-9]/g, ''),
+    Keterangan_Debitur:  getVal('af-keterangan-debitur'),
+    Notes:               getVal('af-notes'),
+  };
+
+  if (!data.Nama_Asset) { showToast('Nama aset wajib diisi', 'error'); return; }
+
+  const btn = document.getElementById('asset-form-btn-text');
+  if (btn) btn.textContent = '⏳ Menyimpan…';
+
+  try {
+    let savedId = id;
+
+    if (isEdit) {
+      await API.put(`/assets/${id}`, data);
+    } else {
+      const res = await API.post('/assets', data);
+      savedId = res.data?.ID;
+    }
+
+    // Upload pending photos
+    if (savedId) {
+      await uploadPendingAssetPhotos(savedId);
+    }
+
+    closeModal('modal-asset-form');
+    showToast(isEdit ? 'Aset berhasil diupdate ✅' : 'Aset berhasil ditambah ✅');
+    await fetchAssets(true);
+  } catch (e) {
+    showToast('Gagal simpan: ' + e.message, 'error');
+  } finally {
+    if (btn) btn.textContent = '💾 Simpan Aset';
+  }
+}
+
+// ── Photo Upload (max 3) ──────────────────────────────────
+function triggerAssetPhotoUpload(slot) {
+  const input = document.getElementById('af-photo-input');
+  if (!input) return;
+  if (slot === 0) {
+    input.removeAttribute('data-slot');
+    input.multiple = true;
+  } else {
+    input.dataset.slot = slot;
+    input.multiple = false;
+  }
+  input.value = '';
+  input.click();
+}
+
+function handleAssetPhotoSelect(event) {
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+  const targetSlot = parseInt(event.target.dataset.slot) || 0;
+
+  if (targetSlot) {
+    // Single slot
+    _assetPhotoPending[targetSlot] = files[0];
+    setAssetPhotoPreview(targetSlot, URL.createObjectURL(files[0]));
+  } else {
+    // Multi-select: fill slots 1-3
+    files.slice(0, 3).forEach((f, i) => {
+      const s = i + 1;
+      _assetPhotoPending[s] = f;
+      setAssetPhotoPreview(s, URL.createObjectURL(f));
+    });
+  }
+}
+
+function setAssetPhotoPreview(slot, url) {
+  const preview = document.getElementById(`af-foto${slot}-preview`);
+  const delBtn  = document.getElementById(`af-foto${slot}-del`);
+  const icon    = document.getElementById(`af-foto${slot}-icon`);
+  if (url) {
+    if (preview) { preview.src = url; preview.style.display = ''; }
+    if (delBtn)  delBtn.style.display = '';
+    if (icon)    icon.style.display = 'none';
+  } else {
+    if (preview) { preview.src = ''; preview.style.display = 'none'; }
+    if (delBtn)  delBtn.style.display = 'none';
+    if (icon)    icon.style.display = '';
+  }
+}
+
+function clearAssetPhoto(slot) {
+  _assetPhotoPending[slot] = null;
+  // If this slot had existing URL from edit mode, clear it
+  setAssetPhotoPreview(slot, '');
+  // If editing, mark photo as cleared
+  if (document.getElementById('asset-form-id').value) {
+    const clearMap = { 1: 'Foto_1_URL', 2: 'Foto_2_URL', 3: 'Foto_3_URL' };
+    document.getElementById(`af-foto${slot}-clear`).value = '1';
+  }
+}
+
+async function uploadPendingAssetPhotos(assetId) {
+  const hasPending = Object.values(_assetPhotoPending).some(f => f);
+  if (!hasPending) return;
+
+  // Get Cloudinary config
+  let cloudName, uploadPreset;
+  try {
+    const cfg = await API.get('/config/cloudinary');
+    cloudName    = cfg.cloudName;
+    uploadPreset = cfg.uploadPreset;
+  } catch (_) { return; }
+
+  const photoUpdates = {};
+
+  for (const [slotStr, file] of Object.entries(_assetPhotoPending)) {
+    if (!file) continue;
+    const slot = parseInt(slotStr);
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', uploadPreset);
+    fd.append('folder', `mansion_properti/assets/${assetId}`);
+
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.secure_url) {
+        const fotoKey = slot === 1 ? 'Foto_1_URL' : slot === 2 ? 'Foto_2_URL' : 'Foto_3_URL';
+        photoUpdates[fotoKey] = data.secure_url;
+      }
+    } catch (err) {
+      console.warn(`[Asset] Photo slot ${slot} upload failed:`, err.message);
+    }
+  }
+
+  if (Object.keys(photoUpdates).length) {
+    await API.put(`/assets/${assetId}`, photoUpdates);
+  }
+}
+
+// ── Publish Toggle ────────────────────────────────────────
+async function toggleAssetPublish() {
+  if (!_currentAsset) return;
+  const newStatus = _currentAsset.Status === 'Publish' ? 'Draft' : 'Publish';
+  try {
+    const res = await API.patch(`/assets/${_currentAsset.ID}/publish`, { status: newStatus });
+    showToast(res.message || `Aset ${newStatus === 'Publish' ? 'dipublikasikan ✅' : 'disembunyikan'}`);
+    _currentAsset = res.data;
+    // Update publish button
+    const pubBtn = document.getElementById('ad-publish-btn');
+    if (pubBtn) {
+      const isPublish = _currentAsset.Status === 'Publish';
+      pubBtn.textContent = isPublish ? '🔒 Sembunyikan' : '🌐 Publish ke Web';
+      pubBtn.style.color  = isPublish ? '#f87171' : '#4ade80';
+      pubBtn.style.borderColor = isPublish ? 'rgba(248,113,113,0.3)' : 'rgba(34,197,94,0.3)';
+      pubBtn.style.background  = isPublish ? 'rgba(248,113,113,0.08)' : 'rgba(34,197,94,0.08)';
+    }
+    await fetchAssets(true);
+  } catch (e) {
+    showToast('Gagal: ' + e.message, 'error');
+  }
+}
+
+// ── Delete ────────────────────────────────────────────────
+async function deleteCurrentAsset() {
+  if (!_currentAsset) return;
+  if (!confirm(`Hapus aset "${_currentAsset.Nama_Asset || _currentAsset.Kode_Asset}"? Data tidak dapat dikembalikan.`)) return;
+  try {
+    await API.delete(`/assets/${_currentAsset.ID}`);
+    showToast('Aset berhasil dihapus');
+    closeModal('modal-asset-detail');
+    _currentAsset = null;
+    await fetchAssets(true);
+  } catch (e) {
+    showToast('Gagal hapus: ' + e.message, 'error');
+  }
+}
+
+// ── Sync from Source ──────────────────────────────────────
+async function syncAssetsFromSource(reset = false) {
+  const msg = reset
+    ? '⚠️ RESET & SYNC: Semua data aset lama akan dihapus dan diganti data baru dari sumber. Lanjut?'
+    : 'Sync data aset dari Google Sheet sumber?';
+  if (!confirm(msg)) return;
+
+  const btn      = document.getElementById('btn-sync-asset');
+  const btnReset = document.getElementById('btn-reset-sync-asset');
+  const setLoading = (on) => {
+    if (btn)      { btn.disabled = on;      btn.innerHTML = on ? '<i class="fa-solid fa-spinner fa-spin"></i> Sync…' : '<i class="fa-solid fa-arrows-rotate"></i> Sync Data'; }
+    if (btnReset) { btnReset.disabled = on; btnReset.innerHTML = on ? '<i class="fa-solid fa-spinner fa-spin"></i> Reset…' : '<i class="fa-solid fa-trash-can-arrow-up"></i> Reset & Sync'; }
+  };
+
+  setLoading(true);
+  try {
+    const url = reset ? '/assets/sync?reset=true' : '/assets/sync';
+    const res = await API.post(url);
+    showToast(res.message || 'Sync selesai', 'success');
+    await fetchAssets(true);
+  } catch (e) {
+    showToast('Sync gagal: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── Editors Management ─────────────────────────────────────
+async function openAssetEditors() {
+  const modal = document.getElementById('modal-asset-editors');
+  if (!modal) return;
+  openModal('modal-asset-editors');
+  await loadAssetEditors();
+}
+
+async function loadAssetEditors() {
+  const list = document.getElementById('ae-editors-list');
+  if (!list) return;
+  list.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">Memuat…</p>';
+  try {
+    const res = await API.get('/assets/editors');
+    const editors = res.data || [];
+    if (!editors.length) {
+      list.innerHTML = '<p style="color:rgba(255,255,255,0.35);font-size:13px;text-align:center;padding:20px 0">Belum ada editor tambahan</p>';
+      return;
+    }
+    list.innerHTML = editors.map(e => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:8px">
+        <div>
+          <p style="color:#fff;font-size:13px;font-weight:600;margin:0">${escapeHtml(e.Agen_Nama)}</p>
+          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:2px 0 0">Ditambah oleh ${escapeHtml(e.Added_By_Nama)} · ${e.Created_At ? new Date(e.Created_At).toLocaleDateString('id-ID') : ''}</p>
+        </div>
+        <button onclick="removeAssetEditor('${escapeHtml(e.Agen_ID)}')"
+          style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#ef4444;border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer">
+          Hapus
+        </button>
+      </div>`).join('');
+  } catch (e) {
+    list.innerHTML = `<p style="color:#ef4444;font-size:13px">Error: ${e.message}</p>`;
+  }
+}
+
+async function addAssetEditor() {
+  const agenId   = document.getElementById('ae-agen-id')?.value?.trim();
+  const agenNama = document.getElementById('ae-agen-nama')?.value?.trim();
+  if (!agenId || !agenNama) { showToast('Isi ID dan nama user terlebih dahulu', 'error'); return; }
+  try {
+    await API.post('/assets/editors', { agen_id: agenId, agen_nama: agenNama });
+    showToast(`${agenNama} berhasil ditambah sebagai editor aset`);
+    document.getElementById('ae-agen-id').value = '';
+    document.getElementById('ae-agen-nama').value = '';
+    await loadAssetEditors();
+    // Refresh canEdit state
+    _assetCanEdit = true;
+  } catch (e) {
+    showToast('Gagal: ' + e.message, 'error');
+  }
+}
+
+async function removeAssetEditor(agenId) {
+  if (!confirm('Hapus editor ini?')) return;
+  try {
+    await API.delete(`/assets/editors/${agenId}`);
+    showToast('Editor berhasil dihapus');
+    await loadAssetEditors();
+  } catch (e) {
+    showToast('Gagal: ' + e.message, 'error');
+  }
+}
+
+// Helper untuk search user saat tambah editor
+async function searchAssetEditorUser() {
+  const query = document.getElementById('ae-search-user')?.value?.trim();
+  if (!query) return;
+  try {
+    const res = await API.get('/agents');
+    const agents = (res.data || []).filter(a =>
+      a.Nama?.toLowerCase().includes(query.toLowerCase()) ||
+      a.Email?.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 8);
+    const results = document.getElementById('ae-search-results');
+    if (!results) return;
+    results.innerHTML = agents.map(a =>
+      `<div onclick="selectAssetEditorUser('${escapeHtml(a.ID)}','${escapeHtml(a.Nama)}')"
+        style="padding:8px 12px;cursor:pointer;color:rgba(255,255,255,0.8);font-size:13px"
+        onmouseenter="this.style.background='rgba(212,168,83,0.1)'"
+        onmouseleave="this.style.background=''"
+      >${escapeHtml(a.Nama)} <span style="color:rgba(255,255,255,0.4);font-size:11px">(${escapeHtml(a.Role)})</span></div>`
+    ).join('') || '<div style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:13px">Tidak ditemukan</div>';
+    results.style.display = 'block';
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+function selectAssetEditorUser(id, nama) {
+  document.getElementById('ae-agen-id').value = id;
+  document.getElementById('ae-agen-nama').value = nama;
+  const results = document.getElementById('ae-search-results');
+  if (results) results.style.display = 'none';
+  document.getElementById('ae-search-user').value = nama;
+}
