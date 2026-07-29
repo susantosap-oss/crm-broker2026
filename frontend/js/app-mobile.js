@@ -4677,8 +4677,11 @@ function closeSidebar() {
   ov?.classList.add('hidden');
 }
 
+let _lastModalOpenTime = 0;
+
 function openModal(id) {
   const el = document.getElementById(id); if (!el) return;
+  _lastModalOpenTime = Date.now();
   el.style.display = 'block'; el.classList.add('open');
   el.scrollTop = 0; // selalu mulai dari atas
   // Set default date for aktivitas modal
@@ -4693,9 +4696,11 @@ function closeModal(id) {
   el.style.display = 'none'; el.classList.remove('open');
 }
 
-// Close modal on overlay click
+// Close modal on overlay click — guard 350ms agar ghost-tap tidak langsung menutup modal
 document.addEventListener('click', (e) => {
-  if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
+  if (e.target.classList.contains('modal-overlay') && Date.now() - _lastModalOpenTime > 350) {
+    closeModal(e.target.id);
+  }
 });
 
 // ─────────────────────────────────────────────────────────
@@ -7568,10 +7573,28 @@ window.showToast = showToast;
 // FITUR ASSET — Properti Lelang / Eksekusi
 // ═══════════════════════════════════════════════════════════
 
+async function _ensureAssetModals() {
+  if (document.getElementById('modal-asset-detail')) return true;
+  try {
+    const html = await fetch('/?_t=' + Date.now()).then(r => r.text());
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    ['modal-asset-form', 'modal-asset-detail', 'modal-asset-editors'].forEach(id => {
+      if (!document.getElementById(id)) {
+        const el = parsed.getElementById(id);
+        if (el) document.body.appendChild(el);
+      }
+    });
+    return !!document.getElementById('modal-asset-detail');
+  } catch(e) {
+    return false;
+  }
+}
+
 let _assetsData = [];
 let _currentAsset = null;
 let _assetPhotoPending = { 1: null, 2: null, 3: null }; // { slot: File }
 let _assetCanEdit = false;
+let _assetGridListenerAdded = false;
 
 const MANAGE_ROLES_ASSET  = ['superadmin', 'principal', 'kantor', 'business_manager', 'admin'];
 const PUBLISH_ROLES_ASSET = ['superadmin', 'principal', 'kantor', 'admin'];
@@ -7579,6 +7602,7 @@ const SYNC_ROLES_ASSET    = ['superadmin', 'principal', 'kantor'];
 
 // ── Load Asset Page ───────────────────────────────────────
 async function loadAssetPage() {
+  await _ensureAssetModals();
   const role = STATE.user?.role;
 
   // Cek apakah user bisa edit (role atau editor list)
@@ -7590,9 +7614,21 @@ async function loadAssetPage() {
     } catch (_) {}
   }
 
-  // Show/hide tombol sesuai akses
+  // Tambah Aset — belum dibutuhkan, selalu sembunyikan
   const addBtn = document.getElementById('btn-add-asset');
-  if (addBtn) addBtn.style.display = _assetCanEdit ? 'flex' : 'none';
+  if (addBtn) addBtn.style.display = 'none';
+
+  // Event delegation untuk card klik (lebih reliable dari inline onclick)
+  if (!_assetGridListenerAdded) {
+    const grid = document.getElementById('asset-grid');
+    if (grid) {
+      grid.addEventListener('click', (e) => {
+        const card = e.target.closest('[data-id]');
+        if (card && card.dataset.id) openAssetDetail(card.dataset.id);
+      });
+      _assetGridListenerAdded = true;
+    }
+  }
 
   const syncBtn = document.getElementById('btn-sync-asset');
   if (syncBtn) syncBtn.style.display = SYNC_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
@@ -7672,7 +7708,7 @@ function buildAssetCard(a) {
   const ratioFmt = _ratio ? (Number.isInteger(_ratio) ? String(_ratio) : _ratio.toFixed(1).replace('.', ',')) : '';
 
   return `
-  <div onclick="openAssetDetail('${escapeHtml(a.ID)}')"
+  <div data-id="${escapeHtml(a.ID)}"
     style="background:#0D1E36;border:1px solid rgba(255,255,255,0.07);border-radius:16px;overflow:hidden;cursor:pointer;transition:all 0.2s"
     onmouseenter="this.style.borderColor='rgba(212,168,83,0.35)'"
     onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'">
@@ -7683,8 +7719,9 @@ function buildAssetCard(a) {
         : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:38px">${tipeEmoji}</div>`}
       <span style="position:absolute;top:8px;left:8px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:${statusBg};color:${statusColor};border:1px solid ${statusColor}33">${a.Status || 'Draft'}</span>
       ${a.Tampilkan_di_Web === 'TRUE' ? `<span style="position:absolute;top:8px;left:${a.Status === 'Publish' ? '78px' : '70px'};padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid rgba(96,165,250,0.3)">🌐 Web</span>` : ''}
-      <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(13,21,38,0.95),transparent);padding:8px 10px 6px">
+      <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(13,21,38,0.95),transparent);padding:8px 10px 6px;display:flex;align-items:center;gap:6px">
         <span style="font-size:9px;font-weight:800;color:#f59e0b;text-transform:uppercase;letter-spacing:1px">⚖️ LELANG EKSEKUSI</span>
+        ${a.Label_Asset ? `<span style="font-size:9px;font-weight:700;color:#a78bfa;background:rgba(139,92,246,0.2);padding:2px 7px;border-radius:10px;border:1px solid rgba(139,92,246,0.35)">${escapeHtml(a.Label_Asset)}</span>` : ''}
       </div>
       ${a.Foto_2_URL ? `<img src="${escapeHtml(a.Foto_2_URL)}" style="position:absolute;bottom:22px;right:8px;width:42px;height:42px;border-radius:7px;object-fit:cover;border:2px solid rgba(255,255,255,0.2)"/>` : ''}
     </div>
@@ -7814,8 +7851,9 @@ document.addEventListener('click', (e) => {
 // ── Open Detail ───────────────────────────────────────────
 async function openAssetDetail(id) {
   _currentAsset = null;
+  if (!document.getElementById('modal-asset-detail')) await _ensureAssetModals();
   const modal = document.getElementById('modal-asset-detail');
-  if (!modal) return;
+  if (!modal) { showToast('Gagal memuat modal, coba refresh halaman', 'error'); return; }
   openModal('modal-asset-detail');
   document.getElementById('ad-foto1').src = '';
   document.getElementById('ad-nama').textContent = 'Memuat…';
@@ -8262,8 +8300,9 @@ async function syncAssetsFromSource(reset = false) {
 
 // ── Editors Management ─────────────────────────────────────
 async function openAssetEditors() {
+  if (!document.getElementById('modal-asset-editors')) await _ensureAssetModals();
   const modal = document.getElementById('modal-asset-editors');
-  if (!modal) return;
+  if (!modal) { showToast('Gagal memuat modal, coba refresh halaman', 'error'); return; }
   openModal('modal-asset-editors');
   await loadAssetEditors();
 }

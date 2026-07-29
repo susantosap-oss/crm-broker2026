@@ -223,7 +223,7 @@ class AssetsService {
       const ssId = process.env.GOOGLE_SHEETS_ID || process.env.SPREADSHEET_ID;
       await sheets.spreadsheets.values.clear({
         spreadsheetId: ssId,
-        range: `${SHEETS.ASSETS}!A2:AJ`,
+        range: `${SHEETS.ASSETS}!A2:AK`,
       });
       existingRows.splice(1); // kosongkan, hanya header
     }
@@ -282,6 +282,7 @@ class AssetsService {
       const statusSrc     = (getStr(row, 'status', 'status aset') || 'ACTIVE').toUpperCase();
       const createdAtSrc  = getStr(row, 'dibuat', 'created at', 'tanggal input', 'created');
       const updatedAtSrc  = getStr(row, 'diperbarui', 'updated at', 'updated');
+      const labelAsset    = getStr(row, 'label asset', 'label', 'jenis lelang', 'jenis', 'kategori', 'tipe lelang');
 
       if (!bankName && !city && !address && !debtorName) { results.skipped++; continue; }
 
@@ -291,7 +292,7 @@ class AssetsService {
       const sourceData = {
         assetId, bankName, assetType: assetTypeRaw, area, status: statusSrc,
         outstanding, principalOuts, liquidRatio, liquidValue, hargaLimit,
-        hargaPasarEst, demandScore, sellable, createdAtSrc, updatedAtSrc,
+        hargaPasarEst, demandScore, sellable, labelAsset, createdAtSrc, updatedAtSrc,
       };
 
       if (existingBySourceId[assetId]) {
@@ -309,6 +310,7 @@ class AssetsService {
           Sertifikat:         certType,
           Nama_Debitur:       debtorName,
           Harga_Limit_Lelang: hargaLimitFinal > 0 ? String(hargaLimitFinal) : '',
+          Label_Asset:        labelAsset,
         };
         let changed = false;
         for (const [f, v] of Object.entries(srcFields)) {
@@ -363,6 +365,7 @@ class AssetsService {
           Created_At:                now,
           Updated_At:                now,
           Notes:                     '',
+          Label_Asset:               labelAsset,
         };
         obj.Caption_Sosmed = this._generateCaption(obj);
         newRows.push(COLUMNS.ASSETS.map(col => obj[col] || ''));

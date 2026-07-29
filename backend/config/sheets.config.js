@@ -602,6 +602,7 @@ const COLUMNS = {
     'Created_At',         // AH
     'Updated_At',         // AI
     'Notes',              // AJ
+    'Label_Asset',        // AK  Label jenis: Cassie|Lelang|dll (dari external GSheet)
   ],
 
   // ★ ASSET_EDITORS — User non-default yang diberi akses edit asset
