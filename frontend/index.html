@@ -4888,6 +4888,44 @@ async function saveApraisalResult(type) {
       <div style="padding:20px;max-height:80vh;overflow-y:auto">
         <input type="hidden" id="asset-form-id"/>
 
+        <!-- Foto Upload (max 3) -->
+        <div style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <label class="form-label" style="margin-bottom:0">Foto Properti <span style="color:rgba(255,255,255,0.4);font-size:11px">(max 3 foto)</span></label>
+            <button type="button" onclick="triggerAssetPhotoUpload(0)" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:8px;color:#f59e0b;font-size:10px;font-weight:600;padding:4px 10px;cursor:pointer"><i class="fa-solid fa-images" style="margin-right:4px"></i>Pilih Semua</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            <!-- Foto 1 (Utama) -->
+            <div id="af-foto1-container" onclick="triggerAssetPhotoUpload(1)"
+              style="height:100px;border:2px dashed rgba(245,158,11,0.4);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden">
+              <img id="af-foto1-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
+              <i id="af-foto1-icon" class="fa-solid fa-image" style="font-size:18px;color:#f59e0b;position:relative;z-index:1"></i>
+              <span style="font-size:9px;color:rgba(255,255,255,0.4);position:relative;z-index:1">Foto Utama</span>
+              <button id="af-foto1-del" onclick="event.stopPropagation();clearAssetPhoto(1)" style="display:none;position:absolute;top:4px;right:4px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:10px">✕</button>
+            </div>
+            <!-- Foto 2 -->
+            <div id="af-foto2-container" onclick="triggerAssetPhotoUpload(2)"
+              style="height:100px;border:2px dashed rgba(255,255,255,0.1);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden">
+              <img id="af-foto2-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
+              <i id="af-foto2-icon" class="fa-solid fa-image" style="font-size:18px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
+              <span style="font-size:9px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto 2</span>
+              <button id="af-foto2-del" onclick="event.stopPropagation();clearAssetPhoto(2)" style="display:none;position:absolute;top:4px;right:4px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:10px">✕</button>
+            </div>
+            <!-- Foto 3 -->
+            <div id="af-foto3-container" onclick="triggerAssetPhotoUpload(3)"
+              style="height:100px;border:2px dashed rgba(255,255,255,0.1);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden">
+              <img id="af-foto3-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
+              <i id="af-foto3-icon" class="fa-solid fa-image" style="font-size:18px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
+              <span style="font-size:9px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto 3</span>
+              <button id="af-foto3-del" onclick="event.stopPropagation();clearAssetPhoto(3)" style="display:none;position:absolute;top:4px;right:4px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:10px">✕</button>
+            </div>
+          </div>
+          <input id="af-photo-input" type="file" accept="image/*" multiple style="display:none" onchange="handleAssetPhotoSelect(event)"/>
+          <input type="hidden" id="af-foto1-clear" value=""/>
+          <input type="hidden" id="af-foto2-clear" value=""/>
+          <input type="hidden" id="af-foto3-clear" value=""/>
+        </div>
+
         <!-- Nama Aset -->
         <div style="margin-bottom:14px">
           <label class="form-label">Nama Aset / Properti <span style="color:#ef4444">*</span></label>
@@ -4987,44 +5025,6 @@ async function saveApraisalResult(type) {
         <div style="margin-bottom:14px">
           <label class="form-label">Keterangan Tentang Debitur <span style="color:rgba(255,255,255,0.4);font-size:11px">(input CRM — tidak tampil di web)</span></label>
           <textarea id="af-keterangan-debitur" class="form-input" rows="3" placeholder="Catatan internal tentang debitur, kondisi aset, riwayat, dll..."></textarea>
-        </div>
-
-        <!-- Foto Upload (max 3) -->
-        <div style="margin-bottom:16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <label class="form-label" style="margin-bottom:0">Foto Properti <span style="color:rgba(255,255,255,0.4);font-size:11px">(max 3 foto)</span></label>
-            <button type="button" onclick="triggerAssetPhotoUpload(0)" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:8px;color:#f59e0b;font-size:10px;font-weight:600;padding:4px 10px;cursor:pointer"><i class="fa-solid fa-images" style="margin-right:4px"></i>Pilih Semua</button>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-            <!-- Foto 1 (Utama) -->
-            <div id="af-foto1-container" onclick="triggerAssetPhotoUpload(1)"
-              style="height:100px;border:2px dashed rgba(245,158,11,0.4);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden">
-              <img id="af-foto1-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
-              <i id="af-foto1-icon" class="fa-solid fa-image" style="font-size:18px;color:#f59e0b;position:relative;z-index:1"></i>
-              <span style="font-size:9px;color:rgba(255,255,255,0.4);position:relative;z-index:1">Foto Utama</span>
-              <button id="af-foto1-del" onclick="event.stopPropagation();clearAssetPhoto(1)" style="display:none;position:absolute;top:4px;right:4px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:10px">✕</button>
-            </div>
-            <!-- Foto 2 -->
-            <div id="af-foto2-container" onclick="triggerAssetPhotoUpload(2)"
-              style="height:100px;border:2px dashed rgba(255,255,255,0.1);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden">
-              <img id="af-foto2-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
-              <i id="af-foto2-icon" class="fa-solid fa-image" style="font-size:18px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
-              <span style="font-size:9px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto 2</span>
-              <button id="af-foto2-del" onclick="event.stopPropagation();clearAssetPhoto(2)" style="display:none;position:absolute;top:4px;right:4px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:10px">✕</button>
-            </div>
-            <!-- Foto 3 -->
-            <div id="af-foto3-container" onclick="triggerAssetPhotoUpload(3)"
-              style="height:100px;border:2px dashed rgba(255,255,255,0.1);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;overflow:hidden">
-              <img id="af-foto3-preview" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:10px"/>
-              <i id="af-foto3-icon" class="fa-solid fa-image" style="font-size:18px;color:rgba(255,255,255,0.2);position:relative;z-index:1"></i>
-              <span style="font-size:9px;color:rgba(255,255,255,0.3);position:relative;z-index:1">Foto 3</span>
-              <button id="af-foto3-del" onclick="event.stopPropagation();clearAssetPhoto(3)" style="display:none;position:absolute;top:4px;right:4px;z-index:2;background:rgba(239,68,68,0.85);border:none;color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:10px">✕</button>
-            </div>
-          </div>
-          <input id="af-photo-input" type="file" accept="image/*" multiple style="display:none" onchange="handleAssetPhotoSelect(event)"/>
-          <input type="hidden" id="af-foto1-clear" value=""/>
-          <input type="hidden" id="af-foto2-clear" value=""/>
-          <input type="hidden" id="af-foto3-clear" value=""/>
         </div>
 
         <!-- Notes -->
