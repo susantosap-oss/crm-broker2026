@@ -509,102 +509,112 @@ class AssetsService {
 
   _generateCaption(asset, platform = 'instagram') {
     const {
-      Nama_Asset, Nama_Debitur, Tipe_Properti,
+      Label_Asset, Tipe_Properti, Alamat, Kota, Kecamatan,
       Harga_Limit_Format, Harga_Limit_Lelang,
-      Est_Harga_Pasar_Format, Est_Harga_Pasar,
-      Kota, Kecamatan, Luas_Tanah, Luas_Bangunan,
-      Sertifikat, Bank_Kreditur,
+      Luas_Tanah, Luas_Bangunan, Sertifikat,
+      Keterangan_Debitur,
     } = asset;
 
-    const namaAset = Nama_Asset || `Properti ${Tipe_Properti || ''} Lelang`;
     const tipe     = Tipe_Properti || 'Properti';
     const emoji    = { Rumah: '🏡', Ruko: '🏪', Apartemen: '🏢', Gudang: '🏭', Tanah: '🌿', Kios: '🏬' }[tipe] || '🏠';
     const limitFmt = Harga_Limit_Format || this._formatHarga(Harga_Limit_Lelang);
-    const pasarFmt = Est_Harga_Pasar_Format || this._formatHarga(Est_Harga_Pasar);
-    const lokasi   = [Kecamatan, Kota].filter(Boolean).join(', ');
-    const spek     = [
-      Luas_Tanah    ? `LT: ${Luas_Tanah} m²` : '',
-      Luas_Bangunan ? `LB: ${Luas_Bangunan} m²` : '',
-      Sertifikat    ? Sertifikat : '',
-    ].filter(Boolean).join(' | ');
+    const alamatFmt = Alamat || [Kecamatan, Kota].filter(Boolean).join(', ') || '—';
     const hashtags = this._buildHashtags(asset);
 
+    // Spek baris
+    const spekLines = [
+      Luas_Tanah    ? `LT : ${Luas_Tanah} m²` : '',
+      Luas_Bangunan ? `LB : ${Luas_Bangunan} m²` : '',
+      Sertifikat    ? `Sertifikat : ${Sertifikat}` : '',
+    ].filter(Boolean).join('\n');
+
+    // Core body (sama untuk semua platform, styling berbeda)
+    const label   = Label_Asset ? `${Label_Asset}\n` : '';
+    const catatan = Keterangan_Debitur ? `\n${Keterangan_Debitur}\n` : '';
+
+    if (platform === 'instagram') {
+      return `${emoji} HOT ITEM ${emoji}
+${label}${tipe}
+📍 ${alamatFmt}
+
+📐 Spesifikasi :
+${spekLines || '—'}
+${catatan}
+💰 Best Price : ${limitFmt || 'On Request'}
+⚖️ Cash Only | No Viewing | Asset Bank
+
+📲 DM atau hubungi kami untuk info lengkap!
+
+${hashtags}`;
+    }
+
     if (platform === 'facebook') {
-      return `${emoji} PROPERTI LELANG EKSEKUSI — HARGA DI BAWAH PASAR!
+      return `🔥 HOT ITEM — PROPERTI LELANG EKSEKUSI
 
-🏷️ ${namaAset}
-📍 Lokasi: ${lokasi || '—'}
-${Bank_Kreditur ? `🏦 Bank: ${Bank_Kreditur}` : ''}
+${label}${emoji} ${tipe}
+📍 ${alamatFmt}
 
-💰 Harga Limit: ${limitFmt || 'on request'}
-${pasarFmt ? `📊 Est. Harga Pasar: ${pasarFmt}` : ''}
-${spek ? `📐 ${spek}` : ''}
+📐 Spesifikasi :
+${spekLines || '—'}
+${catatan}
+💰 Best Price : ${limitFmt || 'On Request'}
+⚖️ Cash Only | No Viewing | Asset Bank
 
-⚖️ Properti ini dijual melalui proses lelang eksekusi. Investasi tepat untuk Anda yang ingin properti strategis dengan harga terbaik!
-
-📞 Hubungi agen kami untuk info lengkap & jadwal survei.
+📞 Hubungi kami untuk info lengkap & jadwal!
 
 ${hashtags}`;
     }
 
     if (platform === 'tiktok') {
-      return `${emoji} LELANG PROPERTI! Harga Limit ${limitFmt || '-'}
-
-📍 ${lokasi || '-'}
-${spek ? `📐 ${spek}` : ''}
-${pasarFmt ? `📊 Harga Pasar: ${pasarFmt}` : ''}
-
-⚖️ Properti lelang eksekusi, proses legal & resmi.
-DM untuk info lengkap! 🔑
+      return `🔥 HOT ITEM!
+${label}${emoji} ${tipe}
+📍 ${alamatFmt}
+${spekLines ? `📐 ${spekLines.replace(/\n/g, ' | ')}` : ''}
+💰 Best Price : ${limitFmt || 'On Request'}
+⚖️ Cash Only | No Viewing | Asset Bank
+DM untuk info! 👇
 
 ${hashtags}`;
     }
 
-    // Default: Instagram
-    return `${emoji} PROPERTI LELANG EKSEKUSI ${emoji}
-
-🏷️ ${namaAset}
-📍 ${lokasi || 'Lokasi strategis'}
-${spek ? `📐 ${spek}` : ''}
-
-💰 Harga Limit: ${limitFmt || 'On Request'}
-${pasarFmt ? `📊 Est. Harga Pasar: ${pasarFmt}` : ''}
-${Bank_Kreditur ? `🏦 Via: ${Bank_Kreditur}` : ''}
-
-✅ Proses lelang resmi & legal
-✅ Investasi properti di bawah harga pasar
-✅ Dokumen lengkap
-
-📲 Hubungi kami untuk info & jadwal survei!
-
-${hashtags}`;
+    // WA (template tanpa info agen — agen di-inject dari frontend)
+    return this._generateCaptionWA(asset);
   }
 
-  _generateCaptionWA(asset) {
+  _generateCaptionWA(asset, agent = null) {
     const {
-      Nama_Asset, Tipe_Properti, Kota, Kecamatan,
+      Label_Asset, Tipe_Properti, Alamat, Kota, Kecamatan,
       Harga_Limit_Format, Harga_Limit_Lelang,
-      Est_Harga_Pasar_Format, Est_Harga_Pasar,
-      Luas_Tanah, Luas_Bangunan, Sertifikat, Bank_Kreditur,
+      Luas_Tanah, Luas_Bangunan, Sertifikat,
+      Keterangan_Debitur,
     } = asset;
 
     const tipe     = Tipe_Properti || 'Properti';
-    const emoji    = { Rumah: '🏡', Ruko: '🏪', Apartemen: '🏢', Gudang: '🏭', Tanah: '🌿' }[tipe] || '🏠';
     const limitFmt = Harga_Limit_Format || this._formatHarga(Harga_Limit_Lelang);
-    const pasarFmt = Est_Harga_Pasar_Format || this._formatHarga(Est_Harga_Pasar);
-    const lokasi   = [Kecamatan, Kota].filter(Boolean).join(', ');
+    const alamatFmt = Alamat || [Kecamatan, Kota].filter(Boolean).join(', ') || '—';
 
-    return `${emoji} *PROPERTI LELANG EKSEKUSI*
-${Nama_Asset || tipe}
-📍 ${lokasi || '—'}
-${Bank_Kreditur ? `🏦 Bank: *${Bank_Kreditur}*` : ''}
+    const spekLines = [
+      Luas_Tanah    ? `LT : ${Luas_Tanah} m²` : '',
+      Luas_Bangunan ? `LB : ${Luas_Bangunan} m²` : '',
+    ].filter(Boolean).join('\n');
 
-💰 Harga Limit: *${limitFmt || 'on request'}*
-${pasarFmt ? `📊 Est. Harga Pasar: *${pasarFmt}*` : ''}
-${Luas_Tanah ? `📐 LT: ${Luas_Tanah} m²` : ''}${Luas_Bangunan ? ` | LB: ${Luas_Bangunan} m²` : ''}
-${Sertifikat ? `📄 Sertifikat: ${Sertifikat}` : ''}
+    const label   = Label_Asset ? `${Label_Asset}\n` : '';
+    const catatan = Keterangan_Debitur ? `\n_${Keterangan_Debitur}_\n` : '';
 
-Tertarik? Hubungi saya untuk info lengkap & jadwal survei! 🤝`;
+    const hubungi = agent
+      ? `\nHubungi :\n*${agent.nama || ''}*\n${agent.no_wa || ''}\n${agent.kantor || ''}`
+      : '\nHubungi :\n[Nama Agen]\n[No WA]';
+
+    return `🔥 *HOT ITEM*
+${label}*${tipe}*
+📍 ${alamatFmt}
+
+📐 *Spesifikasi :*
+${spekLines || '—'}
+${catatan}
+💰 *Best Price : ${limitFmt || 'On Request'}*
+_Cash Only, No Viewing, Asset Bank_
+${hubungi}`;
   }
 
   _buildHashtags(asset) {

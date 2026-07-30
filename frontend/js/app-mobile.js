@@ -8009,7 +8009,7 @@ function switchAssetPlatform(key) {
   window._assetPlatform = key;
   const bundle = window._assetBundle;
   if (!bundle) return;
-  const map = { instagram: bundle.caption_ig, facebook: bundle.caption_fb, tiktok: bundle.caption_tiktok, wa: bundle.caption_wa };
+  const map = { instagram: bundle.caption_ig, facebook: bundle.caption_fb, tiktok: bundle.caption_tiktok, wa: _buildAssetShareText(_currentAsset) };
   document.getElementById('asc-caption-text').textContent = map[key] || '';
 
   ['instagram','facebook','tiktok','wa'].forEach(p => {
@@ -8046,13 +8046,78 @@ async function regenerateAssetCaption() {
 }
 
 // ── Share WA ──────────────────────────────────────────────
+function _buildAssetShareText(asset) {
+  const a = asset;
+  const tipe     = a.Tipe_Properti || 'Properti';
+  const limitFmt = a.Harga_Limit_Format || a.Harga_Limit_Lelang || 'On Request';
+  const alamat   = a.Alamat || [a.Kecamatan, a.Kota].filter(Boolean).join(', ') || '—';
+  const label    = a.Label_Asset ? `${a.Label_Asset}\n` : '';
+  const catatan  = a.Keterangan_Debitur ? `\n_${a.Keterangan_Debitur}_\n` : '';
+  const lt       = a.Luas_Tanah    ? `LT : ${a.Luas_Tanah} m²` : '';
+  const lb       = a.Luas_Bangunan ? `LB : ${a.Luas_Bangunan} m²` : '';
+  const spek     = [lt, lb].filter(Boolean).join('\n') || '—';
+  const user     = STATE.user || {};
+  const kantor   = (user.nama_kantor || '').replace(/^MANSION\s*:\s*/i, 'MANSION : ').trim();
+
+  return `🔥 *HOT ITEM*
+${label}*${tipe}*
+📍 ${alamat}
+
+📐 *Spesifikasi :*
+${spek}
+${catatan}
+💰 *Best Price : ${limitFmt}*
+_Cash Only, No Viewing, Asset Bank_
+
+Hubungi :
+*${user.nama || ''}*
+${(user.no_wa || '').replace(/[^0-9]/g,'')}
+${kantor}`;
+}
+
 function shareAssetWA() {
   if (!_currentAsset) return;
-  const a = _currentAsset;
-  const teks = `🏠 *PROPERTI LELANG EKSEKUSI*\n${a.Nama_Asset || a.Nama_Debitur || ''}\n📍 ${[a.Kecamatan, a.Kota].filter(Boolean).join(', ')}\n🏦 ${a.Bank_Kreditur || ''}\n💰 Limit: ${a.Harga_Limit_Format || 'On Request'}\n\nInfo lebih lanjut hubungi kami!`;
-  const noWa = (STATE.user?.no_wa || '').replace(/[^0-9]/g, '');
-  const url = noWa ? `https://wa.me/${noWa}?text=${encodeURIComponent(teks)}` : `https://wa.me/?text=${encodeURIComponent(teks)}`;
-  window.open(url, '_blank');
+  document.getElementById('asset-wa-picker-popup')?.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'asset-wa-picker-popup';
+  popup.style.cssText = `position:fixed;bottom:160px;left:50%;transform:translateX(-50%);
+    background:#141E35;border:1px solid rgba(245,158,11,0.4);border-radius:16px;
+    padding:16px;z-index:9999;width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.5)`;
+
+  popup.innerHTML = `
+    <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:12px;text-align:center">Pilih cara share WhatsApp</div>
+    <button onclick="doShareAssetWA('wa')" style="width:100%;padding:13px;border-radius:12px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#4ade80;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="fa-brands fa-whatsapp" style="font-size:18px"></i> WhatsApp
+    </button>
+    <button onclick="doShareAssetWA('wab')" style="width:100%;padding:13px;border-radius:12px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);color:#25d366;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="fa-brands fa-whatsapp" style="font-size:18px"></i> WA Business
+    </button>
+    <button onclick="document.getElementById('asset-wa-picker-popup')?.remove()" style="width:100%;padding:8px;margin-top:8px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer">Batal</button>
+  `;
+  document.body.appendChild(popup);
+  setTimeout(() => {
+    document.addEventListener('click', function h(e) {
+      if (!popup.contains(e.target)) { popup.remove(); document.removeEventListener('click', h); }
+    });
+  }, 100);
+}
+
+function doShareAssetWA(type) {
+  document.getElementById('asset-wa-picker-popup')?.remove();
+  if (!_currentAsset) return;
+  const text    = _buildAssetShareText(_currentAsset);
+  const encoded = encodeURIComponent(text);
+  if (type === 'wab') {
+    const isAndroid = /android/i.test(navigator.userAgent);
+    if (isAndroid) {
+      window.open(`intent://send?text=${encoded}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`, '_blank');
+    } else {
+      window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    }
+  } else {
+    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+  }
 }
 
 // ── Add / Edit Form ───────────────────────────────────────
