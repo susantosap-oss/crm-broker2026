@@ -1544,9 +1544,8 @@ function closeFab() {
 // ── MODALS ────────────────────────────────────────────────
 function openModal(id) {
   const el = document.getElementById(id);
-  if (el) { el.classList.add('open'); _lastModalOpenTime = Date.now(); }
+  if (el) el.classList.add('open');
 }
-let _lastModalOpenTime = 0;
 
 function closeModal(id) {
   const el = document.getElementById(id);
