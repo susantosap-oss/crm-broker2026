@@ -7699,7 +7699,18 @@ function renderAssetGrid(assets) {
   if (!grid) return;
   if (!assets.length) {
     grid.innerHTML = '';
-    if (empty) empty.style.display = 'block';
+    if (empty) {
+      empty.style.display = 'block';
+      const hint = document.getElementById('asset-empty-hint');
+      if (hint) {
+        const role = STATE.user?.role;
+        hint.textContent = SYNC_ROLES_ASSET.includes(role)
+          ? 'Klik "Sync Data" untuk import dari sumber, atau tambah manual.'
+          : _assetCanEdit
+            ? 'Belum ada aset yang ditambahkan. Klik "+ Tambah Aset".'
+            : 'Belum ada aset yang dipublikasikan.';
+      }
+    }
     return;
   }
   if (empty) empty.style.display = 'none';
