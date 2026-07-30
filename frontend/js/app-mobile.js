@@ -8048,31 +8048,37 @@ async function regenerateAssetCaption() {
 // ── Share WA ──────────────────────────────────────────────
 function _buildAssetShareText(asset) {
   const a = asset;
+  const FIRE = '🔥';  // 🔥
+  const PIN  = '📍';  // 📍
+  const SPEC = '📐';  // 📐
+  const CASH = '💰';  // 💰
+
   const tipe     = a.Tipe_Properti || 'Properti';
   const limitFmt = a.Harga_Limit_Format || a.Harga_Limit_Lelang || 'On Request';
   const alamat   = a.Alamat || [a.Kecamatan, a.Kota].filter(Boolean).join(', ') || '—';
-  const label    = a.Label_Asset ? `${a.Label_Asset}\n` : '';
-  const catatan  = a.Keterangan_Debitur ? `\n_${a.Keterangan_Debitur}_\n` : '';
-  const lt       = a.Luas_Tanah    ? `LT : ${a.Luas_Tanah} m²` : '';
-  const lb       = a.Luas_Bangunan ? `LB : ${a.Luas_Bangunan} m²` : '';
+  const label    = a.Label_Asset ? a.Label_Asset + '\n' : '';
+  const catatan  = a.Keterangan_Debitur ? '\n_' + a.Keterangan_Debitur + '_\n' : '';
+  const lt       = a.Luas_Tanah    ? 'LT : ' + a.Luas_Tanah + ' m²' : '';
+  const lb       = a.Luas_Bangunan ? 'LB : ' + a.Luas_Bangunan + ' m²' : '';
   const spek     = [lt, lb].filter(Boolean).join('\n') || '—';
   const user     = STATE.user || {};
   const kantor   = (user.nama_kantor || '').replace(/^MANSION\s*:\s*/i, 'MANSION : ').trim();
 
-  return `🔥 *HOT ITEM*
-${label}*${tipe}*
-📍 ${alamat}
-
-📐 *Spesifikasi :*
-${spek}
-${catatan}
-💰 *Best Price : ${limitFmt}*
-_Cash Only, No Viewing, Asset Bank_
-
-Hubungi :
-*${user.nama || ''}*
-${(user.no_wa || '').replace(/[^0-9]/g,'')}
-${kantor}`;
+  return FIRE + ' *HOT ITEM*\n'
+    + label
+    + '*' + tipe + '*\n'
+    + PIN + ' ' + alamat + '\n'
+    + '\n'
+    + SPEC + ' *Spesifikasi :*\n'
+    + spek + '\n'
+    + catatan
+    + '\n'
+    + CASH + ' *Best Price : ' + limitFmt + '*\n'
+    + '_Cash Only, No Viewing, Asset Bank_\n'
+    + '\nHubungi :\n'
+    + '*' + (user.nama || '') + '*\n'
+    + (user.no_wa || '').replace(/[^0-9]/g, '') + '\n'
+    + kantor;
 }
 
 function shareAssetWA() {
