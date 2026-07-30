@@ -4910,6 +4910,9 @@ function openUserMgmt() {
   openModal('modal-user-mgmt');
   setUserTab('list');
   loadUserList();
+  API.get('/assets/editors').then(r => {
+    _assetEditorIds = (r.data || []).map(e => e.Agen_ID);
+  }).catch(() => {});
 }
 
 function setUserTab(tab) {
@@ -4977,6 +4980,8 @@ function openEditUser(id) {
   setVal('eu-lsp', u.Nomer_LSP||'');
   setVal('eu-role', u.Role||'agen');
   setVal('eu-status', u.Status||'Aktif');
+  const editorCb = document.getElementById('eu-asset-editor');
+  if (editorCb) editorCb.checked = _assetEditorIds.includes(u.ID);
   const photoInput = document.getElementById('eu-photo');
   if (photoInput) photoInput.value = '';
   const wrap = document.getElementById('eu-photo-wrap');
@@ -5008,6 +5013,8 @@ async function submitEditUser() {
   const newPass = getVal('eu-password').trim();
   if (newPass) payload.newPassword = newPass;
   const saveBtn = document.querySelector('#modal-edit-user .btn-gold');
+  const isEditor = document.getElementById('eu-asset-editor')?.checked || false;
+  const wasEditor = _assetEditorIds.includes(id);
   try {
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Menyimpan...'; }
     await API.put(`/agents/${id}`, payload);
@@ -5016,6 +5023,14 @@ async function submitEditUser() {
       const fd = new FormData();
       fd.append('photo', photoFile);
       await API.post(`/agents/${id}/profile-photo`, fd, true);
+    }
+    if (isEditor && !wasEditor) {
+      const u = _userList.find(x => x.ID === id);
+      await API.post('/assets/editors', { agen_id: id, agen_nama: u?.Nama || '' });
+      _assetEditorIds.push(id);
+    } else if (!isEditor && wasEditor) {
+      await API.delete(`/assets/editors/${id}`);
+      _assetEditorIds = _assetEditorIds.filter(x => x !== id);
     }
     showToast('✅ User berhasil diupdate!', 'success');
     closeModal('modal-edit-user');
@@ -5052,9 +5067,15 @@ async function submitAddUser() {
       fd.append('photo', photoFile);
       await API.post(`/agents/${newId}/profile-photo`, fd, true);
     }
+    if (newId && document.getElementById('nu-asset-editor')?.checked) {
+      await API.post('/assets/editors', { agen_id: newId, agen_nama: nama });
+      _assetEditorIds.push(newId);
+    }
     showToast(`✅ User ${nama} berhasil ditambahkan!`, 'success');
     setUserTab('list');
     loadUserList();
+    const nuEditorCb = document.getElementById('nu-asset-editor');
+    if (nuEditorCb) nuEditorCb.checked = false;
     ['nu-nama','nu-email','nu-password','nu-wa','nu-telegram','nu-kantor','nu-lsp'].forEach(id => setVal(id,''));
     const nuPhoto = document.getElementById('nu-photo');
     if (nuPhoto) nuPhoto.value = '';
@@ -7592,12 +7613,13 @@ async function _ensureAssetModals() {
 
 let _assetsData = [];
 let _currentAsset = null;
+let _assetEditorIds = [];
 let _assetPhotoPending = { 1: null, 2: null, 3: null }; // { slot: File }
 let _assetCanEdit = false;
 let _assetGridListenerAdded = false;
 
 const MANAGE_ROLES_ASSET  = ['superadmin', 'principal', 'kantor', 'business_manager', 'admin'];
-const PUBLISH_ROLES_ASSET = ['superadmin', 'principal', 'kantor', 'admin'];
+const PUBLISH_ROLES_ASSET = ['superadmin', 'principal', 'admin'];
 const SYNC_ROLES_ASSET    = ['superadmin', 'principal', 'kantor'];
 
 // ── Load Asset Page ───────────────────────────────────────
@@ -7630,9 +7652,6 @@ async function loadAssetPage() {
   if (syncBtn) syncBtn.style.display = SYNC_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
   const resetSyncBtn = document.getElementById('btn-reset-sync-asset');
   if (resetSyncBtn) resetSyncBtn.style.display = SYNC_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
-
-  const editorsBtn = document.getElementById('btn-asset-editors');
-  if (editorsBtn) editorsBtn.style.display = ['superadmin','principal','kantor','admin'].includes(role) ? 'inline-flex' : 'none';
 
   const filterStatusWrap = document.getElementById('asset-wrap-filter-status');
   if (filterStatusWrap) filterStatusWrap.style.display = _assetCanEdit ? '' : 'none';
@@ -7733,7 +7752,10 @@ function buildAssetCard(a) {
           <p style="color:#f59e0b;font-size:13px;font-weight:700;margin:0">Limit: ${escapeHtml(limitFmt)}</p>
           <p style="color:rgba(255,255,255,0.4);font-size:10px;margin:2px 0 0">${tipeEmoji} ${escapeHtml(a.Tipe_Properti || '—')}${ratioFmt ? ` · Rasio <span style="color:#f87171">${escapeHtml(ratioFmt)}</span>` : ''}</p>
         </div>
-        <div style="background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:5px 10px;font-size:11px;color:#D4A853;font-weight:600">Detail →</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${a.Gmaps_Link ? `<a href="${escapeHtml(a.Gmaps_Link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);border-radius:8px;padding:5px 8px;font-size:10px;color:#4ade80;font-weight:600;text-decoration:none"><i class="fa-solid fa-location-dot"></i> MAPS</a>` : ''}
+          <div style="background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:5px 10px;font-size:11px;color:#D4A853;font-weight:600">Detail →</div>
+        </div>
       </div>
     </div>
   </div>`;
@@ -7910,6 +7932,14 @@ async function openAssetDetail(id) {
     setText('ad-alamat', a.Alamat || '—');
     setText('ad-notes', a.Notes || '—');
 
+    // Maps link
+    const mapsWrap = document.getElementById('ad-maps-wrap');
+    const mapsLink = document.getElementById('ad-maps-link');
+    if (mapsWrap && mapsLink) {
+      if (a.Gmaps_Link) { mapsWrap.style.display = ''; mapsLink.href = a.Gmaps_Link; }
+      else { mapsWrap.style.display = 'none'; }
+    }
+
     // Admin actions
     const role = STATE.user?.role;
     const adminActions = document.getElementById('ad-admin-actions');
@@ -8025,7 +8055,7 @@ function openAddAsset() {
   // Reset fields
   ['af-nama','af-debitur','af-perkara','af-bank','af-alamat','af-kecamatan','af-kota',
    'af-provinsi','af-lt','af-lb','af-sertifikat','af-harga-limit','af-est-pasar',
-   'af-est-eksekusi','af-keterangan-debitur','af-notes'].forEach(id => {
+   'af-est-eksekusi','af-keterangan-debitur','af-notes','af-gmaps'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -8063,6 +8093,7 @@ function editCurrentAsset() {
   setVal('af-est-eksekusi', a.Est_Harga_Eksekusi);
   setVal('af-keterangan-debitur', a.Keterangan_Debitur);
   setVal('af-notes', a.Notes);
+  setVal('af-gmaps', a.Gmaps_Link);
   document.getElementById('af-tipe').value = a.Tipe_Properti || 'Rumah';
 
   _assetPhotoPending = { 1: null, 2: null, 3: null };
@@ -8098,6 +8129,7 @@ async function submitAssetForm() {
     Est_Harga_Eksekusi:  getVal('af-est-eksekusi').replace(/[^0-9]/g, ''),
     Keterangan_Debitur:  getVal('af-keterangan-debitur'),
     Notes:               getVal('af-notes'),
+    Gmaps_Link:          getVal('af-gmaps'),
   };
 
   if (!data.Nama_Asset) { showToast('Nama aset wajib diisi', 'error'); return; }
