@@ -8060,7 +8060,7 @@ function _buildAssetShareText(asset) {
     .replace(/[\s,]*(blok\s+\S+[\s,]*)?(no\.?\s*\d+.*)$/gi, '')
     .trim().replace(/[\s,]+$/, '');
   const alamat   = [streetRaw || a.Kecamatan, a.Kota].filter(Boolean).join(', ') || '—';
-  const label    = a.Label_Asset ? a.Label_Asset + '\n' : '';
+  const label    = a.Label_Asset ? '*' + a.Label_Asset + '*\n' : '';
   const catatan  = a.Keterangan_Debitur ? '\n_' + a.Keterangan_Debitur + '_\n' : '';
   const lt       = a.Luas_Tanah    ? 'LT : ' + a.Luas_Tanah + ' m²' : '';
   const lb       = a.Luas_Bangunan ? 'LB : ' + a.Luas_Bangunan + ' m²' : '';
@@ -8082,7 +8082,8 @@ function _buildAssetShareText(asset) {
     + '\nHubungi :\n'
     + '*' + (user.nama || '') + '*\n'
     + (user.no_wa || '').replace(/[^0-9]/g, '') + '\n'
-    + kantor;
+    + kantor
+    + (a.Kode_Asset ? '\n\n' + a.Kode_Asset : '');
 }
 
 function shareAssetWA() {
