@@ -1544,8 +1544,9 @@ function closeFab() {
 // ── MODALS ────────────────────────────────────────────────
 function openModal(id) {
   const el = document.getElementById(id);
-  if (el) el.classList.add('open');
+  if (el) { el.classList.add('open'); _lastModalOpenTime = Date.now(); }
 }
+let _lastModalOpenTime = 0;
 
 function closeModal(id) {
   const el = document.getElementById(id);
@@ -1917,9 +1918,9 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Close modal on overlay click
+// Close modal on overlay click — guard 350ms agar ghost-tap tidak langsung menutup modal
 document.addEventListener('click', (e) => {
-  if (e.target.classList.contains('modal-overlay')) {
+  if (e.target.classList.contains('modal-overlay') && typeof _lastModalOpenTime !== 'undefined' && Date.now() - _lastModalOpenTime > 350) {
     e.target.classList.remove('open');
   }
   if (STATE.fabOpen && !e.target.closest('#fab-area')) {

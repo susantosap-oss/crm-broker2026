@@ -7614,10 +7614,6 @@ async function loadAssetPage() {
     } catch (_) {}
   }
 
-  // Tambah Aset — belum dibutuhkan, selalu sembunyikan
-  const addBtn = document.getElementById('btn-add-asset');
-  if (addBtn) addBtn.style.display = 'none';
-
   // Event delegation untuk card klik (lebih reliable dari inline onclick)
   if (!_assetGridListenerAdded) {
     const grid = document.getElementById('asset-grid');
