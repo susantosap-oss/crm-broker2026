@@ -8055,7 +8055,11 @@ function _buildAssetShareText(asset) {
 
   const tipe     = a.Tipe_Properti || 'Properti';
   const limitFmt = a.Harga_Limit_Format || a.Harga_Limit_Lelang || 'On Request';
-  const alamat   = a.Alamat || [a.Kecamatan, a.Kota].filter(Boolean).join(', ') || '—';
+  // Alamat: strip nomor rumah (No. X / Blok XX No X), ambil jalan + Kota saja
+  const streetRaw = (a.Alamat || '')
+    .replace(/[\s,]*(blok\s+\S+[\s,]*)?(no\.?\s*\d+.*)$/gi, '')
+    .trim().replace(/[\s,]+$/, '');
+  const alamat   = [streetRaw || a.Kecamatan, a.Kota].filter(Boolean).join(', ') || '—';
   const label    = a.Label_Asset ? a.Label_Asset + '\n' : '';
   const catatan  = a.Keterangan_Debitur ? '\n_' + a.Keterangan_Debitur + '_\n' : '';
   const lt       = a.Luas_Tanah    ? 'LT : ' + a.Luas_Tanah + ' m²' : '';
