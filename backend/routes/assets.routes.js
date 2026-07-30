@@ -62,6 +62,16 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ── GET /editors/me — Cek apakah user saat ini adalah editor (semua role) ──
+router.get('/editors/me', async (req, res) => {
+  try {
+    const canEdit = MANAGE_ROLES.includes(req.user.role) || await assetsService.isEditor(req.user.id);
+    res.json({ success: true, canEdit });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // ── GET /editors — List editors ────────────────────────────
 router.get('/editors', async (req, res) => {
   try {

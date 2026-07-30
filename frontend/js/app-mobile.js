@@ -7627,13 +7627,12 @@ async function loadAssetPage() {
   await _ensureAssetModals();
   const role = STATE.user?.role;
 
-  // Cek apakah user bisa edit (role atau editor list)
-  _assetCanEdit = MANAGE_ROLES_ASSET.includes(role);
-  if (!_assetCanEdit) {
-    try {
-      const res = await API.get('/assets/editors');
-      _assetCanEdit = (res.data || []).some(e => e.Agen_ID === STATE.user?.id);
-    } catch (_) {}
+  // Cek apakah user bisa edit via dedicated endpoint (semua role bisa akses)
+  try {
+    const res = await API.get('/assets/editors/me');
+    _assetCanEdit = res.canEdit === true;
+  } catch (_) {
+    _assetCanEdit = MANAGE_ROLES_ASSET.includes(role);
   }
 
   // Event delegation untuk card klik (lebih reliable dari inline onclick)
