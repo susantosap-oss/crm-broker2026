@@ -52,11 +52,8 @@ router.get('/', async (req, res) => {
     if (status) filters.status = status;
     if (tipe)   filters.tipe   = tipe;
 
-    // Agen biasa: hanya lihat yang Publish
-    if (!MANAGE_ROLES.includes(req.user.role)) {
-      const isEd = await assetsService.isEditor(req.user.id);
-      if (!isEd) filters.status = 'Publish';
-    }
+    // Semua user CRM bisa lihat semua aset (Draft & Publish)
+    // Status Publish hanya berlaku untuk tampil di web eksternal
 
     const assets = await assetsService.getAll(filters);
     res.json({ success: true, data: assets, count: assets.length });
@@ -125,13 +122,7 @@ router.get('/:id', async (req, res) => {
   try {
     const asset = await assetsService.getById(req.params.id);
     if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan' });
-    // Non-editor agen: hanya lihat yang Publish
-    if (!MANAGE_ROLES.includes(req.user.role)) {
-      const isEd = await assetsService.isEditor(req.user.id);
-      if (!isEd && asset.Status !== 'Publish') {
-        return res.status(403).json({ success: false, message: 'Aset belum dipublikasikan' });
-      }
-    }
+    // Semua user CRM bisa lihat detail aset (Draft maupun Publish)
     res.json({ success: true, data: asset });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
