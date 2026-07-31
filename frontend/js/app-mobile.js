@@ -843,6 +843,9 @@ async function openListingDetail(id) {
       <button onclick="shareListingWACatalog('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-regular fa-copy" style="margin-right:6px"></i>WA Catalog
       </button>
+      <button onclick="openFlyerModal('listing','${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
+        <i class="fa-solid fa-image" style="margin-right:6px"></i>Buat Flyer
+      </button>
       <button onclick="openViGen('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-solid fa-clapperboard" style="margin-right:6px"></i>Buat Konten Iklan (ViGen)
       </button>
@@ -8568,4 +8571,317 @@ function selectAssetEditorUser(id, nama) {
   const results = document.getElementById('ae-search-results');
   if (results) results.style.display = 'none';
   document.getElementById('ae-search-user').value = nama;
+}
+
+// ══════════════════════════════════════════════════════
+// FLYER BUILDER — html2canvas export PNG
+// ══════════════════════════════════════════════════════
+
+let _flyerData   = null;
+let _flyerSize   = 'post'; // 'post' | 'story'
+let _flyerKode   = '';
+
+// ── Buka modal flyer ──────────────────────────────────
+function openFlyerModal(type, listingId) {
+  let data = null;
+
+  if (type === 'listing') {
+    const listing = _allListings.find(l => l.ID === (listingId || _shareWAListingId));
+    if (!listing) return showToast('Data listing tidak ditemukan', 'error');
+    const tipeEmoji = {Rumah:'🏡',Ruko:'🏪',Apartemen:'🏢',Gudang:'🏭',Tanah:'🌿',Kios:'🏬'}[listing.Tipe_Properti] || '🏠';
+    data = {
+      foto_url:    listing.Foto_Utama_URL || '',
+      foto2_url:   listing.Foto_2_URL || '',
+      status:      (listing.Status_Transaksi || 'JUAL').toUpperCase(),
+      tipe:        tipeEmoji + ' ' + (listing.Tipe_Properti || '').toUpperCase(),
+      harga:       listing.Harga_Format || formatRupiah(listing.Harga) || 'On Request',
+      judul:       listing.Judul || [listing.Tipe_Properti, listing.Kecamatan, listing.Kota].filter(Boolean).join(' '),
+      lokasi:      [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ') || '—',
+      lt:          listing.Luas_Tanah   ? listing.Luas_Tanah + ' m²' : '—',
+      lb:          listing.Luas_Bangunan ? listing.Luas_Bangunan + ' m²' : '—',
+      kt:          listing.Kamar_Tidur  || '—',
+      km:          listing.Kamar_Mandi  || '—',
+      sertifikat:  listing.Sertifikat   || '',
+      deskripsi:   (listing.Deskripsi || '').slice(0, 180),
+      kode:        listing.Kode_Listing || '',
+    };
+  } else if (type === 'project') {
+    const project = _projectsData?.find(p => p.ID === _currentProjectId);
+    if (!project) return showToast('Data properti tidak ditemukan', 'error');
+    const tipeEmoji = {Rumah:'🏡',Ruko:'🏪',Apartemen:'🏢',Gudang:'🏭',Tanah:'🌿'}[project.Tipe_Properti] || '🏠';
+    data = {
+      foto_url:   project.Foto_1_URL || '',
+      foto2_url:  project.Foto_2_URL || '',
+      status:     'JUAL',
+      tipe:       tipeEmoji + ' ' + (project.Tipe_Properti || '').toUpperCase(),
+      harga:      project.Harga_Format || 'On Request',
+      judul:      project.Nama_Proyek || '',
+      lokasi:     [project.Kota, project.Provinsi].filter(Boolean).join(', ') || '—',
+      lt:         project.Luas_Tanah    ? project.Luas_Tanah + ' m²' : '—',
+      lb:         project.Luas_Bangunan ? project.Luas_Bangunan + ' m²' : '—',
+      kt:         project.Kamar_Tidur   || '—',
+      km:         project.Kamar_Mandi   || '—',
+      sertifikat: project.Sertifikat    || '',
+      deskripsi:  (project.Deskripsi || '').slice(0, 180),
+      kode:       project.Kode_Proyek   || '',
+    };
+  } else if (type === 'asset') {
+    const a = _currentAsset;
+    if (!a) return showToast('Data aset tidak ditemukan', 'error');
+    const tipeEmoji = {Rumah:'🏡',Ruko:'🏪',Apartemen:'🏢',Gudang:'🏭',Tanah:'🌿',Kios:'🏬'}[a.Tipe_Properti] || '🏠';
+    data = {
+      foto_url:   a.Foto_1_URL || '',
+      foto2_url:  a.Foto_2_URL || '',
+      status:     'LELANG',
+      tipe:       tipeEmoji + ' ' + (a.Tipe_Properti || '').toUpperCase(),
+      harga:      a.Harga_Limit_Format || 'On Request',
+      judul:      a.Nama_Asset || a.Nama_Debitur || 'Aset Lelang',
+      lokasi:     [a.Kecamatan, a.Kota].filter(Boolean).join(', ') || '—',
+      lt:         a.Luas_Tanah    ? a.Luas_Tanah + ' m²' : '—',
+      lb:         a.Luas_Bangunan ? a.Luas_Bangunan + ' m²' : '—',
+      kt:         '—',
+      km:         '—',
+      sertifikat: a.Sertifikat   || '',
+      deskripsi:  (a.Bank_Kreditur ? '🏦 ' + a.Bank_Kreditur : '') + (a.No_Perkara ? '\nNo. Perkara: ' + a.No_Perkara : ''),
+      kode:       a.Kode_Asset   || '',
+    };
+  }
+
+  if (!data) return;
+  _flyerData = data;
+  _flyerKode = data.kode;
+  _flyerSize = 'post';
+
+  openModal('modal-flyer');
+  _renderFlyerPreview();
+  switchFlyerSize('post');
+}
+
+// ── Render flyer ke preview wrap ──────────────────────
+function _renderFlyerPreview() {
+  const wrap = document.getElementById('flyer-preview-wrap');
+  if (!wrap || !_flyerData) return;
+
+  const isStory = _flyerSize === 'story';
+  const fotoH   = isStory ? 300 : 210;
+  const W       = 432;
+
+  const user    = STATE.user || {};
+  const initial = (user.nama || 'M').charAt(0).toUpperCase();
+  const kantor  = (user.nama_kantor || '').replace(/^MANSION\s*:\s*/i, 'MANSION : ').trim();
+  const waNum   = (user.no_wa || '').replace(/\D/g,'');
+  const waFmt   = waNum ? '+' + (waNum.startsWith('62') ? waNum : '62' + waNum.replace(/^0/,'')) : '';
+
+  const d = _flyerData;
+  const statusColor = d.status === 'LELANG' ? '#f59e0b' : '#D4A853';
+
+  // Sertifikat badge
+  const sertBadge = d.sertifikat
+    ? `<div style="display:inline-block;font-size:8.5px;font-weight:800;letter-spacing:1px;padding:2px 9px;border-left:3px solid #D4A853;background:#faf8f2;color:#0D1526;margin-right:8px">${escapeHtml(d.sertifikat)}</div><span style="font-size:8.5px;color:#bbb">Sertifikat</span>`
+    : '';
+
+  // Deskripsi / info kecil
+  const descHtml = d.deskripsi
+    ? `<div style="padding:10px 14px;border-bottom:1px solid #ececec;font-size:9.5px;color:#555;line-height:1.5;white-space:pre-line">${escapeHtml(d.deskripsi.slice(0, isStory ? 220 : 150))}</div>`
+    : '';
+
+  wrap.innerHTML = `
+  <div id="flyer-dom" style="
+    width:${W}px;background:#fff;position:relative;overflow:hidden;
+    box-shadow:0 8px 32px rgba(0,0,0,0.3);
+    display:flex;flex-direction:column;
+    font-family:'Inter',Arial,sans-serif;
+  ">
+    <!-- HEADER -->
+    <div style="background:#0D1526;padding:10px 15px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:8px">
+        <img src="/assets/mansion-logo.png" alt="M"
+          style="width:26px;height:26px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.55))"
+          onerror="this.style.display='none'"/>
+        <div>
+          <div style="font-family:'DM Serif Display',Georgia,serif;font-size:16px;color:#D4A853;letter-spacing:2px;text-shadow:0 1px 4px rgba(0,0,0,0.6)">MANSION</div>
+          <div style="font-size:6.5px;color:rgba(212,168,83,0.65);letter-spacing:2px;text-transform:uppercase;margin-top:-2px;text-shadow:0 1px 3px rgba(0,0,0,0.5)">Properti Indonesia</div>
+        </div>
+      </div>
+      <div style="font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border:1.5px solid ${statusColor};color:${statusColor}">${escapeHtml(d.status)}</div>
+    </div>
+
+    <!-- FOTO -->
+    <div style="position:relative;height:${fotoH}px;background:#ddd;overflow:hidden;flex-shrink:0">
+      ${d.foto_url ? `<img src="${escapeHtml(d.foto_url)}" crossorigin="anonymous" style="width:100%;height:100%;object-fit:cover;display:block"/>` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;color:#ccc">🏠</div>`}
+      <!-- Watermark -->
+      <div style="position:absolute;bottom:12px;left:0;right:0;text-align:center;font-family:'DM Serif Display',Georgia,serif;font-size:20px;color:rgba(255,255,255,0.28);letter-spacing:8px;text-transform:uppercase;pointer-events:none">MANSION</div>
+      <!-- Chevron pojok kanan atas -->
+      <div style="position:absolute;top:0;right:0;width:72px;height:72px;overflow:hidden;pointer-events:none">
+        <svg width="72" height="72" viewBox="0 0 72 72" style="display:block">
+          <polygon points="72,0 72,72 0,0" fill="#D4A853" opacity="0.9"/>
+          <text x="50" y="22" font-size="16" font-weight="900" fill="#0D1526" font-family="Arial,sans-serif" text-anchor="middle">»</text>
+        </svg>
+      </div>
+      <!-- Tipe tag -->
+      <div style="position:absolute;bottom:0;left:0;background:#D4A853;color:#0D1526;font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;padding:4px 12px">${escapeHtml(d.tipe)}</div>
+    </div>
+
+    <!-- SPLIT ROW harga | judul -->
+    <div style="display:flex;border-bottom:1px solid #ececec;flex-shrink:0">
+      <div style="background:#0D1526;padding:13px 14px;display:flex;flex-direction:column;justify-content:center;position:relative;flex-shrink:0;width:${isStory?168:152}px">
+        <div style="font-size:9px;font-weight:900;color:rgba(212,168,83,0.8);letter-spacing:3px;text-transform:uppercase;margin-bottom:5px">HARGA</div>
+        <div style="font-family:'DM Serif Display',Georgia,serif;color:#D4A853;font-size:${isStory?26:23}px;font-weight:700;line-height:1">${escapeHtml(d.harga)}</div>
+        <div style="position:absolute;right:-2px;top:50%;transform:translateY(-50%);font-size:30px;color:#D4A853;line-height:1;z-index:2">»</div>
+      </div>
+      <div style="flex:1;padding:12px 16px;display:flex;flex-direction:column;justify-content:center">
+        <div style="font-family:'DM Serif Display',Georgia,serif;font-size:${isStory?15:13}px;color:#0D1526;line-height:1.2;margin-bottom:4px">${escapeHtml(d.judul)}</div>
+        <div style="font-size:9.5px;color:#888">📍 ${escapeHtml(d.lokasi)}</div>
+      </div>
+    </div>
+
+    <!-- SPEK -->
+    <div style="padding:11px 15px;border-bottom:1px solid #ececec;flex-shrink:0">
+      <div style="font-size:7.5px;font-weight:800;color:#0D1526;letter-spacing:2px;text-transform:uppercase;margin-bottom:9px;display:flex;align-items:center;gap:7px">
+        SPESIFIKASI
+        <span style="flex:1;height:1px;background:linear-gradient(90deg,#D4A853,transparent);display:inline-block"></span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        <div style="text-align:center">
+          <div style="font-size:13px;font-weight:800;color:#0D1526">${escapeHtml(d.lt)}</div>
+          <div style="font-size:7px;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">LT</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:13px;font-weight:800;color:#0D1526">${escapeHtml(d.lb)}</div>
+          <div style="font-size:7px;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">LB</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:13px;font-weight:800;color:#0D1526">${escapeHtml(d.kt)}</div>
+          <div style="font-size:7px;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">KT</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:13px;font-weight:800;color:#0D1526">${escapeHtml(d.km)}</div>
+          <div style="font-size:7px;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">KM</div>
+        </div>
+      </div>
+      ${sertBadge ? `<div style="margin-top:9px;display:flex;align-items:center">${sertBadge}</div>` : ''}
+    </div>
+
+    <!-- DESKRIPSI / INFO TAMBAHAN -->
+    ${descHtml}
+
+    <!-- AGENT -->
+    <div style="background:#0D1526;border-top:3px solid #D4A853;padding:10px 14px;display:flex;align-items:center;gap:11px;margin-top:auto;flex-shrink:0">
+      <div style="width:34px;height:34px;border-radius:50%;border:1.5px solid #D4A853;background:rgba(212,168,83,0.12);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#D4A853;flex-shrink:0">${escapeHtml(initial)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:700;color:#fff">${escapeHtml(user.nama || '')}</div>
+        <div style="font-size:8px;color:rgba(212,168,83,0.65);margin-top:1px">${escapeHtml(kantor)}</div>
+        ${waFmt ? `<div style="font-size:8px;color:rgba(255,255,255,0.4);margin-top:2px">📱 ${escapeHtml(waFmt)}</div>` : ''}
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="background:#D4A853;padding:5px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <span style="font-size:7.5px;font-weight:800;color:#0D1526;letter-spacing:1.5px;text-transform:uppercase">${escapeHtml(d.kode)}</span>
+      <span style="font-size:7.5px;color:rgba(13,21,38,0.6);letter-spacing:1px">mansionpro.id</span>
+    </div>
+  </div>`;
+
+  // Scale preview supaya muat di layar
+  const maxW = Math.min(window.innerWidth - 64, 432);
+  const scale = maxW / W;
+  const dom = document.getElementById('flyer-dom');
+  if (dom && scale < 1) {
+    dom.style.transform = `scale(${scale})`;
+    dom.style.transformOrigin = 'top left';
+    wrap.style.width  = (W * scale) + 'px';
+    wrap.style.height = (dom.offsetHeight * scale) + 'px';
+  } else {
+    if (dom) { dom.style.transform = ''; dom.style.transformOrigin = ''; }
+    wrap.style.width  = '';
+    wrap.style.height = '';
+  }
+}
+
+// ── Toggle POST / STORY ───────────────────────────────
+function switchFlyerSize(size) {
+  _flyerSize = size;
+  ['post','story'].forEach(s => {
+    const btn = document.getElementById('flyer-tab-' + s);
+    if (!btn) return;
+    if (s === size) {
+      btn.style.background = 'rgba(212,168,83,0.2)';
+      btn.style.border     = '1px solid rgba(212,168,83,0.4)';
+      btn.style.color      = '#D4A853';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.border     = '1px solid rgba(255,255,255,0.15)';
+      btn.style.color      = 'rgba(255,255,255,0.5)';
+    }
+  });
+  _renderFlyerPreview();
+}
+
+// ── Download PNG ──────────────────────────────────────
+async function downloadFlyer() {
+  const dom = document.getElementById('flyer-dom');
+  if (!dom || !_flyerData) return;
+
+  const btn = document.querySelector('#modal-flyer button[onclick*="downloadFlyer"]');
+  const origText = btn?.innerHTML;
+  if (btn) btn.innerHTML = '⏳ Memproses…';
+
+  try {
+    // Reset scale untuk capture full res
+    const origTransform = dom.style.transform;
+    const origOrigin    = dom.style.transformOrigin;
+    dom.style.transform      = '';
+    dom.style.transformOrigin = '';
+
+    const canvas = await html2canvas(dom, {
+      scale: 2.25,           // ~1080px wide
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+
+    // Restore scale
+    dom.style.transform       = origTransform;
+    dom.style.transformOrigin = origOrigin;
+
+    const link = document.createElement('a');
+    link.download = `flyer-mansion-${(_flyerKode || 'properti').toLowerCase().replace(/[^a-z0-9]/g,'-')}.png`;
+    link.href = canvas.toDataURL('image/png', 1.0);
+    link.click();
+  } catch (e) {
+    showToast('Gagal export: ' + e.message, 'error');
+  } finally {
+    if (btn && origText) btn.innerHTML = origText;
+  }
+}
+
+// ── Share flyer via Web Share API ─────────────────────
+async function shareFlyer() {
+  const dom = document.getElementById('flyer-dom');
+  if (!dom || !_flyerData) return;
+
+  const btn = document.querySelector('#modal-flyer button[onclick*="shareFlyer"]');
+  const origText = btn?.innerHTML;
+  if (btn) btn.innerHTML = '⏳ Memproses…';
+
+  try {
+    const origTransform = dom.style.transform;
+    dom.style.transform = '';
+    const canvas = await html2canvas(dom, { scale: 2.25, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false });
+    dom.style.transform = origTransform;
+
+    canvas.toBlob(async blob => {
+      const file = new File([blob], `flyer-mansion-${(_flyerKode||'properti').replace(/[^a-z0-9]/gi,'-')}.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+      } else {
+        showToast('Share tidak didukung di browser ini, gunakan Download', 'error');
+      }
+      if (btn && origText) btn.innerHTML = origText;
+    }, 'image/png', 1.0);
+  } catch (e) {
+    if (btn && origText) btn.innerHTML = origText;
+    showToast('Gagal share: ' + e.message, 'error');
+  }
 }
