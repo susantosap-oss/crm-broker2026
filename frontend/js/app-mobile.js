@@ -8620,7 +8620,7 @@ function openFlyerModal(type, listingId) {
       kt:          listing.Kamar_Tidur   || _ls.kt || '—',
       km:          listing.Kamar_Mandi   || _ls.km || '—',
       sertifikat:  listing.Sertifikat   || '',
-      deskripsi:   (listing.Deskripsi || '').slice(0, 180),
+      deskripsi:   (listing.Deskripsi || '').slice(0, 350),
       kode:        listing.Kode_Listing || '',
     };
   } else if (type === 'project') {
@@ -8641,7 +8641,7 @@ function openFlyerModal(type, listingId) {
       kt:         project.Kamar_Tidur   || _ps.kt || '—',
       km:         project.Kamar_Mandi   || _ps.km || '—',
       sertifikat: project.Sertifikat    || '',
-      deskripsi:  (project.Deskripsi || '').slice(0, 180),
+      deskripsi:  (project.Deskripsi || '').slice(0, 350),
       kode:       project.Kode_Proyek   || '',
     };
   } else if (type === 'asset') {
@@ -8659,8 +8659,9 @@ function openFlyerModal(type, listingId) {
       lokasi:     [a.Kecamatan, a.Kota].filter(Boolean).join(', ') || '—',
       lt:         a.Luas_Tanah    ? a.Luas_Tanah + ' m²'    : (_as.lt || '—'),
       lb:         a.Luas_Bangunan ? a.Luas_Bangunan + ' m²' : (_as.lb || '—'),
-      kt:         _as.kt || '—',
-      km:         _as.km || '—',
+      kt:         null,
+      km:         null,
+      isAsset:    true,
       sertifikat: a.Sertifikat   || '',
       deskripsi:  (a.Bank_Kreditur ? '🏦 ' + a.Bank_Kreditur : '') + (a.No_Perkara ? '\nNo. Perkara: ' + a.No_Perkara : ''),
       kode:       a.Kode_Asset   || '',
@@ -8700,9 +8701,9 @@ function _renderFlyerPreview() {
     ? `<div style="display:inline-block;font-size:8.5px;font-weight:800;letter-spacing:1px;padding:2px 9px;border-left:3px solid #D4A853;background:#faf8f2;color:#0D1526;margin-right:8px">${escapeHtml(d.sertifikat)}</div><span style="font-size:8.5px;color:#bbb">Sertifikat</span>`
     : '';
 
-  // Deskripsi / info kecil
+  // Deskripsi / info kecil — potong hanya jika sangat panjang, biarkan layout yg tentukan
   const descHtml = d.deskripsi
-    ? `<div style="padding:10px 14px;border-bottom:1px solid #ececec;font-size:9.5px;color:#555;line-height:1.5;white-space:pre-line">${escapeHtml(d.deskripsi.slice(0, isStory ? 220 : 150))}</div>`
+    ? `<div style="padding:10px 14px;border-bottom:1px solid #ececec;font-size:9.5px;color:#555;line-height:1.5;white-space:pre-line">${escapeHtml(d.deskripsi.slice(0, 350))}</div>`
     : '';
 
   wrap.innerHTML = `
@@ -8762,7 +8763,7 @@ function _renderFlyerPreview() {
         SPESIFIKASI
         <span style="flex:1;height:1px;background:linear-gradient(90deg,#D4A853,transparent);display:inline-block"></span>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+      <div style="display:grid;grid-template-columns:${d.isAsset ? 'repeat(2,1fr)' : 'repeat(4,1fr)'};gap:6px">
         <div style="text-align:center">
           <div style="font-size:13px;font-weight:800;color:#0D1526">${escapeHtml(d.lt)}</div>
           <div style="font-size:7px;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">LT</div>
@@ -8771,6 +8772,7 @@ function _renderFlyerPreview() {
           <div style="font-size:13px;font-weight:800;color:#0D1526">${escapeHtml(d.lb)}</div>
           <div style="font-size:7px;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">LB</div>
         </div>
+        ${!d.isAsset ? `
         <div style="text-align:center">
           <div style="font-size:13px;font-weight:800;color:#0D1526">${escapeHtml(d.kt)}</div>
           <div style="font-size:7px;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">KT</div>
@@ -8778,7 +8780,7 @@ function _renderFlyerPreview() {
         <div style="text-align:center">
           <div style="font-size:13px;font-weight:800;color:#0D1526">${escapeHtml(d.km)}</div>
           <div style="font-size:7px;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">KM</div>
-        </div>
+        </div>` : ''}
       </div>
       ${sertBadge ? `<div style="margin-top:9px;display:flex;align-items:center">${sertBadge}</div>` : ''}
     </div>` : (sertBadge ? `<div style="padding:9px 15px;border-bottom:1px solid #ececec;flex-shrink:0;display:flex;align-items:center">${sertBadge}</div>` : '')}
