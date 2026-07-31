@@ -8581,6 +8581,23 @@ let _flyerData   = null;
 let _flyerSize   = 'post'; // 'post' | 'story'
 let _flyerKode   = '';
 
+function _parseSpekFromDeskripsi(text) {
+  const spek = { lt: null, lb: null, kt: null, km: null };
+  if (!text) return spek;
+  text.split('\n').forEach(raw => {
+    const line = raw.trim();
+    const lt = line.match(/\bLT\s*[:：]?\s*(\d[\d.,]*)/i);       if (lt && !spek.lt) spek.lt = lt[1].replace(',','.') + ' m²';
+    const lb = line.match(/\bLB\s*[:：]?\s*(\d[\d.,]*)/i);       if (lb && !spek.lb) spek.lb = lb[1].replace(',','.') + ' m²';
+    const kt = line.match(/(\d+)\s*KT\b/i);                       if (kt && !spek.kt) spek.kt = kt[1];
+    const km = line.match(/(\d+)\s*KM\b/i);                       if (km && !spek.km) spek.km = km[1];
+    const kmar = line.match(/Kamar\s+Tidur\s*[:：]?\s*(\d+)/i);   if (kmar && !spek.kt) spek.kt = kmar[1];
+    const kmnd = line.match(/Kamar\s+Mandi\s*[:：]?\s*(\d+)/i);   if (kmnd && !spek.km) spek.km = kmnd[1];
+    const ltx  = line.match(/Luas\s+Tanah\s*[:：]?\s*(\d[\d.,]*)/i);     if (ltx && !spek.lt) spek.lt = ltx[1].replace(',','.') + ' m²';
+    const lbx  = line.match(/Luas\s+Bangunan\s*[:：]?\s*(\d[\d.,]*)/i);  if (lbx && !spek.lb) spek.lb = lbx[1].replace(',','.') + ' m²';
+  });
+  return spek;
+}
+
 // ── Buka modal flyer ──────────────────────────────────
 function openFlyerModal(type, listingId) {
   let data = null;
@@ -8589,6 +8606,7 @@ function openFlyerModal(type, listingId) {
     const listing = _allListings.find(l => l.ID === (listingId || _shareWAListingId));
     if (!listing) return showToast('Data listing tidak ditemukan', 'error');
     const tipeEmoji = {Rumah:'🏡',Ruko:'🏪',Apartemen:'🏢',Gudang:'🏭',Tanah:'🌿',Kios:'🏬'}[listing.Tipe_Properti] || '🏠';
+    const _ls = _parseSpekFromDeskripsi(listing.Deskripsi || '');
     data = {
       foto_url:    listing.Foto_Utama_URL || '',
       foto2_url:   listing.Foto_2_URL || '',
@@ -8597,10 +8615,10 @@ function openFlyerModal(type, listingId) {
       harga:       listing.Harga_Format || formatRupiah(listing.Harga) || 'On Request',
       judul:       listing.Judul || [listing.Tipe_Properti, listing.Kecamatan, listing.Kota].filter(Boolean).join(' '),
       lokasi:      [listing.Kecamatan, listing.Kota].filter(Boolean).join(', ') || '—',
-      lt:          listing.Luas_Tanah   ? listing.Luas_Tanah + ' m²' : '—',
-      lb:          listing.Luas_Bangunan ? listing.Luas_Bangunan + ' m²' : '—',
-      kt:          listing.Kamar_Tidur  || '—',
-      km:          listing.Kamar_Mandi  || '—',
+      lt:          listing.Luas_Tanah    ? listing.Luas_Tanah + ' m²'    : (_ls.lt || '—'),
+      lb:          listing.Luas_Bangunan ? listing.Luas_Bangunan + ' m²' : (_ls.lb || '—'),
+      kt:          listing.Kamar_Tidur   || _ls.kt || '—',
+      km:          listing.Kamar_Mandi   || _ls.km || '—',
       sertifikat:  listing.Sertifikat   || '',
       deskripsi:   (listing.Deskripsi || '').slice(0, 180),
       kode:        listing.Kode_Listing || '',
@@ -8609,6 +8627,7 @@ function openFlyerModal(type, listingId) {
     const project = _projectsData?.find(p => p.ID === _currentProjectId);
     if (!project) return showToast('Data properti tidak ditemukan', 'error');
     const tipeEmoji = {Rumah:'🏡',Ruko:'🏪',Apartemen:'🏢',Gudang:'🏭',Tanah:'🌿'}[project.Tipe_Properti] || '🏠';
+    const _ps = _parseSpekFromDeskripsi(project.Deskripsi || '');
     data = {
       foto_url:   project.Foto_1_URL || '',
       foto2_url:  project.Foto_2_URL || '',
@@ -8617,10 +8636,10 @@ function openFlyerModal(type, listingId) {
       harga:      project.Harga_Format || 'On Request',
       judul:      project.Nama_Proyek || '',
       lokasi:     [project.Kota, project.Provinsi].filter(Boolean).join(', ') || '—',
-      lt:         project.Luas_Tanah    ? project.Luas_Tanah + ' m²' : '—',
-      lb:         project.Luas_Bangunan ? project.Luas_Bangunan + ' m²' : '—',
-      kt:         project.Kamar_Tidur   || '—',
-      km:         project.Kamar_Mandi   || '—',
+      lt:         project.Luas_Tanah    ? project.Luas_Tanah + ' m²'    : (_ps.lt || '—'),
+      lb:         project.Luas_Bangunan ? project.Luas_Bangunan + ' m²' : (_ps.lb || '—'),
+      kt:         project.Kamar_Tidur   || _ps.kt || '—',
+      km:         project.Kamar_Mandi   || _ps.km || '—',
       sertifikat: project.Sertifikat    || '',
       deskripsi:  (project.Deskripsi || '').slice(0, 180),
       kode:       project.Kode_Proyek   || '',
@@ -8629,6 +8648,7 @@ function openFlyerModal(type, listingId) {
     const a = _currentAsset;
     if (!a) return showToast('Data aset tidak ditemukan', 'error');
     const tipeEmoji = {Rumah:'🏡',Ruko:'🏪',Apartemen:'🏢',Gudang:'🏭',Tanah:'🌿',Kios:'🏬'}[a.Tipe_Properti] || '🏠';
+    const _as = _parseSpekFromDeskripsi((a.Notes || '') + '\n' + (a.Keterangan_Debitur || ''));
     data = {
       foto_url:   a.Foto_1_URL || '',
       foto2_url:  a.Foto_2_URL || '',
@@ -8637,10 +8657,10 @@ function openFlyerModal(type, listingId) {
       harga:      a.Harga_Limit_Format || 'On Request',
       judul:      a.Nama_Asset || a.Nama_Debitur || 'Aset Lelang',
       lokasi:     [a.Kecamatan, a.Kota].filter(Boolean).join(', ') || '—',
-      lt:         a.Luas_Tanah    ? a.Luas_Tanah + ' m²' : '—',
-      lb:         a.Luas_Bangunan ? a.Luas_Bangunan + ' m²' : '—',
-      kt:         '—',
-      km:         '—',
+      lt:         a.Luas_Tanah    ? a.Luas_Tanah + ' m²'    : (_as.lt || '—'),
+      lb:         a.Luas_Bangunan ? a.Luas_Bangunan + ' m²' : (_as.lb || '—'),
+      kt:         _as.kt || '—',
+      km:         _as.km || '—',
       sertifikat: a.Sertifikat   || '',
       deskripsi:  (a.Bank_Kreditur ? '🏦 ' + a.Bank_Kreditur : '') + (a.No_Perkara ? '\nNo. Perkara: ' + a.No_Perkara : ''),
       kode:       a.Kode_Asset   || '',
