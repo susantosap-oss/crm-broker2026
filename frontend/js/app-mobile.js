@@ -8588,8 +8588,8 @@ function _parseSpekFromDeskripsi(text) {
     const line = raw.trim();
     const lt = line.match(/\bLT\s*[:：]?\s*(\d[\d.,]*)/i);       if (lt && !spek.lt) spek.lt = lt[1].replace(',','.') + ' m²';
     const lb = line.match(/\bLB\s*[:：]?\s*(\d[\d.,]*)/i);       if (lb && !spek.lb) spek.lb = lb[1].replace(',','.') + ' m²';
-    const kt = line.match(/(\d+)\s*KT\b/i);                       if (kt && !spek.kt) spek.kt = kt[1];
-    const km = line.match(/(\d+)\s*KM\b/i);                       if (km && !spek.km) spek.km = km[1];
+    const kt = line.match(/(\d+)\s*KT\b|\bKT\s*[:：]?\s*(\d+)/i); if (kt && !spek.kt) spek.kt = kt[1] || kt[2];
+    const km = line.match(/(\d+)\s*KM\b|\bKM\s*[:：]?\s*(\d+)/i); if (km && !spek.km) spek.km = km[1] || km[2];
     const kmar = line.match(/Kamar\s+Tidur\s*[:：]?\s*(\d+)/i);   if (kmar && !spek.kt) spek.kt = kmar[1];
     const kmnd = line.match(/Kamar\s+Mandi\s*[:：]?\s*(\d+)/i);   if (kmnd && !spek.km) spek.km = kmnd[1];
     const ltx  = line.match(/Luas\s+Tanah\s*[:：]?\s*(\d[\d.,]*)/i);     if (ltx && !spek.lt) spek.lt = ltx[1].replace(',','.') + ' m²';
