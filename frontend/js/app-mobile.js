@@ -8627,7 +8627,6 @@ function openFlyerModal(type, listingId) {
     const project = _projectsData?.find(p => p.ID === _currentProjectId);
     if (!project) return showToast('Data properti tidak ditemukan', 'error');
     const tipeEmoji = {Rumah:'🏡',Ruko:'🏪',Apartemen:'🏢',Gudang:'🏭',Tanah:'🌿'}[project.Tipe_Properti] || '🏠';
-    const _ps = _parseSpekFromDeskripsi(project.Deskripsi || '');
     data = {
       foto_url:   project.Foto_1_URL || '',
       foto2_url:  project.Foto_2_URL || '',
@@ -8636,10 +8635,7 @@ function openFlyerModal(type, listingId) {
       harga:      project.Harga_Format || 'On Request',
       judul:      project.Nama_Proyek || '',
       lokasi:     [project.Kota, project.Provinsi].filter(Boolean).join(', ') || '—',
-      lt:         project.Luas_Tanah    ? project.Luas_Tanah + ' m²'    : (_ps.lt || '—'),
-      lb:         project.Luas_Bangunan ? project.Luas_Bangunan + ' m²' : (_ps.lb || '—'),
-      kt:         project.Kamar_Tidur   || _ps.kt || '—',
-      km:         project.Kamar_Mandi   || _ps.km || '—',
+      hideSpek:   true,
       sertifikat: project.Sertifikat    || '',
       deskripsi:  (project.Deskripsi || '').slice(0, 350),
       kode:       project.Kode_Proyek   || '',
@@ -8756,8 +8752,8 @@ function _renderFlyerPreview() {
       </div>
     </div>
 
-    <!-- SPEK (hanya tampil jika ada minimal 1 nilai) -->
-    ${[d.lt, d.lb, d.kt, d.km].some(v => v && v !== '—') ? `
+    <!-- SPEK: Listing=4col, Asset=2col, Primary=hidden -->
+    ${!d.hideSpek && [d.lt, d.lb, d.kt, d.km].some(v => v && v !== '—') ? `
     <div style="padding:11px 15px;border-bottom:1px solid #ececec;flex-shrink:0">
       <div style="font-size:7.5px;font-weight:800;color:#0D1526;letter-spacing:2px;text-transform:uppercase;margin-bottom:9px;display:flex;align-items:center;gap:7px">
         SPESIFIKASI
