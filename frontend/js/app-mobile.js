@@ -8725,7 +8725,7 @@ function _renderFlyerPreview() {
 
     <!-- FOTO -->
     <div style="position:relative;height:${fotoH}px;background:#ddd;overflow:hidden;flex-shrink:0">
-      ${d.foto_url ? `<img src="${escapeHtml(d.foto_url)}" crossorigin="anonymous" style="width:100%;height:100%;object-fit:cover;display:block"/>` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;color:#ccc">🏠</div>`}
+      ${d.foto_url ? `<div style="width:100%;height:100%;background-image:url('${escapeHtml(d.foto_url)}');background-size:cover;background-position:center;background-repeat:no-repeat"></div>` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;color:#ccc">🏠</div>`}
       <!-- Watermark -->
       <div style="position:absolute;bottom:12px;left:0;right:0;text-align:center;font-family:'DM Serif Display',Georgia,serif;font-size:20px;color:rgba(255,255,255,0.28);letter-spacing:8px;text-transform:uppercase;pointer-events:none">MANSION</div>
       <!-- Chevron pojok kanan atas -->
