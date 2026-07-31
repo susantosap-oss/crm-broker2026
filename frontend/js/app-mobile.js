@@ -8755,7 +8755,8 @@ function _renderFlyerPreview() {
       </div>
     </div>
 
-    <!-- SPEK -->
+    <!-- SPEK (hanya tampil jika ada minimal 1 nilai) -->
+    ${[d.lt, d.lb, d.kt, d.km].some(v => v && v !== '—') ? `
     <div style="padding:11px 15px;border-bottom:1px solid #ececec;flex-shrink:0">
       <div style="font-size:7.5px;font-weight:800;color:#0D1526;letter-spacing:2px;text-transform:uppercase;margin-bottom:9px;display:flex;align-items:center;gap:7px">
         SPESIFIKASI
@@ -8780,7 +8781,7 @@ function _renderFlyerPreview() {
         </div>
       </div>
       ${sertBadge ? `<div style="margin-top:9px;display:flex;align-items:center">${sertBadge}</div>` : ''}
-    </div>
+    </div>` : (sertBadge ? `<div style="padding:9px 15px;border-bottom:1px solid #ececec;flex-shrink:0;display:flex;align-items:center">${sertBadge}</div>` : '')}
 
     <!-- DESKRIPSI / INFO TAMBAHAN -->
     ${descHtml}
