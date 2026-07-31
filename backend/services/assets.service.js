@@ -260,7 +260,7 @@ class AssetsService {
       const assetId       = getStr(row, 'id aset', 'asset id', 'id', 'kode');
       if (!assetId) { results.skipped++; continue; }
 
-      const bankName      = getStr(row, 'bank', 'bank kreditur', 'nama bank', 'kreditor');
+      const bankName      = getStr(row, 'bank', 'bank kreditur', 'nama bank', 'kreditor', 'nama kreditur', 'kreditur', 'lembaga', 'institusi', 'lender') || (row[1] || '').trim();
       const assetTypeRaw  = getStr(row, 'tipe aset', 'tipe', 'jenis', 'type').toUpperCase();
       const city          = getStr(row, 'kota', 'kab/kota', 'kabupaten/kota', 'kabupaten', 'kabkota');
       const district      = getStr(row, 'kecamatan', 'kec');

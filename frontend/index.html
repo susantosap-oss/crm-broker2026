@@ -3101,9 +3101,9 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
 
           <!-- Share WA -->
-          <button onclick="openShareProjectWAPicker()"
+          <button onclick="shareProjectWA()"
             style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-            <i class="fa-brands fa-whatsapp"></i> Share WA
+            <i class="fa-solid fa-share-nodes"></i> Share
           </button>
 
           <!-- Siapkan Konten -->
@@ -4965,7 +4965,8 @@ async function saveApraisalResult(type) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
           <div>
             <label class="form-label">Bank / Kreditur</label>
-            <input id="af-bank" class="form-input" type="text" placeholder="Contoh: Bank BRI"/>
+            <input id="af-bank" class="form-input" type="text" placeholder="Contoh: Bank BRI" list="af-bank-list" autocomplete="off"/>
+            <datalist id="af-bank-list"></datalist>
           </div>
           <div>
             <label class="form-label">No. Perkara</label>
@@ -5073,13 +5074,13 @@ async function saveApraisalResult(type) {
       <!-- Foto Header -->
       <div style="position:relative">
         <div style="height:200px;background:#131F38;position:relative;overflow:hidden">
-          <img id="ad-foto1" src="" alt="" style="width:100%;height:100%;object-fit:cover"/>
+          <img id="ad-foto1" src="" alt="" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="openAssetPhotoViewer(1)"/>
           <!-- Thumbnails foto 2, 3 -->
-          <div style="position:absolute;bottom:10px;right:10px;display:flex;gap:6px">
-            <img id="ad-foto3-thumb" src="" alt="" style="width:52px;height:52px;border-radius:8px;object-fit:cover;border:2px solid rgba(255,255,255,0.2);display:none;cursor:pointer" onclick="toggleAssetDetailPhoto(3)"/>
-            <img id="ad-foto2-thumb" src="" alt="" style="width:52px;height:52px;border-radius:8px;object-fit:cover;border:2px solid rgba(255,255,255,0.2);display:none;cursor:pointer" onclick="toggleAssetDetailPhoto(2)"/>
+          <div style="position:absolute;bottom:10px;right:10px;display:flex;gap:6px;z-index:3">
+            <img id="ad-foto3-thumb" src="" alt="" style="width:52px;height:52px;border-radius:8px;object-fit:cover;border:2px solid rgba(255,255,255,0.2);display:none;cursor:pointer" onclick="openAssetPhotoViewer(3)"/>
+            <img id="ad-foto2-thumb" src="" alt="" style="width:52px;height:52px;border-radius:8px;object-fit:cover;border:2px solid rgba(255,255,255,0.2);display:none;cursor:pointer" onclick="openAssetPhotoViewer(2)"/>
           </div>
-          <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(13,21,38,0.9) 0%,transparent 50%)"></div>
+          <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(13,21,38,0.9) 0%,transparent 50%);pointer-events:none"></div>
           <!-- Badges -->
           <div id="ad-status-badge" style="position:absolute;top:12px;left:12px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700"></div>
           <div id="ad-web-badge" style="display:none;position:absolute;top:12px;left:80px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid rgba(96,165,250,0.3)">🌐 Web</div>
@@ -5171,7 +5172,7 @@ async function saveApraisalResult(type) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <button onclick="shareAssetWA()"
             style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-            <i class="fa-brands fa-whatsapp"></i> Share WA
+            <i class="fa-solid fa-share-nodes"></i> Share
           </button>
           <button onclick="openAssetContent()"
             style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);color:#a78bfa;padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">

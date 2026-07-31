@@ -837,8 +837,8 @@ async function openListingDetail(id) {
 
     <!-- Action Buttons -->
     <div style="display:flex;gap:10px;padding-top:4px;flex-wrap:wrap">
-      <button onclick="openShareWAPicker('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:13px;font-weight:600;cursor:pointer">
-        <i class="fa-brands fa-whatsapp" style="margin-right:6px"></i>Share WA
+      <button onclick="shareListingWA('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:13px;font-weight:600;cursor:pointer">
+        <i class="fa-solid fa-share-nodes" style="margin-right:6px"></i>Share
       </button>
       <button onclick="shareListingWACatalog('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-regular fa-copy" style="margin-right:6px"></i>WA Catalog
@@ -1827,6 +1827,24 @@ async function saveJudulListing(id) {
 // ── Share WA helpers ──────────────────────────────────────
 let _shareWAListingId = null;
 
+// Coba Web Share API dengan foto; kalau tidak support panggil fallbackFn()
+async function _webShareWithPhotoOrFallback(fotoUrl, text, fallbackFn) {
+  if (fotoUrl && typeof navigator.canShare === 'function') {
+    try {
+      const resp = await fetch(fotoUrl);
+      const blob = await resp.blob();
+      const ext  = (blob.type || '').includes('png') ? 'png' : 'jpg';
+      const file = new File([blob], `properti.${ext}`, { type: blob.type || 'image/jpeg' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text });
+        return true;
+      }
+    } catch (_) {}
+  }
+  fallbackFn();
+  return false;
+}
+
 function _makeSlug(text, id) {
   return text.toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
@@ -2063,8 +2081,21 @@ function _buildStatusText(listing, isOwner = false, waNum = '') {
 }
 
 // Legacy: dipanggil dari tempat lain kalau ada
-function shareListingWA(listingId) {
-  openShareWAPicker(listingId);
+async function shareListingWA(listingId) {
+  const listing = _allListings.find(l => l.ID === listingId);
+  if (!listing) return openShareWAPicker(listingId);
+
+  let isOwnerOrCoOwner = listing.Agen_ID === STATE.user?.id;
+  if (!isOwnerOrCoOwner && STATE.user?.id) {
+    try {
+      const r = await fetch(`/api/v1/listing_agents/${listing.ID}/agents`, { headers: { 'Authorization': `Bearer ${STATE.token}` } });
+      if (r.ok) { const d = await r.json(); isOwnerOrCoOwner = (d.data||[]).some(a => a.Agen_ID === STATE.user.id); }
+    } catch (_) {}
+  }
+
+  const text = _buildShareText(listing, isOwnerOrCoOwner);
+  const shared = await _webShareWithPhotoOrFallback(listing.Foto_Utama_URL, text, () => openShareWAPicker(listingId));
+  if (shared) _logShare('listing', listing.ID, listing.Judul || listing.Kode_Listing || '', 'wa');
 }
 
 // PR 17: WA Business Catalog format
@@ -6242,8 +6273,14 @@ function _buildProjectStatusText(project, waNum = '') {
   return text;
 }
 
-// backward compat — dipanggil dari tempat lain jika ada
-async function shareProjectWA() { openShareProjectWAPicker(); }
+async function shareProjectWA() {
+  if (!_currentProjectId) return;
+  const project = _projectsData.find(p => p.ID === _currentProjectId);
+  if (!project) return;
+  const text = _buildProjectShareText(project);
+  const shared = await _webShareWithPhotoOrFallback(project.Foto_1_URL, text, openShareProjectWAPicker);
+  if (shared) _logShare('project', project.ID, project.Nama_Proyek || '', 'wa', project.Koordinator_ID || '');
+}
 
 // ─────────────────────────────────────────────────────────
 // SIAPKAN KONTEN (sosmed bundle)
@@ -7754,7 +7791,7 @@ function buildAssetCard(a) {
     <div style="padding:12px">
       <p style="color:rgba(255,255,255,0.35);font-size:9px;margin:0 0 2px;text-transform:uppercase;letter-spacing:1px">${escapeHtml(a.Kode_Asset)}</p>
       <h3 style="font-family:'DM Serif Display',serif;font-size:14px;color:#fff;margin:0 0 2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${escapeHtml(a.Nama_Asset || a.Nama_Debitur || 'Aset Lelang')}</h3>
-      ${a.Bank_Kreditur ? `<p style="color:#D4A853;font-size:11px;font-weight:600;margin:0 0 2px">🏦 ${escapeHtml(a.Bank_Kreditur)}</p>` : ''}
+      ${a.Bank_Kreditur ? `<span style="display:inline-block;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700;color:#D4A853;margin-bottom:4px">🏦 ${escapeHtml(a.Bank_Kreditur)}</span>` : ''}
       ${lokasi ? `<p style="color:rgba(255,255,255,0.4);font-size:10px;margin:0 0 4px">📍 ${escapeHtml(lokasi)}</p>` : '<div style="margin-bottom:4px"></div>'}
       <p style="color:rgba(255,255,255,0.35);font-size:10px;margin:0 0 6px">LT ${escapeHtml(lt)} · LB ${escapeHtml(lb)} · ${escapeHtml(sert)}</p>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
@@ -7987,6 +8024,16 @@ function toggleAssetDetailPhoto(slot) {
   if (foto && url) foto.src = url;
 }
 
+function openAssetPhotoViewer(startSlot) {
+  if (!_currentAsset) return;
+  openPhotoViewer(
+    _currentAsset.Foto_1_URL,
+    _currentAsset.Foto_2_URL,
+    _currentAsset.Foto_3_URL,
+    (startSlot || 1) - 1
+  );
+}
+
 // ── Open Content / Caption Modal ─────────────────────────
 async function openAssetContent() {
   if (!_currentAsset) return;
@@ -8086,10 +8133,15 @@ function _buildAssetShareText(asset) {
     + (a.Kode_Asset ? '\n\n' + a.Kode_Asset : '');
 }
 
-function shareAssetWA() {
+async function shareAssetWA() {
   if (!_currentAsset) return;
   document.getElementById('asset-wa-picker-popup')?.remove();
+  const text = _buildAssetShareText(_currentAsset);
+  await _webShareWithPhotoOrFallback(_currentAsset.Foto_1_URL, text, _openAssetWAPicker);
+}
 
+function _openAssetWAPicker() {
+  document.getElementById('asset-wa-picker-popup')?.remove();
   const popup = document.createElement('div');
   popup.id = 'asset-wa-picker-popup';
   popup.style.cssText = `position:fixed;bottom:160px;left:50%;transform:translateX(-50%);
@@ -8132,6 +8184,13 @@ function doShareAssetWA(type) {
 }
 
 // ── Add / Edit Form ───────────────────────────────────────
+function _populateBankDatalist() {
+  const dl = document.getElementById('af-bank-list');
+  if (!dl) return;
+  const banks = [...new Set((_assetsData || []).map(a => a.Bank_Kreditur).filter(Boolean))].sort();
+  dl.innerHTML = banks.map(b => `<option value="${escapeHtml(b)}">`).join('');
+}
+
 function openAddAsset() {
   if (!_assetCanEdit) { showToast('Akses ditolak', 'error'); return; }
   document.getElementById('asset-form-id').value = '';
@@ -8152,6 +8211,7 @@ function openAddAsset() {
     setAssetPhotoPreview(i, '');
   });
 
+  _populateBankDatalist();
   openModal('modal-asset-form');
 }
 
@@ -8187,6 +8247,7 @@ function editCurrentAsset() {
   setAssetPhotoPreview(2, a.Foto_2_URL || '');
   setAssetPhotoPreview(3, a.Foto_3_URL || '');
 
+  _populateBankDatalist();
   closeModal('modal-asset-detail');
   openModal('modal-asset-form');
 }
