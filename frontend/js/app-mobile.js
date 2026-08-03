@@ -8841,26 +8841,28 @@ async function _captureFlyerCanvas() {
   const dom = document.getElementById('flyer-dom');
   if (!dom) return null;
 
-  // Clone ke body di posisi fixed top:0 left:0 agar html2canvas tidak offset
-  const origTransform = dom.style.transform;
-  const origOrigin    = dom.style.transformOrigin;
+  // Pindah element asli ke body top:0 left:0 agar getBoundingClientRect().top = 0
+  const origTransform  = dom.style.transform;
+  const origOrigin     = dom.style.transformOrigin;
+  const origPosition   = dom.style.position;
+  const origTop        = dom.style.top;
+  const origLeft       = dom.style.left;
+  const origZIndex     = dom.style.zIndex;
+  const origParent     = dom.parentNode;
+  const origNextSib    = dom.nextSibling;
+
   dom.style.transform      = '';
   dom.style.transformOrigin = '';
+  dom.style.position       = 'fixed';
+  dom.style.top            = '0';
+  dom.style.left           = '0';
+  dom.style.zIndex         = '-1';
+  document.body.appendChild(dom);
 
-  const clone = dom.cloneNode(true);
-  Object.assign(clone.style, {
-    position:        'fixed',
-    top:             '0',
-    left:            '-9999px',
-    transform:       '',
-    transformOrigin: '',
-    width:           dom.offsetWidth + 'px',
-  });
-  document.body.appendChild(clone);
+  // Dua rAF: pertama layout, kedua paint
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-  await new Promise(r => requestAnimationFrame(r));
-
-  const canvas = await html2canvas(clone, {
+  const canvas = await html2canvas(dom, {
     scale: 2.25,
     useCORS: true,
     allowTaint: true,
@@ -8870,9 +8872,15 @@ async function _captureFlyerCanvas() {
     scrollY: 0,
   });
 
-  document.body.removeChild(clone);
+  // Kembalikan ke posisi semula
+  if (origNextSib) origParent.insertBefore(dom, origNextSib);
+  else origParent.appendChild(dom);
   dom.style.transform      = origTransform;
   dom.style.transformOrigin = origOrigin;
+  dom.style.position       = origPosition;
+  dom.style.top            = origTop;
+  dom.style.left           = origLeft;
+  dom.style.zIndex         = origZIndex;
 
   return canvas;
 }
