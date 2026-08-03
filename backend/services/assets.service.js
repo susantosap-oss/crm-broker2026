@@ -218,8 +218,28 @@ class AssetsService {
     const getStr  = (row, ...names) => { const i = findCol(...names); return i >= 0 ? (row[i] || '').trim() : ''; };
     const getNum  = (row, ...names) => { const i = findCol(...names); return i >= 0 ? (parseFloat(row[i] || '0') || 0) : 0; };
 
-    // reset=true: hapus semua data ASSETS (baris 2 ke bawah), simpan header
+    // reset=true: hapus semua data ASSETS, tapi simpan dulu field manual
+    // (foto Cloudinary, Maps URL, harga eksekusi, dsb.) agar tidak hilang
+    let savedManual = {};
     if (reset && existingRows && existingRows.length > 1) {
+      existingRows.slice(1).map(r => this._rowToObj(r)).filter(a => a.Source_Row_ID).forEach(a => {
+        savedManual[a.Source_Row_ID] = {
+          Foto_1_URL:                a.Foto_1_URL                || '',
+          Foto_2_URL:                a.Foto_2_URL                || '',
+          Foto_3_URL:                a.Foto_3_URL                || '',
+          Cloudinary_IDs:            a.Cloudinary_IDs            || '[]',
+          Maps_URL:                  a.Maps_URL                  || '',
+          Est_Harga_Eksekusi:        a.Est_Harga_Eksekusi        || '',
+          Est_Harga_Eksekusi_Format: a.Est_Harga_Eksekusi_Format || '',
+          Keterangan_Debitur:        a.Keterangan_Debitur        || '',
+          No_Perkara:                a.No_Perkara                || '',
+          Nama_Asset:                a.Nama_Asset                || '',
+          Caption_Sosmed:            a.Caption_Sosmed            || '',
+          Status:                    a.Status                    || 'Draft',
+          Tampilkan_di_Web:          a.Tampilkan_di_Web          || 'FALSE',
+          Notes:                     a.Notes                     || '',
+        };
+      });
       const ssId = process.env.GOOGLE_SHEETS_ID || process.env.SPREADSHEET_ID;
       await sheets.spreadsheets.values.clear({
         spreadsheetId: ssId,
@@ -355,6 +375,7 @@ class AssetsService {
           Foto_2_URL:                '',
           Foto_3_URL:                '',
           Cloudinary_IDs:            '[]',
+          Maps_URL:                  '',
           Caption_Sosmed:            '',
           Status:                    'Draft',
           Tampilkan_di_Web:          'FALSE',
@@ -367,7 +388,9 @@ class AssetsService {
           Notes:                     '',
           Label_Asset:               labelAsset,
         };
-        obj.Caption_Sosmed = this._generateCaption(obj);
+        // Restore field manual dari sebelum reset (foto, maps, dsb.)
+        if (savedManual[assetId]) Object.assign(obj, savedManual[assetId]);
+        obj.Caption_Sosmed = obj.Caption_Sosmed || this._generateCaption(obj);
         newRows.push(COLUMNS.ASSETS.map(col => obj[col] || ''));
         results.created++;
       }
