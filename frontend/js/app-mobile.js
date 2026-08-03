@@ -8697,9 +8697,12 @@ function _renderFlyerPreview() {
     ? `<div style="display:inline-block;font-size:8.5px;font-weight:800;letter-spacing:1px;padding:2px 9px;border-left:3px solid #D4A853;background:#faf8f2;color:#0D1526;margin-right:8px">${escapeHtml(d.sertifikat)}</div><span style="font-size:8.5px;color:#bbb">Sertifikat</span>`
     : '';
 
-  // Deskripsi / info kecil — potong hanya jika sangat panjang, biarkan layout yg tentukan
-  const descHtml = d.deskripsi
-    ? `<div style="padding:10px 14px;border-bottom:1px solid #ececec;font-size:9.5px;color:#555;line-height:1.5;white-space:pre-line">${escapeHtml(d.deskripsi.slice(0, 350))}</div>`
+  // Deskripsi — newline diganti " · " agar tidak jadi banyak baris, clamp 3 baris
+  const descText = d.deskripsi
+    ? d.deskripsi.replace(/\n+/g, ' · ').replace(/\s{2,}/g, ' ').trim().slice(0, 250)
+    : '';
+  const descHtml = descText
+    ? `<div style="padding:10px 14px;border-bottom:1px solid #ececec;font-size:9.5px;color:#555;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${escapeHtml(descText)}</div>`
     : '';
 
   wrap.innerHTML = `
