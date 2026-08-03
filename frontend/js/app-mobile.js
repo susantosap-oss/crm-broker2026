@@ -8747,7 +8747,7 @@ function _renderFlyerPreview() {
         <div style="position:absolute;right:-2px;top:50%;transform:translateY(-50%);font-size:30px;color:#D4A853;line-height:1;z-index:2">»</div>
       </div>
       <div style="flex:1;padding:12px 16px;display:flex;flex-direction:column;justify-content:center">
-        <div style="font-family:'DM Serif Display',Georgia,serif;font-size:${isStory?15:13}px;color:#0D1526;line-height:1.2;margin-bottom:4px">${escapeHtml(d.judul)}</div>
+        <div style="font-family:'DM Serif Display',Georgia,serif;font-size:${isStory?15:13}px;color:#0D1526;line-height:1.2;margin-bottom:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${escapeHtml(d.judul)}</div>
         <div style="font-size:9.5px;color:#888">📍 ${escapeHtml(d.lokasi)}</div>
       </div>
     </div>
@@ -8858,6 +8858,8 @@ async function downloadFlyer() {
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
+      scrollX: 0,
+      scrollY: 0,
     });
 
     // Restore scale
@@ -8887,7 +8889,7 @@ async function shareFlyer() {
   try {
     const origTransform = dom.style.transform;
     dom.style.transform = '';
-    const canvas = await html2canvas(dom, { scale: 2.25, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false });
+    const canvas = await html2canvas(dom, { scale: 2.25, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, scrollX: 0, scrollY: 0 });
     dom.style.transform = origTransform;
 
     canvas.toBlob(async blob => {
