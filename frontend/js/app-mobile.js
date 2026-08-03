@@ -8851,16 +8851,19 @@ async function _captureFlyerCanvas() {
   const origParent     = dom.parentNode;
   const origNextSib    = dom.nextSibling;
 
-  dom.style.transform      = '';
+  dom.style.transform       = '';
   dom.style.transformOrigin = '';
-  dom.style.position       = 'fixed';
-  dom.style.top            = '0';
-  dom.style.left           = '0';
-  dom.style.zIndex         = '-1';
+  dom.style.position        = 'fixed';
+  dom.style.top             = '0';
+  dom.style.left            = '0';
+  dom.style.zIndex          = '9999';
   document.body.appendChild(dom);
 
-  // Dua rAF: pertama layout, kedua paint
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  // Tunggu lebih lama agar browser selesai layout + paint
+  await new Promise(r => setTimeout(r, 150));
+
+  const W = dom.offsetWidth;
+  const H = dom.offsetHeight;
 
   const canvas = await html2canvas(dom, {
     scale: 2.25,
@@ -8868,8 +8871,14 @@ async function _captureFlyerCanvas() {
     allowTaint: true,
     backgroundColor: '#ffffff',
     logging: false,
+    x: 0,
+    y: 0,
+    width: W,
+    height: H,
     scrollX: 0,
     scrollY: 0,
+    windowWidth: W,
+    windowHeight: H,
   });
 
   // Kembalikan ke posisi semula
