@@ -8846,11 +8846,14 @@ async function downloadFlyer() {
   if (btn) btn.innerHTML = '⏳ Memproses…';
 
   try {
-    // Reset scale untuk capture full res
+    // Reset scale + scroll modal ke top agar html2canvas tidak offset
     const origTransform = dom.style.transform;
     const origOrigin    = dom.style.transformOrigin;
+    const modalEl       = document.getElementById('modal-flyer');
+    const origScroll    = modalEl ? modalEl.scrollTop : 0;
     dom.style.transform      = '';
     dom.style.transformOrigin = '';
+    if (modalEl) modalEl.scrollTop = 0;
 
     const canvas = await html2canvas(dom, {
       scale: 2.25,           // ~1080px wide
@@ -8862,9 +8865,10 @@ async function downloadFlyer() {
       scrollY: 0,
     });
 
-    // Restore scale
+    // Restore scale + scroll
     dom.style.transform       = origTransform;
     dom.style.transformOrigin = origOrigin;
+    if (modalEl) modalEl.scrollTop = origScroll;
 
     const link = document.createElement('a');
     link.download = `flyer-mansion-${(_flyerKode || 'properti').toLowerCase().replace(/[^a-z0-9]/g,'-')}.png`;
@@ -8888,9 +8892,16 @@ async function shareFlyer() {
 
   try {
     const origTransform = dom.style.transform;
-    dom.style.transform = '';
+    const origOrigin2   = dom.style.transformOrigin;
+    const modalEl2      = document.getElementById('modal-flyer');
+    const origScroll2   = modalEl2 ? modalEl2.scrollTop : 0;
+    dom.style.transform      = '';
+    dom.style.transformOrigin = '';
+    if (modalEl2) modalEl2.scrollTop = 0;
     const canvas = await html2canvas(dom, { scale: 2.25, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, scrollX: 0, scrollY: 0 });
-    dom.style.transform = origTransform;
+    dom.style.transform      = origTransform;
+    dom.style.transformOrigin = origOrigin2;
+    if (modalEl2) modalEl2.scrollTop = origScroll2;
 
     canvas.toBlob(async blob => {
       const file = new File([blob], `flyer-mansion-${(_flyerKode||'properti').replace(/[^a-z0-9]/gi,'-')}.png`, { type: 'image/png' });
