@@ -8837,39 +8837,58 @@ function switchFlyerSize(size) {
 }
 
 // ── Download PNG ──────────────────────────────────────
-async function downloadFlyer() {
+async function _captureFlyerCanvas() {
   const dom = document.getElementById('flyer-dom');
-  if (!dom || !_flyerData) return;
+  if (!dom) return null;
+
+  // Clone ke body di posisi fixed top:0 left:0 agar html2canvas tidak offset
+  const origTransform = dom.style.transform;
+  const origOrigin    = dom.style.transformOrigin;
+  dom.style.transform      = '';
+  dom.style.transformOrigin = '';
+
+  const clone = dom.cloneNode(true);
+  Object.assign(clone.style, {
+    position:        'fixed',
+    top:             '0',
+    left:            '0',
+    zIndex:          '-9999',
+    transform:       '',
+    transformOrigin: '',
+    width:           dom.offsetWidth + 'px',
+    visibility:      'hidden',
+  });
+  document.body.appendChild(clone);
+
+  await new Promise(r => requestAnimationFrame(r));
+
+  const canvas = await html2canvas(clone, {
+    scale: 2.25,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+    scrollX: 0,
+    scrollY: 0,
+  });
+
+  document.body.removeChild(clone);
+  dom.style.transform      = origTransform;
+  dom.style.transformOrigin = origOrigin;
+
+  return canvas;
+}
+
+async function downloadFlyer() {
+  if (!_flyerData) return;
 
   const btn = document.querySelector('#modal-flyer button[onclick*="downloadFlyer"]');
   const origText = btn?.innerHTML;
   if (btn) btn.innerHTML = '⏳ Memproses…';
 
   try {
-    // Reset scale + scroll modal ke top agar html2canvas tidak offset
-    const origTransform = dom.style.transform;
-    const origOrigin    = dom.style.transformOrigin;
-    const modalEl       = document.getElementById('modal-flyer');
-    const origScroll    = modalEl ? modalEl.scrollTop : 0;
-    dom.style.transform      = '';
-    dom.style.transformOrigin = '';
-    if (modalEl) modalEl.scrollTop = 0;
-
-    const canvas = await html2canvas(dom, {
-      scale: 2.25,           // ~1080px wide
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      scrollX: 0,
-      scrollY: 0,
-    });
-
-    // Restore scale + scroll
-    dom.style.transform       = origTransform;
-    dom.style.transformOrigin = origOrigin;
-    if (modalEl) modalEl.scrollTop = origScroll;
-
+    const canvas = await _captureFlyerCanvas();
+    if (!canvas) return;
     const link = document.createElement('a');
     link.download = `flyer-mansion-${(_flyerKode || 'properti').toLowerCase().replace(/[^a-z0-9]/g,'-')}.png`;
     link.href = canvas.toDataURL('image/png', 1.0);
@@ -8883,25 +8902,15 @@ async function downloadFlyer() {
 
 // ── Share flyer via Web Share API ─────────────────────
 async function shareFlyer() {
-  const dom = document.getElementById('flyer-dom');
-  if (!dom || !_flyerData) return;
+  if (!_flyerData) return;
 
   const btn = document.querySelector('#modal-flyer button[onclick*="shareFlyer"]');
   const origText = btn?.innerHTML;
   if (btn) btn.innerHTML = '⏳ Memproses…';
 
   try {
-    const origTransform = dom.style.transform;
-    const origOrigin2   = dom.style.transformOrigin;
-    const modalEl2      = document.getElementById('modal-flyer');
-    const origScroll2   = modalEl2 ? modalEl2.scrollTop : 0;
-    dom.style.transform      = '';
-    dom.style.transformOrigin = '';
-    if (modalEl2) modalEl2.scrollTop = 0;
-    const canvas = await html2canvas(dom, { scale: 2.25, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, scrollX: 0, scrollY: 0 });
-    dom.style.transform      = origTransform;
-    dom.style.transformOrigin = origOrigin2;
-    if (modalEl2) modalEl2.scrollTop = origScroll2;
+    const canvas = await _captureFlyerCanvas();
+    if (!canvas) return;
 
     canvas.toBlob(async blob => {
       const file = new File([blob], `flyer-mansion-${(_flyerKode||'properti').replace(/[^a-z0-9]/gi,'-')}.png`, { type: 'image/png' });
