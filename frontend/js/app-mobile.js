@@ -8721,7 +8721,7 @@ function _renderFlyerPreview(targetWrap, skipScale) {
           <div style="font-size:6.5px;color:rgba(212,168,83,0.65);letter-spacing:2px;text-transform:uppercase;line-height:1;margin-top:3px">Properti Indonesia</div>
         </div>
       </div>
-      <div style="font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;padding:5px 12px 4px;border:1.5px solid ${statusColor};color:${statusColor};line-height:1">${escapeHtml(d.status)}</div>
+      <div style="font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;padding:5px 12px 4px;border:1.5px solid ${statusColor};color:${statusColor};line-height:1;flex-shrink:0;white-space:nowrap">${escapeHtml(d.status)}</div>
     </div>
 
     <!-- FOTO -->
@@ -8786,7 +8786,7 @@ function _renderFlyerPreview(targetWrap, skipScale) {
     ${descHtml}
 
     <!-- AGENT -->
-    <div style="background:#0D1526;border-top:3px solid #D4A853;padding:10px 14px;display:flex;align-items:center;gap:11px;margin-top:auto;flex-shrink:0">
+    <div style="background:#0D1526;border-top:3px solid #D4A853;padding:10px 14px;display:flex;align-items:center;gap:11px;flex-shrink:0">
       <div style="width:34px;height:34px;border-radius:50%;border:1.5px solid #D4A853;background:rgba(212,168,83,0.12);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#D4A853;flex-shrink:0">${escapeHtml(initial)}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:11px;font-weight:700;color:#fff">${escapeHtml(user.nama || '')}</div>
@@ -8843,32 +8843,87 @@ function switchFlyerSize(size) {
 async function _captureFlyerCanvas() {
   if (!_flyerData) return null;
 
-  // Render fresh ke container baru di body — tidak pakai elemen modal yang sudah ada
+  async function urlToDataUrl(url) {
+    try {
+      const r = await fetch(url, { mode: 'cors', cache: 'force-cache' });
+      const b = await r.blob();
+      return await new Promise(res => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.readAsDataURL(b); });
+    } catch (_) { return null; }
+  }
+
+  const [logoData, fotoData] = await Promise.all([
+    urlToDataUrl(location.origin + '/assets/mansion-logo.png'),
+    _flyerData.foto_url ? urlToDataUrl(_flyerData.foto_url) : Promise.resolve(null),
+  ]);
+
+  const origFoto = _flyerData.foto_url;
+  if (fotoData) _flyerData.foto_url = fotoData;
+
   const tempWrap = document.createElement('div');
-  tempWrap.style.cssText = 'position:fixed;top:0;left:0;z-index:9999;pointer-events:none;';
+  // width eksplisit 432px agar flex/text layout tidak terpengaruh lebar viewport
+  tempWrap.style.cssText = 'position:fixed;top:0;left:0;z-index:9999;pointer-events:none;width:432px;';
   document.body.appendChild(tempWrap);
 
-  _renderFlyerPreview(tempWrap, true); // render full-size tanpa scale
+  _renderFlyerPreview(tempWrap, true);
+
+  if (fotoData) _flyerData.foto_url = origFoto;
+
+  if (logoData) {
+    tempWrap.querySelectorAll('[style*="mansion-logo.png"]').forEach(el => {
+      el.style.backgroundImage = `url('${logoData}')`;
+    });
+  }
 
   const captureDom = tempWrap.firstElementChild;
   if (!captureDom) { document.body.removeChild(tempWrap); return null; }
 
-  // Tunggu gambar cache dari browser
-  await new Promise(r => setTimeout(r, 250));
+  await new Promise(r => setTimeout(r, 400));
 
-  const canvas = await html2canvas(captureDom, {
-    scale: 2.25,
-    useCORS: true,
-    allowTaint: true,
-    backgroundColor: '#ffffff',
-    logging: false,
-    scrollX: 0,
-    scrollY: 0,
-  });
+  const scale = 2.25;
+  const W = captureDom.offsetWidth;
+  const H = captureDom.offsetHeight;
 
-  document.body.removeChild(tempWrap);
+  try {
+    // Tanpa style.height agar konten auto-size di SVG context;
+    // canvas diberi 10% ekstra supaya tidak terpotong, lalu di-trim
+    const canvas = await domtoimage.toCanvas(captureDom, {
+      width:  Math.round(W * scale),
+      height: Math.round(H * scale * 1.1),
+      style: {
+        width:           W + 'px',
+        transform:       `scale(${scale})`,
+        transformOrigin: 'top left',
+      },
+      bgcolor: '#ffffff',
+    });
+    document.body.removeChild(tempWrap);
+    return _trimCanvasBottom(canvas);
+  } catch (e) {
+    if (document.body.contains(tempWrap)) document.body.removeChild(tempWrap);
+    throw e;
+  }
+}
 
-  return canvas;
+function _trimCanvasBottom(canvas) {
+  const ctx = canvas.getContext('2d');
+  const { width, height } = canvas;
+  const data = ctx.getImageData(0, 0, width, height).data;
+  // Scan dari bawah, cari baris terakhir dengan piksel non-putih
+  let lastRow = height - 1;
+  outer: for (let y = height - 1; y >= 0; y--) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) {
+        lastRow = y;
+        break outer;
+      }
+    }
+  }
+  const out = document.createElement('canvas');
+  out.width  = width;
+  out.height = lastRow + 2;
+  out.getContext('2d').drawImage(canvas, 0, 0);
+  return out;
 }
 
 async function downloadFlyer() {
