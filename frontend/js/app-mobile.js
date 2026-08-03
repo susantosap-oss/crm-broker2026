@@ -8675,8 +8675,8 @@ function openFlyerModal(type, listingId) {
 }
 
 // ── Render flyer ke preview wrap ──────────────────────
-function _renderFlyerPreview() {
-  const wrap = document.getElementById('flyer-preview-wrap');
+function _renderFlyerPreview(targetWrap, skipScale) {
+  const wrap = targetWrap || document.getElementById('flyer-preview-wrap');
   if (!wrap || !_flyerData) return;
 
   const isStory = _flyerSize === 'story';
@@ -8802,6 +8802,8 @@ function _renderFlyerPreview() {
     </div>
   </div>`;
 
+  if (skipScale) return;
+
   // Scale preview supaya muat di layar
   const maxW = Math.min(window.innerWidth - 64, 432);
   const scale = maxW / W;
@@ -8839,58 +8841,32 @@ function switchFlyerSize(size) {
 
 // ── Download PNG ──────────────────────────────────────
 async function _captureFlyerCanvas() {
-  const dom = document.getElementById('flyer-dom');
-  if (!dom) return null;
+  if (!_flyerData) return null;
 
-  // Pindah element asli ke body top:0 left:0 agar getBoundingClientRect().top = 0
-  const origTransform  = dom.style.transform;
-  const origOrigin     = dom.style.transformOrigin;
-  const origPosition   = dom.style.position;
-  const origTop        = dom.style.top;
-  const origLeft       = dom.style.left;
-  const origZIndex     = dom.style.zIndex;
-  const origParent     = dom.parentNode;
-  const origNextSib    = dom.nextSibling;
+  // Render fresh ke container baru di body — tidak pakai elemen modal yang sudah ada
+  const tempWrap = document.createElement('div');
+  tempWrap.style.cssText = 'position:fixed;top:0;left:0;z-index:9999;pointer-events:none;';
+  document.body.appendChild(tempWrap);
 
-  dom.style.transform       = '';
-  dom.style.transformOrigin = '';
-  dom.style.position        = 'fixed';
-  dom.style.top             = '0';
-  dom.style.left            = '0';
-  dom.style.zIndex          = '9999';
-  document.body.appendChild(dom);
+  _renderFlyerPreview(tempWrap, true); // render full-size tanpa scale
 
-  // Tunggu lebih lama agar browser selesai layout + paint
-  await new Promise(r => setTimeout(r, 150));
+  const captureDom = tempWrap.firstElementChild;
+  if (!captureDom) { document.body.removeChild(tempWrap); return null; }
 
-  const W = dom.offsetWidth;
-  const H = dom.offsetHeight;
+  // Tunggu gambar cache dari browser
+  await new Promise(r => setTimeout(r, 250));
 
-  const canvas = await html2canvas(dom, {
+  const canvas = await html2canvas(captureDom, {
     scale: 2.25,
     useCORS: true,
     allowTaint: true,
     backgroundColor: '#ffffff',
     logging: false,
-    x: 0,
-    y: 0,
-    width: W,
-    height: H,
     scrollX: 0,
     scrollY: 0,
-    windowWidth: W,
-    windowHeight: H,
   });
 
-  // Kembalikan ke posisi semula
-  if (origNextSib) origParent.insertBefore(dom, origNextSib);
-  else origParent.appendChild(dom);
-  dom.style.transform      = origTransform;
-  dom.style.transformOrigin = origOrigin;
-  dom.style.position       = origPosition;
-  dom.style.top            = origTop;
-  dom.style.left           = origLeft;
-  dom.style.zIndex         = origZIndex;
+  document.body.removeChild(tempWrap);
 
   return canvas;
 }
