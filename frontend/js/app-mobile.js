@@ -8851,12 +8851,10 @@ async function _captureFlyerCanvas() {
   Object.assign(clone.style, {
     position:        'fixed',
     top:             '0',
-    left:            '0',
-    zIndex:          '-9999',
+    left:            '-9999px',
     transform:       '',
     transformOrigin: '',
     width:           dom.offsetWidth + 'px',
-    visibility:      'hidden',
   });
   document.body.appendChild(clone);
 
