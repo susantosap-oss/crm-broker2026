@@ -8713,17 +8713,15 @@ function _renderFlyerPreview() {
     font-family:'Inter',Arial,sans-serif;
   ">
     <!-- HEADER -->
-    <div style="background:#0D1526;padding:10px 15px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-      <div style="display:flex;align-items:center;gap:8px">
-        <img src="/assets/mansion-logo.png" alt="M"
-          style="width:26px;height:26px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.55))"
-          onerror="this.style.display='none'"/>
+    <div style="background:#0D1526;padding:10px 15px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;min-height:46px">
+      <div style="display:flex;align-items:center">
+        <div style="width:26px;height:26px;flex-shrink:0;margin-right:8px;background-image:url('/assets/mansion-logo.png');background-size:contain;background-position:center;background-repeat:no-repeat"></div>
         <div>
-          <div style="font-family:'DM Serif Display',Georgia,serif;font-size:16px;color:#D4A853;letter-spacing:2px;text-shadow:0 1px 4px rgba(0,0,0,0.6)">MANSION</div>
-          <div style="font-size:6.5px;color:rgba(212,168,83,0.65);letter-spacing:2px;text-transform:uppercase;margin-top:-2px;text-shadow:0 1px 3px rgba(0,0,0,0.5)">Properti Indonesia</div>
+          <div style="font-family:'DM Serif Display',Georgia,serif;font-size:16px;color:#D4A853;letter-spacing:2px;line-height:1">MANSION</div>
+          <div style="font-size:6.5px;color:rgba(212,168,83,0.65);letter-spacing:2px;text-transform:uppercase;line-height:1;margin-top:3px">Properti Indonesia</div>
         </div>
       </div>
-      <div style="font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border:1.5px solid ${statusColor};color:${statusColor}">${escapeHtml(d.status)}</div>
+      <div style="font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;padding:5px 12px 4px;border:1.5px solid ${statusColor};color:${statusColor};line-height:1">${escapeHtml(d.status)}</div>
     </div>
 
     <!-- FOTO -->
@@ -8745,9 +8743,9 @@ function _renderFlyerPreview() {
     <!-- SPLIT ROW harga | judul -->
     <div style="display:flex;border-bottom:1px solid #ececec;flex-shrink:0">
       <div style="background:#0D1526;padding:13px 14px;display:flex;flex-direction:column;justify-content:center;position:relative;flex-shrink:0;width:${isStory?168:152}px">
-        <div style="font-size:9px;font-weight:900;color:rgba(212,168,83,0.8);letter-spacing:3px;text-transform:uppercase;margin-bottom:5px">HARGA</div>
+        <div style="font-size:9px;font-weight:900;color:rgba(212,168,83,0.8);letter-spacing:3px;text-transform:uppercase;margin-bottom:5px;line-height:1">HARGA</div>
         <div style="font-family:'DM Serif Display',Georgia,serif;color:#D4A853;font-size:${isStory?26:23}px;font-weight:700;line-height:1">${escapeHtml(d.harga)}</div>
-        <div style="position:absolute;right:-2px;top:50%;transform:translateY(-50%);font-size:30px;color:#D4A853;line-height:1;z-index:2">»</div>
+        <div style="position:absolute;right:-2px;top:0;bottom:0;display:flex;align-items:center;font-size:30px;color:#D4A853;line-height:1;z-index:2">»</div>
       </div>
       <div style="flex:1;padding:12px 16px;display:flex;flex-direction:column;justify-content:center">
         <div style="font-family:'DM Serif Display',Georgia,serif;font-size:${isStory?15:13}px;color:#0D1526;line-height:1.2;margin-bottom:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${escapeHtml(d.judul)}</div>
