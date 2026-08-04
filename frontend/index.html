@@ -583,6 +583,10 @@
       <input id="asset-search" type="text" placeholder="🔍 Cari aset / debitur / bank..."
         oninput="filterAssets()"
         style="flex:1;min-width:180px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 14px;color:#fff;font-size:13px;outline:none"/>
+      <input id="asset-search-kode" type="text" maxlength="3" placeholder="# 020"
+        oninput="filterAssets()"
+        style="width:72px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:9px 10px;color:#f59e0b;font-size:13px;font-weight:700;outline:none;text-align:center;letter-spacing:1px"
+        title="Cari 3 digit terakhir kode aset (contoh: 020, 121)"/>
       <!-- Dropdown Tipe -->
       <div style="position:relative" id="asset-wrap-filter-tipe">
         <button onclick="toggleAssetDropdown('tipe')"
@@ -4969,7 +4973,7 @@ async function saveApraisalResult(type) {
           <input id="af-nama" class="form-input" type="text" placeholder="Contoh: Rumah 2 Lt, Jl. Mawar No.5"/>
         </div>
 
-        <!-- Tipe + Debitur -->
+        <!-- Tipe + Label Aset -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
           <div>
             <label class="form-label">Tipe Properti</label>
@@ -4983,9 +4987,20 @@ async function saveApraisalResult(type) {
             </select>
           </div>
           <div>
-            <label class="form-label">Nama Debitur</label>
-            <input id="af-debitur" class="form-input" type="text" placeholder="Nama nasabah/debitur"/>
+            <label class="form-label">Status Aset ⚖️</label>
+            <select id="af-label" class="form-input">
+              <option value="">— Pilih Status —</option>
+              <option value="Lelang">🔨 Lelang</option>
+              <option value="Cessie">📋 Cessie</option>
+              <option value="AYDA">🏛️ AYDA</option>
+            </select>
           </div>
+        </div>
+
+        <!-- Debitur -->
+        <div style="margin-bottom:14px">
+          <label class="form-label">Nama Debitur</label>
+          <input id="af-debitur" class="form-input" type="text" placeholder="Nama nasabah/debitur"/>
         </div>
 
         <!-- Bank + No Perkara -->

@@ -7822,8 +7822,9 @@ function buildAssetCard(a) {
           ${a.Tampilkan_di_Web === 'TRUE' ? `<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:rgba(43,123,255,0.15);color:#60a5fa;font-weight:600"><i class="fa-solid fa-globe"></i></span>` : ''}
         </div>
       </div>
-      <!-- Baris 2: Label Aset + kode · lokasi · bank -->
+      <!-- Baris 2: Kode + Label + Tipe + Lokasi -->
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+        ${a.Kode_Asset ? `<span style="font-size:9px;font-weight:700;color:rgba(245,158,11,0.7);letter-spacing:0.5px">${escapeHtml(a.Kode_Asset)}</span>` : ''}
         ${labelBadge}
         <span style="font-size:10px;color:rgba(255,255,255,0.3)">${escapeHtml(a.Tipe_Properti || '')}</span>
         ${lokasi ? `<span style="font-size:10px;color:rgba(255,255,255,0.3)">· ${escapeHtml(lokasi)}</span>` : ''}
@@ -7840,6 +7841,7 @@ function buildAssetCard(a) {
 function filterAssets() {
   if (!_assetsData?.length) return;
   const search = (document.getElementById('asset-search')?.value || '').toLowerCase();
+  const kode   = (document.getElementById('asset-search-kode')?.value || '').replace(/\D/g, '');
   const tipe   = document.getElementById('asset-filter-tipe')?.value   || '';
   const status = document.getElementById('asset-filter-status')?.value  || '';
   const kota   = document.getElementById('asset-filter-kota')?.value    || '';
@@ -7848,14 +7850,16 @@ function filterAssets() {
 
   const filtered = _assetsData.filter(a => {
     const matchS  = !search || [a.Nama_Asset, a.Nama_Debitur, a.Bank_Kreditur, a.Kota, a.Kecamatan, a.No_Perkara].join(' ').toLowerCase().includes(search);
+    // Cocokkan 3 digit terakhir kode aset (AST-RMH-2026-020 → "020")
+    const kodeAkhir = (a.Kode_Asset || '').split('-').pop().replace(/\D/g, '');
+    const matchKode = !kode || kodeAkhir.endsWith(kode) || kodeAkhir === kode.padStart(kodeAkhir.length, '0');
     const matchT  = !tipe   || a.Tipe_Properti === tipe;
     const matchSt = !status || a.Status === status;
     const matchK  = !kota   || a.Kota === kota;
     const matchB  = !bank   || a.Bank_Kreditur === bank;
-    // Cessie/Cassie dianggap sama
     const aLabel  = (a.Label_Asset || '').trim();
     const matchL  = !label  || aLabel === label || (label === 'Cessie' && aLabel === 'Cassie') || (label === 'Cassie' && aLabel === 'Cessie');
-    return matchS && matchT && matchSt && matchK && matchB && matchL;
+    return matchS && matchKode && matchT && matchSt && matchK && matchB && matchL;
   });
   renderAssetGrid(filtered);
 }
@@ -8251,7 +8255,8 @@ function openAddAsset() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.getElementById('af-tipe').value = 'Rumah';
+  document.getElementById('af-tipe').value  = 'Rumah';
+  document.getElementById('af-label').value = '';
 
   _assetPhotoPending = { 1: null, 2: null, 3: null };
   [1,2,3].forEach(i => {
@@ -8287,7 +8292,10 @@ function editCurrentAsset() {
   setVal('af-keterangan-debitur', a.Keterangan_Debitur);
   setVal('af-notes', a.Notes);
   setVal('af-gmaps', a.Gmaps_Link);
-  document.getElementById('af-tipe').value = a.Tipe_Properti || 'Rumah';
+  document.getElementById('af-tipe').value  = a.Tipe_Properti || 'Rumah';
+  // Normalise Cassie → Cessie untuk tampil di dropdown
+  const labelNorm = (a.Label_Asset || '').trim();
+  document.getElementById('af-label').value = labelNorm === 'Cassie' ? 'Cessie' : labelNorm;
 
   _assetPhotoPending = { 1: null, 2: null, 3: null };
   setAssetPhotoPreview(1, a.Foto_1_URL || '');
@@ -8324,6 +8332,7 @@ async function submitAssetForm() {
     Keterangan_Debitur:  getVal('af-keterangan-debitur'),
     Notes:               getVal('af-notes'),
     Gmaps_Link:          getVal('af-gmaps'),
+    Label_Asset:         getVal('af-label'),
   };
 
   if (!data.Nama_Asset) { showToast('Nama aset wajib diisi', 'error'); return; }
