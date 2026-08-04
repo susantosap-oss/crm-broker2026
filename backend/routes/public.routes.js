@@ -11,6 +11,7 @@
  *   GET /listings          → Semua listing publik
  *   GET /listings/:id      → Detail listing publik
  *   GET /listings/featured → Listing unggulan
+ *   GET /assets            → Aset lelang publik (Publish + Tampilkan_di_Web)
  *   GET /stats             → Statistik publik
  */
 
@@ -19,6 +20,7 @@ const router = express.Router();
 const { publicApiKey } = require('../middleware/auth.middleware');
 const listingsService  = require('../services/listings.service');
 const projectsService  = require('../services/projects.service');
+const assetsService    = require('../services/assets.service');
 const sheetsService    = require('../services/sheets.service');
 const searchService    = require('../services/search.service');
 const { extractFilter } = require('../services/ai-filter.service');
@@ -369,6 +371,69 @@ router.get('/stats', async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+});
+
+// ── GET /assets ───────────────────────────────────────────
+// Aset Lelang/Eksekusi untuk website publik
+// Filter: Status Publish + Tampilkan_di_Web TRUE
+const CRM_BASE = 'https://crm.mansionpro.id';
+const ASSET_PLACEHOLDER = {
+  Rumah:     `${CRM_BASE}/assets/Rumah.png`,
+  Ruko:      `${CRM_BASE}/assets/Ruko.png`,
+  Apartemen: `${CRM_BASE}/assets/apartemen.png`,
+  Gudang:    `${CRM_BASE}/assets/gudang.png`,
+  Gedung:    `${CRM_BASE}/assets/gedung.png`,
+  Tanah:     `${CRM_BASE}/assets/kavling.png`,
+  Kavling:   `${CRM_BASE}/assets/kavling.png`,
+  Kios:      `${CRM_BASE}/assets/Ruko.png`,
+};
+
+router.get('/assets', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, tipe, kota, bank } = req.query;
+    const all = await assetsService.getAll({});
+    let assets = (all || []).filter(a => a.Status === 'Publish' && a.Tampilkan_di_Web === 'TRUE');
+
+    if (tipe) assets = assets.filter(a => a.Tipe_Properti === tipe);
+    if (kota) assets = assets.filter(a => a.Kota?.toLowerCase().includes(kota.toLowerCase()));
+    if (bank) assets = assets.filter(a => a.Bank_Kreditur?.toLowerCase().includes(bank.toLowerCase()));
+
+    const publicAssets = assets.map(a => ({
+      id:                a.ID,
+      kode:              a.Kode_Asset,
+      nama:              a.Nama_Asset || a.Nama_Debitur,
+      tipe:              a.Tipe_Properti,
+      bank:              a.Bank_Kreditur,
+      kota:              a.Kota,
+      kecamatan:         a.Kecamatan,
+      luas_tanah:        a.Luas_Tanah,
+      luas_bangunan:     a.Luas_Bangunan,
+      sertifikat:        a.Sertifikat,
+      harga_limit:       a.Harga_Limit_Lelang,
+      harga_limit_format:a.Harga_Limit_Format,
+      deskripsi:         a.Deskripsi,
+      foto_utama:        a.Foto_1_URL || null,
+      foto_placeholder:  ASSET_PLACEHOLDER[a.Tipe_Properti] || `${CRM_BASE}/assets/Rumah.png`,
+      foto_gallery:      [a.Foto_2_URL, a.Foto_3_URL].filter(Boolean),
+      gmaps_link:        a.Gmaps_Link,
+      label:             a.Label_Asset,
+      updated_at:        a.Updated_At,
+    }));
+
+    const startIndex = (parseInt(page) - 1) * parseInt(limit);
+    const paginated  = publicAssets.slice(startIndex, startIndex + parseInt(limit));
+
+    res.json({
+      success: true,
+      data: paginated,
+      pagination: {
+        total:       publicAssets.length,
+        page:        parseInt(page),
+        limit:       parseInt(limit),
+        total_pages: Math.ceil(publicAssets.length / parseInt(limit)),
+      },
+    });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 // ── GET /agents ───────────────────────────────────────────

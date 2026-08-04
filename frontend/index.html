@@ -554,22 +554,28 @@
           <p style="color:rgba(255,255,255,0.45);font-size:13px;margin:0">Aset Eksekusi Bank — Harga di Bawah Pasar</p>
           <p style="color:#f59e0b;font-size:12px;margin:4px 0 0"><span id="asset-total-count">—</span> aset tersedia</p>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button id="btn-sync-asset" onclick="syncAssetsFromSource(false)"
-            style="display:none;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;padding:9px 13px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer">
-            <i class="fa-solid fa-arrows-rotate"></i> Sync Data
-          </button>
-          <button id="btn-reset-sync-asset" onclick="syncAssetsFromSource(true)"
-            style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:9px 13px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer"
-            title="Hapus semua data lama lalu import ulang dari sumber">
-            <i class="fa-solid fa-trash-can-arrow-up"></i> Reset & Sync
-          </button>
-          <button id="btn-add-asset" onclick="openAddAsset()"
-            style="display:none;background:#D4A853;color:#0D1526;border:none;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;align-items:center;gap:8px">
-            <i class="fa-solid fa-plus"></i> Tambah Aset
-          </button>
-        </div>
+        <button id="btn-add-asset" onclick="openAddAsset()"
+          style="display:none;background:#D4A853;color:#0D1526;border:none;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px">
+          <i class="fa-solid fa-plus"></i> Tambah Aset
+        </button>
       </div>
+    </div>
+
+    <!-- Admin Action Bar -->
+    <div id="asset-admin-bar" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button id="btn-sync-asset" onclick="syncAssetsFromSource(false)"
+        style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;padding:8px 13px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+        <i class="fa-solid fa-arrows-rotate"></i> Sync Data
+      </button>
+      <button id="btn-reset-sync-asset" onclick="syncAssetsFromSource(true)"
+        style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:8px 13px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"
+        title="Hapus semua data lama lalu import ulang dari sumber">
+        <i class="fa-solid fa-trash-can-arrow-up"></i> Reset & Sync
+      </button>
+      <button id="btn-publish-all-asset" onclick="publishAllAssets()"
+        style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#4ade80;padding:8px 13px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+        <i class="fa-solid fa-globe"></i> Publish All
+      </button>
     </div>
 
     <!-- Filter Bar -->
@@ -631,6 +637,21 @@
         <input type="hidden" id="asset-filter-bank" value=""/>
         <div id="asset-dropdown-bank" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#131F38;border:1px solid rgba(245,158,11,0.25);border-radius:10px;z-index:999;min-width:180px;max-height:280px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
           <div onclick="setAssetFilter('bank','','🏦 Bank')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">Semua Bank</div>
+        </div>
+      </div>
+      <!-- Dropdown Label Aset (Lelang / Cessie / AYDA) -->
+      <div style="position:relative" id="asset-wrap-filter-label">
+        <button onclick="toggleAssetDropdown('label')"
+          style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;min-width:120px;justify-content:space-between">
+          <span id="asset-filter-label-label">⚖️ Jenis</span>
+          <i class="fa-solid fa-chevron-down" style="font-size:10px;color:#f59e0b"></i>
+        </button>
+        <input type="hidden" id="asset-filter-label" value=""/>
+        <div id="asset-dropdown-label" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#131F38;border:1px solid rgba(245,158,11,0.25);border-radius:10px;z-index:999;min-width:140px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+          <div onclick="setAssetFilter('label','','⚖️ Jenis')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">Semua Jenis</div>
+          <div onclick="setAssetFilter('label','Lelang','🔨 Lelang')" style="padding:10px 14px;color:#f59e0b;font-size:13px;cursor:pointer;font-weight:600" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">🔨 Lelang</div>
+          <div onclick="setAssetFilter('label','Cessie','📋 Cessie')" style="padding:10px 14px;color:#a78bfa;font-size:13px;cursor:pointer;font-weight:600" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">📋 Cessie</div>
+          <div onclick="setAssetFilter('label','AYDA','🏛️ AYDA')" style="padding:10px 14px;color:#f87171;font-size:13px;cursor:pointer;font-weight:600" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">🏛️ AYDA</div>
         </div>
       </div>
     </div>

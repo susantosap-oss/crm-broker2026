@@ -7659,7 +7659,7 @@ let _assetCanEdit = false;
 let _assetGridListenerAdded = false;
 
 const MANAGE_ROLES_ASSET  = ['superadmin', 'principal', 'kantor', 'business_manager', 'admin'];
-const PUBLISH_ROLES_ASSET = ['superadmin', 'principal', 'admin'];
+const PUBLISH_ROLES_ASSET = ['superadmin', 'principal', 'kantor', 'admin'];
 const SYNC_ROLES_ASSET    = ['superadmin', 'principal', 'kantor'];
 
 // ── Load Asset Page ───────────────────────────────────────
@@ -7687,10 +7687,18 @@ async function loadAssetPage() {
     }
   }
 
+  // Admin bar: tampil jika punya hak sync ATAU publish
+  const adminBar = document.getElementById('asset-admin-bar');
+  if (adminBar) {
+    const showBar = SYNC_ROLES_ASSET.includes(role) || PUBLISH_ROLES_ASSET.includes(role);
+    adminBar.style.display = showBar ? 'flex' : 'none';
+  }
   const syncBtn = document.getElementById('btn-sync-asset');
   if (syncBtn) syncBtn.style.display = SYNC_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
   const resetSyncBtn = document.getElementById('btn-reset-sync-asset');
   if (resetSyncBtn) resetSyncBtn.style.display = SYNC_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
+  const publishAllBtn = document.getElementById('btn-publish-all-asset');
+  if (publishAllBtn) publishAllBtn.style.display = PUBLISH_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
 
   const filterStatusWrap = document.getElementById('asset-wrap-filter-status');
   if (filterStatusWrap) filterStatusWrap.style.display = _assetCanEdit ? '' : 'none';
@@ -7757,56 +7765,74 @@ function renderAssetGrid(assets) {
 }
 
 function buildAssetCard(a) {
-  const statusColor = a.Status === 'Publish' ? '#4ade80' : '#94a3b8';
-  const statusBg    = a.Status === 'Publish' ? 'rgba(34,197,94,0.12)' : 'rgba(148,163,184,0.1)';
-  const tipeEmoji   = { Rumah:'🏡', Ruko:'🏪', Apartemen:'🏢', Gudang:'🏭', Tanah:'🌿', Kios:'🏬' }[a.Tipe_Properti] || '🏠';
-  const foto        = a.Foto_1_URL || '';
-  const lokasi      = [a.Kecamatan, a.Kota].filter(Boolean).join(', ');
-  const limitFmt    = a.Harga_Limit_Format || (parseInt(a.Harga_Limit_Lelang) > 0 ? a.Harga_Limit_Lelang : '—');
-  const _fmLuas = v => { const n = parseFloat(v); return (!v || !n) ? '—' : `${Number.isInteger(n) ? n : n.toFixed(1).replace('.', ',')}m²`; };
+  const foto     = a.Foto_1_URL || '';
+  const lokasi   = [a.Kecamatan, a.Kota].filter(Boolean).join(', ');
+  const limitFmt = a.Harga_Limit_Format || (parseInt(a.Harga_Limit_Lelang) > 0 ? a.Harga_Limit_Lelang : '—');
+  const _fmLuas  = v => { const n = parseFloat(v); return (!v || !n) ? null : `${Number.isInteger(n) ? n : n.toFixed(1).replace('.', ',')}m²`; };
   const lt   = _fmLuas(a.Luas_Tanah);
   const lb   = _fmLuas(a.Luas_Bangunan);
-  const sert = (a.Sertifikat && a.Sertifikat !== '0') ? a.Sertifikat : '—';
-  // Rasio Sisa Pokok dari Source_Data
+  const sert = (a.Sertifikat && a.Sertifikat !== '0') ? a.Sertifikat : null;
   const _srcData = (() => { try { return JSON.parse(a.Source_Data || '{}'); } catch(_) { return {}; } })();
   const _ratio   = _srcData.liquidRatio || 0;
   const ratioFmt = _ratio ? (Number.isInteger(_ratio) ? String(_ratio) : _ratio.toFixed(1).replace('.', ',')) : '';
 
+  const tipePic = {
+    Rumah: '/assets/Rumah.png', Ruko: '/assets/Ruko.png',
+    Apartemen: '/assets/apartemen.png', Gudang: '/assets/gudang.png',
+    Gedung: '/assets/gedung.png', Tanah: '/assets/kavling.png',
+    Kavling: '/assets/kavling.png', Kios: '/assets/Ruko.png'
+  }[a.Tipe_Properti] || '/assets/Rumah.png';
+
+  const sc = a.Status === 'Publish' ? '#22C55E' : '#6B7280';
+  const specs = [lt ? `LT ${lt}` : null, lb ? `LB ${lb}` : null, sert].filter(Boolean);
+
+  // Label_Asset badge (Lelang / Cessie / AYDA)
+  const LABEL_STYLE = {
+    'Lelang': 'background:rgba(245,158,11,0.18);color:#f59e0b',
+    'Cessie': 'background:rgba(167,139,250,0.18);color:#a78bfa',
+    'Cassie': 'background:rgba(167,139,250,0.18);color:#a78bfa',
+    'AYDA':   'background:rgba(248,113,113,0.18);color:#f87171',
+  };
+  const LABEL_ICON = { 'Lelang':'🔨', 'Cessie':'📋', 'Cassie':'📋', 'AYDA':'🏛️' };
+  const labelVal  = (a.Label_Asset || '').trim();
+  const labelStyle = LABEL_STYLE[labelVal] || 'background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5)';
+  const labelIcon  = LABEL_ICON[labelVal] || '';
+  const labelBadge = labelVal
+    ? `<span style="font-size:9px;padding:2px 7px;border-radius:5px;font-weight:700;${labelStyle}">${labelIcon} ${escapeHtml(labelVal)}</span>`
+    : '';
+
   return `
   <div data-id="${escapeHtml(a.ID)}"
-    style="background:#0D1E36;border:1px solid rgba(255,255,255,0.07);border-radius:16px;overflow:hidden;cursor:pointer;transition:all 0.2s"
-    onmouseenter="this.style.borderColor='rgba(212,168,83,0.35)'"
-    onmouseleave="this.style.borderColor='rgba(255,255,255,0.07)'">
-    <!-- Foto -->
-    <div style="height:150px;background:#131F38;position:relative;overflow:hidden">
+    style="display:flex;gap:12px;background:#131F38;border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:12px;cursor:pointer;transition:border-color 0.2s"
+    onmouseenter="this.style.borderColor='rgba(212,168,83,0.25)'"
+    onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'">
+    <!-- Foto 80×80 -->
+    <div style="width:80px;height:80px;border-radius:10px;background:#1C2D52;overflow:hidden;flex-shrink:0">
       ${foto
-        ? `<img src="${escapeHtml(foto)}" alt="" style="width:100%;height:100%;object-fit:cover"/>`
-        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:38px">${tipeEmoji}</div>`}
-      <span style="position:absolute;top:8px;left:8px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:${statusBg};color:${statusColor};border:1px solid ${statusColor}33">${a.Status || 'Draft'}</span>
-      ${a.Tampilkan_di_Web === 'TRUE' ? `<span style="position:absolute;top:8px;left:${a.Status === 'Publish' ? '78px' : '70px'};padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid rgba(96,165,250,0.3)">🌐 Web</span>` : ''}
-      <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(13,21,38,0.95),transparent);padding:8px 10px 6px;display:flex;align-items:center;gap:6px">
-        <span style="font-size:9px;font-weight:800;color:#f59e0b;text-transform:uppercase;letter-spacing:1px">⚖️ LELANG EKSEKUSI</span>
-        ${a.Label_Asset ? `<span style="font-size:9px;font-weight:700;color:#a78bfa;background:rgba(139,92,246,0.2);padding:2px 7px;border-radius:10px;border:1px solid rgba(139,92,246,0.35)">${escapeHtml(a.Label_Asset)}</span>` : ''}
-      </div>
-      ${a.Foto_2_URL ? `<img src="${escapeHtml(a.Foto_2_URL)}" style="position:absolute;bottom:22px;right:8px;width:42px;height:42px;border-radius:7px;object-fit:cover;border:2px solid rgba(255,255,255,0.2)"/>` : ''}
+        ? `<img src="${escapeHtml(foto)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>`
+        : `<img src="${tipePic}" style="width:100%;height:100%;object-fit:cover;opacity:0.55" loading="lazy"/>`}
     </div>
-    <!-- Content -->
-    <div style="padding:12px">
-      <p style="color:rgba(255,255,255,0.35);font-size:9px;margin:0 0 2px;text-transform:uppercase;letter-spacing:1px">${escapeHtml(a.Kode_Asset)}</p>
-      <h3 style="font-family:'DM Serif Display',serif;font-size:14px;color:#fff;margin:0 0 2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${escapeHtml(a.Nama_Asset || a.Nama_Debitur || 'Aset Lelang')}</h3>
-      ${a.Bank_Kreditur ? `<span style="display:inline-block;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700;color:#D4A853;margin-bottom:4px">🏦 ${escapeHtml(a.Bank_Kreditur)}</span>` : ''}
-      ${lokasi ? `<p style="color:rgba(255,255,255,0.4);font-size:10px;margin:0 0 4px">📍 ${escapeHtml(lokasi)}</p>` : '<div style="margin-bottom:4px"></div>'}
-      <p style="color:rgba(255,255,255,0.35);font-size:10px;margin:0 0 6px">LT ${escapeHtml(lt)} · LB ${escapeHtml(lb)} · ${escapeHtml(sert)}</p>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
-        <div>
-          <p style="color:#f59e0b;font-size:13px;font-weight:700;margin:0">Limit: ${escapeHtml(limitFmt)}</p>
-          <p style="color:rgba(255,255,255,0.4);font-size:10px;margin:2px 0 0">${tipeEmoji} ${escapeHtml(a.Tipe_Properti || '—')}${ratioFmt ? ` · Rasio <span style="color:#f87171">${escapeHtml(ratioFmt)}</span>` : ''}</p>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center">
-          ${a.Gmaps_Link ? `<a href="${escapeHtml(a.Gmaps_Link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);border-radius:8px;padding:5px 8px;font-size:10px;color:#4ade80;font-weight:600;text-decoration:none"><i class="fa-solid fa-location-dot"></i> MAPS</a>` : ''}
-          <div style="background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:5px 10px;font-size:11px;color:#D4A853;font-weight:600">Detail →</div>
+    <!-- Konten -->
+    <div style="flex:1;min-width:0">
+      <!-- Baris 1: nama + status badge -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${escapeHtml(a.Nama_Asset || a.Nama_Debitur || 'Aset Lelang')}</span>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <span style="font-size:9px;padding:2px 6px;border-radius:5px;background:${sc}18;color:${sc};font-weight:600">${escapeHtml(a.Status || 'Draft')}</span>
+          ${a.Tampilkan_di_Web === 'TRUE' ? `<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:rgba(43,123,255,0.15);color:#60a5fa;font-weight:600"><i class="fa-solid fa-globe"></i></span>` : ''}
         </div>
       </div>
+      <!-- Baris 2: Label Aset + kode · lokasi · bank -->
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+        ${labelBadge}
+        <span style="font-size:10px;color:rgba(255,255,255,0.3)">${escapeHtml(a.Tipe_Properti || '')}</span>
+        ${lokasi ? `<span style="font-size:10px;color:rgba(255,255,255,0.3)">· ${escapeHtml(lokasi)}</span>` : ''}
+      </div>
+      <!-- Baris 3: bank · harga limit -->
+      ${a.Bank_Kreditur ? `<div style="font-size:10px;color:#D4A853;margin-bottom:4px">🏦 ${escapeHtml(a.Bank_Kreditur)}</div>` : ''}
+      <div style="font-size:14px;font-weight:700;color:#D4A853">Limit: ${escapeHtml(limitFmt)}${ratioFmt ? `<span style="font-size:10px;font-weight:500;color:#f87171;margin-left:6px">Rasio ${escapeHtml(ratioFmt)}</span>` : ''}</div>
+      <!-- Baris 4: specs + maps -->
+      ${specs.length || a.Gmaps_Link ? `<div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap;align-items:center">${specs.map(s=>`<span style="font-size:9px;color:rgba(255,255,255,0.3)">${escapeHtml(s)}</span>`).join('')}${a.Gmaps_Link ? `<a href="${escapeHtml(a.Gmaps_Link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:9px;color:#4ade80;text-decoration:none;margin-left:auto"><i class="fa-solid fa-location-dot"></i> Maps</a>` : ''}</div>` : ''}
     </div>
   </div>`;
 }
@@ -7818,6 +7844,7 @@ function filterAssets() {
   const status = document.getElementById('asset-filter-status')?.value  || '';
   const kota   = document.getElementById('asset-filter-kota')?.value    || '';
   const bank   = document.getElementById('asset-filter-bank')?.value    || '';
+  const label  = document.getElementById('asset-filter-label')?.value   || '';
 
   const filtered = _assetsData.filter(a => {
     const matchS  = !search || [a.Nama_Asset, a.Nama_Debitur, a.Bank_Kreditur, a.Kota, a.Kecamatan, a.No_Perkara].join(' ').toLowerCase().includes(search);
@@ -7825,7 +7852,10 @@ function filterAssets() {
     const matchSt = !status || a.Status === status;
     const matchK  = !kota   || a.Kota === kota;
     const matchB  = !bank   || a.Bank_Kreditur === bank;
-    return matchS && matchT && matchSt && matchK && matchB;
+    // Cessie/Cassie dianggap sama
+    const aLabel  = (a.Label_Asset || '').trim();
+    const matchL  = !label  || aLabel === label || (label === 'Cessie' && aLabel === 'Cassie') || (label === 'Cassie' && aLabel === 'Cessie');
+    return matchS && matchT && matchSt && matchK && matchB && matchL;
   });
   renderAssetGrid(filtered);
 }
@@ -7833,7 +7863,21 @@ function filterAssets() {
 // ── Dropdown filter ──────────────────────────────────────
 function toggleAssetDropdown(type) {
   const el = document.getElementById(`asset-dropdown-${type}`);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  if (!el) return;
+  const opening = el.style.display === 'none';
+  el.style.display = opening ? 'block' : 'none';
+  if (opening) {
+    // Reset ke kanan dulu, lalu cek apakah melewati tepi kiri viewport
+    el.style.right = '0';
+    el.style.left  = 'auto';
+    requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect();
+      if (rect.left < 4) {
+        el.style.right = 'auto';
+        el.style.left  = '0';
+      }
+    });
+  }
 }
 
 function setAssetFilter(type, value, label) {
@@ -7907,9 +7951,9 @@ function populateAssetFilters() {
 }
 
 document.addEventListener('click', (e) => {
-  if (!e.target.closest('#asset-wrap-filter-tipe') && !e.target.closest('#asset-wrap-filter-status') &&
-      !e.target.closest('#asset-wrap-filter-kota') && !e.target.closest('#asset-wrap-filter-bank')) {
-    ['tipe', 'status', 'kota', 'bank'].forEach(t => {
+  const ASSET_FILTER_IDS = ['tipe', 'status', 'kota', 'bank', 'label'];
+  if (!ASSET_FILTER_IDS.some(t => e.target.closest(`#asset-wrap-filter-${t}`))) {
+    ASSET_FILTER_IDS.forEach(t => {
       const el = document.getElementById(`asset-dropdown-${t}`);
       if (el) el.style.display = 'none';
     });
@@ -8431,6 +8475,24 @@ async function toggleAssetPublish() {
     await fetchAssets(true);
   } catch (e) {
     showToast('Gagal: ' + e.message, 'error');
+  }
+}
+
+// ── Publish All ───────────────────────────────────────────
+async function publishAllAssets() {
+  if (!confirm('Publish SEMUA aset ke Web?\n\nSemua aset berstatus Draft akan langsung tampil di website publik.')) return;
+  const btn = document.getElementById('btn-publish-all-asset');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses…'; }
+  try {
+    const res = await API.post('/assets/publish-all');
+    const d   = res.data || {};
+    const msg = res.message || `${d.published || 0} aset dipublikasikan ✅`;
+    showToast(msg, d.skipped > 0 ? 'warning' : 'success');
+    await fetchAssets(true);
+  } catch (e) {
+    showToast('Gagal: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-globe"></i> Publish All'; }
   }
 }
 

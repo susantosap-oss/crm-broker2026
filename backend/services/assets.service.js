@@ -169,6 +169,98 @@ class AssetsService {
     return this.update(id, { Status: status, Tampilkan_di_Web: tampilkan });
   }
 
+  // ── PUBLISH ALL — batch 1 API call ke Sheets ─────────────
+  // Filter sebelum publish:
+  //   1. Harga Limit = 0 / kosong / "-"          → skip
+  //   2. Nama Debitur + Alamat sama, Harga beda  → skip semua duplikat konflik
+  //   3. Bank_Kreditur atau Label_Asset kosong    → skip
+  async publishAll() {
+    const rows = await sheetsService.getRange(SHEETS.ASSETS);
+    if (!rows || rows.length < 2) return { published: 0, already: 0, skipped: 0, total: 0, message: 'Tidak ada aset' };
+
+    const STATUS_COL = 'AB'; // index 27
+    const WEB_COL    = 'AC'; // index 28
+    const UPD_COL    = 'AI'; // index 34
+    const now = new Date().toISOString();
+
+    // Bangun objek semua aset + simpan nomor baris sheet
+    const allAssets = rows.slice(1)
+      .map((row, i) => ({ ...this._rowToObj(row), _row: i + 2 }))
+      .filter(a => a.ID);
+
+    // ── Filter 2 pre-pass: deteksi duplikat konflik ──────────
+    // Group by Nama_Debitur (lowercase) + Alamat (lowercase)
+    const groups = {};
+    allAssets.forEach(a => {
+      const debitur = (a.Nama_Debitur || '').trim().toLowerCase();
+      const alamat  = (a.Alamat       || '').trim().toLowerCase();
+      if (!debitur && !alamat) return; // keduanya kosong → tidak bisa digroup
+      const key = `${debitur}||${alamat}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(a);
+    });
+
+    const conflictIds = new Set();
+    Object.values(groups).forEach(group => {
+      if (group.length < 2) return;
+      const prices = new Set(
+        group.map(a => String(a.Harga_Limit_Lelang || '0').replace(/[^0-9]/g, '') || '0')
+      );
+      if (prices.size > 1) group.forEach(a => conflictIds.add(a.ID));
+    });
+
+    // ── Loop utama ───────────────────────────────────────────
+    const batchData = [];
+    let published = 0, already = 0, skipped = 0;
+    const skipLog = [];
+
+    allAssets.forEach(a => {
+      if (a.Status === 'Publish') { already++; return; }
+
+      // Filter 1: Harga Limit kosong / 0 / "-"
+      const hargaRaw = String(a.Harga_Limit_Lelang || '').trim();
+      const hargaNum = parseInt(hargaRaw.replace(/[^0-9]/g, '')) || 0;
+      if (!hargaRaw || hargaRaw === '-' || hargaNum === 0) {
+        skipped++;
+        skipLog.push(`[F1-HargaKosong] ${a.Kode_Asset || a.ID}`);
+        return;
+      }
+
+      // Filter 2: duplikat konflik (Debitur+Alamat sama, Harga beda)
+      if (conflictIds.has(a.ID)) {
+        skipped++;
+        skipLog.push(`[F2-DuplikatKonflik] ${a.Kode_Asset || a.ID}`);
+        return;
+      }
+
+      // Filter 3: Bank atau Label_Asset (Status Aset) kosong
+      if (!(a.Bank_Kreditur || '').trim() || !(a.Label_Asset || '').trim()) {
+        skipped++;
+        skipLog.push(`[F3-BankAtauLabelKosong] ${a.Kode_Asset || a.ID}`);
+        return;
+      }
+
+      const r = a._row;
+      batchData.push(
+        { range: `${SHEETS.ASSETS}!${STATUS_COL}${r}:${WEB_COL}${r}`, values: [['Publish', 'TRUE']] },
+        { range: `${SHEETS.ASSETS}!${UPD_COL}${r}`,                   values: [[now]] },
+      );
+      published++;
+    });
+
+    if (batchData.length > 0) await sheetsService.batchUpdate(batchData);
+
+    if (skipLog.length) console.log('[PublishAll] Skipped:', skipLog.join(', '));
+
+    const msg = [
+      `${published} aset dipublikasikan ke Web`,
+      skipped  ? `${skipped} dilewati (tidak memenuhi syarat)` : '',
+      already  ? `${already} sudah Publish` : '',
+    ].filter(Boolean).join(', ');
+
+    return { published, already, skipped, total: allAssets.length, message: msg };
+  }
+
   // ── SYNC FROM EXTERNAL SHEET ─────────────────────────────
   // Reads bankaset "Asset Sellable" tab — header-based mapping (tidak bergantung urutan kolom).
   // reset=true: hapus semua data ASSETS lama sebelum sync (clean slate).
@@ -228,7 +320,7 @@ class AssetsService {
           Foto_2_URL:                a.Foto_2_URL                || '',
           Foto_3_URL:                a.Foto_3_URL                || '',
           Cloudinary_IDs:            a.Cloudinary_IDs            || '[]',
-          Maps_URL:                  a.Maps_URL                  || '',
+          Gmaps_Link:                a.Gmaps_Link                || '',
           Est_Harga_Eksekusi:        a.Est_Harga_Eksekusi        || '',
           Est_Harga_Eksekusi_Format: a.Est_Harga_Eksekusi_Format || '',
           Keterangan_Debitur:        a.Keterangan_Debitur        || '',
@@ -375,7 +467,7 @@ class AssetsService {
           Foto_2_URL:                '',
           Foto_3_URL:                '',
           Cloudinary_IDs:            '[]',
-          Maps_URL:                  '',
+          Gmaps_Link:                '',
           Caption_Sosmed:            '',
           Status:                    'Draft',
           Tampilkan_di_Web:          'FALSE',

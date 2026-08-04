@@ -127,6 +127,19 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+// ── POST /publish-all — Publish semua aset ke Web ──────────
+router.post('/publish-all', async (req, res) => {
+  try {
+    if (!PUBLISH_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak' });
+    }
+    const result = await assetsService.publishAll();
+    res.json({ success: true, data: result, message: result.message });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // ── GET /:id — Detail aset ─────────────────────────────────
 router.get('/:id', async (req, res) => {
   try {
