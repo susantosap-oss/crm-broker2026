@@ -60,6 +60,7 @@ const SHEETS = {
   // ★ Fitur Asset — Properti Lelang / Eksekusi
   ASSETS:         'ASSETS',
   ASSET_EDITORS:  'ASSET_EDITORS',
+  ASSET_EDIT_LOG: 'ASSET_EDIT_LOG',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -614,6 +615,18 @@ const COLUMNS = {
     'Added_By_ID',  // D  siapa yang menambahkan
     'Added_By_Nama',// E
     'Created_At',   // F
+  ],
+
+  // ★ ASSET_EDIT_LOG — Log setiap edit aset (audit trail per editor)
+  ASSET_EDIT_LOG: [
+    'ID',         // A  UUID
+    'Timestamp',  // B  ISO datetime (tanggal + jam akses)
+    'Agen_ID',    // C  FK ke AGENTS
+    'Agen_Nama',  // D  denormalized
+    'Kode_Asset', // E  Kode aset (AST-RMH-2026-001)
+    'Asset_ID',   // F  FK ke ASSETS (UUID)
+    'Aksi',       // G  "+ Foto" | "+ Info" | "+ Maps" | "+ Estimasi" | "Buat Asset" | "Publish" | "Draft" | kombinasi
+    'Edit_Ke',    // H  Nomor urut edit untuk aset ini (auto-count)
   ],
 
   // ★ PAYMENT_STAGES — Tahap pembayaran per transaksi (1 row per lead)

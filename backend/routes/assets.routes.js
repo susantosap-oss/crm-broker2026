@@ -174,7 +174,7 @@ router.put('/:id', async (req, res) => {
     if (!(await canEdit(req.user))) {
       return res.status(403).json({ success: false, message: 'Akses ditolak' });
     }
-    const asset = await assetsService.update(req.params.id, req.body);
+    const asset = await assetsService.update(req.params.id, req.body, req.user);
     res.json({ success: true, data: asset, message: 'Aset berhasil diupdate' });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
@@ -201,7 +201,7 @@ router.patch('/:id/publish', async (req, res) => {
       return res.status(403).json({ success: false, message: 'Akses ditolak' });
     }
     const { status } = req.body;
-    const asset = await assetsService.setStatus(req.params.id, status);
+    const asset = await assetsService.setStatus(req.params.id, status, req.user);
     res.json({
       success: true,
       data: asset,
@@ -230,7 +230,7 @@ router.post('/:id/caption', async (req, res) => {
     const asset = await assetsService.getById(req.params.id);
     if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan' });
     const newCaption = assetsService.generateCaption(asset, 'instagram');
-    await assetsService.update(req.params.id, { Caption_Sosmed: newCaption });
+    await assetsService.update(req.params.id, { Caption_Sosmed: newCaption }, null);
     const bundle = assetsService.getSosmedBundle({ ...asset, Caption_Sosmed: newCaption });
     res.json({ success: true, data: bundle, message: 'Caption berhasil di-generate ulang' });
   } catch (e) {

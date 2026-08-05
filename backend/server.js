@@ -287,6 +287,7 @@ async function migrateHeaders() {
     // ★ Fitur Asset — Properti Lelang
     { sheet: SHEETS.ASSETS,          cols: COLUMNS.ASSETS },
     { sheet: SHEETS.ASSET_EDITORS,   cols: COLUMNS.ASSET_EDITORS },
+    { sheet: SHEETS.ASSET_EDIT_LOG,  cols: COLUMNS.ASSET_EDIT_LOG },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)

@@ -59,6 +59,52 @@ class AssetsService {
     return this._rowToObj(result.data);
   }
 
+  // ── LOG EDIT (audit trail) ───────────────────────────────
+  async logEdit(user, asset, aksi) {
+    try {
+      await this._ensureEditLogHeaders();
+      const rows = await sheetsService.getRange(SHEETS.ASSET_EDIT_LOG);
+      const editKe = (rows || []).slice(1)
+        .filter(r => r[5] === asset.ID).length + 1;
+
+      const logObj = {
+        ID:         uuidv4(),
+        Timestamp:  new Date().toISOString(),
+        Agen_ID:    user?.id        || '',
+        Agen_Nama:  user?.nama      || '',
+        Kode_Asset: asset.Kode_Asset || '',
+        Asset_ID:   asset.ID        || '',
+        Aksi:       aksi,
+        Edit_Ke:    String(editKe),
+      };
+      const row = COLUMNS.ASSET_EDIT_LOG.map(col => logObj[col] || '');
+
+      await sheetsService.appendRow(SHEETS.ASSET_EDIT_LOG, row);
+    } catch (e) {
+      console.warn('[AssetEditLog] Failed to log:', e.message);
+    }
+  }
+
+  // ── DETECT AKSI dari diff fields ─────────────────────────
+  _detectAksi(data) {
+    const fotoFields = ['Foto_1_URL', 'Foto_2_URL', 'Foto_3_URL', 'Cloudinary_IDs'];
+    const mapsFields = ['Gmaps_Link'];
+    const estFields  = ['Est_Harga_Pasar', 'Est_Harga_Eksekusi', 'Keterangan_Debitur'];
+
+    const parts = [];
+    if (fotoFields.some(f => data[f] !== undefined)) parts.push('+ Foto');
+    if (mapsFields.some(f => data[f] !== undefined)) parts.push('+ Maps');
+    if (estFields.some(f  => data[f] !== undefined)) parts.push('+ Estimasi');
+
+    const infoFields = Object.keys(data).filter(f =>
+      !fotoFields.includes(f) && !mapsFields.includes(f) && !estFields.includes(f) &&
+      !['Updated_At', 'Caption_Sosmed', 'Source_Data', 'Status', 'Tampilkan_di_Web'].includes(f)
+    );
+    if (infoFields.length > 0) parts.push('+ Info');
+
+    return parts.length > 0 ? parts.join(', ') : '+ Info';
+  }
+
   // ── CREATE ───────────────────────────────────────────────
   async create(data, user) {
     await this._ensureHeaders();
@@ -109,11 +155,12 @@ class AssetsService {
 
     const row = COLUMNS.ASSETS.map(col => obj[col] || '');
     await sheetsService.appendRow(SHEETS.ASSETS, row);
+    this.logEdit(user, obj, 'Buat Asset');
     return obj;
   }
 
   // ── UPDATE ───────────────────────────────────────────────
-  async update(id, data) {
+  async update(id, data, user, aksiOverride) {
     const result = await sheetsService.findRowById(SHEETS.ASSETS, id);
     if (!result) throw new Error('Aset tidak ditemukan');
 
@@ -151,6 +198,7 @@ class AssetsService {
 
     const row = COLUMNS.ASSETS.map(col => updated[col] || '');
     await sheetsService.updateRow(SHEETS.ASSETS, result.rowIndex, row);
+    if (user) this.logEdit(user, updated, aksiOverride || this._detectAksi(data));
     return updated;
   }
 
@@ -163,10 +211,10 @@ class AssetsService {
   }
 
   // ── PUBLISH / UNPUBLISH ──────────────────────────────────
-  async setStatus(id, status) {
+  async setStatus(id, status, user) {
     if (!['Draft', 'Publish'].includes(status)) throw new Error('Status tidak valid');
     const tampilkan = status === 'Publish' ? 'TRUE' : 'FALSE';
-    return this.update(id, { Status: status, Tampilkan_di_Web: tampilkan });
+    return this.update(id, { Status: status, Tampilkan_di_Web: tampilkan }, user, status);
   }
 
   // ── PUBLISH ALL — batch 1 API call ke Sheets ─────────────
@@ -618,6 +666,15 @@ class AssetsService {
       const rows = await sheetsService.getRange(SHEETS.ASSET_EDITORS);
       if (!rows || rows.length === 0) {
         await sheetsService.appendRow(SHEETS.ASSET_EDITORS, COLUMNS.ASSET_EDITORS);
+      }
+    } catch (_) {}
+  }
+
+  async _ensureEditLogHeaders() {
+    try {
+      const rows = await sheetsService.getRange(SHEETS.ASSET_EDIT_LOG);
+      if (!rows || rows.length === 0) {
+        await sheetsService.appendRow(SHEETS.ASSET_EDIT_LOG, COLUMNS.ASSET_EDIT_LOG);
       }
     } catch (_) {}
   }
