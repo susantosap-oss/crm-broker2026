@@ -134,6 +134,8 @@ app.use('/api/v1/payment',        require('./routes/payment.routes'));
 app.use('/api/v1/canvasing',      require('./routes/canvasing.routes'));
 // ★ Fitur Asset — Properti Lelang / Eksekusi
 app.use('/api/v1/assets',         require('./routes/assets.routes'));
+// ★ Knowledge Center — Dokumen Template
+app.use('/api/v1/knowledge',      require('./routes/knowledge.routes'));
 // ★ Property Search Engine (Phase 1: Structured Search)
 app.use('/api/v1/search',         require('./routes/search.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)

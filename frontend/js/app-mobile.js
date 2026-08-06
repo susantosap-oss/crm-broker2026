@@ -7786,6 +7786,14 @@ function buildAssetCard(a) {
   const sc = a.Status === 'Publish' ? '#22C55E' : '#6B7280';
   const specs = [lt ? `LT ${lt}` : null, lb ? `LB ${lb}` : null, sert].filter(Boolean);
 
+  // Quick discount badge
+  const _limit = parseFloat(a.Harga_Limit_Lelang) || 0;
+  const _pasar = parseFloat(a.Est_Harga_Pasar) || 0;
+  const _disc  = (_pasar > 0 && _limit > 0 && _pasar > _limit) ? Math.round((_pasar - _limit) / _pasar * 100) : 0;
+  const discBadge = _disc > 0
+    ? `<span style="font-size:9px;padding:2px 6px;border-radius:5px;font-weight:700;background:${_disc>=30?'rgba(34,197,94,0.15)':_disc>=20?'rgba(212,168,83,0.15)':'rgba(148,163,184,0.1)'};color:${_disc>=30?'#4ade80':_disc>=20?'#D4A853':'#94a3b8'}">↓${_disc}%</span>`
+    : '';
+
   // Label_Asset badge (Lelang / Cessie / AYDA)
   const LABEL_STYLE = {
     'Lelang': 'background:rgba(245,158,11,0.18);color:#f59e0b',
@@ -7831,7 +7839,11 @@ function buildAssetCard(a) {
       </div>
       <!-- Baris 3: bank · harga limit -->
       ${a.Bank_Kreditur ? `<div style="font-size:10px;color:#D4A853;margin-bottom:4px">🏦 ${escapeHtml(a.Bank_Kreditur)}</div>` : ''}
-      <div style="font-size:14px;font-weight:700;color:#D4A853">Limit: ${escapeHtml(limitFmt)}${ratioFmt ? `<span style="font-size:10px;font-weight:500;color:#f87171;margin-left:6px">Rasio ${escapeHtml(ratioFmt)}</span>` : ''}</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:14px;font-weight:700;color:#D4A853">Limit: ${escapeHtml(limitFmt)}</span>
+        ${discBadge}
+        ${ratioFmt ? `<span style="font-size:10px;font-weight:500;color:#f87171">Rasio ${escapeHtml(ratioFmt)}</span>` : ''}
+      </div>
       <!-- Baris 4: specs + maps -->
       ${specs.length || a.Gmaps_Link ? `<div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap;align-items:center">${specs.map(s=>`<span style="font-size:9px;color:rgba(255,255,255,0.3)">${escapeHtml(s)}</span>`).join('')}${a.Gmaps_Link ? `<a href="${escapeHtml(a.Gmaps_Link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:9px;color:#4ade80;text-decoration:none;margin-left:auto"><i class="fa-solid fa-location-dot"></i> Maps</a>` : ''}</div>` : ''}
     </div>
@@ -8061,6 +8073,9 @@ async function openAssetDetail(id) {
     // Sync source data
     const srcWrap = document.getElementById('ad-source-wrap');
     if (srcWrap) srcWrap.style.display = a.Source_Row_ID ? '' : 'none';
+
+    // Analisis Investasi — Due Diligence, Scoring, Case Study
+    if (window.kcInitAssetAnalysis) kcInitAssetAnalysis(a);
 
   } catch (e) {
     showToast('Gagal load detail aset: ' + e.message, 'error');
