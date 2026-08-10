@@ -4109,38 +4109,41 @@ async function submitAddListing() {
 // ── Properti Picker for Add Lead ─────────────────────────
 let _propertiPickerTab = 'listing';
 let _pickerItems = [];
+let _assetsPickerData = [];
+let _pickerListings = []; // semua listing semua kantor (all=1), terpisah dari _allListings
 
 async function openPropertiPicker() {
-  _propertiPickerTab = 'listing';
+  // Auto-pilih tab sesuai Tipe Properti yang dipilih di form
+  const tipeProp = document.getElementById('lead-tipe-prop')?.value || '';
+  const initialTab = tipeProp === 'Aset' ? 'aset' : tipeProp === 'Primary' ? 'primary' : 'listing';
+  _propertiPickerTab = initialTab;
+
   const overlay = document.getElementById('properti-picker-overlay');
-  const modal = document.getElementById('properti-picker-modal');
+  const modal   = document.getElementById('properti-picker-modal');
   overlay.classList.remove('hidden');
   modal.classList.remove('hidden');
   modal.style.display = 'flex';
   document.getElementById('properti-picker-search').value = '';
 
-  // Load data kalau belum ada
-  if (!_allListings.length) {
-    try {
-      const res = await API.get('/listings');
-      _allListings = res.data || [];
-      window._allListings = _allListings;
-    } catch(e) {}
-  }
-  if (!_projectsData.length) {
-    try {
-      const res = await API.get('/projects');
-      _projectsData = res.data || [];
-      window._projectsData = _projectsData;
-    } catch(e) {}
-  }
+  // Load data paralel kalau belum ada
+  const loads = [];
+  if (!_pickerListings.length) loads.push(
+    API.get('/listings?all=1').then(r => { _pickerListings = r.data || []; }).catch(() => {})
+  );
+  if (!_projectsData.length) loads.push(
+    API.get('/projects').then(r => { _projectsData = r.data || []; window._projectsData = _projectsData; }).catch(() => {})
+  );
+  if (!_assetsPickerData.length) loads.push(
+    API.get('/assets').then(r => { _assetsPickerData = r.data || []; }).catch(() => {})
+  );
+  if (loads.length) await Promise.all(loads);
 
-  setPropertiTab('listing');
+  setPropertiTab(initialTab);
 }
 
 function closePropertiPicker() {
   const overlay = document.getElementById('properti-picker-overlay');
-  const modal = document.getElementById('properti-picker-modal');
+  const modal   = document.getElementById('properti-picker-modal');
   overlay.classList.add('hidden');
   modal.classList.add('hidden');
   modal.style.display = 'none';
@@ -4148,18 +4151,18 @@ function closePropertiPicker() {
 
 function setPropertiTab(tab) {
   _propertiPickerTab = tab;
-  const btnListing = document.getElementById('ptab-listing');
-  const btnPrimary = document.getElementById('ptab-primary');
-  if (btnListing) {
-    btnListing.style.background = tab==='listing' ? 'rgba(212,168,83,0.2)' : 'transparent';
-    btnListing.style.color = tab==='listing' ? '#D4A853' : 'rgba(255,255,255,0.5)';
-    btnListing.style.border = tab==='listing' ? 'none' : '1px solid rgba(255,255,255,0.1)';
-  }
-  if (btnPrimary) {
-    btnPrimary.style.background = tab==='primary' ? 'rgba(212,168,83,0.2)' : 'transparent';
-    btnPrimary.style.color = tab==='primary' ? '#D4A853' : 'rgba(255,255,255,0.5)';
-    btnPrimary.style.border = tab==='primary' ? 'none' : '1px solid rgba(255,255,255,0.1)';
-  }
+  [
+    { id: 'ptab-listing', key: 'listing' },
+    { id: 'ptab-primary', key: 'primary' },
+    { id: 'ptab-aset',    key: 'aset'    },
+  ].forEach(({ id, key }) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    const active = tab === key;
+    btn.style.background = active ? 'rgba(212,168,83,0.2)' : 'transparent';
+    btn.style.color      = active ? '#D4A853'               : 'rgba(255,255,255,0.5)';
+    btn.style.border     = active ? 'none'                  : '1px solid rgba(255,255,255,0.1)';
+  });
   filterPropertiPicker(document.getElementById('properti-picker-search')?.value || '');
 }
 
@@ -4170,28 +4173,48 @@ function filterPropertiPicker(q) {
 
   let items = [];
   if (_propertiPickerTab === 'listing') {
-    items = (_allListings || [])
-      .filter(l => ['Aktif'].includes(l.Status_Listing))
-      .filter(l => !query || 
+    items = (_pickerListings || [])
+      .filter(l => l.Status_Listing === 'Aktif')
+      .filter(l => !query ||
         (l.Judul||'').toLowerCase().includes(query) ||
         (l.Kota||'').toLowerCase().includes(query) ||
         (l.Kecamatan||'').toLowerCase().includes(query) ||
         (l.Kode_Listing||'').toLowerCase().includes(query))
       .map(l => ({
         label: l.Judul || '—',
-        sub: `${l.Kode_Listing||''} · ${l.Kecamatan||''}, ${l.Kota||''} · ${l.Harga_Format||formatRupiah(l.Harga)}`,
-        value: `${l.Judul} (${l.Kode_Listing||l.ID})`
+        sub:   `${l.Kode_Listing||''} · ${l.Kecamatan||''}, ${l.Kota||''} · ${l.Harga_Format||formatRupiah(l.Harga)}`,
+        value: `${l.Judul} (${l.Kode_Listing||l.ID})`,
       }));
-  } else {
+
+  } else if (_propertiPickerTab === 'primary') {
     items = (_projectsData || [])
       .filter(p => !query ||
-        (p.Nama_Project||'').toLowerCase().includes(query) ||
-        (p.Lokasi||'').toLowerCase().includes(query) ||
-        (p.Tipe_Properti||'').toLowerCase().includes(query))
+        (p.Nama_Proyek||'').toLowerCase().includes(query) ||
+        (p.Nama_Developer||'').toLowerCase().includes(query) ||
+        (p.Kota||'').toLowerCase().includes(query) ||
+        (p.Kecamatan||'').toLowerCase().includes(query) ||
+        (p.Tipe_Properti||'').toLowerCase().includes(query) ||
+        (p.Kode_Proyek||'').toLowerCase().includes(query))
       .map(p => ({
-        label: p.Nama_Project || '—',
-        sub: `${p.Tipe_Properti||''} · ${p.Lokasi||''} · ${p.Harga_Format||'On Request'}`,
-        value: `${p.Nama_Project} (Primary)`
+        label: p.Nama_Proyek || p.Nama_Developer || '—',
+        sub:   `${p.Kode_Proyek||''} · ${p.Kecamatan||''}, ${p.Kota||''} · ${p.Harga_Format||'On Request'}`,
+        value: `${p.Nama_Proyek} (${p.Kode_Proyek||'Primary'})`,
+      }));
+
+  } else {
+    // Tab Aset — filter by Kode_Asset (No. ID), Nama_Debitur, Bank, Kota, Label
+    items = (_assetsPickerData || [])
+      .filter(a => !query ||
+        (a.Kode_Asset||'').toLowerCase().includes(query) ||
+        (a.Nama_Debitur||'').toLowerCase().includes(query) ||
+        (a.Bank_Kreditur||'').toLowerCase().includes(query) ||
+        (a.Kota||'').toLowerCase().includes(query) ||
+        (a.Label_Asset||'').toLowerCase().includes(query) ||
+        (a.Nama_Asset||'').toLowerCase().includes(query))
+      .map(a => ({
+        label: `${a.Kode_Asset} — ${a.Nama_Debitur || a.Bank_Kreditur || '—'}`,
+        sub:   `${a.Label_Asset||a.Tipe_Properti||''} · ${a.Kota||''} · ${a.Harga_Limit_Format||''}`,
+        value: `${a.Nama_Debitur || a.Bank_Kreditur} – ${a.Kota} (${a.Kode_Asset})`,
       }));
   }
 
@@ -4211,10 +4234,7 @@ function filterPropertiPicker(q) {
 
   _pickerItems = items;
   list.querySelectorAll('[data-picker-idx]').forEach(el => {
-    el.addEventListener('click', () => {
-      const idx = parseInt(el.dataset.pickerIdx);
-      selectProperti(_pickerItems[idx].value);
-    });
+    el.addEventListener('click', () => selectProperti(_pickerItems[parseInt(el.dataset.pickerIdx)].value));
   });
 }
 
@@ -7699,6 +7719,8 @@ async function loadAssetPage() {
   if (resetSyncBtn) resetSyncBtn.style.display = SYNC_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
   const publishAllBtn = document.getElementById('btn-publish-all-asset');
   if (publishAllBtn) publishAllBtn.style.display = PUBLISH_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
+  const reseqBtn = document.getElementById('btn-resequence-asset');
+  if (reseqBtn) reseqBtn.style.display = SYNC_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
 
   const filterStatusWrap = document.getElementById('asset-wrap-filter-status');
   if (filterStatusWrap) filterStatusWrap.style.display = _assetCanEdit ? '' : 'none';
@@ -8559,6 +8581,43 @@ async function syncAssetsFromSource(reset = false) {
     showToast('Sync gagal: ' + e.message, 'error');
   } finally {
     setLoading(false);
+  }
+}
+
+// ── Resequence Kode Asset ──────────────────────────────────
+async function resequenceAssetKodes() {
+  // Hitung duplikat dulu sebelum konfirmasi
+  let previewMsg = 'Perbaiki nomor ID aset yang duplikat?\n\nSemua aset akan dinomor ulang per tipe (Rumah, Ruko, dll) secara berurutan berdasarkan tanggal input.\n\nContoh: AST-RMH-2026-001, 002, 003...\n\nLanjut?';
+  if (!confirm(previewMsg)) return;
+
+  const btn = document.getElementById('btn-resequence-asset');
+  const origLabel = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses…'; }
+
+  try {
+    const res = await API.post('/assets/resequence');
+    const d = res.data || {};
+
+    let detail = `✅ Resequence selesai!\n\n`;
+    detail += `📊 Diperiksa   : ${d.scanned || 0} aset\n`;
+    detail += `🔴 Duplikat    : ${d.duplicates || 0} kode\n`;
+    detail += `✏️ Diperbaiki  : ${d.changed || 0} aset\n`;
+    if (d.errors) detail += `⚠️ Error       : ${d.errors} aset\n`;
+
+    if (d.changes && d.changes.length > 0 && d.changes.length <= 20) {
+      detail += `\nRincian perubahan:\n`;
+      d.changes.forEach(c => { detail += `  ${c.oldKode} → ${c.newKode}\n`; });
+    } else if (d.changes && d.changes.length > 20) {
+      detail += `\n(${d.changes.length} perubahan — terlalu banyak untuk ditampilkan)`;
+    }
+
+    showToast(res.message || 'Resequence selesai', d.errors ? 'warning' : 'success');
+    if (d.changed > 0) alert(detail);
+    await fetchAssets(true);
+  } catch (e) {
+    showToast('Resequence gagal: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = origLabel; }
   }
 }
 

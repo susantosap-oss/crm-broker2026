@@ -127,6 +127,19 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+// ── POST /resequence — Perbaiki duplikat Kode_Asset ────────
+router.post('/resequence', async (req, res) => {
+  try {
+    if (!SYNC_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Hanya Superadmin/Principal/Kantor yang bisa resequence kode aset' });
+    }
+    const result = await assetsService.resequenceKodes(req.user);
+    res.json({ success: true, data: result, message: result.message });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // ── POST /publish-all — Publish semua aset ke Web ──────────
 router.post('/publish-all', async (req, res) => {
   try {

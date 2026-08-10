@@ -582,6 +582,11 @@
         style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#4ade80;padding:8px 13px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
         <i class="fa-solid fa-globe"></i> Publish All
       </button>
+      <button id="btn-resequence-asset" onclick="resequenceAssetKodes()"
+        style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);color:#a78bfa;padding:8px 13px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"
+        title="Perbaiki nomor ID aset yang duplikat — renomor ulang per tipe secara berurutan">
+        <i class="fa-solid fa-arrow-up-1-9"></i> Perbaiki No. ID
+      </button>
     </div>
 
     <!-- Filter Bar -->
@@ -2327,7 +2332,7 @@
         <div><label class="form-label">Skor</label><select id="lead-score" class="form-input"><option value="Hot">🔥 Hot</option><option value="Warm" selected>☀️ Warm</option><option value="Cold">❄️ Cold</option></select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label class="form-label">Tipe Properti</label><select id="lead-tipe-prop" class="form-input"><option value="Primary">🏗 Primary</option><option value="Secondary">🏠 Secondary</option></select></div>
+        <div><label class="form-label">Tipe Properti</label><select id="lead-tipe-prop" class="form-input"><option value="Primary">🏗 Primary</option><option value="Secondary">🏠 Secondary</option><option value="Aset">🏦 Aset Lelang</option></select></div>
         <div><label class="form-label">Jenis</label><select id="lead-jenis" class="form-input"><option value="Beli">💰 Beli</option><option value="Sewa">🔑 Sewa</option></select></div>
       </div>
       <div>
@@ -3280,11 +3285,12 @@
     <h3 style="color:#fff;font-size:15px;font-weight:700;margin:0">Pilih Properti</h3>
     <button onclick="closePropertiPicker()" style="width:28px;height:28px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
   </div>
-  <input id="properti-picker-search" type="text" placeholder="Cari judul, lokasi, kode..."
+  <input id="properti-picker-search" type="text" placeholder="Cari nama, kota, atau No. ID (mis. AST-RMH-2026-001)..."
     class="form-input" style="margin-bottom:12px" oninput="filterPropertiPicker(this.value)"/>
   <div style="display:flex;gap:8px;margin-bottom:12px">
     <button onclick="setPropertiTab('listing')" id="ptab-listing" style="flex:1;padding:7px;border-radius:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:rgba(212,168,83,0.2);color:#D4A853">🏠 Listing</button>
     <button onclick="setPropertiTab('primary')" id="ptab-primary" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,0.5)">🏗️ Primary</button>
+    <button onclick="setPropertiTab('aset')" id="ptab-aset" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,0.5)">🏦 Aset</button>
   </div>
   <div id="properti-picker-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px"></div>
 </div>

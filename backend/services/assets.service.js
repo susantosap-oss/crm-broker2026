@@ -470,11 +470,15 @@ class AssetsService {
           Sertifikat:         certType,
           Nama_Debitur:       debtorName,
           Harga_Limit_Lelang: hargaLimitFinal > 0 ? String(hargaLimitFinal) : '',
-          Label_Asset:        labelAsset,
+          // Label_Asset dikelola manual di CRM — tidak ditimpa sync
         };
         let changed = false;
         for (const [f, v] of Object.entries(srcFields)) {
           if (v && v !== existing[f]) { updateData[f] = v; changed = true; }
+        }
+        // Isi Label_Asset dari sumber hanya jika CRM masih kosong (first-time)
+        if (labelAsset && !existing.Label_Asset) {
+          updateData.Label_Asset = labelAsset; changed = true;
         }
         if (changed || existing.Source_Data !== JSON.stringify(sourceData)) {
           updateOps.push({ existing, updateData });
@@ -642,14 +646,131 @@ class AssetsService {
   }
 
   async _generateKode(tipe) {
-    const prefix = {
+    const KODE_PREFIX = {
       Rumah: 'AST-RMH', Ruko: 'AST-RKO', Apartemen: 'AST-APT',
       Gudang: 'AST-GDG', Tanah: 'AST-TNH', Kios: 'AST-KIO',
-    }[tipe] || 'AST';
+    };
+    const prefix = KODE_PREFIX[tipe] || 'AST';
     const year = new Date().getFullYear();
     const rows = await sheetsService.getRange(SHEETS.ASSETS);
-    const seq  = String((rows ? rows.length : 1)).padStart(3, '0');
-    return `${prefix}-${year}-${seq}`;
+    // Count existing assets of the same type, not total rows
+    const typeCount = rows && rows.length > 1
+      ? rows.slice(1).filter(r => {
+          const obj = this._rowToObj(r);
+          return (KODE_PREFIX[obj.Tipe_Properti] || 'AST') === prefix;
+        }).length + 1
+      : 1;
+    return `${prefix}-${year}-${String(typeCount).padStart(3, '0')}`;
+  }
+
+  // ── RESEQUENCE KODE ASSET ─────────────────────────────────
+  // Perbaiki duplikat Kode_Asset: renomor ulang semua aset per tipe
+  // secara berurutan berdasarkan Tanggal_Input (ascending).
+  // Menggunakan batchUpdate (1 API call) agar tidak timeout.
+  async resequenceKodes(user) {
+    const rows = await sheetsService.getRange(SHEETS.ASSETS);
+    if (!rows || rows.length < 2) {
+      return { scanned: 0, changed: 0, duplicates: 0, message: 'Tidak ada aset untuk diproses' };
+    }
+
+    const KODE_PREFIX = {
+      Rumah: 'AST-RMH', Ruko: 'AST-RKO', Apartemen: 'AST-APT',
+      Gudang: 'AST-GDG', Tanah: 'AST-TNH', Kios: 'AST-KIO',
+    };
+
+    // Posisi kolom di sheet (0-based index → dikonversi ke huruf kolom A1 notation)
+    const KODE_COL = 'B';  // COLUMNS.ASSETS index 1
+    const UPD_COL  = 'AI'; // COLUMNS.ASSETS index 34
+
+    // Kumpulkan semua aset dengan posisi baris sheet aslinya (tidak perlu _rowToObj penuh)
+    const IDX = { id: 0, kode: 1, date: 2, tipe: 3 }; // A=0,B=1,C=2,D=3
+    const assets = rows.slice(1).map((row, i) => ({
+      rowIndex: i + 2, // header = baris 1, data mulai baris 2
+      id:   row[IDX.id]   || '',
+      kode: row[IDX.kode] || '',
+      date: row[IDX.date] || '',
+      tipe: row[IDX.tipe] || '',
+    })).filter(a => a.id);
+
+    // Hitung duplikat sebelum perbaikan
+    const kodeCounts = {};
+    assets.forEach(a => { kodeCounts[a.kode] = (kodeCounts[a.kode] || 0) + 1; });
+    const duplicateKodes = Object.keys(kodeCounts).filter(k => kodeCounts[k] > 1);
+
+    // Kelompokkan per tipe, urutkan Tanggal_Input asc lalu rowIndex asc
+    const groups = {};
+    assets.forEach(a => {
+      const prefix = KODE_PREFIX[a.tipe] || 'AST';
+      if (!groups[prefix]) groups[prefix] = [];
+      groups[prefix].push(a);
+    });
+    Object.values(groups).forEach(g => {
+      g.sort((a, b) => {
+        const d = (a.date || '').localeCompare(b.date || '');
+        return d !== 0 ? d : a.rowIndex - b.rowIndex;
+      });
+    });
+
+    const year = new Date().getFullYear();
+    const now  = new Date().toISOString();
+    const changes = [];
+
+    for (const [prefix, group] of Object.entries(groups)) {
+      group.forEach((asset, idx) => {
+        const newKode = `${prefix}-${year}-${String(idx + 1).padStart(3, '0')}`;
+        if (newKode !== asset.kode) {
+          changes.push({ ...asset, newKode });
+        }
+      });
+    }
+
+    if (changes.length === 0) {
+      return {
+        scanned:    assets.length,
+        duplicates: duplicateKodes.length,
+        changed:    0,
+        message:    `Semua ${assets.length} aset sudah bernomor dengan benar, tidak ada perubahan`,
+      };
+    }
+
+    // Batch update semua kode sekaligus — 1 API call ke Google Sheets
+    const batchData = [];
+    changes.forEach(c => {
+      batchData.push({ range: `${SHEETS.ASSETS}!${KODE_COL}${c.rowIndex}`, values: [[c.newKode]] });
+      batchData.push({ range: `${SHEETS.ASSETS}!${UPD_COL}${c.rowIndex}`, values: [[now]] });
+    });
+    await sheetsService.batchUpdate(batchData);
+
+    // Batch log audit trail — 1 appendRows call
+    if (user) {
+      try {
+        await this._ensureEditLogHeaders();
+        const logRows = changes.map(c => {
+          const logObj = {
+            ID:         uuidv4(),
+            Timestamp:  now,
+            Agen_ID:    user.id   || '',
+            Agen_Nama:  user.nama || '',
+            Kode_Asset: c.newKode,
+            Asset_ID:   c.id,
+            Aksi:       `Resequence: ${c.kode} → ${c.newKode}`,
+            Edit_Ke:    '0',
+          };
+          return COLUMNS.ASSET_EDIT_LOG.map(col => logObj[col] || '');
+        });
+        await sheetsService.appendRows(SHEETS.ASSET_EDIT_LOG, logRows);
+      } catch (e) {
+        console.warn('[Resequence] Batch log gagal:', e.message);
+      }
+    }
+
+    return {
+      scanned:    assets.length,
+      duplicates: duplicateKodes.length,
+      changed:    changes.length,
+      changes:    changes.map(c => ({ oldKode: c.kode, newKode: c.newKode, tipe: c.tipe })),
+      message:    `Resequence selesai: ${assets.length} aset diperiksa, ${duplicateKodes.length} kode duplikat ditemukan, ${changes.length} kode diperbaiki`,
+    };
   }
 
   async _ensureHeaders() {
