@@ -7676,6 +7676,7 @@ let _currentAsset = null;
 let _assetEditorIds = [];
 let _assetPhotoPending = { 1: null, 2: null, 3: null }; // { slot: File }
 let _assetCanEdit = false;
+let _assetViewMode = 'card';
 let _assetGridListenerAdded = false;
 
 const MANAGE_ROLES_ASSET  = ['superadmin', 'principal', 'kantor', 'business_manager', 'admin'];
@@ -7725,6 +7726,9 @@ async function loadAssetPage() {
   const filterStatusWrap = document.getElementById('asset-wrap-filter-status');
   if (filterStatusWrap) filterStatusWrap.style.display = _assetCanEdit ? '' : 'none';
 
+  const tabelBtn = document.getElementById('btn-tabel-asset');
+  if (tabelBtn && !_assetCanEdit) tabelBtn.style.display = 'none';
+
   await fetchAssets();
 }
 
@@ -7768,6 +7772,10 @@ function renderAssetGrid(assets) {
   if (!grid) return;
   if (!assets.length) {
     grid.innerHTML = '';
+    const _tblWrapEmpty = document.getElementById('asset-table-wrap');
+    if (_tblWrapEmpty) _tblWrapEmpty.style.display = 'none';
+    const _topScrollEmpty = document.getElementById('asset-table-top-scroll');
+    if (_topScrollEmpty) _topScrollEmpty.style.display = 'none';
     if (empty) {
       empty.style.display = 'block';
       const hint = document.getElementById('asset-empty-hint');
@@ -7783,7 +7791,43 @@ function renderAssetGrid(assets) {
     return;
   }
   if (empty) empty.style.display = 'none';
-  grid.innerHTML = assets.map(a => buildAssetCard(a)).join('');
+  const tblWrap = document.getElementById('asset-table-wrap');
+
+  // Sort: Group 1 = ada foto real, Group 2 = tanpa foto. Dalam tiap group: ratio ↓ → disc ↓
+  // Ratio: pakai Est_Harga_Pasar/Harga_Limit_Lelang, fallback ke liquidRatio di Source_Data
+  const _getAssetRatio = a => {
+    const lim = parseFloat(a.Harga_Limit_Lelang) || 0;
+    const ps  = parseFloat(a.Est_Harga_Pasar) || 0;
+    if (lim > 0 && ps > 0) return ps / lim;
+    try { return parseFloat(JSON.parse(a.Source_Data || '{}').liquidRatio) || 0; } catch(_) { return 0; }
+  };
+  const _sorted = [...assets].sort((a, b) => {
+    const aPhoto = a.Foto_1_URL ? 1 : 0;
+    const bPhoto = b.Foto_1_URL ? 1 : 0;
+    if (aPhoto !== bPhoto) return bPhoto - aPhoto;
+    const aRatio = _getAssetRatio(a);
+    const bRatio = _getAssetRatio(b);
+    if (Math.abs(aRatio - bRatio) > 0.001) return bRatio - aRatio;
+    const aLim  = parseFloat(a.Harga_Limit_Lelang) || 0;
+    const bLim  = parseFloat(b.Harga_Limit_Lelang) || 0;
+    const aPs   = parseFloat(a.Est_Harga_Pasar) || 0;
+    const bPs   = parseFloat(b.Est_Harga_Pasar) || 0;
+    const aDisc = (aPs > 0 && aLim > 0 && aPs > aLim) ? (aPs - aLim) / aPs : 0;
+    const bDisc = (bPs > 0 && bLim > 0 && bPs > bLim) ? (bPs - bLim) / bPs : 0;
+    return bDisc - aDisc;
+  });
+
+  const topScroll = document.getElementById('asset-table-top-scroll');
+  if (_assetViewMode === 'table') {
+    grid.style.display = 'none';
+    if (tblWrap) tblWrap.style.display = 'block';
+    renderAssetTable(_sorted, _getAssetRatio);
+  } else {
+    grid.style.display = 'grid';
+    if (tblWrap) tblWrap.style.display = 'none';
+    if (topScroll) topScroll.style.display = 'none';
+    grid.innerHTML = _sorted.map(a => buildAssetCard(a)).join('');
+  }
 }
 
 function buildAssetCard(a) {
@@ -7814,6 +7858,11 @@ function buildAssetCard(a) {
   const _disc  = (_pasar > 0 && _limit > 0 && _pasar > _limit) ? Math.round((_pasar - _limit) / _pasar * 100) : 0;
   const discBadge = _disc > 0
     ? `<span style="font-size:9px;padding:2px 6px;border-radius:5px;font-weight:700;background:${_disc>=30?'rgba(34,197,94,0.15)':_disc>=20?'rgba(212,168,83,0.15)':'rgba(148,163,184,0.1)'};color:${_disc>=30?'#4ade80':_disc>=20?'#D4A853':'#94a3b8'}">↓${_disc}%</span>`
+    : '';
+  // Ratio Harga Pasar / Harga Limit — berlaku semua label (Lelang, Cessie, AYDA)
+  const _ratioCalc = (_pasar > 0 && _limit > 0) ? _pasar / _limit : 0;
+  const ratioBadge = _ratioCalc > 1
+    ? `<span style="font-size:9px;padding:2px 6px;border-radius:5px;font-weight:700;background:rgba(96,165,250,0.12);color:#60a5fa">${_ratioCalc.toFixed(2).replace('.', ',')}× pasar</span>`
     : '';
 
   // Label_Asset badge (Lelang / Cessie / AYDA)
@@ -7863,6 +7912,7 @@ function buildAssetCard(a) {
       ${a.Bank_Kreditur ? `<div style="font-size:10px;color:#D4A853;margin-bottom:4px">🏦 ${escapeHtml(a.Bank_Kreditur)}</div>` : ''}
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span style="font-size:14px;font-weight:700;color:#D4A853">Limit: ${escapeHtml(limitFmt)}</span>
+        ${ratioBadge}
         ${discBadge}
         ${ratioFmt ? `<span style="font-size:10px;font-weight:500;color:#f87171">Rasio ${escapeHtml(ratioFmt)}</span>` : ''}
       </div>
@@ -7874,28 +7924,104 @@ function buildAssetCard(a) {
 
 function filterAssets() {
   if (!_assetsData?.length) return;
-  const search = (document.getElementById('asset-search')?.value || '').toLowerCase();
-  const kode   = (document.getElementById('asset-search-kode')?.value || '').replace(/\D/g, '');
-  const tipe   = document.getElementById('asset-filter-tipe')?.value   || '';
-  const status = document.getElementById('asset-filter-status')?.value  || '';
-  const kota   = document.getElementById('asset-filter-kota')?.value    || '';
-  const bank   = document.getElementById('asset-filter-bank')?.value    || '';
-  const label  = document.getElementById('asset-filter-label')?.value   || '';
+  const search   = (document.getElementById('asset-search')?.value || '').toLowerCase();
+  const kode     = (document.getElementById('asset-search-kode')?.value || '').replace(/\D/g, '');
+  const tipe     = document.getElementById('asset-filter-tipe')?.value     || '';
+  const status   = document.getElementById('asset-filter-status')?.value   || '';
+  const provinsi = document.getElementById('asset-filter-provinsi')?.value || '';
+  const kota     = document.getElementById('asset-filter-kota')?.value     || '';
+  const bank     = document.getElementById('asset-filter-bank')?.value     || '';
+  const label    = document.getElementById('asset-filter-label')?.value    || '';
 
   const filtered = _assetsData.filter(a => {
-    const matchS  = !search || [a.Nama_Asset, a.Nama_Debitur, a.Bank_Kreditur, a.Kota, a.Kecamatan, a.No_Perkara].join(' ').toLowerCase().includes(search);
-    // Cocokkan 3 digit terakhir kode aset (AST-RMH-2026-020 → "020")
+    const matchS  = !search || [a.Nama_Asset, a.Nama_Debitur, a.Bank_Kreditur, a.Kota, a.Kecamatan, a.No_Perkara, a.Alamat].join(' ').toLowerCase().includes(search);
     const kodeAkhir = (a.Kode_Asset || '').split('-').pop().replace(/\D/g, '');
     const matchKode = !kode || kodeAkhir.endsWith(kode) || kodeAkhir === kode.padStart(kodeAkhir.length, '0');
-    const matchT  = !tipe   || a.Tipe_Properti === tipe;
-    const matchSt = !status || a.Status === status;
-    const matchK  = !kota   || a.Kota === kota;
-    const matchB  = !bank   || a.Bank_Kreditur === bank;
+    const matchT  = !tipe     || a.Tipe_Properti === tipe;
+    const matchSt = !status   || a.Status === status;
+    const matchP  = !provinsi || (a.Provinsi || '').toLowerCase() === provinsi.toLowerCase();
+    const matchK  = !kota     || a.Kota === kota;
+    const matchB  = !bank     || a.Bank_Kreditur === bank;
     const aLabel  = (a.Label_Asset || '').trim();
-    const matchL  = !label  || aLabel === label || (label === 'Cessie' && aLabel === 'Cassie') || (label === 'Cassie' && aLabel === 'Cessie');
-    return matchS && matchKode && matchT && matchSt && matchK && matchB && matchL;
+    const matchL  = !label || aLabel === label || (label === 'Cessie' && aLabel === 'Cassie') || (label === 'Cassie' && aLabel === 'Cessie');
+    return matchS && matchKode && matchT && matchSt && matchP && matchK && matchB && matchL;
   });
   renderAssetGrid(filtered);
+}
+
+// ── Toggle Card / Table view ──────────────────────────────
+function toggleAssetTableView() {
+  _assetViewMode = _assetViewMode === 'table' ? 'card' : 'table';
+  const btn = document.getElementById('btn-tabel-asset');
+  if (btn) {
+    const isTable = _assetViewMode === 'table';
+    btn.style.background   = isTable ? 'rgba(96,165,250,0.25)' : 'rgba(96,165,250,0.1)';
+    btn.style.borderColor  = isTable ? '#60a5fa' : 'rgba(96,165,250,0.35)';
+    btn.innerHTML = isTable
+      ? '<i class="fa-solid fa-grip"></i> Card View'
+      : '<i class="fa-solid fa-table-list"></i> Tabel List';
+  }
+  filterAssets();
+}
+
+function renderAssetTable(sorted, getRatio) {
+  const tbody = document.getElementById('asset-table-body');
+  if (!tbody) return;
+  const _fmt = v => { const n = parseFloat(v); return (!v || !n) ? null : `${Number.isInteger(n) ? n : n.toFixed(1)}m²`; };
+  // Init top scrollbar sync (desktop / pointer:fine only)
+  const _wrap      = document.getElementById('asset-table-wrap');
+  const _topScroll = document.getElementById('asset-table-top-scroll');
+  const _topInner  = document.getElementById('asset-table-top-scroll-inner');
+  const _tbl       = document.getElementById('asset-table');
+  if (_wrap && _topScroll && _topInner && _tbl) {
+    const isDesktop = window.matchMedia('(pointer:fine)').matches;
+    if (isDesktop) {
+      _topScroll.style.display = 'block';
+      requestAnimationFrame(() => {
+        _topInner.style.width = _tbl.scrollWidth + 'px';
+      });
+      _topScroll.onscroll = () => { _wrap.scrollLeft = _topScroll.scrollLeft; };
+      _wrap.onscroll      = () => { _topScroll.scrollLeft = _wrap.scrollLeft; };
+    } else {
+      _topScroll.style.display = 'none';
+    }
+  }
+
+  tbody.innerHTML = sorted.map((a, i) => {
+    const hasFoto = !!a.Foto_1_URL;
+    const lim  = parseFloat(a.Harga_Limit_Lelang) || 0;
+    const ps   = parseFloat(a.Est_Harga_Pasar) || 0;
+    const ratio = getRatio(a);
+    const ratioTxt = ratio > 0 ? ratio.toFixed(2).replace('.', ',') + '×' : '—';
+    const disc  = (ps > 0 && lim > 0 && ps > lim) ? Math.round((ps - lim) / ps * 100) : 0;
+    const discTxt = disc > 0 ? '↓' + disc + '%' : '—';
+    const lt   = _fmt(a.Luas_Tanah);
+    const lb   = _fmt(a.Luas_Bangunan);
+    const sert = (a.Sertifikat && a.Sertifikat !== '0') ? a.Sertifikat : null;
+    const specs = [lt ? 'LT ' + lt : null, lb ? 'LB ' + lb : null, sert].filter(Boolean).join(' / ');
+    const rowBg = i % 2 === 0 ? '#0D1526' : '#111827';
+    const discColor = disc >= 30 ? '#4ade80' : disc >= 20 ? '#D4A853' : '#94a3b8';
+    return `<tr style="background:${rowBg};border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer"
+        onclick="openAssetDetail('${escapeHtml(a.ID)}')">
+      <td style="padding:8px 12px;white-space:nowrap;font-weight:600;color:#D4A853;font-size:11px">${escapeHtml(a.Kode_Asset || a.ID || '—')}</td>
+      <td style="padding:8px 12px;text-align:center;font-size:15px">${hasFoto
+        ? '<span style="color:#4ade80;font-weight:700">✓</span>'
+        : '<span style="color:#f87171;font-weight:700">✗</span>'}</td>
+      <td style="padding:8px 12px;white-space:nowrap;color:#60a5fa;font-weight:700">${escapeHtml(ratioTxt)}</td>
+      <td style="padding:8px 12px;white-space:nowrap;color:${discColor};font-weight:600">${escapeHtml(discTxt)}</td>
+      <td style="padding:8px 12px;min-width:180px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(255,255,255,0.75)"
+          title="${escapeHtml(a.Alamat || '')}">${escapeHtml(a.Alamat || '—')}</td>
+      <td style="padding:8px 12px;white-space:nowrap">${escapeHtml(a.Kecamatan || '—')}</td>
+      <td style="padding:8px 12px;white-space:nowrap">${escapeHtml(a.Kota || '—')}</td>
+      <td style="padding:8px 12px;white-space:nowrap">${escapeHtml(a.Tipe_Properti || '—')}</td>
+      <td style="padding:8px 12px;white-space:nowrap;color:rgba(255,255,255,0.45);font-size:11px">${escapeHtml(specs || '—')}</td>
+      <td style="padding:8px 12px;white-space:nowrap;color:#D4A853;font-weight:600">${escapeHtml(a.Harga_Limit_Format || (lim ? '—' : '—'))}</td>
+      <td style="padding:8px 12px;white-space:nowrap;color:#a78bfa;font-weight:600">${escapeHtml(a.Est_Harga_Pasar_Format || (ps ? '—' : '—'))}</td>
+      <td style="padding:8px 12px;white-space:nowrap;color:#94a3b8">${escapeHtml(a.Est_Harga_Eksekusi_Format || '—')}</td>
+      <td style="padding:8px 12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(255,255,255,0.35);font-size:11px"
+          title="${escapeHtml(a.Keterangan_Debitur || '')}">${escapeHtml(a.Keterangan_Debitur || '—')}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ── Dropdown filter ──────────────────────────────────────
@@ -7949,11 +8075,13 @@ function populateAssetFilters() {
     return ALL_JATIM.has(key);
   };
 
-  const kotaSet = new Set();
-  const bankSet = new Set();
+  const kotaSet     = new Set();
+  const bankSet     = new Set();
+  const provinsiSet = new Set();
   (_assetsData || []).forEach(a => {
     if (a.Kota && isJatim(a.Kota)) kotaSet.add(a.Kota);
     if (a.Bank_Kreditur) bankSet.add(a.Bank_Kreditur);
+    if (a.Provinsi) provinsiSet.add(a.Provinsi);
   });
 
   const ddStyle = 'padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer';
@@ -7986,10 +8114,19 @@ function populateAssetFilters() {
       bankDd.appendChild(makeItem(b, () => setAssetFilter('bank', b, b)));
     });
   }
+
+  const provinsiDd = document.getElementById('asset-dropdown-provinsi');
+  if (provinsiDd) {
+    provinsiDd.innerHTML = '';
+    provinsiDd.appendChild(makeItem('Semua Provinsi', () => setAssetFilter('provinsi', '', '🗺️ Provinsi')));
+    [...provinsiSet].sort().forEach(p => {
+      provinsiDd.appendChild(makeItem(p, () => setAssetFilter('provinsi', p, p)));
+    });
+  }
 }
 
 document.addEventListener('click', (e) => {
-  const ASSET_FILTER_IDS = ['tipe', 'status', 'kota', 'bank', 'label'];
+  const ASSET_FILTER_IDS = ['tipe', 'status', 'provinsi', 'kota', 'bank', 'label'];
   if (!ASSET_FILTER_IDS.some(t => e.target.closest(`#asset-wrap-filter-${t}`))) {
     ASSET_FILTER_IDS.forEach(t => {
       const el = document.getElementById(`asset-dropdown-${t}`);

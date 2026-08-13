@@ -563,6 +563,10 @@
             style="display:none;background:#D4A853;color:#0D1526;border:none;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px">
             <i class="fa-solid fa-plus"></i> Tambah Aset
           </button>
+          <button id="btn-tabel-asset" onclick="toggleAssetTableView()"
+            style="display:none;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.35);color:#60a5fa;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px">
+            <i class="fa-solid fa-table-list"></i> Tabel List
+          </button>
         </div>
       </div>
     </div>
@@ -630,6 +634,18 @@
           <div onclick="setAssetFilter('status','Draft','Draft')" style="padding:10px 14px;color:#94a3b8;font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">● Draft</div>
         </div>
       </div>
+      <!-- Dropdown Provinsi -->
+      <div style="position:relative" id="asset-wrap-filter-provinsi">
+        <button onclick="toggleAssetDropdown('provinsi')"
+          style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between">
+          <span id="asset-filter-provinsi-label">🗺️ Provinsi</span>
+          <i class="fa-solid fa-chevron-down" style="font-size:10px;color:#f59e0b"></i>
+        </button>
+        <input type="hidden" id="asset-filter-provinsi" value=""/>
+        <div id="asset-dropdown-provinsi" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:#131F38;border:1px solid rgba(245,158,11,0.25);border-radius:10px;z-index:999;min-width:200px;max-height:280px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+          <div onclick="setAssetFilter('provinsi','','🗺️ Provinsi')" style="padding:10px 14px;color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer" onmouseenter="this.style.background='rgba(245,158,11,0.1)'" onmouseleave="this.style.background=''">Semua Provinsi</div>
+        </div>
+      </div>
       <!-- Dropdown Kota Jawa Timur -->
       <div style="position:relative" id="asset-wrap-filter-kota">
         <button onclick="toggleAssetDropdown('kota')"
@@ -675,6 +691,35 @@
     <div id="asset-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
       <div class="skeleton-card" style="height:280px;border-radius:16px;background:rgba(255,255,255,0.04)"></div>
       <div class="skeleton-card" style="height:280px;border-radius:16px;background:rgba(255,255,255,0.04)"></div>
+    </div>
+
+    <!-- Top horizontal scrollbar — desktop only, synced with table (touch users skip) -->
+    <div id="asset-table-top-scroll" style="display:none;overflow-x:scroll;overflow-y:hidden;height:14px;border-radius:7px 7px 0 0;background:rgba(255,255,255,0.03)">
+      <div id="asset-table-top-scroll-inner" style="height:1px;min-width:1100px"></div>
+    </div>
+
+    <!-- Table View (editor only) -->
+    <div id="asset-table-wrap" style="display:none;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:0 0 12px 12px;border:1px solid rgba(255,255,255,0.06)">
+      <table id="asset-table" style="width:100%;border-collapse:collapse;font-size:12px;color:#e2e8f0;min-width:1100px">
+        <thead>
+          <tr style="background:#1C2D52;text-align:left;position:sticky;top:0;z-index:2">
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap;color:#D4A853">ID Aset</th>
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);text-align:center;color:#D4A853">Foto</th>
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap;color:#D4A853">Ratio</th>
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);color:#D4A853">Disc</th>
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);min-width:180px;color:#D4A853">Alamat Aset</th>
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap;color:#D4A853">Kecamatan/Area</th>
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);color:#D4A853">Kota</th>
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);color:#D4A853">Type</th>
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap;color:#D4A853">Spesifikasi</th>
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap;color:#D4A853">Harga Limit</th>
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap;color:#D4A853">Harga Pasar</th>
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap;color:#D4A853">Harga Eksekusi</th>
+            <th style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.1);min-width:160px;color:#D4A853">Keterangan Internal</th>
+          </tr>
+        </thead>
+        <tbody id="asset-table-body"></tbody>
+      </table>
     </div>
 
     <!-- Empty state -->
