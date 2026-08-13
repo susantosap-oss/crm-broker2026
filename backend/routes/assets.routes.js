@@ -194,13 +194,12 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// ── DELETE /:id — Hapus aset ───────────────────────────────
+// ── DELETE /:id — Hapus aset (PUBLISH_ROLES + ASSET_EDITORS) ──
 router.delete('/:id', async (req, res) => {
   try {
-    if (!PUBLISH_ROLES.includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak' });
-    }
-    await assetsService.delete(req.params.id);
+    const canDelete = PUBLISH_ROLES.includes(req.user.role) || await assetsService.isEditor(req.user.id);
+    if (!canDelete) return res.status(403).json({ success: false, message: 'Akses ditolak' });
+    await assetsService.delete(req.params.id, req.user);
     res.json({ success: true, message: 'Aset berhasil dihapus' });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });

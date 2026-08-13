@@ -4732,12 +4732,17 @@ function closeSidebar() {
 }
 
 let _lastModalOpenTime = 0;
+let _modalStack        = [];   // stack id modal yang sedang terbuka
+let _poppingFromBack   = false; // flag: sedang merespons popstate
 
-function openModal(id) {
+function openModal(id, displayType) {
   const el = document.getElementById(id); if (!el) return;
   _lastModalOpenTime = Date.now();
-  el.style.display = 'block'; el.classList.add('open');
-  el.scrollTop = 0; // selalu mulai dari atas
+  el.style.display = displayType || el.dataset.modalDisplay || 'block';
+  el.classList.add('open');
+  el.scrollTop = 0;
+  _modalStack.push(id);
+  history.pushState({ modal: id }, '');
   // Set default date for aktivitas modal
   if (id === 'modal-add-aktivitas') {
     const tanggalEl = document.getElementById('ak-tanggal');
@@ -4748,7 +4753,33 @@ function openModal(id) {
 function closeModal(id) {
   const el = document.getElementById(id); if (!el) return;
   el.style.display = 'none'; el.classList.remove('open');
+  const idx = _modalStack.lastIndexOf(id);
+  if (idx !== -1) {
+    _modalStack.splice(idx, 1);
+    if (!_poppingFromBack) {
+      // Ditutup via UI (tombol X) — sync history agar stack dan browser selaras
+      _poppingFromBack = true;
+      history.back();
+      setTimeout(() => { _poppingFromBack = false; }, 200);
+    }
+  }
 }
+
+// Android back button → tutup modal teratas, bukan tutup app
+window.addEventListener('popstate', () => {
+  if (_poppingFromBack) {
+    // Dipicu oleh closeModal → abaikan
+    _poppingFromBack = false;
+    return;
+  }
+  if (_modalStack.length > 0) {
+    const topId = _modalStack[_modalStack.length - 1];
+    _poppingFromBack = true;   // cegah closeModal panggil history.back() lagi
+    closeModal(topId);
+    _poppingFromBack = false;
+  }
+  // Kalau tidak ada modal terbuka: biarkan behavior default (tutup app / navigasi normal)
+});
 
 // Close modal on overlay click — guard 350ms agar ghost-tap tidak langsung menutup modal
 document.addEventListener('click', (e) => {
@@ -7678,6 +7709,7 @@ let _assetPhotoPending = { 1: null, 2: null, 3: null }; // { slot: File }
 let _assetCanEdit = false;
 let _assetViewMode = 'card';
 let _assetGridListenerAdded = false;
+let _assetFavs = new Set(JSON.parse(localStorage.getItem('assetFavs') || '[]'));
 
 const MANAGE_ROLES_ASSET  = ['superadmin', 'principal', 'kantor', 'business_manager', 'admin'];
 const PUBLISH_ROLES_ASSET = ['superadmin', 'principal', 'kantor', 'admin'];
@@ -7701,6 +7733,7 @@ async function loadAssetPage() {
     const grid = document.getElementById('asset-grid');
     if (grid) {
       grid.addEventListener('click', (e) => {
+        if (e.target.closest('.asset-fav-btn')) return;
         const card = e.target.closest('[data-id]');
         if (card && card.dataset.id) openAssetDetail(card.dataset.id);
       });
@@ -7729,6 +7762,7 @@ async function loadAssetPage() {
   const tabelBtn = document.getElementById('btn-tabel-asset');
   if (tabelBtn && !_assetCanEdit) tabelBtn.style.display = 'none';
 
+  _updateAssetFavCount();
   await fetchAssets();
 }
 
@@ -7880,16 +7914,19 @@ function buildAssetCard(a) {
     ? `<span style="font-size:9px;padding:2px 7px;border-radius:5px;font-weight:700;${labelStyle}">${labelIcon} ${escapeHtml(labelVal)}</span>`
     : '';
 
+  const isFav = _assetFavs.has(a.ID);
   return `
   <div data-id="${escapeHtml(a.ID)}"
-    style="display:flex;gap:12px;background:#131F38;border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:12px;cursor:pointer;transition:border-color 0.2s"
-    onmouseenter="this.style.borderColor='rgba(212,168,83,0.25)'"
-    onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'">
-    <!-- Foto 80×80 -->
-    <div style="width:80px;height:80px;border-radius:10px;background:#1C2D52;overflow:hidden;flex-shrink:0">
+    style="display:flex;gap:12px;background:#131F38;border:1px solid ${isFav ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.06)'};border-radius:14px;padding:12px;cursor:pointer;transition:border-color 0.2s"
+    onmouseenter="this.style.borderColor='${isFav ? 'rgba(239,68,68,0.5)' : 'rgba(212,168,83,0.25)'}'"
+    onmouseleave="this.style.borderColor='${isFav ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.06)'}'">
+    <!-- Foto 80×80 + fav button overlay kanan atas -->
+    <div style="width:80px;height:80px;border-radius:10px;background:#1C2D52;overflow:hidden;flex-shrink:0;position:relative">
       ${foto
         ? `<img src="${escapeHtml(foto)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>`
         : `<img src="${tipePic}" style="width:100%;height:100%;object-fit:cover;opacity:0.55" loading="lazy"/>`}
+      <button class="asset-fav-btn" onclick="toggleAssetFav('${escapeHtml(a.ID)}')" title="${isFav ? 'Hapus dari Favorit' : 'Tambah ke Favorit'}"
+        style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.35);border:none;padding:2px 3px;border-radius:4px;cursor:pointer;font-size:11px;line-height:1;z-index:2">${isFav ? '❤️' : '🤍'}</button>
     </div>
     <!-- Konten -->
     <div style="flex:1;min-width:0">
@@ -7962,6 +7999,381 @@ function toggleAssetTableView() {
       : '<i class="fa-solid fa-table-list"></i> Tabel List';
   }
   filterAssets();
+}
+
+// ══════════════════════════════════════════════════════
+// ASSET FAVORITE + PRINT PDF
+// ══════════════════════════════════════════════════════
+
+function toggleAssetFav(id) {
+  if (_assetFavs.has(id)) {
+    _assetFavs.delete(id);
+  } else {
+    _assetFavs.add(id);
+  }
+  localStorage.setItem('assetFavs', JSON.stringify([..._assetFavs]));
+  _updateAssetFavCount();
+  // re-render hanya kartu yang bersangkutan agar tidak scroll-jump
+  const card = document.querySelector(`#asset-grid [data-id="${CSS.escape(id)}"]`);
+  if (card) {
+    const a = _assetsData.find(x => x.ID === id);
+    if (a) card.outerHTML = buildAssetCard(a);
+  }
+  // re-render fav panel jika terbuka
+  if (document.getElementById('modal-asset-fav')?.classList.contains('open')) {
+    _renderFavPanel();
+  }
+}
+
+function _updateAssetFavCount() {
+  const n = _assetFavs.size;
+  const badge = document.getElementById('asset-fav-count');
+  if (badge) {
+    badge.textContent = n || '';
+    badge.style.display = n ? 'inline-flex' : 'none';
+  }
+  const btn = document.getElementById('btn-asset-fav-main');
+  if (btn) btn.style.borderColor = n ? 'rgba(239,68,68,0.6)' : 'rgba(239,68,68,0.35)';
+}
+
+function openAssetFavPanel() {
+  let modal = document.getElementById('modal-asset-fav');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-asset-fav';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.7);overflow-y:auto';
+    modal.innerHTML = `
+      <div style="min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:20px">
+        <div style="background:#0D1526;border-radius:16px;width:100%;max-width:600px;overflow:hidden;border:1px solid rgba(212,168,83,0.2)">
+          <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <h2 style="color:#fff;font-size:18px;margin:0 0 4px">❤️ Favorit Aset</h2>
+              <p id="fav-panel-count" style="color:rgba(255,255,255,0.45);font-size:13px;margin:0">0 aset dipilih</p>
+            </div>
+            <button onclick="closeModal('modal-asset-fav')"
+              style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer;padding:4px">✕</button>
+          </div>
+          <!-- Action Bar -->
+          <div style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">
+            <!-- A4 row -->
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:0.8px;margin-bottom:8px">A4 · 3 CARD PER HALAMAN</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+              <button onclick="printAssetPDF('all','a4')"
+                style="background:#D4A853;color:#0D1526;border:none;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+                <i class="fa-solid fa-print"></i> Print Semua
+              </button>
+              <button onclick="printAssetPDF('selected','a4')"
+                style="background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.4);color:#D4A853;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+                <i class="fa-solid fa-check-square"></i> Print Pilihan
+              </button>
+            </div>
+            <!-- Mobile row -->
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:0.8px;margin-bottom:8px">MOBILE · 1 CARD PER HALAMAN</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <button onclick="printAssetPDF('all','mobile')"
+                style="background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.4);color:#60a5fa;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+                <i class="fa-solid fa-mobile-screen"></i> Print Semua
+              </button>
+              <button onclick="printAssetPDF('selected','mobile')"
+                style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+                <i class="fa-solid fa-check-square"></i> Print Pilihan
+              </button>
+            </div>
+            <!-- Select helpers -->
+            <div style="display:flex;gap:8px">
+              <button onclick="_favSelectAll(true)"
+                style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">
+                Pilih Semua
+              </button>
+              <button onclick="_favSelectAll(false)"
+                style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">
+                Batal Semua
+              </button>
+            </div>
+          </div>
+          <!-- Fav List -->
+          <div id="fav-panel-list" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+      </div>`;
+    modal.dataset.modalDisplay = 'flex';
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal('modal-asset-fav'); });
+    document.body.appendChild(modal);
+  }
+  openModal('modal-asset-fav', 'flex');
+  _renderFavPanel();
+}
+
+function _renderFavPanel() {
+  const list = document.getElementById('fav-panel-list');
+  const countEl = document.getElementById('fav-panel-count');
+  if (!list) return;
+
+  const favAssets = _assetsData.filter(a => _assetFavs.has(a.ID));
+  if (countEl) countEl.textContent = `${favAssets.length} aset difavoritkan`;
+
+  if (!favAssets.length) {
+    list.innerHTML = `<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3);font-size:14px">
+      Belum ada aset favorit.<br>Tap 🤍 pada kartu aset untuk menambahkan.
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = favAssets.map(a => {
+    const foto   = a.Foto_1_URL || '';
+    const lokasi = [a.Kecamatan, a.Kota].filter(Boolean).join(', ');
+    const limitFmt = a.Harga_Limit_Format || (parseInt(a.Harga_Limit_Lelang) > 0 ? a.Harga_Limit_Lelang : '—');
+    return `
+    <div style="display:flex;align-items:center;gap:10px;background:#131F38;border-radius:10px;padding:10px;border:1px solid rgba(255,255,255,0.06)">
+      <input type="checkbox" class="fav-item-check" data-id="${escapeHtml(a.ID)}" checked
+        style="width:16px;height:16px;accent-color:#D4A853;flex-shrink:0;cursor:pointer">
+      <div style="width:52px;height:52px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#1C2D52">
+        ${foto ? `<img src="${escapeHtml(foto)}" style="width:100%;height:100%;object-fit:cover">` : ''}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(a.Nama_Asset || a.Nama_Debitur || 'Aset Lelang')}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin:2px 0">${escapeHtml(a.Kode_Asset || '')} · ${escapeHtml(lokasi)}</div>
+        <div style="font-size:13px;font-weight:700;color:#D4A853">${escapeHtml(limitFmt)}</div>
+      </div>
+      <button onclick="toggleAssetFav('${escapeHtml(a.ID)}')"
+        style="background:none;border:none;color:#f87171;font-size:18px;cursor:pointer;padding:4px" title="Hapus dari Favorit">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+function _favSelectAll(checked) {
+  document.querySelectorAll('.fav-item-check').forEach(cb => cb.checked = checked);
+}
+
+function printAssetPDF(mode, format) {
+  const favAssets = _assetsData.filter(a => _assetFavs.has(a.ID));
+  if (!favAssets.length) { showToast('Belum ada aset favorit', 'warning'); return; }
+
+  let targets = favAssets;
+  if (mode === 'selected') {
+    const checked = [...document.querySelectorAll('.fav-item-check:checked')].map(cb => cb.dataset.id);
+    targets = favAssets.filter(a => checked.includes(a.ID));
+    if (!targets.length) { showToast('Pilih minimal 1 aset terlebih dahulu', 'warning'); return; }
+  }
+
+  const isMobile = format === 'mobile';
+  const user   = STATE.user || {};
+  const waNum  = (user.no_wa || '').replace(/\D/g, '');
+  const waFmt  = waNum ? '+' + (waNum.startsWith('62') ? waNum : '62' + waNum.replace(/^0/, '')) : '';
+  const kantor = (user.nama_kantor || '').replace(/^MANSION\s*:\s*/i, 'MANSION : ').trim();
+  const tgl    = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
+  const logoUrl = window.location.origin + '/assets/mansion-logo.png';
+
+  const _fmLuas = v => { const n = parseFloat(v); return (!v || !n) ? null : `${Number.isInteger(n) ? n : n.toFixed(1)} m²`; };
+
+  // ── Helper: build inner desc content (shared A4 & Mobile) ──
+  const _descContent = (a) => {
+    const lokasi = [a.Kecamatan, a.Kota, a.Provinsi].filter(Boolean).join(', ');
+    const lt    = _fmLuas(a.Luas_Tanah);
+    const lb    = _fmLuas(a.Luas_Bangunan);
+    const sert  = (a.Sertifikat && a.Sertifikat !== '0') ? a.Sertifikat : null;
+    const specs = [lt ? `LT ${lt}` : null, lb ? `LB ${lb}` : null, sert].filter(Boolean);
+    const limitFmt = a.Harga_Limit_Format || (parseInt(a.Harga_Limit_Lelang) > 0 ? 'Rp ' + parseInt(a.Harga_Limit_Lelang).toLocaleString('id-ID') : '—');
+    const pasarFmt = a.Est_Harga_Pasar_Format || (parseInt(a.Est_Harga_Pasar) > 0 ? 'Rp ' + parseInt(a.Est_Harga_Pasar).toLocaleString('id-ID') : '');
+    const labelBadge = a.Label_Asset ? `<span class="label-badge">${escapeHtml(a.Label_Asset)}</span>` : '';
+    return `
+      <div class="pdf-id">${escapeHtml(a.Kode_Asset || a.ID)}${labelBadge}</div>
+      ${a.Nama_Asset || a.Nama_Debitur ? `<div class="pdf-nama">${escapeHtml(a.Nama_Asset || a.Nama_Debitur)}</div>` : ''}
+      ${a.Alamat ? `<div class="pdf-row"><span class="pdf-label-cap">Alamat</span><span>${escapeHtml(a.Alamat)}</span></div>` : ''}
+      ${lokasi ? `<div class="pdf-row"><span class="pdf-label-cap">Lokasi</span><span>${escapeHtml(lokasi)}</span></div>` : ''}
+      ${specs.length ? `<div class="pdf-row"><span class="pdf-label-cap">Spesifikasi</span><span>${specs.map(s => escapeHtml(s)).join(' · ')}</span></div>` : ''}
+      ${a.No_Perkara ? `<div class="pdf-row"><span class="pdf-label-cap">No. Perkara</span><span>${escapeHtml(a.No_Perkara)}</span></div>` : ''}
+      ${a.Gmaps_Link ? `<div class="pdf-maps"><a href="${escapeHtml(a.Gmaps_Link)}" target="_blank">📌 Lihat di Google Maps</a></div>` : ''}
+      <div class="pdf-harga">
+        <div class="harga-item"><span>Harga Limit</span><strong>${escapeHtml(limitFmt)}</strong></div>
+        ${pasarFmt ? `<div class="harga-item"><span>Est. Pasar</span><strong>${escapeHtml(pasarFmt)}</strong></div>` : ''}
+      </div>
+      <div class="pdf-agen">
+        <div class="agen-nama">${escapeHtml(user.nama || '—')}</div>
+        ${kantor ? `<div class="agen-info">${escapeHtml(kantor)}</div>` : ''}
+        ${waFmt ? `<div class="agen-info">📱 ${escapeHtml(waFmt)}</div>` : ''}
+      </div>`;
+  };
+
+  // ── Mini header bar (dipakai di setiap page Mobile) ──
+  const _miniHeader = (idx) => `
+    <div class="pdf-mini-header">
+      <div>
+        <div class="mh-title">Properti Lelang &amp; Eksekusi Bank</div>
+        <div class="mh-sub">Dicetak: ${tgl} · ${idx + 1} / ${targets.length}</div>
+      </div>
+      <img src="${logoUrl}" class="mh-logo" alt="Mansion" onerror="this.style.display='none'">
+    </div>`;
+
+  let bodyHtml = '';
+
+  if (isMobile) {
+    // 1 card per page — vertical layout, foto full-width atas
+    bodyHtml = targets.map((a, idx) => {
+      const foto = a.Foto_1_URL || '';
+      return `
+      <div class="pdf-page-mobile${idx === targets.length - 1 ? ' last' : ''}">
+        ${_miniHeader(idx)}
+        <div class="pdf-card-mobile">
+          <div class="pdf-foto-mobile">
+            ${foto
+              ? `<img src="${escapeHtml(foto)}" alt="Foto Aset">`
+              : `<div class="no-foto">Foto belum tersedia</div>`}
+          </div>
+          <div class="pdf-desc-mobile">
+            ${_descContent(a)}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+  } else {
+    // A4 — 3 card per halaman, tinggi tetap 83mm
+    const a4Header = `
+      <div class="pdf-header">
+        <div>
+          <div class="pdf-header-title">Properti Lelang &amp; Eksekusi Bank</div>
+          <div class="pdf-header-sub">Dicetak: ${tgl} · ${targets.length} aset</div>
+        </div>
+        <img src="${logoUrl}" class="pdf-logo" alt="Mansion Logo" onerror="this.style.display='none'">
+      </div>`;
+
+    const cardRows = targets.map(a => {
+      const foto = a.Foto_1_URL || '';
+      return `
+      <div class="pdf-card">
+        <div class="pdf-foto">
+          ${foto
+            ? `<img src="${escapeHtml(foto)}" alt="Foto Aset">`
+            : `<div class="no-foto">Foto belum tersedia</div>`}
+        </div>
+        <div class="pdf-desc">
+          ${_descContent(a)}
+        </div>
+      </div>`;
+    }).join('');
+
+    bodyHtml = a4Header + cardRows;
+  }
+
+  // ── CSS ──────────────────────────────────────────────
+  const commonCss = `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1e293b; background: #fff; }
+
+    .pdf-id   { font-size: 11px; font-weight: 700; color: #0A2342; letter-spacing: 0.3px; margin-bottom: 2px; }
+    .pdf-nama { font-size: 12px; font-weight: 600; color: #1e293b; line-height: 1.3; margin-bottom: 2px; }
+    .pdf-bank { font-size: 10px; color: #92400e; font-weight: 600; margin-bottom: 3px; }
+    .pdf-row  { margin-bottom: 3px; }
+    .pdf-label-cap { display: block; font-size: 8px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .pdf-row > span:last-child { font-size: 10px; color: #374151; }
+    .pdf-maps { margin: 3px 0; }
+    .pdf-maps a { color: #16a34a; font-size: 10px; font-weight: 600; text-decoration: none; }
+    .label-badge { display:inline-block; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700; background:#FFF3CD; color:#856404; margin-left:5px; }
+    .no-foto { display:flex; align-items:center; justify-content:center; height:100%; color:#94a3b8; font-size:12px; }
+
+    .pdf-harga { display:flex; gap:8px; background:#f8fafc; border-radius:5px; padding:6px 8px; margin-top:4px; }
+    .harga-item { flex:1; }
+    .harga-item span { font-size:8px; color:#64748b; display:block; }
+    .harga-item strong { font-size:14px; color:#0A2342; font-weight:700; display:block; margin-top:1px; }
+
+    .pdf-agen { margin-top:auto; padding-top:6px; border-top:1px solid #f1f5f9; }
+    .agen-nama { font-size:11px; font-weight:700; color:#0A2342; }
+    .agen-info { font-size:9px; color:#374151; }
+
+    @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }`;
+
+  const a4Css = `
+    @page { size: A4 portrait; margin: 10mm 12mm; }
+    .pdf-header { display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #0A2342; padding-bottom:8px; margin-bottom:8px; }
+    .pdf-header-title { font-size:14px; font-weight:700; color:#0A2342; }
+    .pdf-header-sub { font-size:9px; color:#64748b; margin-top:2px; }
+    .pdf-logo { height:36px; object-fit:contain; }
+
+    .pdf-card {
+      display: flex;
+      height: 83mm;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 5mm;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .pdf-foto { width:60%; flex-shrink:0; background:#f1f5f9; overflow:hidden; }
+    .pdf-foto img { width:100%; height:100%; object-fit:cover; display:block; }
+    .pdf-desc { width:40%; padding:9px 11px; display:flex; flex-direction:column; border-left:1px solid #e2e8f0; overflow:hidden; }`;
+
+  const mobileCss = `
+    @page { size: A4 portrait; margin: 8mm 10mm; }
+
+    .pdf-page-mobile {
+      height: 281mm;
+      display: flex;
+      flex-direction: column;
+      page-break-after: always;
+      break-after: page;
+    }
+    .pdf-page-mobile.last { page-break-after: auto; break-after: auto; }
+
+    .pdf-mini-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #0A2342;
+      padding-bottom: 7px;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+    .mh-title { font-size:13px; font-weight:700; color:#0A2342; }
+    .mh-sub   { font-size:9px; color:#64748b; margin-top:1px; }
+    .mh-logo  { height:32px; object-fit:contain; }
+
+    .pdf-card-mobile {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .pdf-foto-mobile { flex: 0 0 58%; overflow: hidden; background: #f1f5f9; }
+    .pdf-foto-mobile img { width:100%; height:100%; object-fit:cover; display:block; }
+    .pdf-desc-mobile {
+      flex: 1;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      border-top: 1px solid #e2e8f0;
+      overflow: hidden;
+    }
+    .pdf-desc-mobile .pdf-nama { font-size:14px; }
+    .pdf-desc-mobile .pdf-row > span:last-child { font-size:12px; }
+    .pdf-desc-mobile .harga-item strong { font-size:17px; }
+    .pdf-desc-mobile .agen-nama { font-size:13px; }
+    .pdf-desc-mobile .agen-info { font-size:11px; }`;
+
+  const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${isMobile ? 'Mobile' : 'A4'} — Aset Properti Lelang</title>
+  <style>
+    ${commonCss}
+    ${isMobile ? mobileCss : a4Css}
+  </style>
+</head>
+<body>
+  ${bodyHtml}
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { showToast('Pop-up diblokir browser. Izinkan pop-up lalu coba lagi.', 'error'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.addEventListener('load', () => setTimeout(() => win.print(), 400));
 }
 
 function renderAssetTable(sorted, getRatio) {
@@ -8225,9 +8637,9 @@ async function openAssetDetail(id) {
       pubBtn.style.display = PUBLISH_ROLES_ASSET.includes(role) ? '' : 'none';
     }
 
-    // Delete button
+    // Delete button — editor + publish roles
     const delBtn = document.getElementById('ad-delete-btn');
-    if (delBtn) delBtn.style.display = PUBLISH_ROLES_ASSET.includes(role) ? '' : 'none';
+    if (delBtn) delBtn.style.display = _assetCanEdit ? '' : 'none';
 
     // Sync source data
     const srcWrap = document.getElementById('ad-source-wrap');
@@ -8339,6 +8751,9 @@ function _buildAssetShareText(asset) {
   const spek     = [lt, lb].filter(Boolean).join('\n') || '—';
   const user     = STATE.user || {};
   const kantor   = (user.nama_kantor || '').replace(/^MANSION\s*:\s*/i, 'MANSION : ').trim();
+  const agentId  = user.id || '';
+  const agentSlug = (user.nama || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-').trim();
+  const agentUrl  = agentId ? `https://www.mansionpro.id/agents/${agentSlug}` : '';
 
   return FIRE + ' *HOT ITEM*\n'
     + label
@@ -8354,8 +8769,9 @@ function _buildAssetShareText(asset) {
     + '\nHubungi :\n'
     + '*' + (user.nama || '') + '*\n'
     + (user.no_wa || '').replace(/[^0-9]/g, '') + '\n'
-    + kantor
-    + (a.Kode_Asset ? '\n\n' + a.Kode_Asset : '');
+    + kantor + '\n'
+    + (agentUrl ? '🌐 ' + agentUrl + '\n' : '')
+    + (a.Kode_Asset ? '\n' + a.Kode_Asset : '');
 }
 
 async function shareAssetWA() {
@@ -8941,7 +9357,7 @@ function openFlyerModal(type, listingId) {
       km:         null,
       isAsset:    true,
       sertifikat: a.Sertifikat   || '',
-      deskripsi:  (a.Bank_Kreditur ? '🏦 ' + a.Bank_Kreditur : '') + (a.No_Perkara ? '\nNo. Perkara: ' + a.No_Perkara : ''),
+      deskripsi:  a.No_Perkara ? 'No. Perkara: ' + a.No_Perkara : '',
       kode:       a.Kode_Asset   || '',
     };
   }

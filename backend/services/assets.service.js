@@ -203,9 +203,10 @@ class AssetsService {
   }
 
   // ── DELETE ───────────────────────────────────────────────
-  async delete(id) {
+  async delete(id, user) {
     const result = await sheetsService.findRowById(SHEETS.ASSETS, id);
     if (!result) throw new Error('Aset tidak ditemukan');
+    if (user) await this.logEdit(user, result.data, 'Hapus');
     await sheetsService.deleteRow(SHEETS.ASSETS, result.rowIndex);
     return true;
   }
