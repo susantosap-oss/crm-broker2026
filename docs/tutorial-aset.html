@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panduan List Aset Lelang — Mansion Realty CRM</title>
+<style>
+  :root {
+    --gold: #D4A853;
+    --gold-light: #f0c97a;
+    --dark: #0D1526;
+    --dark2: #141E35;
+    --dark3: #1a2640;
+    --text: #e2e8f0;
+    --text-dim: rgba(226,232,240,0.55);
+    --green: #22C55E;
+    --blue: #3B82F6;
+    --red: #EF4444;
+    --orange: #F97316;
+    --purple: #8B5CF6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--dark);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* ── TOP NAV ── */
+  .topnav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,21,38,0.97);
+    border-bottom: 1px solid rgba(212,168,83,0.3);
+    padding: 0 24px;
+    display: flex; align-items: center; gap: 12px;
+    height: 56px;
+    backdrop-filter: blur(8px);
+  }
+  .topnav-logo {
+    font-weight: 800; font-size: 15px; color: var(--gold);
+    letter-spacing: 0.5px; white-space: nowrap;
+  }
+  .topnav-sep { color: rgba(212,168,83,0.3); }
+  .topnav-title { font-size: 13px; color: var(--text-dim); }
+  .topnav-links {
+    margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap;
+  }
+  .topnav-links a {
+    font-size: 11px; font-weight: 600; color: var(--text-dim);
+    text-decoration: none; padding: 5px 10px; border-radius: 8px;
+    transition: all .2s; white-space: nowrap;
+  }
+  .topnav-links a:hover { background: rgba(212,168,83,0.12); color: var(--gold); }
+  .topnav-links a.active { background: rgba(212,168,83,0.18); color: var(--gold); }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; min-height: calc(100vh - 56px); }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 240px; flex-shrink: 0;
+    background: var(--dark2);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 24px 16px;
+    position: sticky; top: 56px;
+    height: calc(100vh - 56px);
+    overflow-y: auto;
+  }
+  .sidebar-label {
+    font-size: 10px; font-weight: 700; color: var(--gold);
+    text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 8px; padding: 0 8px;
+  }
+  .sidebar-nav { list-style: none; margin-bottom: 20px; }
+  .sidebar-nav li a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 10px;
+    text-decoration: none; font-size: 13px; font-weight: 500;
+    color: var(--text-dim); transition: all .2s;
+  }
+  .sidebar-nav li a:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  .sidebar-nav li a.active {
+    background: rgba(212,168,83,0.14);
+    color: var(--gold); font-weight: 600;
+  }
+  .sidebar-nav li a .num {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: rgba(212,168,83,0.15); color: var(--gold);
+    font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .sidebar-nav li a.active .num { background: var(--gold); color: #0D1526; }
+  .sidebar-nav li a .num.editor {
+    background: rgba(139,92,246,0.2); color: var(--purple);
+  }
+  .sidebar-nav li a.active .num.editor { background: var(--purple); color: #fff; }
+
+  /* ── CONTENT ── */
+  .content { flex: 1; padding: 40px 48px; max-width: 860px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(135deg, var(--dark2) 0%, #1e2d4a 100%);
+    border: 1px solid rgba(212,168,83,0.25);
+    border-radius: 20px; padding: 40px 36px; margin-bottom: 48px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '⚖️';
+    position: absolute; right: 32px; top: 50%; transform: translateY(-50%);
+    font-size: 80px; opacity: 0.08;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(212,168,83,0.15); border: 1px solid rgba(212,168,83,0.3);
+    border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 700;
+    color: var(--gold); text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 16px;
+  }
+  .hero h1 { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 8px; line-height: 1.3; }
+  .hero p { color: var(--text-dim); font-size: 14px; max-width: 520px; }
+
+  /* ── SECTION ── */
+  .section { margin-bottom: 60px; scroll-margin-top: 72px; }
+  .section-header {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 24px;
+    padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .section-num {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--gold), #b8892e);
+    color: #0D1526; font-weight: 800; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-num.editor {
+    background: linear-gradient(135deg, var(--purple), #6d28d9);
+    color: #fff;
+  }
+  .section-header h2 { font-size: 20px; font-weight: 700; color: #fff; }
+  .section-header .section-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+  /* ── STEP ── */
+  .steps { display: flex; flex-direction: column; gap: 12px; }
+  .step {
+    display: flex; gap: 16px; align-items: flex-start;
+    background: var(--dark2); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px; padding: 16px 20px;
+  }
+  .step-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(212,168,83,0.15); border: 2px solid rgba(212,168,83,0.4);
+    color: var(--gold); font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .step-body h4 { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .step-body p { font-size: 13px; color: var(--text-dim); }
+  .step-body code {
+    background: rgba(212,168,83,0.12); border: 1px solid rgba(212,168,83,0.25);
+    color: var(--gold-light); border-radius: 6px;
+    padding: 2px 8px; font-size: 12px; font-family: 'Consolas', monospace;
+  }
+
+  /* ── MOCKUP SCREEN ── */
+  .mockup {
+    background: #0a1020; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px; overflow: hidden; margin: 16px 0;
+  }
+  .mockup-bar {
+    background: var(--dark2); padding: 10px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--text-dim);
+  }
+  .mockup-bar .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .mockup-bar .url {
+    margin-left: 8px; background: rgba(255,255,255,0.05);
+    border-radius: 6px; padding: 3px 10px; font-size: 11px; color: var(--text-dim);
+  }
+  .mockup-body { padding: 20px; }
+
+  /* ── FORM MOCKUP ── */
+  .form-mock { display: flex; flex-direction: column; gap: 10px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field-mock {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; padding: 10px 14px;
+  }
+  .field-mock label { font-size: 10px; color: var(--gold); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
+  .field-mock .val { font-size: 13px; color: var(--text); }
+  .field-mock .placeholder { font-size: 13px; color: rgba(255,255,255,0.2); font-style: italic; }
+  .field-mock.required label::after { content: ' *'; color: var(--red); }
+
+  /* ── STATUS BADGE ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700;
+  }
+  .badge-pending { background: rgba(249,115,22,0.15); color: var(--orange); border: 1px solid rgba(249,115,22,0.3); }
+  .badge-aktif   { background: rgba(59,130,246,0.15); color: var(--blue); border: 1px solid rgba(59,130,246,0.3); }
+  .badge-publish { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .badge-draft   { background: rgba(255,255,255,0.07); color: var(--text-dim); border: 1px solid rgba(255,255,255,0.1); }
+  .badge-lelang  { background: rgba(249,115,22,0.15); color: var(--orange); border: 1px solid rgba(249,115,22,0.3); }
+  .badge-cessie  { background: rgba(139,92,246,0.15); color: var(--purple); border: 1px solid rgba(139,92,246,0.3); }
+  .badge-ayda    { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .badge-ratio   { background: rgba(59,130,246,0.15); color: var(--blue); border: 1px solid rgba(59,130,246,0.3); }
+  .badge-disc-green  { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .badge-disc-gold   { background: rgba(212,168,83,0.15); color: var(--gold); border: 1px solid rgba(212,168,83,0.3); }
+  .badge-disc-grey   { background: rgba(255,255,255,0.07); color: var(--text-dim); border: 1px solid rgba(255,255,255,0.1); }
+
+  /* ── FLOW ── */
+  .flow {
+    display: flex; align-items: stretch; gap: 0; margin: 16px 0;
+    overflow-x: auto; padding-bottom: 4px;
+  }
+  .flow-item {
+    flex: 1; min-width: 110px;
+    background: var(--dark2); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 14px 12px; text-align: center;
+    position: relative;
+  }
+  .flow-item .flow-icon { font-size: 22px; margin-bottom: 6px; }
+  .flow-item .flow-role { font-size: 9px; color: var(--gold); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .flow-item .flow-label { font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .flow-item .flow-status { font-size: 10px; }
+  .flow-arrow {
+    display: flex; align-items: center; padding: 0 6px;
+    color: var(--gold); font-size: 18px; flex-shrink: 0;
+  }
+
+  /* ── INFO BOX ── */
+  .info-box {
+    border-radius: 12px; padding: 14px 18px; margin: 12px 0;
+    display: flex; gap: 12px; align-items: flex-start;
+    font-size: 13px;
+  }
+  .info-box.tip    { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); color: #86efac; }
+  .info-box.warn   { background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.2); color: #fdba74; }
+  .info-box.note   { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); color: #93c5fd; }
+  .info-box.gold   { background: rgba(212,168,83,0.08); border: 1px solid rgba(212,168,83,0.2); color: var(--gold-light); }
+  .info-box-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── TABLE ── */
+  .tbl { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  .tbl th {
+    background: rgba(212,168,83,0.12); color: var(--gold);
+    padding: 10px 14px; text-align: left; font-size: 11px;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(212,168,83,0.2);
+  }
+  .tbl td {
+    padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: var(--text-dim); vertical-align: top;
+  }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl td strong { color: var(--text); }
+
+  /* ── STAT CARD MOCK ── */
+  .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin: 12px 0; }
+  .stat-card {
+    background: var(--dark3); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px; padding: 14px; text-align: center;
+  }
+  .stat-card .num { font-size: 22px; font-weight: 800; color: var(--gold); }
+  .stat-card .lbl { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+
+  /* ── BTN MOCK ── */
+  .btn-mock {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 700;
+    cursor: default;
+  }
+  .btn-gold  { background: var(--gold); color: #0D1526; }
+  .btn-green { background: rgba(34,197,94,0.2); border: 1px solid rgba(34,197,94,0.4); color: var(--green); }
+  .btn-blue  { background: rgba(59,130,246,0.2); border: 1px solid rgba(59,130,246,0.4); color: var(--blue); }
+  .btn-purple { background: rgba(139,92,246,0.2); border: 1px solid rgba(139,92,246,0.4); color: var(--purple); }
+  .btn-red   { background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); color: var(--red); }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 32px 0; }
+
+  /* ── HIGHLIGHT ── */
+  .hl { color: var(--gold); font-weight: 600; }
+  .hl-green { color: var(--green); font-weight: 600; }
+  .hl-blue  { color: #60a5fa; font-weight: 600; }
+  .hl-purple { color: var(--purple); font-weight: 600; }
+  .hl-red   { color: var(--red); font-weight: 600; }
+
+  /* ── ROLE SECTION DIVIDER ── */
+  .role-divider {
+    display: flex; align-items: center; gap: 12px; margin: 40px 0 28px;
+  }
+  .role-divider-line { flex: 1; height: 1px; background: rgba(139,92,246,0.25); }
+  .role-divider-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; padding: 5px 14px; border-radius: 20px;
+    background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.3);
+    color: var(--purple);
+  }
+
+  /* ── ASSET CARD MOCK ── */
+  .asset-card-mock {
+    background: var(--dark3); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; overflow: hidden; margin-bottom: 10px;
+  }
+  .asset-card-img {
+    height: 80px; background: linear-gradient(135deg, #1e3a5f, #0d2240);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: rgba(255,255,255,0.15);
+    position: relative;
+  }
+  .asset-card-img .badge-corner {
+    position: absolute; top: 8px; left: 8px;
+    display: flex; gap: 4px;
+  }
+  .asset-card-body { padding: 12px 14px; }
+  .asset-card-body .asset-kode { font-size: 10px; color: var(--text-dim); margin-bottom: 2px; }
+  .asset-card-body .asset-name { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .asset-card-body .asset-meta { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
+  .asset-card-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .content { padding: 24px 20px; }
+    .form-row { grid-template-columns: 1fr; }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .flow { flex-wrap: wrap; }
+    .topnav-links { display: none; }
+  }
+
+  /* PRINT */
+  @media print {
+    .sidebar { display: none; }
+    .topnav { display: none; }
+    .content { padding: 20px; }
+    body { background: #fff; color: #111; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="topnav-logo">MANSION Realty</div>
+  <span class="topnav-sep">|</span>
+  <div class="topnav-title">⚖️ Panduan List Aset</div>
+  <div class="topnav-links">
+    <a href="#s1">Jenis Aset</a>
+    <a href="#s2">Kartu &amp; Badge</a>
+    <a href="#s3">Urutan Kartu</a>
+    <a href="#s4">Filter</a>
+    <a href="#s5">Detail Modal</a>
+    <a href="#s6">Tabel List</a>
+    <a href="#s7">Tambah &amp; Edit</a>
+    <a href="#s8">Sync Data</a>
+    <a href="#s9">Aksi Massal</a>
+    <a href="#tutorial-koordinator-primary.html">Panduan Primary</a>
+  </div>
+</nav>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-label">Non-Editor</div>
+    <ul class="sidebar-nav">
+      <li><a href="#s1"><span class="num">1</span> Jenis Aset</a></li>
+      <li><a href="#s2"><span class="num">2</span> Kartu &amp; Badge</a></li>
+      <li><a href="#s3"><span class="num">3</span> Urutan Kartu</a></li>
+      <li><a href="#s4"><span class="num">4</span> Filter Pencarian</a></li>
+      <li><a href="#s5"><span class="num">5</span> Detail Aset</a></li>
+    </ul>
+
+    <div class="sidebar-label" style="margin-top:4px">Editor (Tambahan)</div>
+    <ul class="sidebar-nav">
+      <li><a href="#s6"><span class="num editor">6</span> Tabel List</a></li>
+      <li><a href="#s7"><span class="num editor">7</span> Tambah &amp; Edit</a></li>
+      <li><a href="#s8"><span class="num editor">8</span> Sync Data</a></li>
+      <li><a href="#s9"><span class="num editor">9</span> Aksi Massal</a></li>
+    </ul>
+
+    <div style="background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);border-radius:10px;padding:12px;margin-top:4px">
+      <div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:4px">👥 HAK AKSES</div>
+      <div style="font-size:11px;color:var(--text-dim);line-height:1.7">
+        <span style="color:var(--text)">Non-Editor:</span> Lihat &amp; filter<br>
+        <span style="color:var(--purple)">Editor:</span> CRUD + Sync + Publish
+      </div>
+    </div>
+
+    <div style="margin-top:12px;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;">
+      <div style="font-size:11px;color:var(--text-dim)">URL CRM:</div>
+      <div style="font-size:12px;color:var(--gold);font-weight:600;word-break:break-all">crm.mansionpro.id</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Menu:</div>
+      <div style="font-size:12px;color:var(--gold);font-weight:600">⚖️ List Aset</div>
+    </div>
+
+    <div style="margin-top:16px;padding:10px 12px;background:rgba(139,92,246,0.07);border:1px solid rgba(139,92,246,0.2);border-radius:10px">
+      <div style="font-size:10px;color:var(--purple);font-weight:700;margin-bottom:6px">Panduan Lain</div>
+      <a href="tutorial-koordinator-primary.html" style="font-size:12px;color:var(--text-dim);text-decoration:none;display:block;padding:4px 0">&#8594; Koordinator Primary</a>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="content">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-badge">⚖️ Fitur Asset Bank</div>
+      <h1>Panduan List Aset<br>Lelang / Cessie / AYDA</h1>
+      <p>Panduan lengkap untuk melihat, menyaring, dan (bagi Editor) mengelola data aset properti eksekusi di CRM Mansion Realty — termasuk cara membaca badge, urutan kartu, dan tabel kolom lengkap.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 1: JENIS ASET -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="section" id="s1">
+      <div class="section-header">
+        <div class="section-num">1</div>
+        <div>
+          <h2>Jenis-Jenis Aset</h2>
+          <div class="section-sub">Tiga kategori aset properti eksekusi yang dikelola di CRM</div>
+        </div>
+      </div>
+
+      <p style="color:var(--text-dim);font-size:14px;margin-bottom:20px">
+        Menu <strong style="color:#fff">⚖️ List Aset</strong> di CRM menampilkan daftar properti yang diperoleh dari proses hukum perbankan: lelang eksekusi, cessie piutang, dan aset yang diambil alih (AYDA). Setiap aset memiliki badge warna berbeda untuk membedakan jenisnya secara sekilas.
+      </p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-dot">🔨</div>
+          <div class="step-body">
+            <h4>Lelang &nbsp;<span class="badge badge-lelang">🔨 Lelang</span></h4>
+            <p>Properti yang akan dilelang oleh KPKNL (Kantor Pelayanan Kekayaan Negara dan Lelang) atas permintaan bank kreditur. Harga jual dimulai dari <strong style="color:#fff">Harga Limit Lelang</strong> — harga terendah yang ditetapkan oleh bank.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">📋</div>
+          <div class="step-body">
+            <h4>Cessie &nbsp;<span class="badge badge-cessie">📋 Cessie</span></h4>
+            <p>Pengalihan piutang (hak tagih) dari bank kepada pihak lain. Pembeli cessie mendapat hak atas agunan properti dengan membeli piutang bank, umumnya dengan diskon dari nilai outstanding kredit.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">🏛️</div>
+          <div class="step-body">
+            <h4>AYDA &nbsp;<span class="badge badge-ayda">🏛️ AYDA</span></h4>
+            <p>Agunan Yang Diambil Alih — properti yang sudah resmi menjadi milik bank karena debitur tidak mampu melunasi kredit. AYDA sudah atas nama bank, jual beli lebih simpel karena tidak melalui proses lelang.</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;font-size:13px;font-weight:600;color:var(--gold);margin-bottom:8px">Kode Aset — Format Standar</div>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="dot" style="background:#ef4444"></div>
+          <div class="dot" style="background:#f59e0b"></div>
+          <div class="dot" style="background:#22c55e"></div>
+          <div class="url">Format Kode_Asset</div>
+        </div>
+        <div class="mockup-body">
+          <div style="font-family:'Consolas',monospace;font-size:22px;font-weight:700;color:var(--gold);text-align:center;margin-bottom:12px;letter-spacing:2px">
+            AST-RMH-2026-305
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;text-align:center">
+            <div style="background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:8px">
+              <div style="font-size:10px;color:var(--text-dim);margin-bottom:3px">Prefix</div>
+              <div style="font-size:14px;font-weight:700;color:var(--gold)">AST</div>
+              <div style="font-size:10px;color:var(--text-dim)">Asset</div>
+            </div>
+            <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px">
+              <div style="font-size:10px;color:var(--text-dim);margin-bottom:3px">Tipe</div>
+              <div style="font-size:14px;font-weight:700;color:var(--blue)">RMH</div>
+              <div style="font-size:10px;color:var(--text-dim)">Rumah</div>
+            </div>
+            <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:8px">
+              <div style="font-size:10px;color:var(--text-dim);margin-bottom:3px">Tahun</div>
+              <div style="font-size:14px;font-weight:700;color:var(--green)">2026</div>
+              <div style="font-size:10px;color:var(--text-dim)">Input</div>
+            </div>
+            <div style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:8px;padding:8px">
+              <div style="font-size:10px;color:var(--text-dim);margin-bottom:3px">No. Urut</div>
+              <div style="font-size:14px;font-weight:700;color:var(--orange)">305</div>
+              <div style="font-size:10px;color:var(--text-dim)">3 digit</div>
+            </div>
+          </div>
+          <div class="info-box note" style="margin-top:14px">
+            <span class="info-box-icon">ℹ️</span>
+            <div>Cari aset berdasarkan <strong>3 digit terakhir</strong> kode dengan mengetik <code style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:#93c5fd;border-radius:4px;padding:1px 6px;font-family:Consolas,monospace;font-size:12px"># 305</code> di kolom pencarian filter bar.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;font-size:13px;font-weight:600;color:var(--gold);margin-bottom:8px">Singkatan Tipe Properti dalam Kode</div>
+      <table class="tbl">
+        <tr><th>Kode</th><th>Tipe Properti</th></tr>
+        <tr><td><strong>RMH</strong></td><td>Rumah</td></tr>
+        <tr><td><strong>RKO</strong></td><td>Ruko</td></tr>
+        <tr><td><strong>APT</strong></td><td>Apartemen</td></tr>
+        <tr><td><strong>TNH</strong></td><td>Tanah</td></tr>
+        <tr><td><strong>GDG</strong></td><td>Gudang</td></tr>
+        <tr><td><strong>KOS</strong></td><td>Kios</td></tr>
+      </table>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 2: KARTU & BADGE -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="section" id="s2">
+      <div class="section-header">
+        <div class="section-num">2</div>
+        <div>
+          <h2>Kartu Aset &amp; Arti Badge</h2>
+          <div class="section-sub">Baca informasi penting di kartu tanpa harus buka detail</div>
+        </div>
+      </div>
+
+      <p style="color:var(--text-dim);font-size:14px;margin-bottom:20px">
+        Setiap aset ditampilkan dalam bentuk kartu. Kartu menampilkan foto (jika ada), kode aset, nama, lokasi, dan tiga jenis badge angka yang masing-masing punya makna penting untuk menilai potensi investasi.
+      </p>
+
+      <!-- MOCKUP CARD -->
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="dot" style="background:#ef4444"></div>
+          <div class="dot" style="background:#f59e0b"></div>
+          <div class="dot" style="background:#22c55e"></div>
+          <div class="url">crm.mansionpro.id / List Aset</div>
+        </div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+            <!-- Card 1: with photo -->
+            <div class="asset-card-mock">
+              <div class="asset-card-img" style="background:linear-gradient(135deg,#1a3a5c,#0d1f35)">
+                🏠
+                <div class="badge-corner">
+                  <span class="badge badge-lelang">🔨 Lelang</span>
+                </div>
+                <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);border-radius:6px;padding:2px 6px;font-size:10px;color:#fff">📷 3</div>
+              </div>
+              <div class="asset-card-body">
+                <div class="asset-kode">AST-RMH-2026-305</div>
+                <div class="asset-name">Rumah Hook 2 Lt Citraland</div>
+                <div class="asset-meta">📍 Lakarsantri · Surabaya &nbsp;|&nbsp; 🏦 BNI</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">LT 210m² / LB 280m² · SHM</div>
+                <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:8px">Rp 1.250.000.000</div>
+                <div class="asset-card-badges">
+                  <span class="badge badge-ratio">1,75× pasar</span>
+                  <span class="badge badge-disc-green">↓43%</span>
+                  <span style="font-size:11px;color:var(--red);font-weight:700">Rasio 2,3</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2: no photo, AYDA -->
+            <div class="asset-card-mock">
+              <div class="asset-card-img" style="background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.05)">
+                <span style="font-size:32px;opacity:0.15">🏛️</span>
+                <div class="badge-corner">
+                  <span class="badge badge-ayda">🏛️ AYDA</span>
+                </div>
+              </div>
+              <div class="asset-card-body">
+                <div class="asset-kode">AST-RKO-2026-118</div>
+                <div class="asset-name">Ruko 3 Lantai Raya Darmo</div>
+                <div class="asset-meta">📍 Wonokromo · Surabaya &nbsp;|&nbsp; 🏦 Mandiri</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">LT 90m² / LB 270m² · SHGB</div>
+                <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:8px">Rp 3.800.000.000</div>
+                <div class="asset-card-badges">
+                  <span class="badge badge-ratio">1,28× pasar</span>
+                  <span class="badge badge-disc-gold">↓22%</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- BADGE EXPLANATION -->
+      <div style="margin-top:24px;font-size:13px;font-weight:600;color:var(--gold);margin-bottom:12px">Arti Setiap Badge di Kartu</div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-dot" style="font-size:16px;background:rgba(59,130,246,0.15);border-color:rgba(59,130,246,0.4);color:var(--blue)">📘</div>
+          <div class="step-body">
+            <h4><span class="badge badge-ratio">1,75× pasar</span> &nbsp;— Rasio Harga Pasar vs Limit</h4>
+            <p>Hasil bagi <strong style="color:#fff">Est_Harga_Pasar ÷ Harga_Limit_Lelang</strong>. Artinya: harga pasar wajar properti ini <strong style="color:#fff">1,75 kali lebih tinggi</strong> dari harga limit lelang. <span class="hl">Semakin besar rasio ini, semakin bagus potensi keuntungannya.</span> Angka di atas 1,3× sudah dianggap menarik.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot" style="font-size:16px;background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.4);color:var(--green)">💚</div>
+          <div class="step-body">
+            <h4>Badge Diskon: <span class="badge badge-disc-green">↓43%</span> <span class="badge badge-disc-gold">↓22%</span> <span class="badge badge-disc-grey">↓15%</span></h4>
+            <p>Persentase diskon dari harga pasar ke harga limit lelang. Rumus: <code>1 − (Limit ÷ Pasar)</code>. Warna badge menunjukkan seberapa menarik diskonnya:</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+              <div style="display:flex;align-items:center;gap:6px"><span class="badge badge-disc-green">Hijau ≥30%</span> <span style="font-size:12px;color:var(--green)">Diskon besar — sangat menarik</span></div>
+              <div style="display:flex;align-items:center;gap:6px"><span class="badge badge-disc-gold">Emas ≥20%</span> <span style="font-size:12px;color:var(--gold)">Diskon cukup — masih bagus</span></div>
+              <div style="display:flex;align-items:center;gap:6px"><span class="badge badge-disc-grey">Abu &lt;20%</span> <span style="font-size:12px;color:var(--text-dim)">Diskon kecil — perlu kalkulasi lebih</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot" style="font-size:16px;background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.4);color:var(--red)">📊</div>
+          <div class="step-body">
+            <h4><span style="font-size:13px;color:var(--red);font-weight:700">Rasio 2,3</span> &nbsp;— Liquid Ratio dari Sumber Eksternal</h4>
+            <p>Angka rasio likuiditas dari data sumber eksternal (Google Sheet bank/KPKNL). Tampil <strong style="color:#fff">hanya jika tersedia</strong> di data sumber — tidak semua aset memilikinya. Semakin tinggi angka ini, semakin likuid aset tersebut di pasar.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot" style="font-size:16px">⚖️</div>
+          <div class="step-body">
+            <h4>Badge Jenis Aset: <span class="badge badge-lelang">🔨 Lelang</span> <span class="badge badge-cessie">📋 Cessie</span> <span class="badge badge-ayda">🏛️ AYDA</span></h4>
+            <p>Tampil di pojok kiri atas foto kartu. Warna berbeda memudahkan identifikasi jenis aset secara sekilas tanpa membuka detail.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box gold">
+        <span class="info-box-icon">⭐</span>
+        <div><strong>Tips Baca Cepat:</strong> Fokus dulu pada badge <span class="hl">1,X× pasar</span> (makin besar makin bagus) dan badge diskon <span class="hl-green">hijau ≥30%</span>. Kombinasi keduanya tinggi = peluang keuntungan paling besar.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 3: URUTAN KARTU -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="section" id="s3">
+      <div class="section-header">
+        <div class="section-num">3</div>
+        <div>
+          <h2>Urutan Tampilan Kartu</h2>
+          <div class="section-sub">Kartu dikelompokkan dan diurutkan otomatis oleh sistem</div>
+        </div>
+      </div>
+
+      <p style="color:var(--text-dim);font-size:14px;margin-bottom:20px">
+        Kartu aset tidak diurutkan berdasarkan tanggal input atau alfabet. Sistem mengurutkan kartu secara otomatis berdasarkan <strong style="color:#fff">potensi investasi</strong> — aset terbaik selalu muncul paling atas. Urutan ini dibagi menjadi dua grup utama.
+      </p>
+
+      <!-- SORT FLOW -->
+      <div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:12px">Diagram Logika Urutan</div>
+      <div class="flow">
+        <div class="flow-item" style="border-color:rgba(212,168,83,0.3);background:rgba(212,168,83,0.05)">
+          <div class="flow-icon">📸</div>
+          <div class="flow-role">Grup 1 — Atas</div>
+          <div class="flow-label">Ada Foto Real</div>
+          <div class="flow-status" style="font-size:10px;color:var(--gold)">Foto_1/2/3_URL terisi</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-item" style="border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.04)">
+          <div class="flow-icon">📊</div>
+          <div class="flow-role">Diurutkan</div>
+          <div class="flow-label">Rasio ↓ lalu Diskon ↓</div>
+          <div class="flow-status" style="font-size:10px;color:var(--blue)">Pasar/Limit terbesar dulu</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item" style="border-color:rgba(255,255,255,0.1)">
+          <div class="flow-icon">🚫</div>
+          <div class="flow-role">Grup 2 — Bawah</div>
+          <div class="flow-label">Tanpa Foto</div>
+          <div class="flow-status" style="font-size:10px;color:var(--text-dim)">Foto_URL kosong</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-item" style="border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.04)">
+          <div class="flow-icon">📊</div>
+          <div class="flow-role">Diurutkan</div>
+          <div class="flow-label">Rasio ↓ lalu Diskon ↓</div>
+          <div class="flow-status" style="font-size:10px;color:var(--blue)">Sama seperti Grup 1</div>
+        </div>
+      </div>
+
+      <div class="steps" style="margin-top:20px">
+        <div class="step">
+          <div class="step-dot">1</div>
+          <div class="step-body">
+            <h4>Grup 1 — Aset DENGAN foto nyata (paling atas)</h4>
+            <p>Aset yang sudah memiliki minimal satu URL foto di kolom Foto_1_URL, Foto_2_URL, atau Foto_3_URL. Di dalam grup ini, diurutkan dari <span class="hl">rasio harga pasar/limit terbesar</span> ke terkecil. Jika rasio sama persis, dilanjutkan urut dari <span class="hl">diskon terbesar</span> ke terkecil.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">2</div>
+          <div class="step-body">
+            <h4>Grup 2 — Aset TANPA foto (paling bawah)</h4>
+            <p>Aset yang belum ada foto sama sekali. Di dalam grup ini, urutan juga mengikuti aturan yang sama: <span class="hl">rasio terbesar dulu, lalu diskon terbesar</span>. Mereka selalu muncul setelah semua aset bergambar, berapapun rasio atau diskonnya.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">3</div>
+          <div class="step-body">
+            <h4>Mengapa urutan ini?</h4>
+            <p>Foto membuktikan aset sudah disurvei lapangan — lebih siap untuk ditawarkan ke prospek. Aset dengan foto sekaligus rasio tinggi adalah aset paling "siap jual" dan paling menarik secara investasi, sehingga tampil paling atas.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box note">
+        <span class="info-box-icon">ℹ️</span>
+        <div><strong>Urutan berubah otomatis</strong> setiap kali Editor menambah foto ke aset atau saat data rasio/diskon diperbarui melalui Sync Data. Tidak perlu mengatur urutan secara manual.</div>
+      </div>
+
+      <div class="info-box tip">
+        <span class="info-box-icon">💡</span>
+        <div>Jika Anda adalah Editor dan ingin mendorong aset tertentu ke posisi atas: <strong>upload foto aset tersebut</strong> dan pastikan data Harga_Limit_Lelang serta Est_Harga_Pasar sudah diisi dengan benar.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 4: FILTER BAR -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="section" id="s4">
+      <div class="section-header">
+        <div class="section-num">4</div>
+        <div>
+          <h2>Filter &amp; Pencarian</h2>
+          <div class="section-sub">Temukan aset spesifik dari ratusan data dengan cepat</div>
+        </div>
+      </div>
+
+      <!-- FILTER BAR MOCKUP -->
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="dot" style="background:#ef4444"></div>
+          <div class="dot" style="background:#f59e0b"></div>
+          <div class="dot" style="background:#22c55e"></div>
+          <div class="url">crm.mansionpro.id / List Aset — Filter Bar</div>
+        </div>
+        <div class="mockup-body">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <div style="flex:1;min-width:180px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:9px 14px;display:flex;align-items:center;gap:8px">
+              <span style="color:var(--text-dim)">🔍</span>
+              <span style="color:rgba(255,255,255,0.2);font-size:13px;font-style:italic">Cari nama, debitur, bank, kota…</span>
+            </div>
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(212,168,83,0.2);border-radius:10px;padding:9px 14px;font-size:12px;color:var(--gold)">Semua Tipe ▾</div>
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 14px;font-size:12px;color:var(--text-dim)">🗺️ Provinsi ▾</div>
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 14px;font-size:12px;color:var(--text-dim)">📍 Kota ▾</div>
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 14px;font-size:12px;color:var(--text-dim)">🏦 Bank ▾</div>
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 14px;font-size:12px;color:var(--text-dim)">⚖️ Jenis ▾</div>
+            <div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);border-radius:10px;padding:9px 14px;font-size:12px;color:var(--purple)">Semua Status ▾ <span style="font-size:9px;opacity:0.7">Editor</span></div>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--text-dim)">Menampilkan <strong style="color:#fff">48</strong> aset · Filter aktif: Kota = Surabaya</div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;font-size:13px;font-weight:600;color:var(--gold);margin-bottom:8px">Panduan Setiap Filter</div>
+      <table class="tbl">
+        <tr><th>Filter</th><th>Cara Kerja</th><th>Contoh</th></tr>
+        <tr>
+          <td><strong>🔍 Teks</strong></td>
+          <td>Mencari di kolom: Nama_Asset, Nama_Debitur, Bank_Kreditur, Kota, Kecamatan, Alamat</td>
+          <td><code style="font-size:11px;font-family:Consolas,monospace">BNI</code> → semua aset BNI</td>
+        </tr>
+        <tr>
+          <td><strong># Kode</strong></td>
+          <td>Ketik <code style="font-size:11px;font-family:Consolas,monospace"># 305</code> (dengan spasi setelah #) untuk cari berdasarkan 3 digit terakhir Kode_Asset</td>
+          <td><code style="font-size:11px;font-family:Consolas,monospace"># 020</code> → AST-xxx-xxxx-020</td>
+        </tr>
+        <tr>
+          <td><strong>Semua Tipe</strong></td>
+          <td>Pilih satu tipe properti: Rumah, Ruko, Apartemen, Tanah, Gudang, Kios</td>
+          <td>Filter hanya tampilkan Ruko</td>
+        </tr>
+        <tr>
+          <td><strong>🗺️ Provinsi</strong></td>
+          <td>Dropdown otomatis dari data Provinsi yang ada di database</td>
+          <td>Jawa Timur, Jawa Tengah, dll</td>
+        </tr>
+        <tr>
+          <td><strong>📍 Kota</strong></td>
+          <td>Dropdown otomatis. Default menampilkan kota Jawa Timur. Berubah saat Provinsi dipilih</td>
+          <td>Surabaya, Sidoarjo, Malang</td>
+        </tr>
+        <tr>
+          <td><strong>🏦 Bank</strong></td>
+          <td>Dropdown otomatis dari kolom Bank_Kreditur di data aset</td>
+          <td>BNI, Mandiri, BRI, BCA, dll</td>
+        </tr>
+        <tr>
+          <td><strong>⚖️ Jenis</strong></td>
+          <td>Filter berdasarkan jenis aset</td>
+          <td>Lelang, Cessie, AYDA</td>
+        </tr>
+        <tr>
+          <td><strong>Semua Status</strong><br><span style="color:var(--purple);font-size:10px">Editor only</span></td>
+          <td>Filter antara Draft dan Publish. Non-Editor hanya melihat aset Publish</td>
+          <td>Draft, Publish</td>
+        </tr>
+      </table>
+
+      <div class="info-box tip">
+        <span class="info-box-icon">💡</span>
+        <div><strong>Filter bisa dikombinasikan:</strong> Misalnya pilih Provinsi = Jawa Timur + Tipe = Rumah + Jenis = Lelang untuk menyempitkan pencarian ke segmen spesifik. Semua filter bekerja bersama-sama secara AND.</div>
+      </div>
+
+      <div class="info-box note">
+        <span class="info-box-icon">ℹ️</span>
+        <div><strong>Non-Editor</strong> tidak melihat filter Status karena mereka hanya dapat melihat aset berstatus <span class="badge badge-publish" style="font-size:10px">Publish</span>. Filter Status hanya relevan bagi Editor yang perlu mengecek aset <span class="badge badge-draft" style="font-size:10px">Draft</span>.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 5: DETAIL MODAL -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="section" id="s5">
+      <div class="section-header">
+        <div class="section-num">5</div>
+        <div>
+          <h2>Modal Detail Aset</h2>
+          <div class="section-sub">Klik kartu mana saja untuk membuka informasi lengkap</div>
+        </div>
+      </div>
+
+      <p style="color:var(--text-dim);font-size:14px;margin-bottom:20px">
+        Klik atau tap kartu aset mana saja untuk membuka <strong style="color:#fff">modal detail</strong> yang menampilkan semua informasi aset secara lengkap, termasuk foto carousel, peta lokasi, spesifikasi teknis, dan analisis harga.
+      </p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-dot">1</div>
+          <div class="step-body">
+            <h4>Tap kartu aset di daftar</h4>
+            <p>Modal detail langsung muncul tanpa pindah halaman. Di pojok kanan atas modal ada tombol X untuk tutup.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">2</div>
+          <div class="step-body">
+            <h4>Foto carousel (jika ada foto)</h4>
+            <p>Foto tampil dalam carousel yang bisa digeser ke kiri/kanan. Maksimal 3 foto. Tap foto untuk memperbesar.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">3</div>
+          <div class="step-body">
+            <h4>Lihat tab informasi: Lokasi, Spesifikasi, Harga</h4>
+            <p>Detail dibagi beberapa bagian: informasi lokasi lengkap (alamat, kecamatan, kota, provinsi), spesifikasi properti (luas tanah, luas bangunan, sertifikat, tipe), dan analisis harga (Harga Limit, Harga Pasar, Harga Eksekusi + kalkulasi rasio dan diskon).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">4</div>
+          <div class="step-body">
+            <h4>Tombol 🗺️ Lihat Maps</h4>
+            <p>Jika kolom Gmaps_Link terisi, tombol ini akan membuka Google Maps di tab baru langsung ke lokasi properti.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">5</div>
+          <div class="step-body">
+            <h4>Tombol 📖 Informasi — Buka Knowledge Center</h4>
+            <p>Klik tombol ini untuk membuka halaman Knowledge Center yang berisi panduan mendalam tentang proses lelang, cara beli cessie, ketentuan AYDA, dan prosedur hukum terkait aset eksekusi.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- DETAIL MODAL MOCKUP -->
+      <div class="mockup" style="margin-top:20px">
+        <div class="mockup-bar">
+          <div class="dot" style="background:#ef4444"></div>
+          <div class="dot" style="background:#f59e0b"></div>
+          <div class="dot" style="background:#22c55e"></div>
+          <div class="url">Modal Detail Aset</div>
+        </div>
+        <div class="mockup-body">
+          <!-- Foto area -->
+          <div style="height:100px;background:linear-gradient(135deg,#1a3a5c,#0d2240);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;position:relative">
+            <span style="font-size:40px;opacity:0.2">🏠</span>
+            <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:4px">
+              <div style="width:18px;height:4px;background:var(--gold);border-radius:2px"></div>
+              <div style="width:10px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px"></div>
+              <div style="width:10px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px"></div>
+            </div>
+            <div style="position:absolute;top:8px;right:8px;font-size:20px;cursor:default;color:rgba(255,255,255,0.4)">✕</div>
+          </div>
+
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+            <div>
+              <div style="font-size:10px;color:var(--text-dim);margin-bottom:2px">AST-RMH-2026-305</div>
+              <div style="font-size:15px;font-weight:700;color:#fff">Rumah Hook 2 Lt Citraland</div>
+            </div>
+            <span class="badge badge-lelang">🔨 Lelang</span>
+          </div>
+
+          <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px">📍 Jl. Citraland Raya No. 45, Lakarsantri, Surabaya, Jawa Timur</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+            <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;text-align:center">
+              <div style="font-size:10px;color:var(--text-dim)">Harga Limit</div>
+              <div style="font-size:12px;font-weight:700;color:#fff">Rp 1,25 M</div>
+            </div>
+            <div style="background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:8px;text-align:center">
+              <div style="font-size:10px;color:var(--text-dim)">Harga Pasar</div>
+              <div style="font-size:12px;font-weight:700;color:var(--gold)">Rp 2,19 M</div>
+            </div>
+            <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:8px;padding:8px;text-align:center">
+              <div style="font-size:10px;color:var(--text-dim)">Harga Eksekusi</div>
+              <div style="font-size:12px;font-weight:700;color:var(--green)">Rp 1,05 M</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+            <span class="badge badge-ratio">1,75× pasar</span>
+            <span class="badge badge-disc-green">↓43%</span>
+            <span style="font-size:11px;color:var(--red);font-weight:700;display:flex;align-items:center">Rasio 2,3</span>
+          </div>
+
+          <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px">
+            <strong style="color:#fff">Spesifikasi:</strong> LT 210m² &nbsp;|&nbsp; LB 280m² &nbsp;|&nbsp; SHM &nbsp;|&nbsp; Rumah<br>
+            <strong style="color:#fff">Bank:</strong> BNI &nbsp;|&nbsp; <strong style="color:#fff">Debitur:</strong> PT Karya Sejahtera Mandiri
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="btn-mock btn-blue" style="font-size:12px;padding:8px 14px">🗺️ Lihat Maps</div>
+            <div class="btn-mock" style="font-size:12px;padding:8px 14px;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.25);color:var(--gold)">📖 Informasi</div>
+            <div class="btn-mock btn-purple" style="font-size:12px;padding:8px 14px;display:none">✏️ Edit Aset</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;font-size:13px;font-weight:600;color:var(--gold);margin-bottom:8px">Field Lengkap yang Ditampilkan di Detail</div>
+      <table class="tbl">
+        <tr><th>Bagian</th><th>Field yang Tampil</th></tr>
+        <tr><td><strong>Identitas</strong></td><td>Kode_Asset, Nama_Asset, Jenis (Lelang/Cessie/AYDA), Status</td></tr>
+        <tr><td><strong>Lokasi</strong></td><td>Alamat, Kecamatan, Kota, Provinsi, Gmaps_Link</td></tr>
+        <tr><td><strong>Properti</strong></td><td>Tipe_Properti, Luas_Tanah, Luas_Bangunan, Sertifikat</td></tr>
+        <tr><td><strong>Kreditur</strong></td><td>Bank_Kreditur, Nama_Debitur, Keterangan_Debitur</td></tr>
+        <tr><td><strong>Harga</strong></td><td>Harga_Limit_Lelang + format, Est_Harga_Pasar + format, Est_Harga_Eksekusi + format</td></tr>
+        <tr><td><strong>Analisis</strong></td><td>Rasio harga pasar/limit (X,X× pasar), persentase diskon (↓X%)</td></tr>
+        <tr><td><strong>Foto</strong></td><td>Foto_1_URL, Foto_2_URL, Foto_3_URL (carousel, sampai 3 foto)</td></tr>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- ROLE DIVIDER — EDITOR SECTIONS START HERE -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div class="role-divider">
+      <div class="role-divider-line"></div>
+      <div class="role-divider-label">Fitur Tambahan untuk Editor</div>
+      <div class="role-divider-line"></div>
+    </div>
+
+    <div class="info-box note" style="margin-bottom:32px">
+      <span class="info-box-icon">🔑</span>
+      <div>
+        <strong>Siapa yang jadi Editor?</strong> Secara default: superadmin, principal, kantor, business_manager, admin. Selain itu, user yang namanya terdaftar di sheet <strong>ASSET_EDITORS</strong> juga mendapat akses Editor meski rolenya agen. Non-Editor (termasuk agen yang belum didaftarkan) hanya dapat melihat aset Publish — tanpa bisa tambah, edit, atau mengubah status.
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 6: TABEL LIST -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="section" id="s6">
+      <div class="section-header">
+        <div class="section-num editor">6</div>
+        <div>
+          <h2>Tabel List (View Alternatif)</h2>
+          <div class="section-sub">Tampilkan aset dalam format tabel dengan 13 kolom — khusus Editor</div>
+        </div>
+      </div>
+
+      <p style="color:var(--text-dim);font-size:14px;margin-bottom:20px">
+        Editor dapat beralih dari tampilan kartu ke <strong style="color:#fff">Tabel List</strong> yang menampilkan semua aset dalam satu tabel datar dengan 13 kolom informasi. Ideal untuk membandingkan banyak aset sekaligus atau melakukan quality-check data.
+      </p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-dot">1</div>
+          <div class="step-body">
+            <h4>Klik tombol <code>Tabel List</code> di bagian atas halaman</h4>
+            <p>Tombol toggle ini hanya tampil untuk Editor. Sekali klik berganti ke tampilan tabel, klik lagi kembali ke kartu.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">2</div>
+          <div class="step-body">
+            <h4>Gunakan scrollbar horizontal di atas kolom header</h4>
+            <p>Untuk memudahkan navigasi kolom di desktop, tersedia <strong style="color:#fff">scrollbar horizontal tambahan</strong> yang diletakkan tepat di bawah baris header kolom (tidak perlu scroll ke bawah dulu). Ini mempercepat kerja saat ada ratusan baris.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">3</div>
+          <div class="step-body">
+            <h4>Klik baris mana saja untuk buka detail</h4>
+            <p>Sama seperti di tampilan kartu, klik/tap baris tabel akan membuka modal detail aset yang lengkap.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE COLUMNS -->
+      <div style="margin-top:20px;font-size:13px;font-weight:600;color:var(--gold);margin-bottom:8px">13 Kolom dalam Tabel List</div>
+      <table class="tbl">
+        <tr><th>#</th><th>Nama Kolom</th><th>Isi / Keterangan</th></tr>
+        <tr><td><strong>1</strong></td><td><strong>ID Aset</strong></td><td>Kode_Asset lengkap (contoh: AST-RMH-2026-305)</td></tr>
+        <tr><td><strong>2</strong></td><td><strong>Foto</strong></td><td><span class="hl-green">✓</span> jika ada foto, <span class="hl-red">✗</span> jika belum ada foto sama sekali</td></tr>
+        <tr><td><strong>3</strong></td><td><strong>Ratio</strong></td><td>Rasio Est_Harga_Pasar ÷ Harga_Limit (contoh: 1,75×)</td></tr>
+        <tr><td><strong>4</strong></td><td><strong>Disc</strong></td><td>Persentase diskon (contoh: ↓43%). Berwarna sesuai threshold</td></tr>
+        <tr><td><strong>5</strong></td><td><strong>Alamat Aset</strong></td><td>Alamat lengkap properti</td></tr>
+        <tr><td><strong>6</strong></td><td><strong>Kecamatan/Area</strong></td><td>Kecamatan lokasi aset</td></tr>
+        <tr><td><strong>7</strong></td><td><strong>Kota</strong></td><td>Kota/kabupaten lokasi aset</td></tr>
+        <tr><td><strong>8</strong></td><td><strong>Type</strong></td><td>Tipe properti (Rumah, Ruko, Apartemen, Tanah, Gudang, Kios)</td></tr>
+        <tr><td><strong>9</strong></td><td><strong>Spesifikasi</strong></td><td>Luas Tanah / Luas Bangunan / Sertifikat dalam satu cell</td></tr>
+        <tr><td><strong>10</strong></td><td><strong>Harga Limit</strong></td><td>Harga_Limit_Lelang dalam format Rupiah (Rp X M)</td></tr>
+        <tr><td><strong>11</strong></td><td><strong>Harga Pasar</strong></td><td>Est_Harga_Pasar dalam format Rupiah</td></tr>
+        <tr><td><strong>12</strong></td><td><strong>Harga Eksekusi</strong></td><td>Est_Harga_Eksekusi dalam format Rupiah</td></tr>
+        <tr><td><strong>13</strong></td><td><strong>Keterangan Internal</strong></td><td>Keterangan_Debitur — catatan internal khusus Editor</td></tr>
+      </table>
+
+      <!-- TABEL MOCKUP -->
+      <div class="mockup" style="margin-top:8px">
+        <div class="mockup-bar">
+          <div class="dot" style="background:#ef4444"></div>
+          <div class="dot" style="background:#f59e0b"></div>
+          <div class="dot" style="background:#22c55e"></div>
+          <div class="url">List Aset → Tabel List (Editor view)</div>
+        </div>
+        <div class="mockup-body" style="padding:12px;overflow-x:auto">
+          <!-- Scrollbar hint -->
+          <div style="height:8px;background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.15);border-radius:4px;margin-bottom:4px;position:relative">
+            <div style="position:absolute;left:0;top:0;width:40%;height:100%;background:rgba(212,168,83,0.3);border-radius:4px"></div>
+          </div>
+          <div style="font-size:9px;color:var(--text-dim);margin-bottom:8px">Scrollbar horizontal — geser untuk melihat semua kolom</div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px">
+            <thead>
+              <tr style="background:rgba(212,168,83,0.1)">
+                <th style="padding:8px 10px;text-align:left;color:var(--gold);font-size:10px;border-bottom:1px solid rgba(212,168,83,0.2)">ID Aset</th>
+                <th style="padding:8px 6px;color:var(--gold);font-size:10px;border-bottom:1px solid rgba(212,168,83,0.2)">Foto</th>
+                <th style="padding:8px 6px;color:var(--gold);font-size:10px;border-bottom:1px solid rgba(212,168,83,0.2)">Ratio</th>
+                <th style="padding:8px 6px;color:var(--gold);font-size:10px;border-bottom:1px solid rgba(212,168,83,0.2)">Disc</th>
+                <th style="padding:8px 10px;text-align:left;color:var(--gold);font-size:10px;border-bottom:1px solid rgba(212,168,83,0.2)">Alamat Aset</th>
+                <th style="padding:8px 6px;text-align:left;color:var(--gold);font-size:10px;border-bottom:1px solid rgba(212,168,83,0.2)">Kecamatan</th>
+                <th style="padding:8px 6px;text-align:left;color:var(--gold);font-size:10px;border-bottom:1px solid rgba(212,168,83,0.2)">Harga Limit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04)">
+                <td style="padding:8px 10px;color:var(--gold);font-size:11px">AST-RMH-2026-305</td>
+                <td style="padding:8px 6px;text-align:center;color:var(--green)">✓</td>
+                <td style="padding:8px 6px;text-align:center;color:var(--blue);font-weight:700">1,75×</td>
+                <td style="padding:8px 6px;text-align:center;color:var(--green);font-weight:700">↓43%</td>
+                <td style="padding:8px 10px;color:var(--text-dim)">Jl. Citraland Raya No. 45</td>
+                <td style="padding:8px 6px;color:var(--text-dim)">Lakarsantri</td>
+                <td style="padding:8px 6px;color:#fff;font-weight:600">Rp 1,25 M</td>
+              </tr>
+              <tr style="cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04)">
+                <td style="padding:8px 10px;color:var(--gold);font-size:11px">AST-RKO-2026-118</td>
+                <td style="padding:8px 6px;text-align:center;color:var(--red)">✗</td>
+                <td style="padding:8px 6px;text-align:center;color:var(--blue);font-weight:700">1,28×</td>
+                <td style="padding:8px 6px;text-align:center;color:var(--gold);font-weight:700">↓22%</td>
+                <td style="padding:8px 10px;color:var(--text-dim)">Jl. Raya Darmo No. 77</td>
+                <td style="padding:8px 6px;color:var(--text-dim)">Wonokromo</td>
+                <td style="padding:8px 6px;color:#fff;font-weight:600">Rp 3,80 M</td>
+              </tr>
+              <tr style="cursor:pointer">
+                <td style="padding:8px 10px;color:var(--gold);font-size:11px">AST-TNH-2026-042</td>
+                <td style="padding:8px 6px;text-align:center;color:var(--green)">✓</td>
+                <td style="padding:8px 6px;text-align:center;color:var(--blue);font-weight:700">2,10×</td>
+                <td style="padding:8px 6px;text-align:center;color:var(--green);font-weight:700">↓52%</td>
+                <td style="padding:8px 10px;color:var(--text-dim)">Jl. Ketintang Madya No. 12</td>
+                <td style="padding:8px 6px;color:var(--text-dim)">Gayungan</td>
+                <td style="padding:8px 6px;color:#fff;font-weight:600">Rp 680 Jt</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="info-box tip">
+        <span class="info-box-icon">💡</span>
+        <div><strong>Tips Desktop:</strong> Gunakan scrollbar horizontal di atas header (bukan di bawah layar) untuk navigasi kolom dengan cepat. Anda tidak perlu scroll ke bawah dulu ke dasar tabel hanya untuk menggeser kolom.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 7: TAMBAH & EDIT ASET -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="section" id="s7">
+      <div class="section-header">
+        <div class="section-num editor">7</div>
+        <div>
+          <h2>Tambah &amp; Edit Aset</h2>
+          <div class="section-sub">Input manual aset baru dan perbarui data aset yang sudah ada</div>
+        </div>
+      </div>
+
+      <div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:12px">Tambah Aset Baru</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-dot">1</div>
+          <div class="step-body">
+            <h4>Klik <code>+ Tambah Aset</code> di pojok kanan atas</h4>
+            <p>Tombol ini hanya terlihat untuk Editor. Form input aset baru akan terbuka sebagai modal.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">2</div>
+          <div class="step-body">
+            <h4>Isi form data aset</h4>
+            <p>Isi semua field yang tersedia. Kode_Asset akan digenerate otomatis oleh sistem berdasarkan tipe properti dan urutan. Anda bisa mengubahnya jika perlu.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">3</div>
+          <div class="step-body">
+            <h4>Upload foto (opsional, sampai 3 foto)</h4>
+            <p>Klik area upload foto untuk memilih gambar dari perangkat. Foto dikompresi otomatis dan disimpan ke Cloudinary. Format yang didukung: JPG, PNG, WEBP.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">4</div>
+          <div class="step-body">
+            <h4>Pilih Status: <span class="badge badge-draft">Draft</span> atau <span class="badge badge-publish">Publish</span></h4>
+            <p>Aset Draft tidak tampil ke Non-Editor. Simpan sebagai Draft dulu jika data belum lengkap atau belum siap ditampilkan.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">5</div>
+          <div class="step-body">
+            <h4>Klik <code>Simpan Aset</code></h4>
+            <p>Data tersimpan ke Google Sheets dan kartu langsung muncul di daftar dengan posisi sesuai urutan otomatis (bergantung ada/tidaknya foto dan nilai rasio).</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FORM MOCKUP -->
+      <div class="mockup" style="margin-top:20px">
+        <div class="mockup-bar">
+          <div class="dot" style="background:#ef4444"></div>
+          <div class="dot" style="background:#f59e0b"></div>
+          <div class="dot" style="background:#22c55e"></div>
+          <div class="url">+ Tambah Aset — Form Input</div>
+        </div>
+        <div class="mockup-body">
+          <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:16px">⚖️ Tambah Aset Baru</div>
+          <div class="form-mock">
+            <div class="form-row">
+              <div class="field-mock">
+                <label>Kode Asset</label>
+                <div class="val">AST-RMH-2026-306</div>
+              </div>
+              <div class="field-mock required">
+                <label>Jenis</label>
+                <div class="val">🔨 Lelang</div>
+              </div>
+            </div>
+            <div class="field-mock required">
+              <label>Nama Asset</label>
+              <div class="val">Rumah 2 Lantai Perumahan Galaxy Bumi Permai</div>
+            </div>
+            <div class="form-row">
+              <div class="field-mock required">
+                <label>Bank Kreditur</label>
+                <div class="val">BNI</div>
+              </div>
+              <div class="field-mock">
+                <label>Nama Debitur</label>
+                <div class="val">PT Makmur Jaya Abadi</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field-mock required">
+                <label>Tipe Properti</label>
+                <div class="val">Rumah</div>
+              </div>
+              <div class="field-mock">
+                <label>Sertifikat</label>
+                <div class="val">SHM</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field-mock">
+                <label>Luas Tanah (m²)</label>
+                <div class="val">180</div>
+              </div>
+              <div class="field-mock">
+                <label>Luas Bangunan (m²)</label>
+                <div class="val">230</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field-mock required">
+                <label>Harga Limit Lelang</label>
+                <div class="val">Rp 950.000.000</div>
+              </div>
+              <div class="field-mock">
+                <label>Est. Harga Pasar</label>
+                <div class="val">Rp 1.600.000.000</div>
+              </div>
+            </div>
+            <div class="field-mock">
+              <label>Est. Harga Eksekusi</label>
+              <div class="placeholder">Rp … (opsional)</div>
+            </div>
+            <div class="field-mock required">
+              <label>Alamat</label>
+              <div class="val">Jl. Galaxy Bumi Permai Blok K No. 8</div>
+            </div>
+            <div class="form-row">
+              <div class="field-mock required">
+                <label>Kecamatan</label>
+                <div class="val">Sukolilo</div>
+              </div>
+              <div class="field-mock required">
+                <label>Kota</label>
+                <div class="val">Surabaya</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field-mock">
+                <label>Provinsi</label>
+                <div class="val">Jawa Timur</div>
+              </div>
+              <div class="field-mock">
+                <label>Google Maps Link</label>
+                <div class="placeholder">https://maps.google.com/…</div>
+              </div>
+            </div>
+            <div class="field-mock">
+              <label>Keterangan Debitur (Internal)</label>
+              <div class="placeholder">Catatan internal, tidak tampil ke non-editor…</div>
+            </div>
+            <div class="form-row">
+              <div class="field-mock">
+                <label>Status</label>
+                <div class="val">⚫ Draft</div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:16px;display:flex;gap:10px">
+            <div class="btn-mock btn-gold">✓ Simpan Aset</div>
+            <div class="btn-mock" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--text-dim)">Batal</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider" style="margin:28px 0 20px"></div>
+
+      <div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:12px">Edit Aset yang Sudah Ada</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-dot">1</div>
+          <div class="step-body">
+            <h4>Buka detail aset (klik kartu atau baris tabel)</h4>
+            <p>Modal detail aset terbuka. Di bagian bawah modal terdapat tombol <span class="hl-purple">✏️ Edit Aset</span> — hanya terlihat oleh Editor.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">2</div>
+          <div class="step-body">
+            <h4>Klik <code>✏️ Edit Aset</code> → form edit terbuka</h4>
+            <p>Form edit sama dengan form tambah, namun sudah terisi data aset yang dipilih. Ubah field yang perlu diperbarui.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-dot">3</div>
+          <div class="step-body">
+            <h4>Simpan perubahan</h4>
+            <p>Klik <code>Simpan Perubahan</code>. Sistem otomatis mencatat audit trail di sheet <strong style="color:#fff">ASSET_EDIT_LOG</strong> — nama editor, timestamp, kode aset, dan field yang diubah.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box gold">
+        <span class="info-box-icon">⭐</span>
+        <div><strong>ASSET_EDIT_LOG:</strong> Setiap edit aset terekam otomatis di sheet audit trail. Data yang dicatat: Nama Agen (editor), Timestamp, Kode Asset, Aksi, dan nomor urut edit (Edit_Ke). Berguna untuk melacak siapa yang mengubah data kapan.</div>
+      </div>
+
+      <div class="info-box warn">
+        <span class="info-box-icon">⚠️</span>
+        <div><strong>Perhatian Upload Foto:</strong> Foto yang sudah terupload ke Cloudinary tidak dapat dihapus dari CRM. Pastikan foto yang dipilih adalah foto properti yang benar dan berkualitas baik sebelum mengupload.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 8: SYNC DATA -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="section" id="s8">
+      <div class="section-header">
+        <div class="section-num editor">8</div>
+        <div>
+          <h2>Sync Data dari Sumber Eksternal</h2>
+          <div class="section-sub">Import data aset dari Google Sheet bank/KPKNL secara otomatis</div>
+        </div>
+      </div>
+
+      <p style="color:var(--text-dim);font-size:14px;margin-bottom:20px">
+        Data aset lelang sering bersumber dari spreadsheet resmi yang disediakan oleh bank atau KPKNL. CRM mendukung <strong style="color:#fff">Sync Data</strong> otomatis dari Google Sheet eksternal sehingga Anda tidak perlu input manual satu per satu.
+      </p>
+
+      <div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:12px">Dua Mode Sync</div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-dot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </div>
+          <div class="step-body">
+            <h4>Sync Data — Tambah &amp; Perbarui</h4>
+            <p>Mengambil data dari Google Sheet sumber eksternal dan <strong style="color:#fff">menambahkan aset baru</strong> serta <strong style="color:#fff">memperbarui data aset yang sudah ada</strong> (berdasarkan Kode_Asset). Aset yang sudah ada di CRM tapi tidak ada di sumber <em>tidak dihapus</em>.</p>
+            <div style="margin-top:8px">
+              <div class="btn-mock btn-blue" style="font-size:12px;padding:7px 14px">↻ Sync Data</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-dot" style="background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.4);color:var(--red)">!</div>
+          <div class="step-body">
+            <h4>Reset &amp; Sync — Hapus Semua lalu Reimport</h4>
+            <p><strong style="color:var(--red)">Tindakan destruktif.</strong> Menghapus <em>semua</em> data aset di CRM terlebih dahulu, lalu mengimpor ulang dari sumber. Gunakan hanya jika ada perubahan besar pada struktur data sumber dan Anda yakin data CRM perlu di-reset total.</p>
+            <div style="margin-top:8px">
+              <div class="btn-mock btn-red" style="font-size:12px;padding:7px 14px">⚠️ Reset &amp; Sync</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mockup" style="margin-top:20px">
+        <div class="mockup-bar">
+          <div class="dot" style="background:#ef4444"></div>
+          <div class="dot" style="background:#f59e0b"></div>
+          <div class="dot" style="background:#22c55e"></div>
+          <div class="url">Proses Sync Data</div>
+        </div>
+        <div class="mockup-body">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:10px">
+              <span style="color:var(--green);font-size:16px">✓</span>
+              <div style="font-size:13px;color:var(--text)">Terhubung ke Google Sheet sumber</div>
+              <div style="margin-left:auto;font-size:11px;color:var(--text-dim)">0,3 dtk</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:10px">
+              <span style="color:var(--green);font-size:16px">✓</span>
+              <div style="font-size:13px;color:var(--text)">Membaca 87 baris data dari sumber</div>
+              <div style="margin-left:auto;font-size:11px;color:var(--text-dim)">1,2 dtk</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:10px">
+              <span style="color:var(--green);font-size:16px">✓</span>
+              <div style="font-size:13px;color:var(--text)">12 aset baru ditambahkan · 23 aset diperbarui</div>
+              <div style="margin-left:auto;font-size:11px;color:var(--text-dim)">2,1 dtk</div>
+            </div>
+            <div style="padding:10px 14px;background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.2);border-radius:10px">
+              <div style="font-size:13px;font-weight:600;color:var(--gold)">Sync selesai! 87 aset total di database.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box warn" style="margin-top:12px">
+        <span class="info-box-icon">⚠️</span>
+        <div><strong>Reset &amp; Sync tidak bisa diurungkan.</strong> Semua foto yang sudah diupload via Cloudinary dan data yang sudah diedit manual akan hilang jika Anda melakukan Reset. Hanya lakukan Reset &amp; Sync jika memang diperlukan dan sudah ada konfirmasi dari superadmin.</div>
+      </div>
+
+      <div class="info-box tip">
+        <span class="info-box-icon">💡</span>
+        <div><strong>Jadwal Sync:</strong> Disarankan lakukan Sync Data secara berkala (misalnya setiap awal minggu) untuk memastikan data aset di CRM selalu up-to-date dengan daftar terbaru dari bank/KPKNL. Gunakan Sync Data biasa (bukan Reset) untuk pembaruan rutin.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 9: AKSI MASSAL -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="section" id="s9">
+      <div class="section-header">
+        <div class="section-num editor">9</div>
+        <div>
+          <h2>Aksi Massal</h2>
+          <div class="section-sub">Publish All, Perbaiki No. ID — operasi batch untuk Editor</div>
+        </div>
+      </div>
+
+      <p style="color:var(--text-dim);font-size:14px;margin-bottom:20px">
+        Selain operasi per-aset, Editor memiliki akses ke beberapa tombol aksi massal yang mempengaruhi semua aset sekaligus.
+      </p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-dot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          </div>
+          <div class="step-body">
+            <h4>Publish All — Publish semua aset Draft sekaligus</h4>
+            <p>Mengubah status semua aset yang berstatus <span class="badge badge-draft">Draft</span> menjadi <span class="badge badge-publish">Publish</span> dalam satu klik. Berguna setelah Sync Data massal di mana semua aset baru masuk sebagai Draft.</p>
+            <div style="margin-top:8px">
+              <div class="btn-mock btn-green" style="font-size:12px;padding:7px 14px">🌐 Publish All</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-dot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>
+          </div>
+          <div class="step-body">
+            <h4>Perbaiki No. ID — Renumber kode aset duplikat</h4>
+            <p>Jika setelah beberapa kali Sync terdapat <strong style="color:#fff">kode aset duplikat</strong> (nomor urut 3 digit yang sama), gunakan tombol ini untuk menomori ulang semua aset secara sequential dan menghapus duplikasi.</p>
+            <p style="margin-top:6px">Contoh: jika ada tiga aset dengan kode AST-RMH-2026-<strong style="color:var(--red)">001</strong>, sistem akan me-renumber menjadi -001, -002, -003 secara berurutan.</p>
+            <div style="margin-top:8px">
+              <div class="btn-mock" style="font-size:12px;padding:7px 14px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:var(--gold)">🔢 Perbaiki No. ID</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WORKFLOW RECOMMENDATION -->
+      <div style="margin-top:24px;font-size:13px;font-weight:600;color:var(--gold);margin-bottom:12px">Alur Kerja Setelah Sync Data Massal</div>
+      <div class="flow">
+        <div class="flow-item">
+          <div class="flow-icon">↻</div>
+          <div class="flow-role">Langkah 1</div>
+          <div class="flow-label">Sync Data</div>
+          <div class="flow-status" style="font-size:10px;color:var(--text-dim)">dari GSheet sumber</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item">
+          <div class="flow-icon">🔢</div>
+          <div class="flow-role">Langkah 2 (jika perlu)</div>
+          <div class="flow-label">Perbaiki No. ID</div>
+          <div class="flow-status" style="font-size:10px;color:var(--text-dim)">hapus duplikat kode</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item">
+          <div class="flow-icon">📋</div>
+          <div class="flow-role">Langkah 3</div>
+          <div class="flow-label">Review di Tabel List</div>
+          <div class="flow-status" style="font-size:10px;color:var(--text-dim)">cek data &amp; foto</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item" style="border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.04)">
+          <div class="flow-icon">🌐</div>
+          <div class="flow-role">Langkah 4</div>
+          <div class="flow-label">Publish All</div>
+          <div class="flow-status" style="font-size:10px;color:var(--green)">semua Draft → Publish</div>
+        </div>
+      </div>
+
+      <div class="info-box warn" style="margin-top:12px">
+        <span class="info-box-icon">⚠️</span>
+        <div><strong>Publish All langsung visible ke semua user.</strong> Pastikan data sudah benar dan layak ditampilkan sebelum klik Publish All. Jika ada aset yang belum siap, ubah statusnya ke Draft secara individual terlebih dahulu sebelum Publish All.</div>
+      </div>
+
+      <div class="info-box gold">
+        <span class="info-box-icon">⭐</span>
+        <div><strong>Best Practice:</strong> Setelah Publish All, lakukan satu kali review di filter Status = Publish untuk memastikan semua aset yang tampil sudah memiliki data harga yang lengkap (Harga_Limit minimal harus terisi agar badge rasio dan diskon muncul dengan benar).</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- CROSS-LINK CALLOUT -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div class="divider"></div>
+
+    <div style="background:rgba(212,168,83,0.06);border:1px solid rgba(212,168,83,0.2);border-radius:16px;padding:24px 28px;display:flex;gap:20px;align-items:flex-start">
+      <div style="font-size:32px;flex-shrink:0">📚</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:6px">Lihat Juga: Panduan Koordinator Primary</div>
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Panduan lengkap untuk Koordinator dalam mengelola proyek developer — dari input proyek, alur publish ke website mansionpro.id, hingga menerima leads dari pengunjung web.</p>
+        <a href="tutorial-koordinator-primary.html" style="display:inline-flex;align-items:center;gap:8px;background:var(--gold);color:#0D1526;font-size:13px;font-weight:700;text-decoration:none;padding:9px 18px;border-radius:10px">
+          Buka Panduan Primary &#8594;
+        </a>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="divider"></div>
+    <div style="text-align:center;padding:24px 0 40px">
+      <div style="font-size:14px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-bottom:6px">MANSION Realty</div>
+      <div style="font-size:11px;color:var(--text-dim)">Panduan List Aset Lelang · crm.mansionpro.id · Versi Agustus 2026</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:4px">Dokumen Internal · Untuk digunakan oleh agen &amp; editor Mansion Realty</div>
+    </div>
+
+  </main>
+</div>
+
+<!-- SMOOTH SCROLL + ACTIVE NAV -->
+<script>
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  const sections = document.querySelectorAll('.section');
+  const sideLinks = document.querySelectorAll('.sidebar-nav a');
+  const topLinks  = document.querySelectorAll('.topnav-links a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        sideLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + id));
+        topLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + id));
+      }
+    });
+  }, { threshold: 0.3, rootMargin: '-60px 0px -60% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
