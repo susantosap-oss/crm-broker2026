@@ -328,9 +328,9 @@
         </button>
       </div>
       <div id="fav-bar" style="display:none;background:#131F38;border-radius:12px;padding:10px 14px;border:1px solid rgba(212,168,83,0.2);margin-bottom:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
           <span style="font-size:12px;color:rgba(255,255,255,0.7)"><span id="fav-count">0</span> favorit</span>
-          <button onclick="downloadFavPDF()" style="font-size:11px;padding:7px 14px;background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.3);color:#D4A853;border-radius:8px;cursor:pointer;font-weight:600"><i class="fa-solid fa-file-pdf" style="margin-right:5px"></i>Download PDF</button>
+          <button onclick="openListingFavPanel()" style="font-size:11px;padding:7px 14px;background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.3);color:#D4A853;border-radius:8px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px"><i class="fa-solid fa-print"></i> Print PDF</button>
         </div>
       </div>
       <div id="listings-grid" style="display:flex;flex-direction:column;gap:10px">

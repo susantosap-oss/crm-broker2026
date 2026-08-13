@@ -620,6 +620,270 @@ async function downloadFavPDF() {
   }
 }
 
+// ══════════════════════════════════════════════════════
+// LISTING FAVOURITE PANEL + PRINT PDF
+// ══════════════════════════════════════════════════════
+
+function openListingFavPanel() {
+  if (!_favourites.size) { showToast('Belum ada listing favorit', 'warning'); return; }
+  let modal = document.getElementById('modal-listing-fav');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-listing-fav';
+    modal.dataset.modalDisplay = 'flex';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.7);overflow-y:auto';
+    modal.innerHTML = `
+      <div style="min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:20px">
+        <div style="background:#0D1526;border-radius:16px;width:100%;max-width:600px;overflow:hidden;border:1px solid rgba(212,168,83,0.2)">
+          <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <h2 style="color:#fff;font-size:18px;margin:0 0 4px">⭐ Favorit Listing</h2>
+              <p id="listing-fav-panel-count" style="color:rgba(255,255,255,0.45);font-size:13px;margin:0">0 listing</p>
+            </div>
+            <button onclick="closeModal('modal-listing-fav')"
+              style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer;padding:4px">✕</button>
+          </div>
+          <!-- Action Bar -->
+          <div style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:0.8px;margin-bottom:8px">A4 · 3 CARD PER HALAMAN</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+              <button onclick="printListingPDF('all','a4')"
+                style="background:#D4A853;color:#0D1526;border:none;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+                <i class="fa-solid fa-print"></i> Print Semua
+              </button>
+              <button onclick="printListingPDF('selected','a4')"
+                style="background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.4);color:#D4A853;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+                <i class="fa-solid fa-check-square"></i> Print Pilihan
+              </button>
+            </div>
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:0.8px;margin-bottom:8px">MOBILE · 1 CARD PER HALAMAN</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <button onclick="printListingPDF('all','mobile')"
+                style="background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.4);color:#60a5fa;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+                <i class="fa-solid fa-mobile-screen"></i> Print Semua
+              </button>
+              <button onclick="printListingPDF('selected','mobile')"
+                style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+                <i class="fa-solid fa-check-square"></i> Print Pilihan
+              </button>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button onclick="_listingFavSelectAll(true)"
+                style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">
+                Pilih Semua
+              </button>
+              <button onclick="_listingFavSelectAll(false)"
+                style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);padding:7px 12px;border-radius:8px;font-size:11px;cursor:pointer">
+                Batal Semua
+              </button>
+            </div>
+          </div>
+          <!-- List -->
+          <div id="listing-fav-panel-list" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+      </div>`;
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal('modal-listing-fav'); });
+    document.body.appendChild(modal);
+  }
+  openModal('modal-listing-fav', 'flex');
+  _renderListingFavPanel();
+}
+
+function _renderListingFavPanel() {
+  const list    = document.getElementById('listing-fav-panel-list');
+  const countEl = document.getElementById('listing-fav-panel-count');
+  if (!list) return;
+  const favListings = _allListings.filter(l => _favourites.has(l.ID));
+  if (countEl) countEl.textContent = `${favListings.length} listing difavoritkan`;
+  if (!favListings.length) {
+    list.innerHTML = `<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3);font-size:14px">Belum ada listing favorit.</div>`;
+    return;
+  }
+  list.innerHTML = favListings.map(l => {
+    const harga = l.Harga_Format || formatRupiah(l.Harga);
+    return `
+    <div style="display:flex;align-items:center;gap:10px;background:#131F38;border-radius:10px;padding:10px;border:1px solid rgba(255,255,255,0.06)">
+      <input type="checkbox" class="listing-fav-check" data-id="${escapeHtml(l.ID)}" checked
+        style="width:16px;height:16px;accent-color:#D4A853;flex-shrink:0;cursor:pointer">
+      <div style="width:52px;height:52px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#1C2D52">
+        ${l.Foto_Utama_URL ? `<img src="${escapeHtml(l.Foto_Utama_URL)}" style="width:100%;height:100%;object-fit:cover">` : ''}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(l.Judul || '—')}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin:2px 0">${escapeHtml(l.Kode_Listing || '')} · ${escapeHtml(l.Kota || '')}</div>
+        <div style="font-size:13px;font-weight:700;color:#D4A853">${escapeHtml(harga)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _listingFavSelectAll(checked) {
+  document.querySelectorAll('.listing-fav-check').forEach(cb => cb.checked = checked);
+}
+
+function printListingPDF(mode, format) {
+  const favListings = _allListings.filter(l => _favourites.has(l.ID));
+  if (!favListings.length) { showToast('Belum ada listing favorit', 'warning'); return; }
+
+  let targets = favListings;
+  if (mode === 'selected') {
+    const checked = [...document.querySelectorAll('.listing-fav-check:checked')].map(cb => cb.dataset.id);
+    targets = favListings.filter(l => checked.includes(l.ID));
+    if (!targets.length) { showToast('Pilih minimal 1 listing terlebih dahulu', 'warning'); return; }
+  }
+
+  const isMobile = format === 'mobile';
+  const user    = STATE.user || {};
+  const waNum   = (user.no_wa || '').replace(/\D/g, '');
+  const waFmt   = waNum ? '+' + (waNum.startsWith('62') ? waNum : '62' + waNum.replace(/^0/, '')) : '';
+  const kantor  = (user.nama_kantor || '').replace(/^MANSION\s*:\s*/i, 'MANSION : ').trim();
+  const tgl     = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
+  const logoUrl = window.location.origin + '/assets/mansion-logo.png';
+  const agentSlug = (user.nama || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-').trim();
+  const agentUrl  = user.id ? `https://www.mansionpro.id/agents/${agentSlug}` : '';
+
+  const _fmLuas = v => { const n = parseFloat(v); return (!v || !n) ? null : `${Number.isInteger(n) ? n : n.toFixed(1)} m²`; };
+
+  const _descContent = (l) => {
+    const lokasi = [l.Kecamatan, l.Kota].filter(Boolean).join(', ');
+    const lt   = _fmLuas(l.Luas_Tanah);
+    const lb   = _fmLuas(l.Luas_Bangunan);
+    const kt   = l.Kamar_Tidur   ? `${l.Kamar_Tidur} KT`   : null;
+    const km   = l.Kamar_Mandi   ? `${l.Kamar_Mandi} KM`   : null;
+    const sert = (l.Sertifikat && l.Sertifikat !== '0') ? l.Sertifikat : null;
+    const specs = [lt ? `LT ${lt}` : null, lb ? `LB ${lb}` : null, kt, km, sert].filter(Boolean);
+    const harga = l.Harga_Format || formatRupiah(l.Harga) || '—';
+    const hargaM2 = l.Harga_Permeter_Format || (l.Harga_Permeter ? formatRupiah(l.Harga_Permeter) : '');
+    const tipeStatus = [l.Tipe_Properti, l.Status_Transaksi].filter(Boolean).join(' · ');
+    return `
+      <div class="pdf-id">${escapeHtml(l.Kode_Listing || l.ID)}</div>
+      ${l.Judul ? `<div class="pdf-nama">${escapeHtml(l.Judul)}</div>` : ''}
+      ${tipeStatus ? `<div class="pdf-bank">${escapeHtml(tipeStatus)}</div>` : ''}
+      ${l.Alamat ? `<div class="pdf-row"><span class="pdf-label-cap">Alamat</span><span>${escapeHtml(l.Alamat)}</span></div>` : ''}
+      ${lokasi ? `<div class="pdf-row"><span class="pdf-label-cap">Lokasi</span><span>${escapeHtml(lokasi)}</span></div>` : ''}
+      ${specs.length ? `<div class="pdf-row"><span class="pdf-label-cap">Spesifikasi</span><span>${specs.map(s => escapeHtml(s)).join(' · ')}</span></div>` : ''}
+      <div class="pdf-harga">
+        <div class="harga-item"><span>Harga</span><strong>${escapeHtml(harga)}</strong></div>
+        ${hargaM2 ? `<div class="harga-item"><span>per m²</span><strong>${escapeHtml(hargaM2)}</strong></div>` : ''}
+      </div>
+      <div class="pdf-agen">
+        <div class="agen-nama">${escapeHtml(user.nama || '—')}</div>
+        ${kantor ? `<div class="agen-info">${escapeHtml(kantor)}</div>` : ''}
+        ${waFmt ? `<div class="agen-info">📱 ${escapeHtml(waFmt)}</div>` : ''}
+        ${agentUrl ? `<div class="agen-info">🌐 ${escapeHtml(agentUrl)}</div>` : ''}
+      </div>`;
+  };
+
+  const _miniHeader = (idx) => `
+    <div class="pdf-mini-header">
+      <div>
+        <div class="mh-title">Listing Properti — Mansion</div>
+        <div class="mh-sub">Dicetak: ${tgl} · ${idx + 1} / ${targets.length}</div>
+      </div>
+      <img src="${logoUrl}" class="mh-logo" alt="Mansion" onerror="this.style.display='none'">
+    </div>`;
+
+  let bodyHtml = '';
+
+  if (isMobile) {
+    bodyHtml = targets.map((l, idx) => {
+      const foto = l.Foto_Utama_URL || '';
+      return `
+      <div class="pdf-page-mobile${idx === targets.length - 1 ? ' last' : ''}">
+        ${_miniHeader(idx)}
+        <div class="pdf-card-mobile">
+          <div class="pdf-foto-mobile">
+            ${foto ? `<img src="${escapeHtml(foto)}" alt="Foto Listing">` : `<div class="no-foto">Foto belum tersedia</div>`}
+          </div>
+          <div class="pdf-desc-mobile">${_descContent(l)}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    const a4Header = `
+      <div class="pdf-header">
+        <div>
+          <div class="pdf-header-title">Listing Properti — Mansion</div>
+          <div class="pdf-header-sub">Dicetak: ${tgl} · ${targets.length} listing</div>
+        </div>
+        <img src="${logoUrl}" class="pdf-logo" alt="Mansion Logo" onerror="this.style.display='none'">
+      </div>`;
+    bodyHtml = a4Header + targets.map(l => {
+      const foto = l.Foto_Utama_URL || '';
+      return `
+      <div class="pdf-card">
+        <div class="pdf-foto">
+          ${foto ? `<img src="${escapeHtml(foto)}" alt="Foto Listing">` : `<div class="no-foto">Foto belum tersedia</div>`}
+        </div>
+        <div class="pdf-desc">${_descContent(l)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // CSS identik dengan printAssetPDF
+  const commonCss = `
+    * { box-sizing:border-box;margin:0;padding:0; }
+    body { font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1e293b;background:#fff; }
+    .pdf-id   { font-size:11px;font-weight:700;color:#0A2342;letter-spacing:0.3px;margin-bottom:2px; }
+    .pdf-nama { font-size:12px;font-weight:600;color:#1e293b;line-height:1.3;margin-bottom:2px; }
+    .pdf-bank { font-size:10px;color:#92400e;font-weight:600;margin-bottom:3px; }
+    .pdf-row  { margin-bottom:3px; }
+    .pdf-label-cap { display:block;font-size:8px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:0.5px; }
+    .pdf-row > span:last-child { font-size:10px;color:#374151; }
+    .no-foto { display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:12px; }
+    .pdf-harga { display:flex;gap:8px;background:#f8fafc;border-radius:5px;padding:6px 8px;margin-top:4px; }
+    .harga-item { flex:1; }
+    .harga-item span { font-size:8px;color:#64748b;display:block; }
+    .harga-item strong { font-size:14px;color:#0A2342;font-weight:700;display:block;margin-top:1px; }
+    .pdf-agen { margin-top:auto;padding-top:6px;border-top:1px solid #f1f5f9; }
+    .agen-nama { font-size:11px;font-weight:700;color:#0A2342; }
+    .agen-info { font-size:9px;color:#374151; }
+    @media print { body { -webkit-print-color-adjust:exact;print-color-adjust:exact; } }`;
+
+  const a4Css = `
+    @page { size:A4 portrait;margin:10mm 12mm; }
+    .pdf-header { display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #0A2342;padding-bottom:8px;margin-bottom:8px; }
+    .pdf-header-title { font-size:14px;font-weight:700;color:#0A2342; }
+    .pdf-header-sub { font-size:9px;color:#64748b;margin-top:2px; }
+    .pdf-logo { height:36px;object-fit:contain; }
+    .pdf-card { display:flex;height:83mm;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;margin-bottom:5mm;page-break-inside:avoid;break-inside:avoid; }
+    .pdf-foto { width:60%;flex-shrink:0;background:#f1f5f9;overflow:hidden; }
+    .pdf-foto img { width:100%;height:100%;object-fit:cover;display:block; }
+    .pdf-desc { width:40%;padding:9px 11px;display:flex;flex-direction:column;border-left:1px solid #e2e8f0;overflow:hidden; }`;
+
+  const mobileCss = `
+    @page { size:A4 portrait;margin:8mm 10mm; }
+    .pdf-page-mobile { height:281mm;display:flex;flex-direction:column;page-break-after:always;break-after:page; }
+    .pdf-page-mobile.last { page-break-after:auto;break-after:auto; }
+    .pdf-mini-header { display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #0A2342;padding-bottom:7px;margin-bottom:8px;flex-shrink:0; }
+    .mh-title { font-size:13px;font-weight:700;color:#0A2342; }
+    .mh-sub   { font-size:9px;color:#64748b;margin-top:1px; }
+    .mh-logo  { height:32px;object-fit:contain; }
+    .pdf-card-mobile { flex:1;display:flex;flex-direction:column;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;min-height:0; }
+    .pdf-foto-mobile { flex:0 0 58%;overflow:hidden;background:#f1f5f9; }
+    .pdf-foto-mobile img { width:100%;height:100%;object-fit:cover;display:block; }
+    .pdf-desc-mobile { flex:1;padding:12px 16px;display:flex;flex-direction:column;border-top:1px solid #e2e8f0;overflow:hidden; }
+    .pdf-desc-mobile .pdf-nama { font-size:14px; }
+    .pdf-desc-mobile .pdf-row > span:last-child { font-size:12px; }
+    .pdf-desc-mobile .harga-item strong { font-size:17px; }
+    .pdf-desc-mobile .agen-nama { font-size:13px; }
+    .pdf-desc-mobile .agen-info { font-size:11px; }`;
+
+  const html = `<!DOCTYPE html>
+<html lang="id"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${isMobile ? 'Mobile' : 'A4'} — Listing Properti</title>
+<style>${commonCss}${isMobile ? mobileCss : a4Css}</style>
+</head><body>${bodyHtml}</body></html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { showToast('Pop-up diblokir browser. Izinkan pop-up lalu coba lagi.', 'error'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.addEventListener('load', () => setTimeout(() => win.print(), 400));
+}
+
 // ─────────────────────────────────────────────────────────
 // LISTING TAB (PR 3, 7, 10)
 // ─────────────────────────────────────────────────────────
