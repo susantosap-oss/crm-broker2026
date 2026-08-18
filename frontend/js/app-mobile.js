@@ -5020,8 +5020,9 @@ function closeModal(id) {
   const idx = _modalStack.lastIndexOf(id);
   if (idx !== -1) {
     _modalStack.splice(idx, 1);
-    if (!_poppingFromBack) {
-      // Ditutup via UI (tombol X) — sync history agar stack dan browser selaras
+    // Guard: hanya panggil history.back() jika current state adalah entry yang kita push.
+    // Tanpa guard ini, di Chrome Windows PWA history.back() bisa keluar scope PWA → force close.
+    if (!_poppingFromBack && history.state?.modal) {
       _poppingFromBack = true;
       history.back();
       setTimeout(() => { _poppingFromBack = false; }, 200);
@@ -9157,8 +9158,19 @@ function editCurrentAsset() {
   setAssetPhotoPreview(3, a.Foto_3_URL || '');
 
   _populateBankDatalist();
-  closeModal('modal-asset-detail');
-  openModal('modal-asset-form');
+  // Swap detail→form dengan replaceState, bukan closeModal()+openModal()
+  // closeModal memanggil history.back() ASYNC lalu openModal pushState SYNC →
+  // race condition: back() akhirnya mundur dari form state ke detail state,
+  // lalu back() saat save mundur lagi ke luar scope PWA → Chrome Windows force close.
+  const _detailEl = document.getElementById('modal-asset-detail');
+  if (_detailEl) { _detailEl.style.display = 'none'; _detailEl.classList.remove('open'); }
+  const _didx = _modalStack.lastIndexOf('modal-asset-detail');
+  if (_didx !== -1) _modalStack.splice(_didx, 1);
+  _modalStack.push('modal-asset-form');
+  history.replaceState({ modal: 'modal-asset-form' }, '');
+  _lastModalOpenTime = Date.now();
+  const _formEl = document.getElementById('modal-asset-form');
+  if (_formEl) { _formEl.style.display = 'block'; _formEl.classList.add('open'); _formEl.scrollTop = 0; }
 }
 
 async function submitAssetForm() {
