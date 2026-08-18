@@ -56,7 +56,7 @@ class ListingsService {
   // ── Create Listing ────────────────────────────────────────
   async create(payload, agentData) {
     const id = uuidv4();
-    const kode = await this._generateKode(payload.Tipe_Properti);
+    const kode = await this._generateKode(payload.Tipe_Properti, payload.Status_Transaksi);
     const now = new Date().toISOString();
 
     // Auto-generate caption sosmed jika tidak diisi
@@ -160,6 +160,91 @@ class ListingsService {
     return newCount;
   }
 
+  // ── Resequence Kode Listing ───────────────────────────────
+  // Rename semua Kode_Listing ke format baru {TIPE}-{JL|SW}-{YEAR}-{SEQ}
+  // Urutkan per Tanggal_Input asc, batch update via 1 API call.
+  async resequenceKodes() {
+    const rows = await sheetsService.getRange(SHEETS.LISTING);
+    if (!rows || rows.length < 2) {
+      return { scanned: 0, changed: 0, message: 'Tidak ada listing untuk diproses' };
+    }
+
+    const TIPE_CODE = {
+      'Rumah': 'RMH', 'Ruko': 'RKO', 'Tanah': 'TNH',
+      'Apartemen': 'APT', 'Gudang': 'GDG',
+    };
+    const KODE_COL = 'C';  // COLUMNS.LISTING index 2
+    const UPD_COL  = 'AP'; // COLUMNS.LISTING index 41
+
+    // Index: A=0,B=1,C=2,D=3,E=4
+    const IDX = { id: 0, date: 1, kode: 2, tipe: 3, jenis: 4 };
+    const listings = rows.slice(1).map((row, i) => ({
+      rowIndex: i + 2,
+      id:    row[IDX.id]    || '',
+      kode:  row[IDX.kode]  || '',
+      date:  row[IDX.date]  || '',
+      tipe:  row[IDX.tipe]  || '',
+      jenis: row[IDX.jenis] || '',
+    })).filter(l => l.id);
+
+    const kodeCounts = {};
+    listings.forEach(l => { kodeCounts[l.kode] = (kodeCounts[l.kode] || 0) + 1; });
+    const duplicateKodes = Object.keys(kodeCounts).filter(k => kodeCounts[k] > 1);
+
+    // Kelompokkan per tipe+jenis prefix
+    const groups = {};
+    listings.forEach(l => {
+      const tipeCode  = TIPE_CODE[l.tipe] || 'LST';
+      const jenisCode = (l.jenis || '').toLowerCase().includes('sewa') ? 'SW' : 'JL';
+      const prefix    = `${tipeCode}-${jenisCode}`;
+      if (!groups[prefix]) groups[prefix] = [];
+      groups[prefix].push(l);
+    });
+    Object.values(groups).forEach(g => {
+      g.sort((a, b) => {
+        const d = (a.date || '').localeCompare(b.date || '');
+        return d !== 0 ? d : a.rowIndex - b.rowIndex;
+      });
+    });
+
+    const year = new Date().getFullYear();
+    const now  = new Date().toISOString();
+    const changes = [];
+
+    for (const [prefix, group] of Object.entries(groups)) {
+      group.forEach((listing, idx) => {
+        const newKode = `${prefix}-${year}-${String(idx + 1).padStart(3, '0')}`;
+        if (newKode !== listing.kode) {
+          changes.push({ ...listing, newKode });
+        }
+      });
+    }
+
+    if (changes.length === 0) {
+      return {
+        scanned:    listings.length,
+        duplicates: duplicateKodes.length,
+        changed:    0,
+        message:    `Semua ${listings.length} listing sudah bernomor dengan benar, tidak ada perubahan`,
+      };
+    }
+
+    const batchData = [];
+    changes.forEach(c => {
+      batchData.push({ range: `${SHEETS.LISTING}!${KODE_COL}${c.rowIndex}`, values: [[c.newKode]] });
+      batchData.push({ range: `${SHEETS.LISTING}!${UPD_COL}${c.rowIndex}`, values: [[now]] });
+    });
+    await sheetsService.batchUpdate(batchData);
+
+    return {
+      scanned:    listings.length,
+      duplicates: duplicateKodes.length,
+      changed:    changes.length,
+      changes:    changes.map(c => ({ oldKode: c.kode, newKode: c.newKode, tipe: c.tipe, jenis: c.jenis })),
+      message:    `Resequence selesai: ${listings.length} listing diperiksa, ${duplicateKodes.length} kode duplikat ditemukan, ${changes.length} kode diperbarui`,
+    };
+  }
+
   // ── Private Helpers ───────────────────────────────────────
   _rowToObject(row) {
     return COLUMNS.LISTING.reduce((obj, col, i) => {
@@ -185,19 +270,17 @@ class ListingsService {
     return matches || [];
   }
 
-  async _generateKode(tipe) {
-    const prefix = {
-      'Rumah': 'RMH',
-      'Ruko': 'RKO',
-      'Tanah': 'TNH',
-      'Apartemen': 'APT',
-      'Gudang': 'GDG',
-    }[tipe] || 'LST';
-
-    const year = new Date().getFullYear();
-    const stats = await sheetsService.getSheetStats();
-    const seq = String(stats.totalListings + 1).padStart(3, '0');
-    return `${prefix}-${year}-${seq}`;
+  async _generateKode(tipe, jenis) {
+    const TIPE_CODE = {
+      'Rumah': 'RMH', 'Ruko': 'RKO', 'Tanah': 'TNH',
+      'Apartemen': 'APT', 'Gudang': 'GDG',
+    };
+    const tipeCode  = TIPE_CODE[tipe] || 'LST';
+    const jenisCode = (jenis || '').toLowerCase().includes('sewa') ? 'SW' : 'JL';
+    const year      = new Date().getFullYear();
+    const stats     = await sheetsService.getSheetStats();
+    const seq       = String(stats.totalListings + 1).padStart(3, '0');
+    return `${tipeCode}-${jenisCode}-${year}-${seq}`;
   }
 }
 

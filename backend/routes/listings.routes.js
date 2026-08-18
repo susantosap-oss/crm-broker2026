@@ -400,6 +400,17 @@ router.get('/pdf', async (req, res) => {
   }
 });
 
+// POST /resequence — Ubah semua Kode_Listing ke format baru {TIPE}-{JL|SW}-{YEAR}-{SEQ}
+router.post('/resequence', requireRole(['superadmin', 'principal', 'kantor']), async (req, res) => {
+  try {
+    const result = await listingsService.resequenceKodes();
+    res.json({ success: true, ...result });
+  } catch (e) {
+    console.error('[Resequence Listing]', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // POST /bulk-regenerate-judul — regenerasi judul semua listing ke format SEO baru
 // Harus di atas /:id agar tidak ditangkap sebagai ID
 router.post('/bulk-regenerate-judul', requireRole(['superadmin','admin','principal','kantor']), async (req, res) => {

@@ -110,7 +110,7 @@ class AssetsService {
     await this._ensureHeaders();
     const now = new Date().toISOString();
     const id  = uuidv4();
-    const kode = await this._generateKode(data.Tipe_Properti);
+    const kode = await this._generateKode(data.Tipe_Properti, data.Label_Asset);
 
     const obj = {
       ID:                       id,
@@ -396,13 +396,15 @@ class AssetsService {
     const existingBySourceId = {};
     existingAssets.forEach(a => { if (a.Source_Row_ID) existingBySourceId[a.Source_Row_ID] = a; });
 
-    const KODE_PREFIX = {
-      Rumah: 'AST-RMH', Ruko: 'AST-RKO', Apartemen: 'AST-APT',
-      Gudang: 'AST-GDG', Tanah: 'AST-TNH', Kios: 'AST-KIO',
+    const TIPE_CODE = {
+      Rumah: 'RMH', Ruko: 'RKO', Apartemen: 'APT',
+      Gudang: 'GDG', Tanah: 'TNH', Kios: 'KIO',
     };
     const typeCounts = {};
     existingAssets.forEach(a => {
-      const p = KODE_PREFIX[a.Tipe_Properti] || 'AST';
+      const tipeC  = TIPE_CODE[a.Tipe_Properti] || 'AST';
+      const labelC = this._labelCode(a.Label_Asset);
+      const p      = `AST-${labelC}-${tipeC}`;
       typeCounts[p] = (typeCounts[p] || 0) + 1;
     });
 
@@ -488,7 +490,9 @@ class AssetsService {
         }
       } else {
         // BUILD new row in memory — no GSheet reads
-        const prefix = KODE_PREFIX[tipeProperti] || 'AST';
+        const tipeCode2  = TIPE_CODE[tipeProperti] || 'AST';
+        const labelCode2 = this._labelCode(labelAsset);
+        const prefix     = `AST-${labelCode2}-${tipeCode2}`;
         typeCounts[prefix] = (typeCounts[prefix] || 0) + 1;
         const kode = `${prefix}-${year}-${String(typeCounts[prefix]).padStart(3, '0')}`;
         const id   = uuidv4();
@@ -646,22 +650,30 @@ class AssetsService {
     return `Rp ${num.toLocaleString('id-ID')}`;
   }
 
-  async _generateKode(tipe) {
-    const KODE_PREFIX = {
-      Rumah: 'AST-RMH', Ruko: 'AST-RKO', Apartemen: 'AST-APT',
-      Gudang: 'AST-GDG', Tanah: 'AST-TNH', Kios: 'AST-KIO',
+  _labelCode(label) {
+    const l = (label || '').trim().toLowerCase().replace(/\s+/g, '');
+    if (l === 'cassie' || l === 'cessie') return 'CS';
+    if (l === 'ayda') return 'AY';
+    return 'LL'; // default Lelang
+  }
+
+  async _generateKode(tipe, label) {
+    const TIPE_CODE = {
+      Rumah: 'RMH', Ruko: 'RKO', Apartemen: 'APT',
+      Gudang: 'GDG', Tanah: 'TNH', Kios: 'KIO',
     };
-    const prefix = KODE_PREFIX[tipe] || 'AST';
-    const year = new Date().getFullYear();
-    const rows = await sheetsService.getRange(SHEETS.ASSETS);
-    // Count existing assets of the same type, not total rows
-    const typeCount = rows && rows.length > 1
+    const tipeCode  = TIPE_CODE[tipe] || 'AST';
+    const labelCode = this._labelCode(label);
+    const prefix    = `AST-${labelCode}-${tipeCode}`;
+    const year      = new Date().getFullYear();
+    const rows      = await sheetsService.getRange(SHEETS.ASSETS);
+    const seq       = rows && rows.length > 1
       ? rows.slice(1).filter(r => {
           const obj = this._rowToObj(r);
-          return (KODE_PREFIX[obj.Tipe_Properti] || 'AST') === prefix;
+          return (obj.Kode_Asset || '').startsWith(prefix + '-');
         }).length + 1
       : 1;
-    return `${prefix}-${year}-${String(typeCount).padStart(3, '0')}`;
+    return `${prefix}-${year}-${String(seq).padStart(3, '0')}`;
   }
 
   // ── RESEQUENCE KODE ASSET ─────────────────────────────────
@@ -674,23 +686,22 @@ class AssetsService {
       return { scanned: 0, changed: 0, duplicates: 0, message: 'Tidak ada aset untuk diproses' };
     }
 
-    const KODE_PREFIX = {
-      Rumah: 'AST-RMH', Ruko: 'AST-RKO', Apartemen: 'AST-APT',
-      Gudang: 'AST-GDG', Tanah: 'AST-TNH', Kios: 'AST-KIO',
+    const TIPE_CODE = {
+      Rumah: 'RMH', Ruko: 'RKO', Apartemen: 'APT',
+      Gudang: 'GDG', Tanah: 'TNH', Kios: 'KIO',
     };
-
-    // Posisi kolom di sheet (0-based index → dikonversi ke huruf kolom A1 notation)
     const KODE_COL = 'B';  // COLUMNS.ASSETS index 1
     const UPD_COL  = 'AI'; // COLUMNS.ASSETS index 34
 
-    // Kumpulkan semua aset dengan posisi baris sheet aslinya (tidak perlu _rowToObj penuh)
-    const IDX = { id: 0, kode: 1, date: 2, tipe: 3 }; // A=0,B=1,C=2,D=3
+    // AK=36 = Label_Asset
+    const IDX = { id: 0, kode: 1, date: 2, tipe: 3, label: 36 };
     const assets = rows.slice(1).map((row, i) => ({
-      rowIndex: i + 2, // header = baris 1, data mulai baris 2
-      id:   row[IDX.id]   || '',
-      kode: row[IDX.kode] || '',
-      date: row[IDX.date] || '',
-      tipe: row[IDX.tipe] || '',
+      rowIndex: i + 2,
+      id:    row[IDX.id]    || '',
+      kode:  row[IDX.kode]  || '',
+      date:  row[IDX.date]  || '',
+      tipe:  row[IDX.tipe]  || '',
+      label: row[IDX.label] || '',
     })).filter(a => a.id);
 
     // Hitung duplikat sebelum perbaikan
@@ -698,10 +709,12 @@ class AssetsService {
     assets.forEach(a => { kodeCounts[a.kode] = (kodeCounts[a.kode] || 0) + 1; });
     const duplicateKodes = Object.keys(kodeCounts).filter(k => kodeCounts[k] > 1);
 
-    // Kelompokkan per tipe, urutkan Tanggal_Input asc lalu rowIndex asc
+    // Kelompokkan per label+tipe prefix, urutkan Tanggal_Input asc lalu rowIndex asc
     const groups = {};
     assets.forEach(a => {
-      const prefix = KODE_PREFIX[a.tipe] || 'AST';
+      const tipeCode  = TIPE_CODE[a.tipe] || 'AST';
+      const labelCode = this._labelCode(a.label);
+      const prefix    = `AST-${labelCode}-${tipeCode}`;
       if (!groups[prefix]) groups[prefix] = [];
       groups[prefix].push(a);
     });
@@ -769,7 +782,7 @@ class AssetsService {
       scanned:    assets.length,
       duplicates: duplicateKodes.length,
       changed:    changes.length,
-      changes:    changes.map(c => ({ oldKode: c.kode, newKode: c.newKode, tipe: c.tipe })),
+      changes:    changes.map(c => ({ oldKode: c.kode, newKode: c.newKode, tipe: c.tipe, label: c.label })),
       message:    `Resequence selesai: ${assets.length} aset diperiksa, ${duplicateKodes.length} kode duplikat ditemukan, ${changes.length} kode diperbaiki`,
     };
   }
