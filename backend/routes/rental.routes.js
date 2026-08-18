@@ -150,14 +150,40 @@ router.patch('/:id', async (req, res) => {
     if (agen_selling_nama !== undefined) updated.Agen_Selling_Nama = agen_selling_nama;
     if (cobroke !== undefined)          updated.CoBroke            = cobroke;
 
-    // Perpanjang: tambah durasi dan recalc tanggal selesai
+    // Perpanjang: freeze record lama → buat record baru dengan tanggal baru
     if (perpanjang_bulan && parseInt(perpanjang_bulan) > 0) {
-      const newDurasi = parseInt(updated.Durasi_Bulan) + parseInt(perpanjang_bulan);
-      updated.Durasi_Bulan = newDurasi;
-      updated.Tanggal_Selesai = hitungTanggalSelesai(updated.Tanggal_Mulai, newDurasi);
+      const now = new Date().toISOString();
+      // Freeze old record: status diperpanjang, tanggal TIDAK berubah
       updated.Status = 'diperpanjang';
-      updated.Reminder_90_Sent = 'FALSE';
-      updated.Reminder_30_Sent = 'FALSE';
+      updated.Updated_At = now;
+      const frozenRow = COLUMNS.RENTAL_STATUS.map(c => updated[c] || '');
+      await sheetsService.updateRow(SHEETS.RENTAL_STATUS, rowIdx + 1, frozenRow);
+
+      // Buat record baru: mulai dari Tanggal_Selesai lama
+      const newId = uuidv4();
+      const newStart = rental.Tanggal_Selesai;
+      const newDurasi = parseInt(perpanjang_bulan);
+      const newEnd = hitungTanggalSelesai(newStart, newDurasi);
+      await sheetsService.appendRow(SHEETS.RENTAL_STATUS, [
+        newId, rental.Agen_ID, rental.Nama_Penyewa, rental.Alamat_Sewa,
+        newStart, newDurasi, newEnd,
+        'aktif', 'FALSE', 'FALSE',
+        updated.Catatan || '',
+        now, now,
+        updated.Agen_Listing_ID || '', updated.Agen_Listing_Nama || '',
+        updated.Agen_Selling_ID || '', updated.Agen_Selling_Nama || '',
+        updated.CoBroke || 'FALSE',
+        '',         // Hasil_FU_Reminder
+        rental.ID,  // Ref_ID → link ke record sebelumnya (diperpanjang)
+      ]);
+
+      const sisaHari = Math.round((new Date(newEnd) - new Date()) / (1000 * 60 * 60 * 24));
+      return res.json({ success: true, data: {
+        ID: newId, Agen_ID: rental.Agen_ID,
+        Nama_Penyewa: rental.Nama_Penyewa, Alamat_Sewa: rental.Alamat_Sewa,
+        Tanggal_Mulai: newStart, Durasi_Bulan: newDurasi, Tanggal_Selesai: newEnd,
+        Status: 'aktif', Ref_ID: rental.ID, Sisa_Hari: sisaHari,
+      }});
     }
 
     updated.Updated_At = new Date().toISOString();

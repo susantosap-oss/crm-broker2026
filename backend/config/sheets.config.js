@@ -542,6 +542,7 @@ const COLUMNS = {
     'Agen_Selling_Nama',  // Q ★ Nama agen selling
     'CoBroke',            // R ★ TRUE jika cobroke dengan agen lain
     'Hasil_FU_Reminder',  // S ★ Catatan hasil follow-up reminder perpanjang
+    'Ref_ID',             // T ★ ID record sebelumnya jika ini hasil perpanjang
   ],
 
   // ★ CANVASING — Data canvasing lapangan agen

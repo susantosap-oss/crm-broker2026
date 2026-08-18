@@ -294,27 +294,105 @@ function renderRentals() {
     return;
   }
 
-  const statusColor = {
-    aktif: { bg: 'rgba(52,211,153,0.1)', text: '#34d399', label: 'Aktif' },
-    selesai: { bg: 'rgba(148,163,184,0.1)', text: '#94a3b8', label: 'Selesai' },
-    diperpanjang: { bg: 'rgba(96,165,250,0.1)', text: '#60a5fa', label: 'Diperpanjang' },
-    dibatalkan: { bg: 'rgba(239,68,68,0.1)', text: '#f87171', label: 'Dibatalkan' },
+  const isAdmin = isAdminLR();
+  const SC = {
+    aktif:        { bg: 'rgba(52,211,153,0.1)',  text: '#34d399', label: 'Aktif' },
+    selesai:      { bg: 'rgba(148,163,184,0.1)', text: '#94a3b8', label: 'Selesai' },
+    diperpanjang: { bg: 'rgba(96,165,250,0.1)',  text: '#60a5fa', label: 'Diperpanjang' },
+    dibatalkan:   { bg: 'rgba(239,68,68,0.1)',   text: '#f87171', label: 'Dibatalkan' },
   };
 
-  const isAdmin = isAdminLR();
+  // Buat map ID → record untuk lookup chain Ref_ID
+  const byId = {};
+  _allRentals.forEach(r => { byId[r.ID] = r; });
 
-  list.innerHTML = _allRentals.map(r => {
-    const sc = statusColor[r.Status] || statusColor.aktif;
+  // Urutkan: aktif dulu, lalu sisa hari terkecil
+  const sorted = [..._allRentals].sort((a, b) => {
+    if (a.Status === 'aktif' && b.Status !== 'aktif') return -1;
+    if (a.Status !== 'aktif' && b.Status === 'aktif') return 1;
+    return (a.Sisa_Hari || 0) - (b.Sisa_Hari || 0);
+  });
+
+  const rendered = new Set();
+  let html = '';
+
+  // ── Render aktif records (beserta chain history-nya) ──
+  for (const r of sorted) {
+    if (r.Status !== 'aktif' || rendered.has(r.ID)) continue;
+    rendered.add(r.ID);
+
+    // Telusuri chain Ref_ID → kumpulkan record history (diperpanjang)
+    const history = [];
+    let cur = r;
+    while (cur.Ref_ID) {
+      const parent = byId[cur.Ref_ID];
+      if (!parent || rendered.has(parent.ID)) break;
+      rendered.add(parent.ID);
+      history.push(parent);
+      cur = parent;
+    }
+
+    const masaNum = history.length + 1; // Masa Sewa ke-X untuk record aktif
     const sisaHari = r.Sisa_Hari ?? '—';
     let sisaColor = '#34d399';
     let sisaBadge = '';
-    if (r.Status === 'aktif') {
-      if (sisaHari <= 30)      { sisaColor = '#f87171'; sisaBadge = '⚠️'; }
-      else if (sisaHari <= 90) { sisaColor = '#f59e0b'; sisaBadge = '📋'; }
-      sisaBadge = sisaBadge ? `<span style="margin-left:4px">${sisaBadge}</span>` : '';
+    if (sisaHari <= 30)      { sisaColor = '#f87171'; sisaBadge = '<span style="margin-left:3px">⚠️</span>'; }
+    else if (sisaHari <= 90) { sisaColor = '#f59e0b'; sisaBadge = '<span style="margin-left:3px">📋</span>'; }
+
+    // History section: Masa Sewa sebelumnya (diperpanjang)
+    let historyHTML = '';
+    if (history.length > 0) {
+      const items = history.map((h, i) => {
+        const hNum = masaNum - 1 - i;
+        return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(96,165,250,0.04);border-radius:8px;padding:8px 10px${i < history.length - 1 ? ';margin-bottom:5px' : ''}">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:3px">
+              <span style="background:${SC.diperpanjang.bg};color:${SC.diperpanjang.text};border-radius:20px;padding:1px 8px;font-size:9px;font-weight:700">Diperpanjang</span>
+              <span style="font-size:9px;color:rgba(255,255,255,0.3);font-weight:600">Masa Sewa ${hNum}</span>
+            </div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.4)">${h.Durasi_Bulan} bulan · ${formatTanggal(h.Tanggal_Mulai)} → ${formatTanggal(h.Tanggal_Selesai)}</div>
+          </div>
+          ${isAdmin ? `<button onclick="deleteRental('${h.ID}')" style="background:rgba(239,68,68,0.06);color:#f87171;border:1px solid rgba(239,68,68,0.15);border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;flex-shrink:0">Hapus</button>` : ''}
+        </div>`;
+      }).join('');
+      historyHTML = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(96,165,250,0.12)">${items}</div>`;
     }
 
-    return `
+    html += `
+      <div style="background:#131F38;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:3px">${r.Nama_Penyewa}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.Alamat_Sewa}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <span style="background:${SC.aktif.bg};color:${SC.aktif.text};border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700">Aktif</span>
+              ${masaNum > 1 ? `<span style="font-size:10px;color:rgba(255,255,255,0.35);font-weight:600">Masa Sewa ${masaNum}</span>` : ''}
+              <span style="font-size:11px;color:rgba(255,255,255,0.4)">${r.Durasi_Bulan} bulan</span>
+              <span style="font-size:11px;color:rgba(255,255,255,0.35)">${formatTanggal(r.Tanggal_Mulai)} → ${formatTanggal(r.Tanggal_Selesai)}</span>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:20px;font-weight:800;color:${sisaColor};line-height:1">${sisaHari}${sisaBadge}</div>
+            <div style="font-size:9px;color:rgba(255,255,255,0.35);margin-top:2px">hari lagi</div>
+          </div>
+        </div>
+        ${r.Catatan ? `<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,0.35);border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">${r.Catatan}</div>` : ''}
+        <div style="display:flex;gap:8px;margin-top:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px">
+          <button onclick="openRentalModal('${r.ID}')" style="flex:1;background:rgba(212,168,83,0.1);color:#D4A853;border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:7px;font-size:11px;cursor:pointer;font-weight:600">Perpanjang / Edit</button>
+          <button onclick="selesaikanSewa('${r.ID}')" style="background:rgba(148,163,184,0.08);color:#94a3b8;border:1px solid rgba(148,163,184,0.15);border-radius:8px;padding:7px 12px;font-size:11px;cursor:pointer">Selesai</button>
+          ${isAdmin ? `<button onclick="deleteRental('${r.ID}')" style="background:rgba(239,68,68,0.06);color:#f87171;border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:7px 12px;font-size:11px;cursor:pointer">Hapus</button>` : ''}
+        </div>
+        ${historyHTML}
+      </div>
+    `;
+  }
+
+  // ── Render sisa records (selesai, dibatalkan, orphan diperpanjang) ──
+  for (const r of sorted) {
+    if (rendered.has(r.ID)) continue;
+    rendered.add(r.ID);
+    const sc = SC[r.Status] || SC.aktif;
+    html += `
       <div style="background:#131F38;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06)">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
           <div style="flex:1;min-width:0">
@@ -326,22 +404,16 @@ function renderRentals() {
               <span style="font-size:11px;color:rgba(255,255,255,0.35)">${formatTanggal(r.Tanggal_Mulai)} → ${formatTanggal(r.Tanggal_Selesai)}</span>
             </div>
           </div>
-          <div style="text-align:right;flex-shrink:0">
-            ${r.Status === 'aktif' ? `
-              <div style="font-size:20px;font-weight:800;color:${sisaColor};line-height:1">${sisaHari}${sisaBadge}</div>
-              <div style="font-size:9px;color:rgba(255,255,255,0.35);margin-top:2px">hari lagi</div>
-            ` : ''}
-          </div>
         </div>
         ${r.Catatan ? `<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,0.35);border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">${r.Catatan}</div>` : ''}
         <div style="display:flex;gap:8px;margin-top:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px">
-          ${r.Status === 'aktif' ? `<button onclick="openRentalModal('${r.ID}')" style="flex:1;background:rgba(212,168,83,0.1);color:#D4A853;border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:7px;font-size:11px;cursor:pointer;font-weight:600">Perpanjang / Edit</button>` : ''}
-          ${r.Status === 'aktif' ? `<button onclick="selesaikanSewa('${r.ID}')" style="background:rgba(148,163,184,0.08);color:#94a3b8;border:1px solid rgba(148,163,184,0.15);border-radius:8px;padding:7px 12px;font-size:11px;cursor:pointer">Selesai</button>` : ''}
           ${isAdmin ? `<button onclick="deleteRental('${r.ID}')" style="background:rgba(239,68,68,0.06);color:#f87171;border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:7px 12px;font-size:11px;cursor:pointer">Hapus</button>` : ''}
         </div>
       </div>
     `;
-  }).join('');
+  }
+
+  list.innerHTML = html || '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px 0;font-size:13px">Belum ada data sewa</div>';
 }
 
 let _rentalAgents = [];
