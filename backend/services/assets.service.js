@@ -21,6 +21,12 @@ const EXTERNAL_SHEET_ID = process.env.ASSET_SOURCE_SHEET_ID || '15LHx3ty0hvhmtOM
 // Tab "Asset Sellable" = output dari bankaset exportSellable() (23 kolom, index 0-22)
 const ASSET_SELLABLE_TAB = 'Asset Sellable';
 
+// Fields yang bisa di-sync dari sumber (dapat dikunci manual oleh user)
+const SYNCABLE_FIELDS = [
+  'Bank_Kreditur', 'Tipe_Properti', 'Kota', 'Kecamatan', 'Alamat',
+  'Luas_Tanah', 'Luas_Bangunan', 'Sertifikat', 'Nama_Debitur', 'Harga_Limit_Lelang',
+];
+
 // Konversi assetType enum bankaset → Tipe_Properti CRM
 const ASSET_TYPE_MAP = {
   RUMAH: 'Rumah', RUKO: 'Ruko', APARTEMEN: 'Apartemen',
@@ -149,6 +155,7 @@ class AssetsService {
       Created_At:               now,
       Updated_At:               now,
       Notes:                    data.Notes || '',
+      Manual_Override_Fields:   '[]',
     };
 
     obj.Caption_Sosmed = this._generateCaption(obj);
@@ -165,7 +172,28 @@ class AssetsService {
     if (!result) throw new Error('Aset tidak ditemukan');
 
     const existing = this._rowToObj(result.data);
-    const updated  = { ...existing, ...data, Updated_At: new Date().toISOString() };
+
+    // Track manual overrides — hanya saat dipanggil oleh user (bukan oleh sync internal)
+    let processedData = { ...data };
+    if (user) {
+      let overrideSet;
+      try { overrideSet = new Set(JSON.parse(existing.Manual_Override_Fields || '[]')); }
+      catch { overrideSet = new Set(); }
+
+      // Hapus kunci yang diminta dibuka secara eksplisit
+      if (Array.isArray(processedData._unlock_fields)) {
+        processedData._unlock_fields.forEach(f => overrideSet.delete(f));
+      }
+      delete processedData._unlock_fields;
+
+      // Tambah field syncable yang diubah user ke daftar kunci
+      SYNCABLE_FIELDS.forEach(f => { if (processedData[f] !== undefined) overrideSet.add(f); });
+      processedData.Manual_Override_Fields = JSON.stringify([...overrideSet]);
+    } else {
+      delete processedData._unlock_fields;
+    }
+
+    const updated  = { ...existing, ...processedData, Updated_At: new Date().toISOString() };
 
     if (Array.isArray(updated.Cloudinary_IDs)) {
       updated.Cloudinary_IDs = updated.Cloudinary_IDs.length === 0
@@ -198,7 +226,7 @@ class AssetsService {
 
     const row = COLUMNS.ASSETS.map(col => updated[col] || '');
     await sheetsService.updateRow(SHEETS.ASSETS, result.rowIndex, row);
-    if (user) this.logEdit(user, updated, aksiOverride || this._detectAksi(data));
+    if (user) this.logEdit(user, updated, aksiOverride || this._detectAksi(processedData));
     return updated;
   }
 
@@ -363,28 +391,39 @@ class AssetsService {
     // (foto Cloudinary, Maps URL, harga eksekusi, dsb.) agar tidak hilang
     let savedManual = {};
     if (reset && existingRows && existingRows.length > 1) {
+      // _richScore: hitung berapa field manual non-kosong (untuk pilih entry terkaya)
+      const _richScore = a => [
+        a.Foto_1_URL, a.Foto_2_URL, a.Foto_3_URL, a.Gmaps_Link,
+        a.Est_Harga_Eksekusi, a.Keterangan_Debitur, a.Nama_Asset, a.Notes,
+      ].filter(Boolean).length;
+
       existingRows.slice(1).map(r => this._rowToObj(r)).filter(a => a.Source_Row_ID).forEach(a => {
-        savedManual[a.Source_Row_ID] = {
-          Foto_1_URL:                a.Foto_1_URL                || '',
-          Foto_2_URL:                a.Foto_2_URL                || '',
-          Foto_3_URL:                a.Foto_3_URL                || '',
-          Cloudinary_IDs:            a.Cloudinary_IDs            || '[]',
-          Gmaps_Link:                a.Gmaps_Link                || '',
-          Est_Harga_Eksekusi:        a.Est_Harga_Eksekusi        || '',
-          Est_Harga_Eksekusi_Format: a.Est_Harga_Eksekusi_Format || '',
-          Keterangan_Debitur:        a.Keterangan_Debitur        || '',
-          No_Perkara:                a.No_Perkara                || '',
-          Nama_Asset:                a.Nama_Asset                || '',
-          Caption_Sosmed:            a.Caption_Sosmed            || '',
-          Status:                    a.Status                    || 'Draft',
-          Tampilkan_di_Web:          a.Tampilkan_di_Web          || 'FALSE',
-          Notes:                     a.Notes                     || '',
-        };
+        const prev = savedManual[a.Source_Row_ID];
+        // Hanya overwrite jika entri baru lebih kaya (lebih banyak field manual terisi)
+        if (!prev || _richScore(a) >= _richScore(prev)) {
+          savedManual[a.Source_Row_ID] = {
+            Foto_1_URL:                a.Foto_1_URL                || '',
+            Foto_2_URL:                a.Foto_2_URL                || '',
+            Foto_3_URL:                a.Foto_3_URL                || '',
+            Cloudinary_IDs:            a.Cloudinary_IDs            || '[]',
+            Gmaps_Link:                a.Gmaps_Link                || '',
+            Est_Harga_Eksekusi:        a.Est_Harga_Eksekusi        || '',
+            Est_Harga_Eksekusi_Format: a.Est_Harga_Eksekusi_Format || '',
+            Keterangan_Debitur:        a.Keterangan_Debitur        || '',
+            No_Perkara:                a.No_Perkara                || '',
+            Nama_Asset:                a.Nama_Asset                || '',
+            Caption_Sosmed:            a.Caption_Sosmed            || '',
+            Status:                    a.Status                    || 'Draft',
+            Tampilkan_di_Web:          a.Tampilkan_di_Web          || 'FALSE',
+            Notes:                     a.Notes                     || '',
+            Manual_Override_Fields:    a.Manual_Override_Fields    || '[]',
+          };
+        }
       });
       const ssId = process.env.GOOGLE_SHEETS_ID || process.env.SPREADSHEET_ID;
       await sheets.spreadsheets.values.clear({
         spreadsheetId: ssId,
-        range: `${SHEETS.ASSETS}!A2:AK`,
+        range: `${SHEETS.ASSETS}!A2:AM`,
       });
       existingRows.splice(1); // kosongkan, hanya header
     }
@@ -475,8 +514,14 @@ class AssetsService {
           Harga_Limit_Lelang: hargaLimitFinal > 0 ? String(hargaLimitFinal) : '',
           // Label_Asset dikelola manual di CRM — tidak ditimpa sync
         };
+        // Baca daftar field yang dikunci manual oleh editor
+        let manualLocked;
+        try { manualLocked = new Set(JSON.parse(existing.Manual_Override_Fields || '[]')); }
+        catch { manualLocked = new Set(); }
+
         let changed = false;
         for (const [f, v] of Object.entries(srcFields)) {
+          if (manualLocked.has(f)) continue; // field dikunci manual — jangan timpa
           if (v && v !== existing[f]) { updateData[f] = v; changed = true; }
         }
         // Isi Label_Asset dari sumber hanya jika CRM masih kosong (first-time)
@@ -536,6 +581,7 @@ class AssetsService {
           Updated_At:                now,
           Notes:                     '',
           Label_Asset:               labelAsset,
+          Manual_Override_Fields:    '[]',
         };
         // Restore field manual dari sebelum reset (foto, maps, dsb.)
         if (savedManual[assetId]) Object.assign(obj, savedManual[assetId]);
@@ -784,6 +830,178 @@ class AssetsService {
       changed:    changes.length,
       changes:    changes.map(c => ({ oldKode: c.kode, newKode: c.newKode, tipe: c.tipe, label: c.label })),
       message:    `Resequence selesai: ${assets.length} aset diperiksa, ${duplicateKodes.length} kode duplikat ditemukan, ${changes.length} kode diperbaiki`,
+    };
+  }
+
+  // ── MIGRATE MANUAL DATA — transfer foto/maps/dll dari baris lama ke baru ──
+  // Terjadi saat external sheet di-regenerasi dengan ID baru → sync double.
+  // Deteksi: baris "baru" = Created_At dalam 2 jam terakhir dari timestamp terbaru.
+  // Match: normalize(Nama_Debitur) + normalize(Alamat[0..50]).
+  async migrateManualData(dryRun = false) {
+    const rows = await sheetsService.getRange(SHEETS.ASSETS);
+    if (!rows || rows.length < 2) return { error: 'Tidak ada data' };
+
+    const assets = rows.slice(1)
+      .map((r, i) => ({ ...this._rowToObj(r), _rowIndex: i + 2 }))
+      .filter(a => a.ID);
+
+    // Pisahkan "batch baru" (dibuat dalam 2 jam dari Created_At terbaru) vs "lama"
+    const allTimes = assets.map(a => new Date(a.Created_At || 0).getTime()).filter(t => t > 0);
+    if (!allTimes.length) return { error: 'Tidak ada Created_At valid' };
+    const newest  = Math.max(...allTimes);
+    const cutoff  = newest - 2 * 60 * 60 * 1000; // 2 jam sebelum yang terbaru
+
+    const newBatch = assets.filter(a => new Date(a.Created_At || 0).getTime() >= cutoff);
+    const oldBatch = assets.filter(a => new Date(a.Created_At || 0).getTime() < cutoff);
+
+    if (!newBatch.length || !oldBatch.length) {
+      return { error: `Tidak bisa pisahkan batch (new=${newBatch.length}, old=${oldBatch.length}). Coba Reset & Sync.` };
+    }
+
+    // Normalisasi teks untuk matching
+    const norm = s => (s || '')
+      .toLowerCase()
+      .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Build lookup new batch: norm(Debitur)|norm(Alamat[0..50])
+    const newByKey = {};
+    newBatch.forEach(a => {
+      const key = norm(a.Nama_Debitur) + '|' + norm((a.Alamat || '').substring(0, 50));
+      if (key !== '|' && !newByKey[key]) newByKey[key] = a;
+    });
+
+    const MANUAL_FIELDS = [
+      'Foto_1_URL', 'Foto_2_URL', 'Foto_3_URL', 'Cloudinary_IDs',
+      'Gmaps_Link', 'Est_Harga_Pasar', 'Est_Harga_Pasar_Format',
+      'Est_Harga_Eksekusi', 'Est_Harga_Eksekusi_Format',
+      'Keterangan_Debitur', 'Caption_Sosmed', 'Status', 'Tampilkan_di_Web',
+      'Notes', 'Manual_Override_Fields', 'Nama_Asset', 'No_Perkara', 'Provinsi',
+    ];
+
+    const matched   = [];
+    const unmatched = [];
+
+    for (const old of oldBatch) {
+      const key      = norm(old.Nama_Debitur) + '|' + norm((old.Alamat || '').substring(0, 50));
+      const newRec   = newByKey[key];
+
+      // Cek apakah ada manual data yang perlu ditransfer
+      const hasManual = MANUAL_FIELDS.some(f => {
+        const v = old[f];
+        return v && v !== '' && v !== '[]' && v !== 'FALSE' && v !== 'Draft';
+      });
+
+      if (newRec) {
+        matched.push({ old, newRec, hasManual });
+      } else {
+        unmatched.push(old);
+      }
+    }
+
+    if (dryRun) {
+      return {
+        dryRun:       true,
+        oldCount:     oldBatch.length,
+        newCount:     newBatch.length,
+        matched:      matched.length,
+        withManual:   matched.filter(m => m.hasManual).length,
+        unmatched:    unmatched.length,
+        unmatchedList: unmatched.slice(0, 10).map(a => ({ nama: a.Nama_Debitur, kota: a.Kota })),
+        message:      `Preview: ${matched.length} cocok (${matched.filter(m=>m.hasManual).length} punya data manual), ${unmatched.length} tidak cocok`,
+      };
+    }
+
+    // === EKSEKUSI ===
+    // 1. Transfer manual data ke baris baru
+    let transferred = 0;
+    for (const { old, newRec, hasManual } of matched) {
+      if (!hasManual) continue;
+      const transfer = {};
+      MANUAL_FIELDS.forEach(f => {
+        const v = old[f];
+        if (v && v !== '' && v !== '[]' && v !== 'FALSE' && v !== 'Draft') transfer[f] = v;
+      });
+      try {
+        await this.update(newRec.ID, transfer); // no user = tidak track manual override
+        transferred++;
+      } catch (e) {
+        console.warn(`[Migrate] Gagal transfer ke ${newRec.ID}:`, e.message);
+      }
+    }
+
+    // 2. Hapus semua baris lama yang cocok (dari bawah ke atas)
+    // Hapus dari rowIndex tertinggi → terendah: baris di atas tidak terpengaruh
+    const toDelete = matched.map(m => m.old);
+    toDelete.sort((a, b) => b._rowIndex - a._rowIndex);
+    let deleted = 0;
+    for (const old of toDelete) {
+      try {
+        await sheetsService.deleteRow(SHEETS.ASSETS, old._rowIndex);
+        deleted++;
+      } catch (e) {
+        console.warn(`[Migrate] Gagal hapus row ${old._rowIndex}:`, e.message);
+      }
+    }
+
+    return {
+      oldCount:   oldBatch.length,
+      newCount:   newBatch.length,
+      matched:    matched.length,
+      transferred,
+      deleted,
+      unmatched:  unmatched.length,
+      message:    `Migrasi selesai: ${transferred} data manual dipindah, ${deleted} baris lama dihapus, ${unmatched.length} baris lama tidak cocok (tetap ada)`,
+    };
+  }
+
+  // ── DEDUP — hapus baris dengan Source_Row_ID duplikat ────
+  // Terjadi saat external sheet di-regenerasi dengan ID baru → sync ganda.
+  // Aturan: pertahankan baris tertua (Created_At terkecil), hapus sisanya.
+  async dedupBySourceId() {
+    const rows = await sheetsService.getRange(SHEETS.ASSETS);
+    if (!rows || rows.length < 2) return { removed: 0, message: 'Tidak ada data' };
+
+    const assets = rows.slice(1)
+      .map((r, i) => ({ ...this._rowToObj(r), _rowIndex: i + 2 }))
+      .filter(a => a.ID && a.Source_Row_ID);
+
+    // Group by Source_Row_ID
+    const groups = {};
+    assets.forEach(a => {
+      if (!groups[a.Source_Row_ID]) groups[a.Source_Row_ID] = [];
+      groups[a.Source_Row_ID].push(a);
+    });
+
+    // Kumpulkan baris yang akan dihapus (semua kecuali yang tertua)
+    const toDelete = [];
+    for (const group of Object.values(groups)) {
+      if (group.length <= 1) continue;
+      // Sort oldest first (by Created_At), keep first, mark rest for deletion
+      group.sort((a, b) => new Date(a.Created_At || 0) - new Date(b.Created_At || 0));
+      toDelete.push(...group.slice(1));
+    }
+
+    if (toDelete.length === 0) return { removed: 0, message: 'Tidak ada duplikat Source_Row_ID' };
+
+    // Hapus dari baris paling bawah ke atas (hindari pergeseran rowIndex)
+    toDelete.sort((a, b) => b._rowIndex - a._rowIndex);
+    let removed = 0;
+    for (const asset of toDelete) {
+      try {
+        await sheetsService.deleteRow(SHEETS.ASSETS, asset._rowIndex);
+        removed++;
+      } catch (e) {
+        console.warn(`[Dedup] Gagal hapus row ${asset._rowIndex}:`, e.message);
+      }
+    }
+
+    return {
+      removed,
+      total: assets.length,
+      unique: Object.keys(groups).length,
+      message: `Dedup selesai: ${removed} baris duplikat dihapus (${assets.length} → ${assets.length - removed} aset)`,
     };
   }
 

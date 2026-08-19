@@ -4589,7 +4589,7 @@ async function navigateTo(page) {
     b.className = b.id === `nav-${page}` ? 'nav-btn active' : 'nav-btn';
   });
 
-  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Aktivitas', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti', komisi:'Request Komisi' };
+  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Aktivitas', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti', komisi:'Request Komisi', 'asset-komersial':'Komersial Luar Jatim' };
   setEl('page-title', titles[page] || page);
   STATE.currentPage = page;
 
@@ -4628,6 +4628,7 @@ async function navigateTo(page) {
   if (page === 'team')      await loadTeamPage();
   if (page === 'primary')   await loadPrimaryPage();
   if (page === 'asset')     await loadAssetPage();
+  if (page === 'asset-komersial') await loadKomersialPage();
   if (page === 'member')    await loadMemberPage();
   if (page === 'legal')       await loadLegalDocs();
   if (page === 'rental')      await loadRentals();
@@ -5467,6 +5468,7 @@ function checkAdminMenu() {
     // Asset: visible for all logged-in users
     document.getElementById('nav-asset')?.style.removeProperty('display');
     document.getElementById('sb-asset')?.style.removeProperty('display');
+    document.getElementById('sb-asset-komersial')?.style.removeProperty('display');
   }
   if (['superadmin','principal','kantor','admin'].includes(STATE.user?.role)) {
     const _ab = document.getElementById('btn-add-project');
@@ -8020,6 +8022,10 @@ async function loadAssetPage() {
   if (publishAllBtn) publishAllBtn.style.display = PUBLISH_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
   const reseqBtn = document.getElementById('btn-resequence-asset');
   if (reseqBtn) reseqBtn.style.display = SYNC_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
+  const dedupBtn = document.getElementById('btn-dedup-asset');
+  if (dedupBtn) dedupBtn.style.display = SYNC_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
+  const migrateBtn = document.getElementById('btn-migrate-manual-asset');
+  if (migrateBtn) migrateBtn.style.display = SYNC_ROLES_ASSET.includes(role) ? 'inline-flex' : 'none';
 
   const filterStatusWrap = document.getElementById('asset-wrap-filter-status');
   if (filterStatusWrap) filterStatusWrap.style.display = _assetCanEdit ? '' : 'none';
@@ -9118,6 +9124,9 @@ function openAddAsset() {
     setAssetPhotoPreview(i, '');
   });
 
+  const _lockBtnAdd = document.getElementById('af-harga-limit-lock');
+  if (_lockBtnAdd) _lockBtnAdd.style.display = 'none';
+
   _populateBankDatalist();
   openModal('modal-asset-form');
 }
@@ -9156,6 +9165,11 @@ function editCurrentAsset() {
   setAssetPhotoPreview(1, a.Foto_1_URL || '');
   setAssetPhotoPreview(2, a.Foto_2_URL || '');
   setAssetPhotoPreview(3, a.Foto_3_URL || '');
+
+  // Tampilkan lock icon jika Harga_Limit_Lelang dikunci manual
+  const _overrides = (() => { try { return JSON.parse(a.Manual_Override_Fields || '[]'); } catch { return []; } })();
+  const _lockBtn = document.getElementById('af-harga-limit-lock');
+  if (_lockBtn) _lockBtn.style.display = _overrides.includes('Harga_Limit_Lelang') ? 'inline-block' : 'none';
 
   _populateBankDatalist();
   // Swap detail→form dengan replaceState, bukan closeModal()+openModal()
@@ -9228,6 +9242,129 @@ async function submitAssetForm() {
     showToast('Gagal simpan: ' + e.message, 'error');
   } finally {
     if (btn) btn.textContent = '💾 Simpan Aset';
+  }
+}
+
+// ── Unlock field dari manual override (buka kunci sync) ───
+async function unlockAssetField(fieldName) {
+  const id = document.getElementById('asset-form-id').value.trim();
+  if (!id) return;
+  if (!confirm(`Buka kunci "${fieldName}"?\nNilai akan ikut Sheet sumber saat sync berikutnya.`)) return;
+  try {
+    await API.put(`/assets/${id}`, { _unlock_fields: [fieldName] });
+    const lockBtn = document.getElementById('af-harga-limit-lock');
+    if (lockBtn && fieldName === 'Harga_Limit_Lelang') lockBtn.style.display = 'none';
+    showToast('Kunci dibuka — nilai akan ikut Sheet saat sync ✅');
+    if (_currentAsset && _currentAsset.ID === id) {
+      const fresh = await API.get(`/assets/${id}`);
+      if (fresh?.data) _currentAsset = fresh.data;
+    }
+    await fetchAssets(true);
+  } catch (e) {
+    showToast('Gagal buka kunci: ' + e.message, 'error');
+  }
+}
+
+// ── Komersial Luar Jatim Page ─────────────────────────────
+let _komersialAllData = [];
+let _komersialGridListenerAdded = false;
+
+const KOMERSIAL_TYPES = new Set(['Ruko', 'Gudang', 'Kios', 'Apartemen', 'Properti']);
+const JATIM_ALIASES   = ['jawa timur', 'jatim', 'east java'];
+// Kota & kabupaten Jawa Timur (untuk filter aset tanpa provinsi)
+const JATIM_CITIES = new Set([
+  'surabaya','sidoarjo','malang','gresik','mojokerto','pasuruan','probolinggo',
+  'kediri','blitar','madiun','batu','lamongan','tuban','bojonegoro','ngawi',
+  'magetan','ponorogo','pacitan','trenggalek','tulungagung','nganjuk','jombang',
+  'lumajang','situbondo','bondowoso','jember','banyuwangi','sumenep','pamekasan',
+  'sampang','bangkalan',
+  // kecamatan umum yg sering dipakai sbg kota
+  'wonokromo','gubeng','sukomanunggal','kedungkandang','buduran','tanggulangin',
+  'sukodono','kebomas','mojoanyar','krian','waru','taman','gedangan','porong',
+  'karangpilang','rungkut','semampir','tambaksari','kenjeran','bulak','asemrowo',
+  'benowo','pakal','sambikerep','lakarsantri','wiyung','dukuh pakis','gayungan',
+  'jambangan','wonocolo','tenggilis mejoyo','gunung anyar','sukolilo','mulyorejo',
+]);
+
+async function loadKomersialPage() {
+  const grid = document.getElementById('komersial-grid');
+  if (grid) grid.innerHTML = '<div style="color:rgba(255,255,255,0.3);font-size:13px;padding:20px 0">Memuat data…</div>';
+
+  // Event delegation untuk card klik (sekali saja)
+  if (!_komersialGridListenerAdded) {
+    const _addClickTo = (gridId) => {
+      const g = document.getElementById(gridId);
+      if (!g) return;
+      g.addEventListener('click', (e) => {
+        if (e.target.closest('.asset-fav-btn')) return;
+        const card = e.target.closest('[data-id]');
+        if (card && card.dataset.id) openAssetDetail(card.dataset.id);
+      });
+    };
+    _addClickTo('komersial-grid');
+    _addClickTo('komersial-unconfirmed-grid');
+    _komersialGridListenerAdded = true;
+  }
+
+  try {
+    const res = await API.get('/assets');
+    const all = Array.isArray(res.data) ? res.data : [];
+    _komersialAllData = all.filter(a => KOMERSIAL_TYPES.has(a.Tipe_Properti));
+  } catch (e) {
+    if (grid) grid.innerHTML = `<div style="color:#f87171;font-size:13px">Gagal memuat: ${escapeHtml(e.message)}</div>`;
+    return;
+  }
+
+  filterKomersialGrid();
+}
+
+function filterKomersialGrid() {
+  const search = (document.getElementById('komersial-search')?.value || '').toLowerCase().trim();
+  const tipe   = document.getElementById('komersial-filter-tipe')?.value || '';
+
+  let filtered = _komersialAllData;
+  if (tipe)   filtered = filtered.filter(a => a.Tipe_Properti === tipe);
+  if (search) filtered = filtered.filter(a =>
+    [a.Nama_Asset, a.Nama_Debitur, a.Bank_Kreditur, a.Kota, a.Kecamatan, a.Provinsi, a.Alamat]
+      .join(' ').toLowerCase().includes(search)
+  );
+
+  // Split: confirmed luar Jatim vs belum ada provinsi (dan kota bukan Jatim)
+  const _isJatim = a => {
+    const p = (a.Provinsi || '').toLowerCase().trim();
+    if (p) return JATIM_ALIASES.some(j => p.includes(j));
+    // Tidak ada provinsi → cek kota
+    const k = (a.Kota || '').toLowerCase().trim();
+    return JATIM_CITIES.has(k) || JATIM_ALIASES.some(j => k.includes(j));
+  };
+  const confirmed   = filtered.filter(a => (a.Provinsi || '').trim() && !_isJatim(a));
+  const unconfirmed = filtered.filter(a => !(a.Provinsi || '').trim() && !_isJatim(a));
+
+  const countEl = document.getElementById('komersial-total-count');
+  if (countEl) countEl.textContent = confirmed.length + (unconfirmed.length ? ` + ${unconfirmed.length} tanpa provinsi` : '');
+
+  const grid      = document.getElementById('komersial-grid');
+  const emptyEl   = document.getElementById('komersial-empty');
+  const unconfWrap = document.getElementById('komersial-unconfirmed-wrap');
+  const unconfGrid = document.getElementById('komersial-unconfirmed-grid');
+
+  if (grid) {
+    if (confirmed.length) {
+      grid.innerHTML = confirmed.map(a => buildAssetCard(a)).join('');
+      if (emptyEl) emptyEl.style.display = 'none';
+    } else {
+      grid.innerHTML = '';
+      if (emptyEl) emptyEl.style.display = unconfirmed.length ? 'none' : 'block';
+    }
+  }
+
+  if (unconfWrap && unconfGrid) {
+    if (unconfirmed.length) {
+      unconfWrap.style.display = 'block';
+      unconfGrid.innerHTML = unconfirmed.map(a => buildAssetCard(a)).join('');
+    } else {
+      unconfWrap.style.display = 'none';
+    }
   }
 }
 
@@ -9445,6 +9582,81 @@ async function resequenceAssetKodes() {
     await fetchAssets(true);
   } catch (e) {
     showToast('Resequence gagal: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = origLabel; }
+  }
+}
+
+// ── Migrasi manual data lama → baru (setelah sync ID berubah) ─
+async function migrateManualData() {
+  const migrateBtn = document.getElementById('btn-migrate-manual-asset');
+
+  // Step 1: Preview dulu
+  if (migrateBtn) { migrateBtn.disabled = true; migrateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cek preview…'; }
+  let preview;
+  try {
+    const res = await API.post('/assets/migrate-manual?dry_run=true');
+    preview = res.data || {};
+  } catch (e) {
+    showToast('Gagal preview: ' + e.message, 'error');
+    if (migrateBtn) { migrateBtn.disabled = false; migrateBtn.innerHTML = '<i class="fa-solid fa-right-left"></i> Migrasi Data Manual'; }
+    return;
+  } finally {
+    if (migrateBtn && !preview) { migrateBtn.disabled = false; migrateBtn.innerHTML = '<i class="fa-solid fa-right-left"></i> Migrasi Data Manual'; }
+  }
+
+  if (preview.error) { showToast(preview.error, 'error'); if (migrateBtn) { migrateBtn.disabled = false; migrateBtn.innerHTML = '<i class="fa-solid fa-right-left"></i> Migrasi Data Manual'; } return; }
+
+  const msg = `📊 Preview Migrasi Data Manual\n\n` +
+    `📦 Baris LAMA : ${preview.oldCount}\n` +
+    `🆕 Baris BARU  : ${preview.newCount}\n` +
+    `✅ Cocok       : ${preview.matched} (${preview.withManual} punya data manual)\n` +
+    `❌ Tidak cocok : ${preview.unmatched}\n\n` +
+    (preview.unmatched > 0 ? `⚠️ ${preview.unmatched} baris lama tidak cocok — akan TETAP ada setelah migrasi.\n\n` : '') +
+    `Lanjutkan? Data foto/maps/estimasi akan dipindahkan ke baris baru yang cocok, baris lama yang cocok dihapus.`;
+
+  if (!confirm(msg)) {
+    if (migrateBtn) { migrateBtn.disabled = false; migrateBtn.innerHTML = '<i class="fa-solid fa-right-left"></i> Migrasi Data Manual'; }
+    return;
+  }
+
+  // Step 2: Eksekusi
+  if (migrateBtn) migrateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses…';
+  try {
+    const res = await API.post('/assets/migrate-manual');
+    const d = res.data || {};
+    const detail = `✅ Migrasi selesai!\n\n` +
+      `📤 Data ditransfer : ${d.transferred}\n` +
+      `🗑️ Baris lama dihapus : ${d.deleted}\n` +
+      `⚠️ Tidak cocok (tetap) : ${d.unmatched}\n\n` +
+      (d.unmatched > 0 ? `Sisa ${d.unmatched} baris lama yang tidak cocok mungkin perlu dihapus manual.\n` : 'Semua baris lama berhasil dimigrasi!');
+    showToast('Migrasi selesai ✅');
+    alert(detail);
+    await fetchAssets(true);
+  } catch (e) {
+    showToast('Migrasi gagal: ' + e.message, 'error');
+  } finally {
+    if (migrateBtn) { migrateBtn.disabled = false; migrateBtn.innerHTML = '<i class="fa-solid fa-right-left"></i> Migrasi Data Manual'; }
+  }
+}
+
+// ── Dedup Source_Row_ID ────────────────────────────────────
+async function dedupAssets() {
+  if (!confirm('Hapus baris duplikat akibat sync ganda?\n\nBaris dengan Source Row ID yang sama akan dihapus — hanya yang tertua yang dipertahankan.\n\nData foto, maps, dan estimasi pada baris tertua aman.\n\nLanjut?')) return;
+
+  const btn = document.getElementById('btn-dedup-asset');
+  const origLabel = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses…'; }
+
+  try {
+    const res = await API.post('/assets/dedup');
+    const d = res.data || {};
+    showToast(res.message || d.message || 'Dedup selesai ✅');
+    if (d.removed > 0) alert(`✅ Dedup selesai!\n\n📊 Total diperiksa : ${d.total || 0} baris\n🔑 Unik Source ID : ${d.unique || 0}\n🗑️ Dihapus         : ${d.removed} baris duplikat\n\nSilakan Sync ulang jika diperlukan.`);
+    else alert('Tidak ada duplikat ditemukan — data sudah bersih ✅');
+    await fetchAssets(true);
+  } catch (e) {
+    showToast('Dedup gagal: ' + e.message, 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = origLabel; }
   }

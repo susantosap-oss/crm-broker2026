@@ -127,6 +127,35 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+// ── POST /migrate-manual — Transfer manual data lama→baru ──
+// ?dry_run=true → preview saja, tidak hapus/ubah data
+router.post('/migrate-manual', async (req, res) => {
+  try {
+    if (!SYNC_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak' });
+    }
+    const dryRun = req.query.dry_run === 'true';
+    const result = await assetsService.migrateManualData(dryRun);
+    if (result.error) return res.status(400).json({ success: false, message: result.error });
+    res.json({ success: true, data: result, message: result.message });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ── POST /dedup — Hapus duplikat Source_Row_ID ─────────────
+router.post('/dedup', async (req, res) => {
+  try {
+    if (!SYNC_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak' });
+    }
+    const result = await assetsService.dedupBySourceId();
+    res.json({ success: true, data: result, message: result.message });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // ── POST /resequence — Perbaiki duplikat Kode_Asset ────────
 router.post('/resequence', async (req, res) => {
   try {

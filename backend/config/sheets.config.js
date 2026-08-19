@@ -606,6 +606,7 @@ const COLUMNS = {
     'Notes',              // AJ
     'Label_Asset',        // AK  Label jenis: Cassie|Lelang|dll (dari external GSheet)
     'Gmaps_Link',         // AL  URL Google Maps (paste dari GMaps oleh editor)
+    'Manual_Override_Fields', // AM JSON array: field yg dikunci manual (tidak ditimpa sync)
   ],
 
   // ★ ASSET_EDITORS — User non-default yang diberi akses edit asset
