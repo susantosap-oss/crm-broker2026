@@ -1,6 +1,6 @@
 # Mansion CRM — Developer Notes for Claude
 
-> **Versi aktif:** v1.9.9 · **Last updated:** 2026-05-25
+> **Versi aktif:** v2.4.78 · **Last updated:** 2026-08-20
 
 ---
 
@@ -8,7 +8,8 @@
 
 ### Live Domain
 - URL: **https://crm.mansionpro.id**
-- CDN: Cloudflare (proxied) → Google Cloud Load Balancer IP `35.190.122.67`
+- Routing: Cloudflare (proxied) → **Cloudflare Worker `crm-proxy`** → Cloud Run `*.run.app`
+- ⚠️ Tidak ada Load Balancer — LB dihapus 2026-08-20 (cost optimization)
 
 ### Correct Deploy Target
 ```
@@ -83,8 +84,13 @@ Dockerfile            — di root, build backend/ + frontend/
 
 - **Database:** Google Sheets (SSoT via `googleapis`)
 - **Media:** Cloudinary (foto listing, legal docs)
-- **Video:** ViGen service (Cloud Run terpisah, di-poll tiap 2 menit)
+- **Video:** ViGen service (Cloud Run terpisah, di-poll via Cloud Scheduler tiap 2 menit)
 - **Notif:** Telegram Bot + Web Push (VAPID)
+- **Scheduled Jobs:** GCP Cloud Scheduler (bukan node-cron in-process)
+  - `cron-jadwal-harian` → 19:00 WIB → `POST /api/v1/scheduler/check-jadwal-harian`
+  - `cron-rental-reminders` → 08:00 WIB → `POST /api/v1/scheduler/check-rental-reminders`
+  - `poll-vigen` → tiap 2 menit → `POST /api/v1/scheduler/poll-vigen`
+  - Auth: header `X-Scheduler-Secret` (nilai di `.env.yaml` key `SCHEDULER_SECRET`)
 
 ---
 
@@ -119,4 +125,5 @@ VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY — Web Push
 TELEGRAM_BOT_TOKEN    — notif internal
 VIGEN_URL / VIGEN_USERNAME / VIGEN_PASSWORD — Video Engine
 APP_VERSION           — versi app, di-inject ke SW + index.html
+SCHEDULER_SECRET      — secret header untuk Cloud Scheduler endpoints (32-byte hex)
 ```

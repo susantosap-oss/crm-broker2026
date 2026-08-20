@@ -149,6 +149,39 @@ app.post('/api/v1/admin/trigger-rental-reminder', require('./middleware/auth.mid
     res.status(500).json({ success: false, message: e.message });
   }
 });
+
+// ★ Cloud Scheduler endpoints — dipanggil GCP Cloud Scheduler, bukan user
+const schedulerAuth = require('./middleware/scheduler.middleware');
+
+app.post('/api/v1/scheduler/check-jadwal-harian', schedulerAuth, async (req, res) => {
+  try {
+    const { checkJadwalHarian } = require('./services/cron.service');
+    await checkJadwalHarian();
+    res.json({ success: true, message: 'Jadwal harian check selesai' });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/v1/scheduler/check-rental-reminders', schedulerAuth, async (req, res) => {
+  try {
+    const { checkRentalReminders } = require('./services/cron.service');
+    await checkRentalReminders();
+    res.json({ success: true, message: 'Rental reminder check selesai' });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/v1/scheduler/poll-vigen', schedulerAuth, async (req, res) => {
+  try {
+    const vigenService = require('./services/vigen.service');
+    await vigenService.pollPendingJobs();
+    res.json({ success: true, message: 'ViGen poll selesai' });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
 // ★ Fitur 2 — Meta/Zapier Webhook + Config API
 // Semua rute webhook (meta, zapier, config) dihandle satu router
 const webhookRouter = require('./routes/meta-webhook.routes');
@@ -321,12 +354,10 @@ app.listen(PORT, () => {
   // Load push subscriptions dari Sheets ke memory cache
   require('./services/push.service').loadSubscriptions().catch(() => {});
 
-  // Mulai cron jobs (jadwal harian reminder, dll)
-  require('./services/cron.service').startCronJobs();
-
-  // Poll ViGen render jobs setiap 2 menit
-  const vigenService = require('./services/vigen.service');
-  setInterval(() => vigenService.pollPendingJobs(), 120_000);
+  // Cron jobs dan ViGen polling dipindah ke Cloud Scheduler
+  // Endpoint: /api/v1/scheduler/check-jadwal-harian (19:00 WIB)
+  //           /api/v1/scheduler/check-rental-reminders (08:00 WIB)
+  //           /api/v1/scheduler/poll-vigen (tiap 2 menit)
 });
 
 // ── Telegram Bot Webhook Endpoint ──────────────────────────
