@@ -38,6 +38,31 @@ gcloud run deploy crm-broker-properti \
 # 3. Verifikasi
 curl -s https://crm.mansionpro.id/sw.js | head -3
 # Harus menampilkan APP_VERSION terbaru
+
+# 4. WAJIB — Cleanup artifact lama (jalankan setiap kali setelah deploy)
+# Ambil nama revisi aktif dulu:
+ACTIVE_REV=$(gcloud run services describe crm-broker-properti \
+  --region=asia-southeast2 --project=crm-broker2026 \
+  --format="value(status.traffic[0].revisionName)")
+
+# Hapus semua revisi lama:
+gcloud run revisions list --service=crm-broker-properti \
+  --region=asia-southeast2 --project=crm-broker2026 \
+  --format="value(metadata.name)" | grep -v "$ACTIVE_REV" | \
+  xargs -P4 -I{} gcloud run revisions delete {} \
+  --region=asia-southeast2 --project=crm-broker2026 --quiet
+
+# Hapus semua image lama di Artifact Registry (sisakan hanya digest aktif):
+ACTIVE_DIGEST=$(gcloud run services describe crm-broker-properti \
+  --region=asia-southeast2 --project=crm-broker2026 \
+  --format="value(spec.template.spec.containers[0].image)" | cut -d'@' -f2)
+REPO="asia-southeast2-docker.pkg.dev/crm-broker2026/cloud-run-source-deploy/crm-broker-properti"
+
+gcloud artifacts docker images list "$REPO" \
+  --project=crm-broker2026 --format="value(version)" | \
+  grep -v "$ACTIVE_DIGEST" | \
+  xargs -P4 -I{} gcloud artifacts docker images delete \
+  "${REPO}@{}" --project=crm-broker2026 --delete-tags --quiet
 ```
 
 ### WRONG — Jangan deploy ke ini
@@ -45,16 +70,6 @@ curl -s https://crm.mansionpro.id/sw.js | head -3
 # project web-mansion2026 / service crm-broker2026 adalah project LAIN
 # tidak terhubung ke crm.mansionpro.id
 gcloud config get-value project  → mengembalikan "web-mansion2026" (SALAH untuk CRM)
-```
-
-### Cleanup artifact lama setelah deploy
-```bash
-# Hapus revisi Cloud Run lama (keep hanya yang aktif)
-gcloud run revisions list --service=crm-broker-properti \
-  --region=asia-southeast2 --project=crm-broker2026 \
-  --format="value(metadata.name)" | grep -v <REVISION_AKTIF> | \
-  xargs -P4 -I{} gcloud run revisions delete {} \
-  --region=asia-southeast2 --project=crm-broker2026 --quiet
 ```
 
 ---
