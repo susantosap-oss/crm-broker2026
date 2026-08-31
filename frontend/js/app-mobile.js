@@ -1110,35 +1110,14 @@ async function openListingDetail(id) {
       <button onclick="openFlyerModal('listing','${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-solid fa-image" style="margin-right:6px"></i>Buat Flyer
       </button>
-      <button onclick="openViGen('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
+      <button onclick="openViGen('${escapeHtml(id)}')" style="display:none;width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-solid fa-clapperboard" style="margin-right:6px"></i>Buat Konten Iklan (ViGen)
       </button>
       <button onclick="openAIScript('${escapeHtml(id)}','secondary')" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,rgba(212,168,83,0.15),rgba(168,123,48,0.1));border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-solid fa-microphone-lines" style="margin-right:6px"></i>AI Script (Voice Over / HeyGen)
       </button>
 
-      <!-- OpenClaw Personal Assistant -->
-      ${STATE.user ? `
-      <div style="width:100%;padding:12px 0 4px;border-top:1px solid rgba(255,255,255,0.07)">
-        <div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;font-weight:600">
-          <i class="fa-solid fa-robot" style="margin-right:4px"></i>Personal Assistant (OpenClaw)
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-          <button onclick="openWABlastModal('${escapeHtml(id)}')"
-            style="padding:11px 4px;border-radius:12px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3">
-            <div style="font-size:16px;margin-bottom:3px">📲</div>WA Blast
-          </button>
-          ${['superadmin','principal'].includes(STATE.user?.role) ? `
-          <button onclick="openIGPostModal('${escapeHtml(id)}','ig_reels')"
-            style="padding:11px 4px;border-radius:12px;background:rgba(225,48,108,0.12);border:1px solid rgba(225,48,108,0.25);color:#f472b6;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3">
-            <div style="font-size:16px;margin-bottom:3px">🎬</div>IG Reels
-          </button>
-          <button onclick="openIGPostModal('${escapeHtml(id)}','ig_story')"
-            style="padding:11px 4px;border-radius:12px;background:rgba(225,48,108,0.12);border:1px solid rgba(225,48,108,0.25);color:#f472b6;font-size:11px;font-weight:600;cursor:pointer;line-height:1.3">
-            <div style="font-size:16px;margin-bottom:3px">📸</div>IG Story
-          </button>` : ''}
-        </div>
-      </div>` : ''}
+      <!-- OpenClaw Personal Assistant — disembunyikan sementara (pending Meta setup) -->
 
       ${listing.Agen_ID === STATE.user?.id ? `
       <button onclick="openEditListing('${escapeHtml(id)}')" style="width:100%;padding:13px;border-radius:12px;background:rgba(43,123,255,0.12);border:1px solid rgba(43,123,255,0.25);color:#60a5fa;font-size:13px;font-weight:600;cursor:pointer;margin-top:0">
@@ -5502,12 +5481,9 @@ function checkAdminMenu() {
     if (sbLeads)  sbLeads.style.removeProperty('display');
   }
 
-  // ★ Personal Assistant — tampilkan untuk agen & koordinator
+  // ★ Personal Assistant — disembunyikan sementara (OpenClaw pending Meta setup)
   const sbPA = document.getElementById('sb-pa');
-  if (sbPA) {
-    const paRoles = ['admin', 'business_manager', 'principal', 'kantor', 'superadmin'];
-    sbPA.style.display = paRoles.includes(role) ? 'flex' : 'none';
-  }
+  if (sbPA) sbPA.style.display = 'none';
 }
 
 
@@ -6318,20 +6294,15 @@ async function openProjectDetail(id) {
   document.getElementById('pd-shortlink-box').style.display = 'none';
   document.getElementById('pd-referral-list').innerHTML = '';
 
-  // Tombol ViGen & AI Script — tampil untuk koordinator dan ke atas
+  // Tombol ViGen — disembunyikan sementara (ViGen service offline)
   const viGenBtn = document.getElementById('pd-vigen-btn');
-  if (viGenBtn) viGenBtn.style.display = '';
+  if (viGenBtn) viGenBtn.style.display = 'none';
   const aiScriptBtn = document.getElementById('pd-aiscript-btn');
   if (aiScriptBtn) aiScriptBtn.style.display = '';
 
-  // Seksi PA OpenClaw — disembunyikan untuk agen dan koordinator
+  // Seksi PA OpenClaw — disembunyikan sementara (pending Meta setup)
   const paSection = document.getElementById('pd-pa-section');
-  if (paSection) paSection.style.display = STATE.user ? '' : 'none';
-
-  // IG Reels & Story (primary) — hanya superadmin & principal untuk testing
-  const canIGPost = ['superadmin','principal'].includes(role);
-  document.getElementById('pd-ig-reels-btn')?.style && (document.getElementById('pd-ig-reels-btn').style.display = canIGPost ? '' : 'none');
-  document.getElementById('pd-ig-story-btn')?.style && (document.getElementById('pd-ig-story-btn').style.display = canIGPost ? '' : 'none');
+  if (paSection) paSection.style.display = 'none';
 
   openModal('modal-project-detail');
 }
