@@ -10149,13 +10149,27 @@ async function openWagSettings() {
   await wagRefreshStatus();
 }
 
+async function _wagFetch(url, opts = {}) {
+  const res = await fetch(url, {
+    ...opts,
+    headers: {
+      'Authorization': `Bearer ${STATE.token}`,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || res.statusText);
+  return data;
+}
+
 async function wagRefreshStatus() {
-  const dot  = document.getElementById('wag-status-dot');
-  const txt  = document.getElementById('wag-status-text');
-  const sec  = document.getElementById('wag-groups-section');
+  const dot     = document.getElementById('wag-status-dot');
+  const txt     = document.getElementById('wag-status-text');
+  const sec     = document.getElementById('wag-groups-section');
   const pairBox = document.getElementById('wag-pairing-code-box');
   try {
-    const r = await apiFetch('/api/v1/wag/status');
+    const r = await _wagFetch('/api/v1/wag/status');
     const s = r.status;
     const colors = { connected:'#25D366', pairing:'#f59e0b', initializing:'#60a5fa', disconnected:'#6b7280', reconnecting:'#f59e0b' };
     const labels = { connected:'Terhubung ✓', pairing:'Menunggu kode...', initializing:'Menghubungkan...', disconnected:'Tidak terhubung', reconnecting:'Mencoba ulang...' };
@@ -10166,7 +10180,6 @@ async function wagRefreshStatus() {
     if (s === 'pairing' && r.pairingCode) {
       const codeEl = document.getElementById('wag-pairing-code');
       if (codeEl) codeEl.textContent = r.pairingCode;
-      // Poll status sampai connected
       setTimeout(wagRefreshStatus, 4000);
     }
     if (s === 'connected') {
@@ -10184,7 +10197,7 @@ async function wagPair() {
   const btn = document.getElementById('wag-btn-pair');
   if (btn) { btn._orig = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...'; btn.disabled = true; }
   try {
-    const r = await apiFetch('/api/v1/wag/pair', { method:'POST', body: JSON.stringify({ phone }) });
+    const r = await _wagFetch('/api/v1/wag/pair', { method: 'POST', body: JSON.stringify({ phone }) });
     if (r.status === 'pairing') {
       const pairBox = document.getElementById('wag-pairing-code-box');
       const codeEl  = document.getElementById('wag-pairing-code');
@@ -10206,7 +10219,7 @@ async function wagPair() {
 async function wagDisconnect() {
   if (!confirm('Putus koneksi WAG Bot dan hapus session?')) return;
   try {
-    await apiFetch('/api/v1/wag/disconnect', { method:'DELETE' });
+    await _wagFetch('/api/v1/wag/disconnect', { method: 'DELETE' });
     showToast('WAG Bot terputus', 'info');
     await wagRefreshStatus();
   } catch (e) {
@@ -10219,7 +10232,7 @@ async function wagLoadGroups() {
   if (!list) return;
   list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px">Memuat daftar grup...</div>';
   try {
-    const r = await apiFetch('/api/v1/wag/groups');
+    const r = await _wagFetch('/api/v1/wag/groups');
     _wagState.groups = r.groups || [];
     wagRenderGroupList();
   } catch (e) {
@@ -10229,7 +10242,7 @@ async function wagLoadGroups() {
 
 async function wagLoadConfig() {
   try {
-    const r = await apiFetch('/api/v1/wag/config');
+    const r = await _wagFetch('/api/v1/wag/config');
     _wagState.config = r.config || [];
   } catch (_) { _wagState.config = []; }
 }
@@ -10262,7 +10275,7 @@ async function wagSaveConfig() {
   const aktifCount = selected.filter(g => g.aktif).length;
   if (aktifCount > 3) return showToast('Maksimal 3 WAG aktif', 'error');
   try {
-    await apiFetch('/api/v1/wag/config', { method:'POST', body: JSON.stringify({ groups: selected }) });
+    await _wagFetch('/api/v1/wag/config', { method: 'POST', body: JSON.stringify({ groups: selected }) });
     _wagState.config = selected;
     showToast(`Config WAG disimpan — ${aktifCount} grup aktif`, 'success');
   } catch (e) {
