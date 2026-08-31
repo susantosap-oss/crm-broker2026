@@ -214,7 +214,7 @@ class WagAutopostService {
 
   // ── Auto-Post (dipanggil Cloud Scheduler) ────────────────────
 
-  async autoPost() {
+  async autoPost(forceType = null) {
     const config = await this.getConfig();
     const activeGroups = config.filter(g => g.aktif);
     if (!activeGroups.length) return { skipped: true, reason: 'Tidak ada WAG aktif' };
@@ -222,13 +222,12 @@ class WagAutopostService {
     // Pastikan connected
     if (this._status !== 'connected') {
       await this.connect();
-      // Tunggu max 20 detik sampai connected
       await this._waitConnected(20_000);
     }
     if (this._status !== 'connected') return { skipped: true, reason: 'WA bot tidak terhubung' };
 
-    // Random pick: 50% listing, 50% aset
-    const pick = Math.random() < 0.5 ? 'listing' : 'aset';
+    // Pilih tipe: forceType jika ada, else random 50/50
+    const pick = forceType || (Math.random() < 0.5 ? 'listing' : 'aset');
     let item, caption, imageUrl;
 
     if (pick === 'listing') {
@@ -238,14 +237,16 @@ class WagAutopostService {
     }
 
     if (!item) {
-      // Fallback ke tipe lain
-      if (pick === 'listing') {
-        ({ item, caption, imageUrl } = await this._pickAset());
-      } else {
-        ({ item, caption, imageUrl } = await this._pickListing());
+      // Fallback ke tipe lain (hanya jika bukan forceType)
+      if (!forceType) {
+        if (pick === 'listing') {
+          ({ item, caption, imageUrl } = await this._pickAset());
+        } else {
+          ({ item, caption, imageUrl } = await this._pickListing());
+        }
       }
     }
-    if (!item) return { skipped: true, reason: 'Tidak ada konten yang memenuhi SOP' };
+    if (!item) return { skipped: true, reason: `Tidak ada ${pick} yang memenuhi SOP` };
 
     // Kirim ke semua WAG aktif
     const results = [];

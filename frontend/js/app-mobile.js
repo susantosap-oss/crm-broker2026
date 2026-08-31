@@ -10301,6 +10301,27 @@ function wagRenderGroupList() {
     </label>`).join('');
 }
 
+async function wagTestPost(type) {
+  const btn = event?.target;
+  const origText = btn?.innerHTML;
+  if (btn) { btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim...'; btn.disabled = true; }
+  try {
+    const r = await _wagFetch('/api/v1/wag/test', { method: 'POST', body: JSON.stringify({ type }) });
+    const res = r.result;
+    if (res?.skipped) {
+      showToast('Dilewati: ' + res.reason, 'error');
+    } else {
+      const sent = (res?.groups || []).filter(g => g.status === 'sent').length;
+      const fail = (res?.groups || []).filter(g => g.status === 'failed').length;
+      showToast(`Test ${type} terkirim ke ${sent} WAG${fail ? ', gagal ' + fail : ''}`, 'success');
+    }
+  } catch (e) {
+    showToast('Gagal test: ' + e.message, 'error');
+  } finally {
+    if (btn && origText) { btn.innerHTML = origText; btn.disabled = false; }
+  }
+}
+
 async function wagSaveConfig() {
   const checkboxes = document.querySelectorAll('#wag-groups-list input[type=checkbox]');
   const selected = [];

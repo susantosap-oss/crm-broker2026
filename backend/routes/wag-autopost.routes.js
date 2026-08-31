@@ -88,6 +88,18 @@ router.post('/config', authMiddleware, requireRole, async (req, res) => {
   }
 });
 
+// ── Manual Test Post ──────────────────────────────────────────
+
+router.post('/test', authMiddleware, requireRole, async (req, res) => {
+  const { type } = req.body; // 'listing' | 'aset' | undefined (random)
+  try {
+    const result = await wagService.autoPost(type);
+    res.json({ success: true, result });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // ── Disconnect ────────────────────────────────────────────────
 
 router.delete('/disconnect', authMiddleware, requireRole, async (req, res) => {
