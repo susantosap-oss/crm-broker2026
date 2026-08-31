@@ -23,6 +23,17 @@ function requireRole(req, res, next) {
   next();
 }
 
+// ── QR Code (lebih reliable untuk WA Business) ───────────────
+
+router.post('/qr', authMiddleware, requireRole, async (req, res) => {
+  try {
+    const result = await wagService.requestQR();
+    res.json({ success: true, ...result });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // ── Pairing Code ──────────────────────────────────────────────
 
 router.post('/pair', authMiddleware, requireRole, async (req, res) => {

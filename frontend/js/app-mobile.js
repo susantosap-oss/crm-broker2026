@@ -10168,26 +10168,61 @@ async function wagRefreshStatus() {
   const txt     = document.getElementById('wag-status-text');
   const sec     = document.getElementById('wag-groups-section');
   const pairBox = document.getElementById('wag-pairing-code-box');
+  const qrBox   = document.getElementById('wag-qr-box');
+  const qrImg   = document.getElementById('wag-qr-img');
   try {
     const r = await _wagFetch('/api/v1/wag/status');
     const s = r.status;
-    const colors = { connected:'#25D366', pairing:'#f59e0b', initializing:'#60a5fa', disconnected:'#6b7280', reconnecting:'#f59e0b' };
-    const labels = { connected:'Terhubung ✓', pairing:'Menunggu kode...', initializing:'Menghubungkan...', disconnected:'Tidak terhubung', reconnecting:'Mencoba ulang...' };
+    const colors = { connected:'#25D366', pairing:'#f59e0b', qr_pending:'#f59e0b', initializing:'#60a5fa', disconnected:'#6b7280', reconnecting:'#f59e0b' };
+    const labels = { connected:'Terhubung ✓', pairing:'Menunggu kode...', qr_pending:'Scan QR di WA...', initializing:'Menghubungkan...', disconnected:'Tidak terhubung', reconnecting:'Mencoba ulang...' };
     if (dot) dot.style.background = colors[s] || '#6b7280';
     if (txt) txt.textContent = labels[s] || s;
     if (sec) sec.style.display = s === 'connected' ? '' : 'none';
     if (pairBox) pairBox.style.display = s === 'pairing' ? '' : 'none';
+    // QR box
+    if (qrBox) qrBox.style.display = s === 'qr_pending' ? '' : 'none';
+    if (s === 'qr_pending' && r.qrDataUrl && qrImg) {
+      qrImg.src = r.qrDataUrl;
+      setTimeout(wagRefreshStatus, 4000); // poll status + refresh QR
+    }
     if (s === 'pairing' && r.pairingCode) {
       const codeEl = document.getElementById('wag-pairing-code');
       if (codeEl) codeEl.textContent = r.pairingCode;
       setTimeout(wagRefreshStatus, 4000);
     }
     if (s === 'connected') {
+      if (qrBox) qrBox.style.display = 'none';
       await wagLoadConfig();
       await wagLoadGroups();
     }
   } catch (e) {
     if (txt) txt.textContent = 'Gagal cek status';
+  }
+}
+
+async function wagShowQR() {
+  const btn = document.getElementById('wag-btn-qr');
+  const txt = document.getElementById('wag-status-text');
+  if (btn) { btn._orig = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memuat...'; btn.disabled = true; }
+  if (txt) txt.textContent = 'Menghubungkan ke WA...';
+  try {
+    const r = await _wagFetch('/api/v1/wag/qr', { method: 'POST' });
+    if (r.status === 'qr_pending') {
+      const qrBox = document.getElementById('wag-qr-box');
+      const qrImg = document.getElementById('wag-qr-img');
+      if (qrBox) qrBox.style.display = '';
+      if (qrImg && r.qrDataUrl) qrImg.src = r.qrDataUrl;
+      showToast('QR siap — buka WA Business → Linked Devices → scan', 'success');
+      setTimeout(wagRefreshStatus, 4000);
+    } else if (r.status === 'connected') {
+      showToast('Sudah terhubung!', 'success');
+      await wagRefreshStatus();
+    }
+  } catch (e) {
+    showToast('Gagal generate QR: ' + e.message, 'error');
+    if (txt) txt.textContent = 'Gagal';
+  } finally {
+    if (btn && btn._orig) { btn.innerHTML = btn._orig; btn.disabled = false; }
   }
 }
 

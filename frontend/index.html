@@ -2345,24 +2345,39 @@
         </div>
       </div>
 
-      <!-- Tombol Pair / Disconnect -->
-      <div style="display:flex;gap:10px;margin-bottom:16px">
-        <div style="flex:1">
-          <div style="color:rgba(255,255,255,0.5);font-size:11px;margin-bottom:6px">Nomor Kantor (tanpa +)</div>
-          <input id="wag-phone-input" type="tel" placeholder="628123456789"
-            style="width:100%;background:#0d1829;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:10px 12px;color:#fff;font-size:14px;box-sizing:border-box">
-        </div>
-        <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:8px">
-          <button onclick="wagPair()" id="wag-btn-pair"
-            style="padding:10px 14px;background:rgba(37,211,102,0.15);border:1px solid rgba(37,211,102,0.3);border-radius:10px;color:#25D366;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">
-            <i class="fa-solid fa-link" style="margin-right:5px"></i>Pair
-          </button>
-          <button onclick="wagDisconnect()" id="wag-btn-disconnect"
-            style="padding:10px 14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:10px;color:#f87171;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">
-            <i class="fa-solid fa-plug-circle-xmark" style="margin-right:5px"></i>Putus
-          </button>
-        </div>
+      <!-- Tombol koneksi -->
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button onclick="wagShowQR()" id="wag-btn-qr"
+          style="flex:1;padding:11px;background:rgba(37,211,102,0.15);border:1px solid rgba(37,211,102,0.3);border-radius:10px;color:#25D366;font-size:13px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-qrcode" style="margin-right:5px"></i>Scan QR
+        </button>
+        <button onclick="wagDisconnect()" id="wag-btn-disconnect"
+          style="padding:11px 14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:10px;color:#f87171;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">
+          <i class="fa-solid fa-plug-circle-xmark" style="margin-right:5px"></i>Putus
+        </button>
       </div>
+
+      <!-- QR Code display -->
+      <div id="wag-qr-box" style="display:none;margin-bottom:16px;background:rgba(37,211,102,0.06);border:1px solid rgba(37,211,102,0.2);border-radius:12px;padding:16px;text-align:center">
+        <div style="color:rgba(255,255,255,0.5);font-size:11px;margin-bottom:10px">Buka <b style="color:#fff">WA Business</b> → ⋮ → Linked Devices → Link a Device → scan QR ini</div>
+        <img id="wag-qr-img" src="" alt="QR Code" style="width:200px;height:200px;border-radius:8px;background:#fff;padding:8px">
+        <div style="color:rgba(255,255,255,0.35);font-size:11px;margin-top:8px">QR refresh otomatis tiap 20 detik — scan sebelum expired</div>
+      </div>
+
+      <!-- Pairing code fallback (collapsed by default) -->
+      <details style="margin-bottom:12px">
+        <summary style="color:rgba(255,255,255,0.4);font-size:11px;cursor:pointer;list-style:none">
+          <i class="fa-solid fa-chevron-right" style="margin-right:4px;font-size:9px"></i>Atau pakai kode 8 digit (alternatif)
+        </summary>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <input id="wag-phone-input" type="tel" placeholder="628xxx nomor WA"
+            style="flex:1;background:#0d1829;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px">
+          <button onclick="wagPair()" id="wag-btn-pair"
+            style="padding:10px 14px;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.25);border-radius:10px;color:#D4A853;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">
+            Pair
+          </button>
+        </div>
+      </details>
 
       <!-- List WAG untuk dipilih -->
       <div id="wag-groups-section" style="display:none">

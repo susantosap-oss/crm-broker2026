@@ -16,6 +16,7 @@ const {
 } = require('@whiskeysockets/baileys');
 const { Boom }   = require('@hapi/boom');
 const { Storage } = require('@google-cloud/storage');
+const QRCode     = require('qrcode');
 const pino       = require('pino');
 const path       = require('path');
 const fs         = require('fs');
@@ -32,18 +33,19 @@ const ALLOWED_ROLES_MANAGE = ['admin', 'principal', 'superadmin'];
 
 class WagAutopostService {
   constructor() {
-    this._sock      = null;
-    this._status    = 'disconnected'; // disconnected|initializing|pairing|connected|reconnecting
+    this._sock        = null;
+    this._status      = 'disconnected'; // disconnected|initializing|pairing|qr_pending|connected|reconnecting
     this._pairingCode = null;
-    this._storage   = new Storage();
-    this._bucket    = this._storage.bucket(BUCKET_NAME);
+    this._qrDataUrl   = null;
+    this._storage     = new Storage();
+    this._bucket      = this._storage.bucket(BUCKET_NAME);
     this._sessionLoaded = false;
   }
 
   // ── Status ──────────────────────────────────────────────────
 
   getStatus() {
-    return { status: this._status, pairingCode: this._pairingCode };
+    return { status: this._status, pairingCode: this._pairingCode, qrDataUrl: this._qrDataUrl };
   }
 
   // ── Session GCS sync ────────────────────────────────────────
@@ -138,6 +140,24 @@ class WagAutopostService {
     if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
 
     return this._boot('pair', phoneNumber);
+  }
+
+  /**
+   * Start QR code mode — lebih reliable dari pairing code untuk WA Business.
+   * QR di-refresh otomatis tiap ~20 detik oleh WA.
+   */
+  async requestQR() {
+    if (this._status === 'connected') return { status: 'connected', qrDataUrl: null };
+
+    await this._destroySocket();
+    await this._clearGCSSession();
+    if (fs.existsSync(SESSION_DIR)) fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+    this._sessionLoaded = false;
+    this._qrDataUrl = null;
+
+    if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
+
+    return this._boot('qr');
   }
 
   async disconnect() {
@@ -434,12 +454,25 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        if (mode === 'pair') reject(new Error('Timeout. Coba lagi.'));
+        if (mode === 'pair' || mode === 'qr') reject(new Error('Timeout koneksi ke WA. Coba lagi.'));
         else resolve({ status: this._status });
       }, 60_000);
 
       sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
+
+        // Mode QR: tangkap QR dan simpan sebagai data URL
+        if (qr && mode === 'qr') {
+          try {
+            this._qrDataUrl = await QRCode.toDataURL(qr);
+            this._status = 'qr_pending';
+            clearTimeout(timeout);
+            resolve({ status: 'qr_pending', qrDataUrl: this._qrDataUrl });
+          } catch (e) {
+            clearTimeout(timeout);
+            reject(new Error(`Gagal generate QR: ${e.message}`));
+          }
+        }
 
         // Mode pair: saat QR event → request pairing code
         if (qr && mode === 'pair' && phoneNumber) {
