@@ -5485,10 +5485,10 @@ function checkAdminMenu() {
   const sbPA = document.getElementById('sb-pa');
   if (sbPA) sbPA.style.display = 'none';
 
-  // ★ WAG Bot — tampil untuk admin dan principal
+  // ★ WAG Bot — tampil untuk semua role yang boleh akses
   const sbWag = document.getElementById('sb-wag');
   if (sbWag) {
-    const wagRoles = ['admin', 'principal', 'superadmin'];
+    const wagRoles = ['admin', 'kantor', 'principal', 'superadmin'];
     sbWag.style.display = wagRoles.includes(role) ? 'flex' : 'none';
   }
 }
@@ -10149,18 +10149,25 @@ async function openWagSettings() {
   await wagRefreshStatus();
 }
 
-async function _wagFetch(url, opts = {}) {
-  const res = await fetch(url, {
-    ...opts,
-    headers: {
-      'Authorization': `Bearer ${STATE.token}`,
-      'Content-Type': 'application/json',
-      ...(opts.headers || {}),
-    },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || res.statusText);
-  return data;
+async function _wagFetch(url, opts = {}, timeoutMs = 15000) {
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      ...opts,
+      signal: ctrl.signal,
+      headers: {
+        'Authorization': `Bearer ${STATE.token}`,
+        'Content-Type': 'application/json',
+        ...(opts.headers || {}),
+      },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || res.statusText);
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function wagRefreshStatus() {
@@ -10170,6 +10177,12 @@ async function wagRefreshStatus() {
   const pairBox = document.getElementById('wag-pairing-code-box');
   const qrBox   = document.getElementById('wag-qr-box');
   const qrImg   = document.getElementById('wag-qr-img');
+  const btnQr   = document.getElementById('wag-btn-qr');
+  const btnDisc = document.getElementById('wag-btn-disconnect');
+  const btnSave = document.getElementById('wag-btn-save-config');
+
+  const isManager = ['superadmin', 'principal'].includes(STATE.user?.role);
+
   try {
     const r = await _wagFetch('/api/v1/wag/status');
     const s = r.status;
@@ -10177,13 +10190,20 @@ async function wagRefreshStatus() {
     const labels = { connected:'Terhubung ✓', pairing:'Menunggu kode...', qr_pending:'Scan QR di WA...', initializing:'Menghubungkan...', disconnected:'Tidak terhubung', reconnecting:'Mencoba ulang...' };
     if (dot) dot.style.background = colors[s] || '#6b7280';
     if (txt) txt.textContent = labels[s] || s;
-    if (sec) sec.style.display = s === 'connected' ? '' : 'none';
     if (pairBox) pairBox.style.display = s === 'pairing' ? '' : 'none';
+
+    // Tombol QR: tampil saat belum connected untuk semua role
+    //            tampil saat connected hanya untuk manager (force reconnect)
+    if (btnQr) btnQr.style.display = (s !== 'connected' || isManager) ? '' : 'none';
+
+    // Tombol Putus: hanya manager
+    if (btnDisc) btnDisc.style.display = isManager ? '' : 'none';
+
     // QR box
     if (qrBox) qrBox.style.display = s === 'qr_pending' ? '' : 'none';
     if (s === 'qr_pending' && r.qrDataUrl && qrImg) {
       qrImg.src = r.qrDataUrl;
-      setTimeout(wagRefreshStatus, 4000); // poll status + refresh QR
+      setTimeout(wagRefreshStatus, 4000);
     }
     if (s === 'pairing' && r.pairingCode) {
       const codeEl = document.getElementById('wag-pairing-code');
@@ -10192,8 +10212,19 @@ async function wagRefreshStatus() {
     }
     if (s === 'connected') {
       if (qrBox) qrBox.style.display = 'none';
+      // Tampilkan grup section untuk semua role
+      if (sec) sec.style.display = '';
+      // Tombol simpan config: hanya manager
+      if (btnSave) btnSave.style.display = isManager ? '' : 'none';
+      // Grup checkboxes: disable untuk non-manager (read-only)
       await wagLoadConfig();
-      await wagLoadGroups();
+      await wagLoadGroups(!isManager);
+    } else {
+      if (sec) sec.style.display = 'none';
+    }
+    // Poll saat reconnecting/initializing
+    if (s === 'reconnecting' || s === 'initializing') {
+      setTimeout(wagRefreshStatus, 5000);
     }
   } catch (e) {
     if (txt) txt.textContent = 'Gagal cek status';
@@ -10262,13 +10293,14 @@ async function wagDisconnect() {
   }
 }
 
-async function wagLoadGroups() {
+async function wagLoadGroups(readOnly = false) {
   const list = document.getElementById('wag-groups-list');
   if (!list) return;
   list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px">Memuat daftar grup...</div>';
   try {
     const r = await _wagFetch('/api/v1/wag/groups');
     _wagState.groups = r.groups || [];
+    _wagState.readOnly = readOnly;
     wagRenderGroupList();
   } catch (e) {
     list.innerHTML = '<div style="color:#f87171;font-size:13px;padding:8px">' + e.message + '</div>';
@@ -10286,19 +10318,32 @@ function wagRenderGroupList() {
   const list = document.getElementById('wag-groups-list');
   if (!list) return;
   const activeJids = new Set(_wagState.config.filter(c => c.aktif).map(c => c.jid));
+  const readOnly   = !!_wagState.readOnly;
   if (!_wagState.groups.length) {
     list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px">Tidak ada grup ditemukan</div>';
     return;
   }
-  list.innerHTML = _wagState.groups.map(g => `
-    <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0d1829;border:1px solid rgba(255,255,255,0.08);border-radius:10px;cursor:pointer">
-      <input type="checkbox" data-jid="${g.jid}" data-nama="${escapeHtml(g.nama)}" ${activeJids.has(g.jid) ? 'checked' : ''}
+  list.innerHTML = _wagState.groups.map(g => {
+    const active = activeJids.has(g.jid);
+    if (readOnly) {
+      // Tampilan saja, tanpa checkbox interaktif
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0d1829;border:1px solid ${active ? 'rgba(37,211,102,0.25)' : 'rgba(255,255,255,0.08)'};border-radius:10px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${active ? '#25D366' : '#374151'};flex-shrink:0"></span>
+        <div>
+          <div style="color:#fff;font-size:13px;font-weight:600">${escapeHtml(g.nama)}</div>
+          <div style="color:rgba(255,255,255,0.35);font-size:11px">${g.anggota} anggota${active ? ' · <span style="color:#25D366">Aktif</span>' : ''}</div>
+        </div>
+      </div>`;
+    }
+    return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0d1829;border:1px solid rgba(255,255,255,0.08);border-radius:10px;cursor:pointer">
+      <input type="checkbox" data-jid="${g.jid}" data-nama="${escapeHtml(g.nama)}" ${active ? 'checked' : ''}
         style="width:16px;height:16px;accent-color:#25D366">
       <div>
         <div style="color:#fff;font-size:13px;font-weight:600">${escapeHtml(g.nama)}</div>
         <div style="color:rgba(255,255,255,0.35);font-size:11px">${g.anggota} anggota</div>
       </div>
-    </label>`).join('');
+    </label>`;
+  }).join('');
 }
 
 async function wagTestPost(type) {
@@ -10306,10 +10351,16 @@ async function wagTestPost(type) {
   const origText = btn?.innerHTML;
   if (btn) { btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim...'; btn.disabled = true; }
   try {
-    const r = await _wagFetch('/api/v1/wag/test', { method: 'POST', body: JSON.stringify({ type }) });
+    const r = await _wagFetch('/api/v1/wag/test', { method: 'POST', body: JSON.stringify({ type }) }, 50000);
     const res = r.result;
     if (res?.skipped) {
-      showToast('Dilewati: ' + res.reason, 'error');
+      const reason = res.reason || '';
+      if (reason.includes('WAG aktif') || reason.includes('config')) {
+        showToast('Belum ada WAG aktif — pilih grup lalu klik Simpan Pilihan WAG.', 'error');
+      } else {
+        showToast('Bot belum terhubung — sedang reconnect. Coba lagi 15 detik.', 'error');
+        setTimeout(wagRefreshStatus, 5000);
+      }
     } else {
       const sent = (res?.groups || []).filter(g => g.status === 'sent').length;
       const fail = (res?.groups || []).filter(g => g.status === 'failed').length;
@@ -10317,6 +10368,7 @@ async function wagTestPost(type) {
     }
   } catch (e) {
     showToast('Gagal test: ' + e.message, 'error');
+    setTimeout(wagRefreshStatus, 3000);
   } finally {
     if (btn && origText) { btn.innerHTML = origText; btn.disabled = false; }
   }

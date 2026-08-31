@@ -6,6 +6,14 @@
  */
 
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+
+// Baileys internal timeouts fire AFTER our race-timeout, causing orphaned rejections.
+// Suppress them to prevent Node.js from crashing the container.
+process.on('unhandledRejection', (reason) => {
+  if (reason?.isBoom && reason?.output?.statusCode === 408) return; // Baileys Timed Out
+  console.error('[UnhandledRejection]', reason?.message || reason);
+});
+
 const express = require('express');
 const cors        = require('cors');
 const helmet      = require('helmet');
@@ -188,7 +196,8 @@ app.post('/api/v1/scheduler/poll-vigen', schedulerAuth, async (req, res) => {
 app.post('/api/v1/scheduler/wag-autopost', schedulerAuth, async (req, res) => {
   try {
     const wagService = require('./services/wag-autopost.service');
-    const result = await wagService.autoPost();
+    // Scheduler boleh tunggu reconnect hingga 25 detik sebelum kirim
+    const result = await wagService.autoPost(req.body?.type, 25_000);
     res.json({ success: true, message: 'WAG autopost selesai', result });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });

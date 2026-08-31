@@ -13,6 +13,7 @@ const {
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
+  Browsers,
 } = require('@whiskeysockets/baileys');
 const { Boom }   = require('@hapi/boom');
 const { Storage } = require('@google-cloud/storage');
@@ -20,26 +21,33 @@ const QRCode     = require('qrcode');
 const pino       = require('pino');
 const path       = require('path');
 const fs         = require('fs');
+const os         = require('os');
 const { v4: uuidv4 } = require('uuid');
 const sheetsService  = require('./sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 
 const BUCKET_NAME  = process.env.GCS_BUCKET || 'mansion-wag-sessions';
-const SESSION_DIR  = '/tmp/wag-kantor';
+const SESSION_DIR  = process.env.WAG_SESSION_DIR || path.join(os.tmpdir(), 'wag-kantor');
 const GCS_PREFIX   = 'kantor-session/';
 const logger       = pino({ level: 'silent' });
+
+// Cegah MaxListenersExceededWarning dari Baileys media streams
+require('events').EventEmitter.defaultMaxListeners = 30;
 
 const ALLOWED_ROLES_MANAGE = ['admin', 'principal', 'superadmin'];
 
 class WagAutopostService {
   constructor() {
-    this._sock        = null;
-    this._status      = 'disconnected'; // disconnected|initializing|pairing|qr_pending|connected|reconnecting
-    this._pairingCode = null;
-    this._qrDataUrl   = null;
-    this._storage     = new Storage();
-    this._bucket      = this._storage.bucket(BUCKET_NAME);
+    this._sock          = null;
+    this._status        = 'disconnected';
+    this._pairingCode   = null;
+    this._qrDataUrl     = null;
+    this._storage       = new Storage();
+    this._bucket        = this._storage.bucket(BUCKET_NAME);
     this._sessionLoaded = false;
+    this._uploading     = false; // mutex: cegah concurrent upload ke GCS
+    this._booting       = false; // guard: cegah concurrent _boot() loop
+    this._groupCache    = {};    // cache groupMetadata — bypass IQ query timeout saat sendMessage
   }
 
   // ── Status ──────────────────────────────────────────────────
@@ -78,6 +86,8 @@ class WagAutopostService {
   }
 
   async _uploadSessionToGCS() {
+    if (this._uploading) return; // skip jika sudah ada upload berjalan
+    this._uploading = true;
     try {
       if (!fs.existsSync(SESSION_DIR)) return;
       const files = fs.readdirSync(SESSION_DIR);
@@ -85,10 +95,14 @@ class WagAutopostService {
         const full = path.join(SESSION_DIR, f);
         if (fs.statSync(full).isFile()) {
           await this._uploadFileToGCS(full);
+          // Jeda 150ms antar file — hindari GCS rate limit (429)
+          await new Promise(r => setTimeout(r, 150));
         }
       }
     } catch (e) {
       console.error('[WAG] Upload full session GCS gagal:', e.message);
+    } finally {
+      this._uploading = false;
     }
   }
 
@@ -214,17 +228,22 @@ class WagAutopostService {
 
   // ── Auto-Post (dipanggil Cloud Scheduler) ────────────────────
 
-  async autoPost(forceType = null) {
+  async autoPost(forceType = null, waitMs = 0, textOnly = false) {
     const config = await this.getConfig();
     const activeGroups = config.filter(g => g.aktif);
+    console.log(`[WAG] autoPost: status=${this._status} config=${config.length} aktif=${activeGroups.length}`);
     if (!activeGroups.length) return { skipped: true, reason: 'Tidak ada WAG aktif' };
 
-    // Pastikan connected
-    if (this._status !== 'connected') {
+    // Jika diminta tunggu (dari scheduler), coba reconnect + wait
+    if (this._status !== 'connected' && waitMs > 0) {
       await this.connect();
-      await this._waitConnected(20_000);
+      await this._waitConnected(waitMs);
     }
-    if (this._status !== 'connected') return { skipped: true, reason: 'WA bot tidak terhubung' };
+    // Fail fast — jangan blokir kalau belum connected
+    if (this._status !== 'connected') {
+      this.connect().catch(() => {}); // trigger reconnect di background
+      return { skipped: true, reason: 'WA bot tidak terhubung' };
+    }
 
     // Pilih tipe: forceType jika ada, else random 50/50
     const pick = forceType || (Math.random() < 0.5 ? 'listing' : 'aset');
@@ -248,24 +267,22 @@ class WagAutopostService {
     }
     if (!item) return { skipped: true, reason: `Tidak ada ${pick} yang memenuhi SOP` };
 
+    // Sisipkan URL foto ke caption (text-only, hindari refreshMediaConn timeout)
+    if (imageUrl) caption += `\n\n🖼 ${imageUrl}`;
+
     // Kirim ke semua WAG aktif
     const results = [];
     for (const group of activeGroups) {
-      try {
-        const msgPayload = imageUrl
-          ? { image: { url: imageUrl }, caption }
-          : { text: caption };
-        await this._sock.sendMessage(group.jid, msgPayload);
-        results.push({ jid: group.jid, nama: group.nama, status: 'sent' });
-        // Delay 3 detik antar grup
-        await new Promise(r => setTimeout(r, 3000));
-      } catch (e) {
-        results.push({ jid: group.jid, nama: group.nama, status: 'failed', error: e.message });
-      }
+      const sent = await this._sendToGroup(group, null, null, caption);
+      results.push(sent);
+      if (sent.status.startsWith('sent')) await new Promise(r => setTimeout(r, 3000));
     }
 
     // Log ke sheet WAG_POST_LOG
     await this._logPost(pick, item, results).catch(() => {});
+
+    // Upload semua session files setelah kirim (capture sender-keys baru, non-blocking)
+    this._uploadSessionToGCS().catch(() => {});
 
     return { success: true, tipe: pick, groups: results };
   }
@@ -412,6 +429,42 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
     await sheetsService.appendRow(SHEETS.WAG_POST_LOG, row);
   }
 
+  async _sendToGroup(group, _imgBuffer, _imageUrl, caption) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        // Simulasi mengetik seperti wa-blast — "wakes up" koneksi sebelum kirim
+        await this._sock.sendPresenceUpdate('composing', group.jid);
+        await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
+        await this._sock.sendPresenceUpdate('paused', group.jid);
+
+        await this._sock.sendMessage(group.jid, { text: caption });
+        console.log(`[WAG] sendMessage OK (attempt ${attempt}) → ${group.nama}`);
+        return { jid: group.jid, nama: group.nama, status: 'sent' };
+      } catch (e) {
+        console.warn(`[WAG] sendMessage attempt ${attempt} GAGAL → ${group.nama}: ${e.message}`);
+        if (e.message && (e.message.includes('Bad MAC') || e.message.includes('Connection Closed'))) {
+          this._status = 'disconnected';
+          setTimeout(() => this._boot(), 5000);
+          return { jid: group.jid, nama: group.nama, status: 'failed', error: e.message };
+        }
+        if (attempt < 2) await new Promise(r => setTimeout(r, 10000)); // tunggu 10s sebelum retry
+      }
+    }
+    return { jid: group.jid, nama: group.nama, status: 'failed', error: 'Gagal setelah 2 percobaan' };
+  }
+
+  async _downloadImageBuffer(url) {
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12_000);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      if (!res.ok) return null;
+      const buf = await res.arrayBuffer();
+      return Buffer.from(buf);
+    } catch (_) { return null; }
+    finally { clearTimeout(timer); }
+  }
+
   _waitConnected(ms) {
     return new Promise(resolve => {
       const start = Date.now();
@@ -427,6 +480,17 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
   // ── Baileys core ─────────────────────────────────────────────
 
   async _boot(mode = 'session', phoneNumber = null) {
+    // Guard: satu _boot() saja yang boleh jalan (cegah infinite reconnect loop)
+    if (this._booting) return { status: this._status };
+    this._booting = true;
+
+    // Bersihkan socket lama sebelum buat yang baru
+    if (this._sock) {
+      try { this._sock.ev.removeAllListeners(); } catch (_) {}
+      try { this._sock.ws?.terminate?.(); } catch (_) {}
+      this._sock = null;
+    }
+
     if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
 
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
@@ -440,21 +504,31 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
       },
       printQRInTerminal: false,
       logger,
-      browser: ['Mansion CRM', 'Chrome', '126.0'],
+      browser: Browsers.macOS('Desktop'),
       shouldIgnoreJid: () => false,
+      maxMsgRetryCount: 2,
+      connectTimeoutMs: 60_000,
+      keepAliveIntervalMs: 25_000,
+      syncFullHistory: false,
+      generateHighQualityLinkPreview: false,
+      defaultQueryTimeoutMs: 120_000, // sender-key distribution ke banyak anggota butuh waktu
+      // Cache groupMetadata — bypass IQ query timeout saat sendMessage ke grup
+      cachedGroupMetadata: async (jid) => this._groupCache[jid],
     });
 
     this._sock = sock;
 
     sock.ev.on('creds.update', async () => {
       await saveCreds();
-      // Sync ke GCS
+      // Hanya upload creds.json — file lain di-upload setelah connect/autoPost
+      // (upload semua file sekaligus terlalu sering → GCS rate limit 429)
       const credsPath = path.join(SESSION_DIR, 'creds.json');
       if (fs.existsSync(credsPath)) await this._uploadFileToGCS(credsPath);
     });
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
+        this._booting = false;
         if (mode === 'pair' || mode === 'qr') reject(new Error('Timeout koneksi ke WA. Coba lagi.'));
         else resolve({ status: this._status });
       }, 60_000);
@@ -462,29 +536,31 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
       sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
-        // Mode QR: tangkap QR dan simpan sebagai data URL
         if (qr && mode === 'qr') {
           try {
             this._qrDataUrl = await QRCode.toDataURL(qr);
             this._status = 'qr_pending';
+            this._booting = false;
             clearTimeout(timeout);
             resolve({ status: 'qr_pending', qrDataUrl: this._qrDataUrl });
           } catch (e) {
+            this._booting = false;
             clearTimeout(timeout);
             reject(new Error(`Gagal generate QR: ${e.message}`));
           }
         }
 
-        // Mode pair: saat QR event → request pairing code
         if (qr && mode === 'pair' && phoneNumber) {
           try {
             const num  = phoneNumber.replace(/\D/g, '');
             const code = await sock.requestPairingCode(num);
             this._pairingCode = code;
             this._status = 'pairing';
+            this._booting = false;
             clearTimeout(timeout);
             resolve({ status: 'pairing', code });
           } catch (e) {
+            this._booting = false;
             clearTimeout(timeout);
             reject(new Error(`Gagal pairing code: ${e.message}`));
           }
@@ -493,16 +569,24 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
         if (connection === 'open') {
           this._status = 'connected';
           this._pairingCode = null;
+          this._booting = false;
           clearTimeout(timeout);
-          // Upload session penuh ke GCS setelah connect
-          await this._uploadSessionToGCS();
+          // Cache semua group metadata — bypass IQ query timeout saat sendMessage
+          sock.groupFetchAllParticipating().then(groups => {
+            this._groupCache = groups;
+            console.log(`[WAG] Group cache loaded: ${Object.keys(groups).length} grup`);
+          }).catch(() => {});
+          // Upload session penuh ke GCS setelah connect (non-blocking)
+          this._uploadSessionToGCS().catch(() => {});
           resolve({ status: 'connected' });
         }
 
         if (connection === 'close') {
-          const errCode  = lastDisconnect?.error instanceof Boom
+          const errCode   = lastDisconnect?.error instanceof Boom
             ? lastDisconnect.error.output.statusCode : 0;
           const loggedOut = errCode === DisconnectReason.loggedOut;
+
+          this._booting = false;
 
           if (loggedOut) {
             this._status = 'disconnected';
@@ -512,9 +596,18 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
             clearTimeout(timeout);
             resolve({ status: 'disconnected' });
           } else {
-            this._status = 'reconnecting';
-            // Reconnect otomatis
-            setTimeout(() => this._boot(), 5000);
+            // Hanya schedule reconnect jika belum ada yang pending
+            if (this._status !== 'reconnecting') {
+              this._status = 'reconnecting';
+              clearTimeout(timeout);
+              resolve({ status: 'reconnecting' });
+              // Reconnect sekali saja setelah 8 detik
+              setTimeout(() => {
+                if (this._status === 'reconnecting') {
+                  this._boot().catch(e => console.error('[WAG] Reconnect error:', e.message));
+                }
+              }, 8_000);
+            }
           }
         }
       });

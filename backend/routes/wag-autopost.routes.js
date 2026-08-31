@@ -14,11 +14,21 @@ const router   = express.Router();
 const { authMiddleware } = require('../middleware/auth.middleware');
 const wagService = require('../services/wag-autopost.service');
 
-const ALLOWED = ['superadmin', 'admin', 'principal'];
+// Semua role ini boleh lihat status + connect + test
+const ALLOWED  = ['superadmin', 'principal', 'admin', 'kantor'];
+// Hanya manager yang boleh disconnect + simpan config grup
+const MANAGERS = ['superadmin', 'principal'];
 
 function requireRole(req, res, next) {
   if (!ALLOWED.includes(req.user?.role)) {
     return res.status(403).json({ success: false, message: 'Akses ditolak' });
+  }
+  next();
+}
+
+function requireManager(req, res, next) {
+  if (!MANAGERS.includes(req.user?.role)) {
+    return res.status(403).json({ success: false, message: 'Hanya Principal/Superadmin yang dapat melakukan aksi ini' });
   }
   next();
 }
@@ -75,7 +85,7 @@ router.get('/config', authMiddleware, requireRole, async (req, res) => {
   }
 });
 
-router.post('/config', authMiddleware, requireRole, async (req, res) => {
+router.post('/config', authMiddleware, requireManager, async (req, res) => {
   const { groups } = req.body;
   if (!Array.isArray(groups)) {
     return res.status(400).json({ success: false, message: 'groups harus array' });
@@ -102,7 +112,7 @@ router.post('/test', authMiddleware, requireRole, async (req, res) => {
 
 // ── Disconnect ────────────────────────────────────────────────
 
-router.delete('/disconnect', authMiddleware, requireRole, async (req, res) => {
+router.delete('/disconnect', authMiddleware, requireManager, async (req, res) => {
   try {
     await wagService.disconnect();
     res.json({ success: true, message: 'WAG bot terputus dan session dihapus' });
