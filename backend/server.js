@@ -369,6 +369,14 @@ app.listen(PORT, () => {
   // Load push subscriptions dari Sheets ke memory cache
   require('./services/push.service').loadSubscriptions().catch(() => {});
 
+  // Auto-reconnect WAG bot dari GCS session (non-blocking, delay 10s biar server warm dulu)
+  setTimeout(() => {
+    const wagService = require('./services/wag-autopost.service');
+    wagService.connect()
+      .then(r => console.log('[WAG] Auto-connect:', r.status))
+      .catch(e => console.log('[WAG] Auto-connect skip:', e.message));
+  }, 10_000);
+
   // Cron jobs dan ViGen polling dipindah ke Cloud Scheduler
   // Endpoint: /api/v1/scheduler/check-jadwal-harian (19:00 WIB)
   //           /api/v1/scheduler/check-rental-reminders (08:00 WIB)
