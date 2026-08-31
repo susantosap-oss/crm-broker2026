@@ -61,6 +61,9 @@ const SHEETS = {
   ASSETS:         'ASSETS',
   ASSET_EDITORS:  'ASSET_EDITORS',
   ASSET_EDIT_LOG: 'ASSET_EDIT_LOG',
+  // ★ WAG Autopost — Auto-share ke WhatsApp Group Internal
+  WAG_CONFIG:     'WAG_CONFIG',
+  WAG_POST_LOG:   'WAG_POST_LOG',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -649,6 +652,26 @@ const COLUMNS = {
     'Updated_By',     // N  agent_id yang update
     'Created_At',     // O
     'Updated_At',     // P
+  ],
+
+  // ★ WAG_CONFIG — Konfigurasi WhatsApp Group untuk auto-post
+  WAG_CONFIG: [
+    'ID',         // A  UUID
+    'Group_JID',  // B  WA Group JID (xxxxx@g.us)
+    'Nama_Grup',  // C  Nama display grup
+    'Aktif',      // D  TRUE|FALSE
+    'Created_At', // E  ISO datetime
+  ],
+
+  // ★ WAG_POST_LOG — Log setiap kiriman auto-post
+  WAG_POST_LOG: [
+    'ID',         // A  UUID
+    'Timestamp',  // B  ISO datetime
+    'Tipe',       // C  listing|aset
+    'Kode_Konten',// D  Kode listing / kode aset
+    'Sent',       // E  Jumlah grup berhasil
+    'Failed',     // F  Jumlah grup gagal
+    'Detail',     // G  JSON hasil per grup
   ],
 
 };

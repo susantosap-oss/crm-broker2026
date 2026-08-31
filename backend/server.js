@@ -138,6 +138,8 @@ app.use('/api/v1/assets',         require('./routes/assets.routes'));
 app.use('/api/v1/knowledge',      require('./routes/knowledge.routes'));
 // ★ Property Search Engine (Phase 1: Structured Search)
 app.use('/api/v1/search',         require('./routes/search.routes'));
+// ★ WAG Autopost — Auto-share ke WhatsApp Group Internal
+app.use('/api/v1/wag',            require('./routes/wag-autopost.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)
 app.post('/api/v1/admin/trigger-rental-reminder', require('./middleware/auth.middleware').authMiddleware, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: 'Forbidden' });
@@ -178,6 +180,16 @@ app.post('/api/v1/scheduler/poll-vigen', schedulerAuth, async (req, res) => {
     const vigenService = require('./services/vigen.service');
     await vigenService.pollPendingJobs();
     res.json({ success: true, message: 'ViGen poll selesai' });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/v1/scheduler/wag-autopost', schedulerAuth, async (req, res) => {
+  try {
+    const wagService = require('./services/wag-autopost.service');
+    const result = await wagService.autoPost();
+    res.json({ success: true, message: 'WAG autopost selesai', result });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -323,6 +335,9 @@ async function migrateHeaders() {
     { sheet: SHEETS.ASSETS,          cols: COLUMNS.ASSETS },
     { sheet: SHEETS.ASSET_EDITORS,   cols: COLUMNS.ASSET_EDITORS },
     { sheet: SHEETS.ASSET_EDIT_LOG,  cols: COLUMNS.ASSET_EDIT_LOG },
+    // ★ WAG Autopost
+    { sheet: SHEETS.WAG_CONFIG,      cols: COLUMNS.WAG_CONFIG },
+    { sheet: SHEETS.WAG_POST_LOG,    cols: COLUMNS.WAG_POST_LOG },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)

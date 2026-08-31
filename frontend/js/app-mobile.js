@@ -5484,6 +5484,13 @@ function checkAdminMenu() {
   // ★ Personal Assistant — disembunyikan sementara (OpenClaw pending Meta setup)
   const sbPA = document.getElementById('sb-pa');
   if (sbPA) sbPA.style.display = 'none';
+
+  // ★ WAG Bot — tampil untuk admin dan principal
+  const sbWag = document.getElementById('sb-wag');
+  if (sbWag) {
+    const wagRoles = ['admin', 'principal', 'superadmin'];
+    sbWag.style.display = wagRoles.includes(role) ? 'flex' : 'none';
+  }
 }
 
 
@@ -10128,5 +10135,137 @@ async function shareFlyer() {
   } catch (e) {
     if (btn && origText) btn.innerHTML = origText;
     showToast('Gagal share: ' + e.message, 'error');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// WAG BOT SETTINGS
+// ─────────────────────────────────────────────────────────
+
+const _wagState = { groups: [], config: [] };
+
+async function openWagSettings() {
+  openModal('modal-wag-settings');
+  await wagRefreshStatus();
+}
+
+async function wagRefreshStatus() {
+  const dot  = document.getElementById('wag-status-dot');
+  const txt  = document.getElementById('wag-status-text');
+  const sec  = document.getElementById('wag-groups-section');
+  const pairBox = document.getElementById('wag-pairing-code-box');
+  try {
+    const r = await apiFetch('/api/v1/wag/status');
+    const s = r.status;
+    const colors = { connected:'#25D366', pairing:'#f59e0b', initializing:'#60a5fa', disconnected:'#6b7280', reconnecting:'#f59e0b' };
+    const labels = { connected:'Terhubung ✓', pairing:'Menunggu kode...', initializing:'Menghubungkan...', disconnected:'Tidak terhubung', reconnecting:'Mencoba ulang...' };
+    if (dot) dot.style.background = colors[s] || '#6b7280';
+    if (txt) txt.textContent = labels[s] || s;
+    if (sec) sec.style.display = s === 'connected' ? '' : 'none';
+    if (pairBox) pairBox.style.display = s === 'pairing' ? '' : 'none';
+    if (s === 'pairing' && r.pairingCode) {
+      const codeEl = document.getElementById('wag-pairing-code');
+      if (codeEl) codeEl.textContent = r.pairingCode;
+      // Poll status sampai connected
+      setTimeout(wagRefreshStatus, 4000);
+    }
+    if (s === 'connected') {
+      await wagLoadConfig();
+      await wagLoadGroups();
+    }
+  } catch (e) {
+    if (txt) txt.textContent = 'Gagal cek status';
+  }
+}
+
+async function wagPair() {
+  const phone = document.getElementById('wag-phone-input')?.value?.trim();
+  if (!phone) return showToast('Masukkan nomor kantor dulu', 'error');
+  const btn = document.getElementById('wag-btn-pair');
+  if (btn) { btn._orig = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...'; btn.disabled = true; }
+  try {
+    const r = await apiFetch('/api/v1/wag/pair', { method:'POST', body: JSON.stringify({ phone }) });
+    if (r.status === 'pairing') {
+      const pairBox = document.getElementById('wag-pairing-code-box');
+      const codeEl  = document.getElementById('wag-pairing-code');
+      if (pairBox) pairBox.style.display = '';
+      if (codeEl)  codeEl.textContent = r.code || '--------';
+      showToast('Kode pairing siap. Buka WA Bisnis → Linked Devices → Link with Phone Number', 'success');
+      setTimeout(wagRefreshStatus, 5000);
+    } else if (r.status === 'connected') {
+      showToast('Sudah terhubung!', 'success');
+      await wagRefreshStatus();
+    }
+  } catch (e) {
+    showToast('Gagal pair: ' + e.message, 'error');
+  } finally {
+    if (btn && btn._orig) { btn.innerHTML = btn._orig; btn.disabled = false; }
+  }
+}
+
+async function wagDisconnect() {
+  if (!confirm('Putus koneksi WAG Bot dan hapus session?')) return;
+  try {
+    await apiFetch('/api/v1/wag/disconnect', { method:'DELETE' });
+    showToast('WAG Bot terputus', 'info');
+    await wagRefreshStatus();
+  } catch (e) {
+    showToast('Gagal putus: ' + e.message, 'error');
+  }
+}
+
+async function wagLoadGroups() {
+  const list = document.getElementById('wag-groups-list');
+  if (!list) return;
+  list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px">Memuat daftar grup...</div>';
+  try {
+    const r = await apiFetch('/api/v1/wag/groups');
+    _wagState.groups = r.groups || [];
+    wagRenderGroupList();
+  } catch (e) {
+    list.innerHTML = '<div style="color:#f87171;font-size:13px;padding:8px">' + e.message + '</div>';
+  }
+}
+
+async function wagLoadConfig() {
+  try {
+    const r = await apiFetch('/api/v1/wag/config');
+    _wagState.config = r.config || [];
+  } catch (_) { _wagState.config = []; }
+}
+
+function wagRenderGroupList() {
+  const list = document.getElementById('wag-groups-list');
+  if (!list) return;
+  const activeJids = new Set(_wagState.config.filter(c => c.aktif).map(c => c.jid));
+  if (!_wagState.groups.length) {
+    list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px">Tidak ada grup ditemukan</div>';
+    return;
+  }
+  list.innerHTML = _wagState.groups.map(g => `
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0d1829;border:1px solid rgba(255,255,255,0.08);border-radius:10px;cursor:pointer">
+      <input type="checkbox" data-jid="${g.jid}" data-nama="${escapeHtml(g.nama)}" ${activeJids.has(g.jid) ? 'checked' : ''}
+        style="width:16px;height:16px;accent-color:#25D366">
+      <div>
+        <div style="color:#fff;font-size:13px;font-weight:600">${escapeHtml(g.nama)}</div>
+        <div style="color:rgba(255,255,255,0.35);font-size:11px">${g.anggota} anggota</div>
+      </div>
+    </label>`).join('');
+}
+
+async function wagSaveConfig() {
+  const checkboxes = document.querySelectorAll('#wag-groups-list input[type=checkbox]');
+  const selected = [];
+  checkboxes.forEach(cb => {
+    selected.push({ jid: cb.dataset.jid, nama: cb.dataset.nama, aktif: cb.checked });
+  });
+  const aktifCount = selected.filter(g => g.aktif).length;
+  if (aktifCount > 3) return showToast('Maksimal 3 WAG aktif', 'error');
+  try {
+    await apiFetch('/api/v1/wag/config', { method:'POST', body: JSON.stringify({ groups: selected }) });
+    _wagState.config = selected;
+    showToast(`Config WAG disimpan — ${aktifCount} grup aktif`, 'success');
+  } catch (e) {
+    showToast('Gagal simpan config: ' + e.message, 'error');
   }
 }
