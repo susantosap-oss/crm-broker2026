@@ -660,7 +660,8 @@ const COLUMNS = {
     'Group_JID',  // B  WA Group JID (xxxxx@g.us)
     'Nama_Grup',  // C  Nama display grup
     'Aktif',      // D  TRUE|FALSE
-    'Created_At', // E  ISO datetime
+    'Tipe',       // E  listing|aset|all — target konten untuk grup ini
+    'Created_At', // F  ISO datetime
   ],
 
   // ★ WAG_POST_LOG — Log setiap kiriman auto-post

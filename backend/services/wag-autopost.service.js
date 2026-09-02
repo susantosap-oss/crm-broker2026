@@ -85,20 +85,39 @@ class WagAutopostService {
     }
   }
 
+  _listFilesRecursive(dir) {
+    const result = [];
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          result.push(...this._listFilesRecursive(full));
+        } else if (entry.isFile()) {
+          result.push(full);
+        }
+      }
+    } catch (_) {}
+    return result;
+  }
+
   async _uploadSessionToGCS() {
     if (this._uploading) return; // skip jika sudah ada upload berjalan
     this._uploading = true;
     try {
       if (!fs.existsSync(SESSION_DIR)) return;
-      const files = fs.readdirSync(SESSION_DIR);
-      for (const f of files) {
-        const full = path.join(SESSION_DIR, f);
-        if (fs.statSync(full).isFile()) {
+      // Rekursif — tangkap sender-key/pre-key files di subdirektori juga
+      const files = this._listFilesRecursive(SESSION_DIR);
+      for (const full of files) {
+        try {
           await this._uploadFileToGCS(full);
-          // Jeda 150ms antar file — hindari GCS rate limit (429)
-          await new Promise(r => setTimeout(r, 150));
+        } catch (fileErr) {
+          console.warn('[WAG] Skip upload file (mungkin sedang ditulis):', fileErr.message);
         }
+        // Jeda 150ms antar file — hindari GCS rate limit (429)
+        await new Promise(r => setTimeout(r, 150));
       }
+      console.log(`[WAG] Session GCS upload selesai: ${files.length} file`);
     } catch (e) {
       console.error('[WAG] Upload full session GCS gagal:', e.message);
     } finally {
@@ -196,6 +215,7 @@ class WagAutopostService {
   // ── WAG Config (Google Sheets) ───────────────────────────────
 
   async getConfig() {
+    const VALID_TIPES = new Set(['listing', 'aset', 'all']);
     try {
       const rows = await sheetsService.getRows(SHEETS.WAG_CONFIG);
       return (rows || []).map(r => ({
@@ -203,23 +223,26 @@ class WagAutopostService {
         jid:     r[1],
         nama:    r[2],
         aktif:   r[3] === 'TRUE',
-        created: r[4],
+        // r[4] bisa berisi Tipe (data baru) atau Created_At (data lama 5-kolom) — validasi
+        tipe:    VALID_TIPES.has(r[4]) ? r[4] : 'all',
+        created: VALID_TIPES.has(r[4]) ? r[5] : r[4],
       }));
     } catch (_) { return []; }
   }
 
   async saveConfig(groups) {
-    // Hapus semua baris data lama (dari bawah ke atas, skip header row 1)
-    const existing = await sheetsService.getRows(SHEETS.WAG_CONFIG);
-    for (let i = existing.length; i >= 1; i--) {
-      await sheetsService.deleteRow(SHEETS.WAG_CONFIG, i + 1); // +1 karena header di row 1
-    }
+    // Hapus semua baris data (bukan header) dalam 1 API call — jauh lebih cepat dari deleteRow per baris
+    await sheetsService.sheets.spreadsheets.values.clear({
+      spreadsheetId: sheetsService.spreadsheetId,
+      range: `${SHEETS.WAG_CONFIG}!A2:Z`,
+    });
     // Tulis baris baru
     const newRows = groups.map(g => [
       uuidv4(),
       g.jid,
       g.nama,
       g.aktif ? 'TRUE' : 'FALSE',
+      g.tipe || 'all',
       new Date().toISOString(),
     ]);
     if (newRows.length) await sheetsService.appendRows(SHEETS.WAG_CONFIG, newRows);
@@ -234,19 +257,39 @@ class WagAutopostService {
     console.log(`[WAG] autoPost: status=${this._status} config=${config.length} aktif=${activeGroups.length}`);
     if (!activeGroups.length) return { skipped: true, reason: 'Tidak ada WAG aktif' };
 
-    // Jika diminta tunggu (dari scheduler), coba reconnect + wait
-    if (this._status !== 'connected' && waitMs > 0) {
-      await this.connect();
-      await this._waitConnected(waitMs);
-    }
-    // Fail fast — jangan blokir kalau belum connected
-    if (this._status !== 'connected') {
-      this.connect().catch(() => {}); // trigger reconnect di background
-      return { skipped: true, reason: 'WA bot tidak terhubung' };
+    const useFonnte = !!process.env.FONNTE_TOKEN;
+
+    if (!useFonnte) {
+      // Tanpa Fonnte: butuh Baileys connected
+      if (this._status !== 'connected' && waitMs > 0) {
+        await this.connect();
+        await this._waitConnected(waitMs);
+      }
+      if (this._status !== 'connected') {
+        this.connect().catch(() => {});
+        return { skipped: true, reason: 'WA bot tidak terhubung' };
+      }
+      // Guard group cache
+      if (!Object.keys(this._groupCache).length) {
+        try {
+          this._groupCache = await this._sock.groupFetchAllParticipating();
+          await new Promise(r => setTimeout(r, 2000));
+        } catch (e) {
+          console.warn('[WAG] groupFetchAllParticipating gagal:', e.message);
+        }
+      }
     }
 
     // Pilih tipe: forceType jika ada, else random 50/50
     const pick = forceType || (Math.random() < 0.5 ? 'listing' : 'aset');
+
+    // Filter grup berdasarkan tipe konten yang dipilih
+    const targetGroups = activeGroups.filter(g => {
+      const t = g.tipe || 'all';
+      return t === 'all' || t === pick;
+    });
+    if (!targetGroups.length) return { skipped: true, reason: `Tidak ada WAG aktif untuk tipe ${pick}` };
+
     let item, caption, imageUrl;
 
     if (pick === 'listing') {
@@ -267,12 +310,11 @@ class WagAutopostService {
     }
     if (!item) return { skipped: true, reason: `Tidak ada ${pick} yang memenuhi SOP` };
 
-    // Sisipkan URL foto ke caption (text-only, hindari refreshMediaConn timeout)
-    if (imageUrl) caption += `\n\n🖼 ${imageUrl}`;
+    // Link foto tidak dikirim ke WAG (baik listing maupun aset)
 
-    // Kirim ke semua WAG aktif
+    // Kirim ke WAG yang sesuai tipe
     const results = [];
-    for (const group of activeGroups) {
+    for (const group of targetGroups) {
       const sent = await this._sendToGroup(group, null, null, caption);
       results.push(sent);
       if (sent.status.startsWith('sent')) await new Promise(r => setTimeout(r, 3000));
@@ -320,12 +362,13 @@ class WagAutopostService {
     const cols = COLUMNS.ASSETS;
     const idx  = name => cols.indexOf(name);
 
-    // SOP: Status=Publish + Foto_1_URL + Harga_Limit_Lelang + Kode_Asset
+    // SOP: Status=Publish + Foto_1_URL + Harga_Limit_Lelang + Kode_Asset + Est_Harga_Pasar (wajib untuk rasio)
     const eligible = (rows || []).filter(r =>
       r[idx('Status')] === 'Publish' &&
       r[idx('Foto_1_URL')] &&
       r[idx('Harga_Limit_Lelang')] &&
-      r[idx('Kode_Asset')]
+      r[idx('Kode_Asset')] &&
+      r[idx('Est_Harga_Pasar')]
     );
     if (!eligible.length) return { item: null };
 
@@ -333,23 +376,33 @@ class WagAutopostService {
     const item = {};
     cols.forEach((c, i) => { item[c] = r[i]; });
 
-    const caption  = this._captionAset(item);
-    const imageUrl = item.Foto_1_URL || null;
-    return { item, caption, imageUrl };
+    const caption = this._captionAset(item);
+    return { item, caption, imageUrl: null }; // link foto aset tidak dikirim ke WAG
   }
 
   _captionListing(l, agenWA) {
     const aksi   = l.Status_Transaksi === 'Sewa' ? 'DISEWAKAN' : 'DIJUAL';
     const harga  = l.Harga_Format || `Rp ${Number(l.Harga || 0).toLocaleString('id-ID')}`;
     const emoji  = this._emoji(l.Tipe_Properti);
+    // Fallback parse Deskripsi jika kolom terstruktur kosong (data lama simpan spek di free text)
+    const raw = l.Deskripsi || '';
+    const px  = (re) => { const m = raw.match(re); return m ? m[1].trim() : ''; };
+    const lt  = l.Luas_Tanah    || px(/LT\s*[:/]?\s*(\d+)/i);
+    const lb  = l.Luas_Bangunan || px(/LB\s*[:/]?\s*(\d+)/i);
+    const kt  = l.Kamar_Tidur   || px(/(\d+(?:[+\-]\d+)?)\s*KT/i) || px(/KT\s*[:/]?\s*(\d+)/i);
+    const km  = l.Kamar_Mandi   || px(/(\d+(?:[+\-]\d+)?)\s*KM/i) || px(/KM\s*[:/]?\s*(\d+)/i);
+    const srt = l.Sertifikat    || px(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i);
+
     const spek   = [];
-    if (l.Luas_Tanah)    spek.push(`• LT          : ${l.Luas_Tanah} m²`);
-    if (l.Luas_Bangunan) spek.push(`• LB          : ${l.Luas_Bangunan} m²`);
-    if (l.Kamar_Tidur)   spek.push(`• Kamar Tidur : ${l.Kamar_Tidur} KT`);
-    if (l.Kamar_Mandi)   spek.push(`• Kamar Mandi : ${l.Kamar_Mandi} KM`);
-    if (l.Garasi)        spek.push(`• Garasi      : ${l.Garasi}`);
-    if (l.Sertifikat)    spek.push(`• Sertifikat  : ${l.Sertifikat}`);
-    if (l.Lantai)        spek.push(`• Lantai      : ${l.Lantai}`);
+    if (lt)          spek.push(`• LT          : ${lt} m²`);
+    if (lb)          spek.push(`• LB          : ${lb} m²`);
+    if (kt)          spek.push(`• Kamar Tidur : ${kt} KT`);
+    if (km)          spek.push(`• Kamar Mandi : ${km} KM`);
+    if (l.Garasi)    spek.push(`• Garasi      : ${l.Garasi}`);
+    if (l.Lantai)    spek.push(`• Lantai      : ${l.Lantai}`);
+    if (srt)         spek.push(`• Sertifikat  : ${srt}`);
+    if (l.Kondisi)   spek.push(`• Kondisi     : ${l.Kondisi}`);
+    if (l.Fasilitas) spek.push(`• Fasilitas   : ${l.Fasilitas}`);
 
     const loc   = [l.Kecamatan, l.Kota].filter(Boolean).join(', ');
     const link  = `https://crm.mansionpro.id`;
@@ -381,7 +434,18 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
     if (a.Luas_Bangunan) spek.push(`• LB          : ${a.Luas_Bangunan} m²`);
     if (a.Sertifikat)    spek.push(`• Sertifikat  : ${a.Sertifikat}`);
 
-    return `${emoji} *ASET EKSEKUSI* | ${(a.Tipe_Properti || '').toUpperCase()}
+    // Nilai Rasio: Harga Limit / Est Harga Pasar × 100%
+    let rasioLine = '';
+    const limitNum  = Number(a.Harga_Limit_Lelang) || 0;
+    const pasarNum  = Number(a.Est_Harga_Pasar)    || 0;
+    if (limitNum > 0 && pasarNum > 0) {
+      const rasio   = Math.round((limitNum / pasarNum) * 100);
+      const pasarFmt = a.Est_Harga_Pasar_Format || `Rp ${pasarNum.toLocaleString('id-ID')}`;
+      rasioLine = `\n📊 Est. Harga Pasar: ${pasarFmt}\n📉 Nilai Rasio: *${rasio}%* dari harga pasar`;
+    }
+
+    const label = (a.Label_Asset || 'Eksekusi').toUpperCase();
+    return `${emoji} *ASET ${label}* | ${(a.Tipe_Properti || '').toUpperCase()}
 📍 ${loc}
 
 ✨ ${a.Nama_Asset || ''}
@@ -389,7 +453,7 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
 📋 *SPESIFIKASI:*
 ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
 
-💰 Harga Limit: *${harga}*
+💰 Harga Limit: *${harga}*${rasioLine}
 
 🔗 https://crm.mansionpro.id
 🏷 Kode: ${a.Kode_Asset}`;
@@ -422,35 +486,83 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
       new Date().toISOString(),
       tipe,
       tipe === 'listing' ? (item.Kode_Listing || item.ID) : (item.Kode_Asset || item.ID),
-      results.filter(r => r.status === 'sent').length,
+      results.filter(r => r.status === 'sent' || r.status === 'sent_fonnte').length,
       results.filter(r => r.status === 'failed').length,
       JSON.stringify(results),
     ];
     await sheetsService.appendRow(SHEETS.WAG_POST_LOG, row);
   }
 
-  async _sendToGroup(group, _imgBuffer, _imageUrl, caption) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        // Simulasi mengetik seperti wa-blast — "wakes up" koneksi sebelum kirim
-        await this._sock.sendPresenceUpdate('composing', group.jid);
-        await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
-        await this._sock.sendPresenceUpdate('paused', group.jid);
+  // ── Fonnte API sender ────────────────────────────────────────
 
-        await this._sock.sendMessage(group.jid, { text: caption });
-        console.log(`[WAG] sendMessage OK (attempt ${attempt}) → ${group.nama}`);
-        return { jid: group.jid, nama: group.nama, status: 'sent' };
+  async _sendViaFonnte(group, caption) {
+    const token  = process.env.FONNTE_TOKEN;
+    // Kirim full JID (termasuk @g.us) — Fonnte menerima format ini untuk grup
+    const target = group.jid;
+    const ctrl   = new AbortController();
+    const timer  = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const res = await fetch('https://api.fonnte.com/send', {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target, message: caption, countryCode: '62' }),
+      });
+      const data = await res.json();
+      // Fonnte kadang return status:false tapi pesan tetap terkirim (false negative)
+      // Log warning tapi tetap anggap sent jika HTTP 200
+      if (!data.status) {
+        console.warn(`[WAG] Fonnte status false → ${group.nama}: ${data.reason} (pesan mungkin tetap terkirim)`);
+      } else {
+        console.log(`[WAG] Fonnte OK → ${group.nama} (${target})`);
+      }
+      return { jid: group.jid, nama: group.nama, status: 'sent_fonnte', note: data.reason || null };
+    } catch (e) {
+      const errMsg = e.message || String(e);
+      console.warn(`[WAG] Fonnte GAGAL → ${group.nama}: ${errMsg}`);
+      throw new Error(errMsg);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async _sendToGroup(group, _imgBuffer, _imageUrl, caption) {
+    if (process.env.FONNTE_TOKEN) {
+      // Fonnte: HTTP POST — tidak butuh Baileys session
+      try {
+        return await this._sendViaFonnte(group, caption);
       } catch (e) {
-        console.warn(`[WAG] sendMessage attempt ${attempt} GAGAL → ${group.nama}: ${e.message}`);
-        if (e.message && (e.message.includes('Bad MAC') || e.message.includes('Connection Closed'))) {
-          this._status = 'disconnected';
-          setTimeout(() => this._boot(), 5000);
-          return { jid: group.jid, nama: group.nama, status: 'failed', error: e.message };
-        }
-        if (attempt < 2) await new Promise(r => setTimeout(r, 10000)); // tunggu 10s sebelum retry
+        return { jid: group.jid, nama: group.nama, status: 'failed', error: e.message };
       }
     }
-    return { jid: group.jid, nama: group.nama, status: 'failed', error: 'Gagal setelah 2 percobaan' };
+
+    // Fallback Baileys (jika FONNTE_TOKEN tidak di-set)
+    if (!this._groupCache[group.jid]) {
+      try {
+        const meta = await this._sock.groupMetadata(group.jid);
+        this._groupCache[group.jid] = meta;
+      } catch (e) {
+        console.warn(`[WAG] groupMetadata gagal untuk ${group.nama}: ${e.message}`);
+      }
+    }
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        await this._sock.sendMessage(group.jid, { text: caption });
+        console.log(`[WAG] Baileys sendMessage OK (attempt ${attempt}) → ${group.nama}`);
+        this._uploadSessionToGCS().catch(() => {});
+        return { jid: group.jid, nama: group.nama, status: 'sent' };
+      } catch (e) {
+        const errMsg = e.message || String(e);
+        console.warn(`[WAG] Baileys attempt ${attempt} GAGAL → ${group.nama}: ${errMsg}`);
+        if (errMsg.includes('Bad MAC') || errMsg.includes('Connection Closed')) {
+          this._status = 'disconnected';
+          setTimeout(() => this._boot(), 5000);
+          return { jid: group.jid, nama: group.nama, status: 'failed', error: errMsg };
+        }
+        if (attempt < 2) await new Promise(r => setTimeout(r, 15000));
+      }
+    }
+    return { jid: group.jid, nama: group.nama, status: 'failed', error: 'Baileys gagal setelah 2 percobaan' };
   }
 
   async _downloadImageBuffer(url) {
@@ -511,7 +623,7 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
       keepAliveIntervalMs: 25_000,
       syncFullHistory: false,
       generateHighQualityLinkPreview: false,
-      defaultQueryTimeoutMs: 120_000, // sender-key distribution ke banyak anggota butuh waktu
+      defaultQueryTimeoutMs: 300_000, // 5 menit — distribusi sender-key ke banyak anggota butuh waktu
       // Cache groupMetadata — bypass IQ query timeout saat sendMessage ke grup
       cachedGroupMetadata: async (jid) => this._groupCache[jid],
     });
@@ -567,16 +679,28 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
         }
 
         if (connection === 'open') {
-          this._status = 'connected';
-          this._pairingCode = null;
-          this._booting = false;
+          // Clear timeout segera agar 60s promise timeout tidak balapan dengan operasi async di bawah
           clearTimeout(timeout);
-          // Cache semua group metadata — bypass IQ query timeout saat sendMessage
-          sock.groupFetchAllParticipating().then(groups => {
+          this._booting = false;
+
+          // STEP 1: Jeda 5s — biarkan WA selesai handshake + sinkronisasi kunci enkripsi grup
+          // Langsung kirim pesan setelah 'open' sering gagal karena sender-keys belum terdistribusi
+          await new Promise(r => setTimeout(r, 5000));
+
+          // STEP 2: Pre-load group metadata (BLOCKING) — pastikan cache terisi sebelum autoPost
+          // Ini juga "warms up" koneksi enkripsi ke setiap grup sebelum sendMessage
+          try {
+            const groups = await sock.groupFetchAllParticipating();
             this._groupCache = groups;
             console.log(`[WAG] Group cache loaded: ${Object.keys(groups).length} grup`);
-          }).catch(() => {});
-          // Upload session penuh ke GCS setelah connect (non-blocking)
+          } catch (e) {
+            console.warn('[WAG] Group cache load gagal:', e.message);
+          }
+
+          this._status = 'connected';
+          this._pairingCode = null;
+
+          // STEP 3: Upload session penuh ke GCS (inkl. sender-key files) — non-blocking
           this._uploadSessionToGCS().catch(() => {});
           resolve({ status: 'connected' });
         }
@@ -620,6 +744,7 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
       this._sock = null;
     }
     this._status = 'disconnected';
+    this._booting = false; // reset flag agar _boot() berikutnya tidak langsung return
   }
 }
 

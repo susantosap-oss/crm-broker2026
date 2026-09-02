@@ -10237,7 +10237,7 @@ async function wagShowQR() {
   if (btn) { btn._orig = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memuat...'; btn.disabled = true; }
   if (txt) txt.textContent = 'Menghubungkan ke WA...';
   try {
-    const r = await _wagFetch('/api/v1/wag/qr', { method: 'POST' });
+    const r = await _wagFetch('/api/v1/wag/qr', { method: 'POST' }, 30000);
     if (r.status === 'qr_pending') {
       const qrBox = document.getElementById('wag-qr-box');
       const qrImg = document.getElementById('wag-qr-img');
@@ -10248,6 +10248,10 @@ async function wagShowQR() {
     } else if (r.status === 'connected') {
       showToast('Sudah terhubung!', 'success');
       await wagRefreshStatus();
+    } else {
+      // Jika server masih sibuk (initializing/reconnecting), coba lagi 3 detik
+      showToast('Server sedang menghubungkan, coba lagi...', 'info');
+      setTimeout(wagShowQR, 3000);
     }
   } catch (e) {
     showToast('Gagal generate QR: ' + e.message, 'error');
@@ -10317,32 +10321,40 @@ async function wagLoadConfig() {
 function wagRenderGroupList() {
   const list = document.getElementById('wag-groups-list');
   if (!list) return;
-  const activeJids = new Set(_wagState.config.filter(c => c.aktif).map(c => c.jid));
-  const readOnly   = !!_wagState.readOnly;
+  const configMap = {};
+  _wagState.config.forEach(c => { configMap[c.jid] = c; });
+  const readOnly = !!_wagState.readOnly;
   if (!_wagState.groups.length) {
     list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px">Tidak ada grup ditemukan</div>';
     return;
   }
+  const tipeLabel = { listing: 'Listing', aset: 'Aset', all: 'All' };
   list.innerHTML = _wagState.groups.map(g => {
-    const active = activeJids.has(g.jid);
+    const cfg    = configMap[g.jid];
+    const active = !!cfg?.aktif;
+    const tipe   = cfg?.tipe || 'all';
     if (readOnly) {
-      // Tampilan saja, tanpa checkbox interaktif
       return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0d1829;border:1px solid ${active ? 'rgba(37,211,102,0.25)' : 'rgba(255,255,255,0.08)'};border-radius:10px">
         <span style="width:8px;height:8px;border-radius:50%;background:${active ? '#25D366' : '#374151'};flex-shrink:0"></span>
-        <div>
+        <div style="flex:1">
           <div style="color:#fff;font-size:13px;font-weight:600">${escapeHtml(g.nama)}</div>
-          <div style="color:rgba(255,255,255,0.35);font-size:11px">${g.anggota} anggota${active ? ' · <span style="color:#25D366">Aktif</span>' : ''}</div>
+          <div style="color:rgba(255,255,255,0.35);font-size:11px">${g.anggota} anggota${active ? ` · <span style="color:#25D366">Aktif</span> · <span style="color:#94a3b8">${tipeLabel[tipe]||tipe}</span>` : ''}</div>
         </div>
       </div>`;
     }
-    return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0d1829;border:1px solid rgba(255,255,255,0.08);border-radius:10px;cursor:pointer">
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0d1829;border:1px solid rgba(255,255,255,0.08);border-radius:10px">
       <input type="checkbox" data-jid="${g.jid}" data-nama="${escapeHtml(g.nama)}" ${active ? 'checked' : ''}
-        style="width:16px;height:16px;accent-color:#25D366">
-      <div>
-        <div style="color:#fff;font-size:13px;font-weight:600">${escapeHtml(g.nama)}</div>
+        style="width:16px;height:16px;accent-color:#25D366;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="color:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(g.nama)}</div>
         <div style="color:rgba(255,255,255,0.35);font-size:11px">${g.anggota} anggota</div>
       </div>
-    </label>`;
+      <select data-jid-tipe="${g.jid}" style="background:#1a2744;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#e2e8f0;font-size:11px;padding:3px 6px;flex-shrink:0">
+        <option value="all" ${tipe==='all'?'selected':''}>All</option>
+        <option value="listing" ${tipe==='listing'?'selected':''}>Listing</option>
+        <option value="aset" ${tipe==='aset'?'selected':''}>Aset</option>
+      </select>
+    </div>`;
   }).join('');
 }
 
@@ -10351,20 +10363,13 @@ async function wagTestPost(type) {
   const origText = btn?.innerHTML;
   if (btn) { btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim...'; btn.disabled = true; }
   try {
-    const r = await _wagFetch('/api/v1/wag/test', { method: 'POST', body: JSON.stringify({ type }) }, 50000);
-    const res = r.result;
-    if (res?.skipped) {
-      const reason = res.reason || '';
-      if (reason.includes('WAG aktif') || reason.includes('config')) {
-        showToast('Belum ada WAG aktif — pilih grup lalu klik Simpan Pilihan WAG.', 'error');
-      } else {
-        showToast('Bot belum terhubung — sedang reconnect. Coba lagi 15 detik.', 'error');
-        setTimeout(wagRefreshStatus, 5000);
-      }
+    // Fire-and-forget: server return segera, proses kirim berjalan di background
+    // Sender-key distribution ke grup besar bisa makan 3-5 menit pertama kali
+    const r = await _wagFetch('/api/v1/wag/test', { method: 'POST', body: JSON.stringify({ type }) }, 10000);
+    if (r.success) {
+      showToast('Pesan sedang dikirim ke WAG — cek grup dalam 1-5 menit ⏳', 'info');
     } else {
-      const sent = (res?.groups || []).filter(g => g.status === 'sent').length;
-      const fail = (res?.groups || []).filter(g => g.status === 'failed').length;
-      showToast(`Test ${type} terkirim ke ${sent} WAG${fail ? ', gagal ' + fail : ''}`, 'success');
+      showToast(r.message || 'Gagal memulai test', 'error');
     }
   } catch (e) {
     showToast('Gagal test: ' + e.message, 'error');
@@ -10378,10 +10383,11 @@ async function wagSaveConfig() {
   const checkboxes = document.querySelectorAll('#wag-groups-list input[type=checkbox]');
   const selected = [];
   checkboxes.forEach(cb => {
-    selected.push({ jid: cb.dataset.jid, nama: cb.dataset.nama, aktif: cb.checked });
+    const tipeEl = document.querySelector(`[data-jid-tipe="${cb.dataset.jid}"]`);
+    selected.push({ jid: cb.dataset.jid, nama: cb.dataset.nama, aktif: cb.checked, tipe: tipeEl?.value || 'all' });
   });
   const aktifCount = selected.filter(g => g.aktif).length;
-  if (aktifCount > 3) return showToast('Maksimal 3 WAG aktif', 'error');
+  if (aktifCount > 10) return showToast('Maksimal 10 WAG aktif', 'error');
   try {
     await _wagFetch('/api/v1/wag/config', { method: 'POST', body: JSON.stringify({ groups: selected }) });
     _wagState.config = selected;

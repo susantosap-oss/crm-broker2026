@@ -2373,7 +2373,7 @@
       <!-- List WAG untuk dipilih -->
       <div id="wag-groups-section" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <span style="color:rgba(255,255,255,0.6);font-size:12px;text-transform:uppercase;letter-spacing:1px">Pilih WAG Target (maks 3)</span>
+          <span style="color:rgba(255,255,255,0.6);font-size:12px;text-transform:uppercase;letter-spacing:1px">Pilih WAG Target &amp; Tipe Konten</span>
           <button onclick="wagLoadGroups(_wagState.readOnly)" style="background:none;border:none;color:#D4A853;cursor:pointer;font-size:12px"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
         </div>
         <div id="wag-groups-list" style="display:flex;flex-direction:column;gap:8px;max-height:200px;overflow-y:auto"></div>
@@ -2392,10 +2392,14 @@
 
       <!-- Info jadwal -->
       <div style="background:#0d1829;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;margin-top:16px">
-        <div style="color:rgba(255,255,255,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Jadwal Auto-Share</div>
-        <div style="color:rgba(255,255,255,0.7);font-size:13px">⏰ 09:00 WIB — share pertama (Listing / Aset random)</div>
-        <div style="color:rgba(255,255,255,0.7);font-size:13px;margin-top:4px">⏰ 15:00 WIB — share kedua (Listing / Aset random)</div>
-        <div style="color:rgba(255,255,255,0.35);font-size:11px;margin-top:8px">Konten dipilih acak dari Listing aktif &amp; Aset Publish yang memenuhi SOP foto+harga.</div>
+        <div style="color:rgba(255,255,255,0.4);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Jadwal Auto-Share</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="color:rgba(255,255,255,0.7);font-size:13px">⏰ 08:00 WIB — Listing A <span style="color:rgba(255,255,255,0.35);font-size:11px">(random)</span></div>
+          <div style="color:rgba(255,255,255,0.7);font-size:13px">⏰ 09:00 WIB — Aset A <span style="color:rgba(255,255,255,0.35);font-size:11px">(random)</span></div>
+          <div style="color:rgba(255,255,255,0.7);font-size:13px">⏰ 15:00 WIB — Aset B <span style="color:rgba(255,255,255,0.35);font-size:11px">(random)</span></div>
+          <div style="color:rgba(255,255,255,0.7);font-size:13px">⏰ 16:00 WIB — Listing B <span style="color:rgba(255,255,255,0.35);font-size:11px">(random)</span></div>
+        </div>
+        <div style="color:rgba(255,255,255,0.35);font-size:11px;margin-top:8px;line-height:1.6">Setiap grup memiliki target konten sendiri (Listing / Aset / All). Konten dipilih acak dari yang memenuhi SOP.</div>
       </div>
 
     </div>

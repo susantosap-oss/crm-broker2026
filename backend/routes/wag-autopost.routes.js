@@ -33,6 +33,17 @@ function requireManager(req, res, next) {
   next();
 }
 
+// ── Connect (load session GCS, jangan hapus session) ─────────
+
+router.post('/connect', authMiddleware, requireRole, async (req, res) => {
+  try {
+    const result = await wagService.connect();
+    res.json({ success: true, ...result });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // ── QR Code (lebih reliable untuk WA Business) ───────────────
 
 router.post('/qr', authMiddleware, requireRole, async (req, res) => {
@@ -98,16 +109,16 @@ router.post('/config', authMiddleware, requireManager, async (req, res) => {
   }
 });
 
-// ── Manual Test Post ──────────────────────────────────────────
+// ── Manual Test Post (fire-and-forget) ───────────────────────
+// Return segera — sender-key distribution ke grup besar bisa >5 menit
+// Hasil bisa dilihat di WAG grup langsung atau di sheet WAG_POST_LOG
 
-router.post('/test', authMiddleware, requireRole, async (req, res) => {
-  const { type } = req.body; // 'listing' | 'aset' | undefined (random)
-  try {
-    const result = await wagService.autoPost(type);
-    res.json({ success: true, result });
-  } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
-  }
+router.post('/test', authMiddleware, requireRole, (req, res) => {
+  const { type } = req.body;
+  res.json({ success: true, message: 'autoPost dimulai — periksa grup WAG dalam beberapa menit' });
+  wagService.autoPost(type)
+    .then(r  => console.log('[WAG] Test autoPost selesai:', JSON.stringify(r)))
+    .catch(e => console.error('[WAG] Test autoPost error:', e.message));
 });
 
 // ── Disconnect ────────────────────────────────────────────────
