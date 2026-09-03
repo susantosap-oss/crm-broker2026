@@ -31,6 +31,7 @@
     .drawer{transition:transform 0.3s cubic-bezier(0.32,0.72,0,1)}
     .drawer-closed{transform:translateX(100%)}
     .drawer-open{transform:translateX(0)}
+    .rpl-unit-body{display:none}.rpl-unit-body.rpl-open{display:block}
     input:focus,select:focus,textarea:focus{outline:none;box-shadow:0 0 0 2px rgba(212,168,83,0.4)}
     .form-label{display:block;font-size:10px;font-weight:500;color:rgba(255,255,255,0.55);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.08em}
     .form-input{width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:12px 16px;font-size:14px;color:#fff;transition:border-color 0.2s}
@@ -1595,6 +1596,69 @@
   </div>
 
   <!-- PROPERTY SEARCH ENGINE -->
+  <!-- ★ PAGE: RPL PORTFOLIO KKNI VI ───────────────────────── -->
+  <div id="page-rpl" class="page" style="display:none;padding:16px;padding-bottom:100px;max-width:680px;margin:0 auto">
+
+    <!-- Header -->
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <i class="fa-solid fa-id-card-clip" style="color:#a78bfa;font-size:20px"></i>
+        <h2 style="margin:0;font-size:18px;font-weight:700;color:#fff">Portofolio RPL KKNI VI</h2>
+      </div>
+      <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.45)">Rekognisi Pembelajaran Lampau — Agen Properti Profesional</p>
+    </div>
+
+    <!-- Form generate -->
+    <div class="card" style="margin-bottom:16px;padding:16px">
+      <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">Generate Berkas Bukti</div>
+
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:rgba(255,255,255,0.55);display:block;margin-bottom:6px">Pilih Agen</label>
+        <select id="rpl-agent-select" style="width:100%;padding:10px 12px;border-radius:10px;background:#0D1F3C;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:13px;appearance:none">
+          <option value="">-- Memuat daftar agen... --</option>
+        </select>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div>
+          <label style="font-size:12px;color:rgba(255,255,255,0.55);display:block;margin-bottom:6px">Tanggal Mulai</label>
+          <input type="date" id="rpl-date-start" style="width:100%;padding:10px 12px;border-radius:10px;background:#0D1F3C;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:13px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:12px;color:rgba(255,255,255,0.55);display:block;margin-bottom:6px">Tanggal Selesai</label>
+          <input type="date" id="rpl-date-end" style="width:100%;padding:10px 12px;border-radius:10px;background:#0D1F3C;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:13px;box-sizing:border-box">
+        </div>
+      </div>
+
+      <button onclick="generateRplPortfolio()" style="width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer">
+        <i class="fa-solid fa-file-export" style="margin-right:8px"></i>Generate Portofolio
+      </button>
+    </div>
+
+    <!-- Loading state -->
+    <div id="rpl-loading" style="display:none;text-align:center;padding:40px 0">
+      <div style="width:36px;height:36px;border:3px solid rgba(167,139,250,0.2);border-top-color:#a78bfa;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px"></div>
+      <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.45)">Mengambil data dari semua sheet...</p>
+    </div>
+
+    <!-- Result area -->
+    <div id="rpl-result" style="display:none">
+
+      <!-- Summary bar -->
+      <div id="rpl-summary-card" class="card" style="margin-bottom:14px;padding:16px;background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(167,139,250,0.08));border:1px solid rgba(167,139,250,0.25)"></div>
+
+      <!-- Download button -->
+      <button onclick="downloadRplJson()" style="width:100%;padding:11px;border-radius:10px;background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.3);color:#a78bfa;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:16px">
+        <i class="fa-solid fa-download" style="margin-right:6px"></i>Download JSON
+      </button>
+
+      <!-- Unit accordions -->
+      <div id="rpl-units" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+
+  </div>
+  <!-- ── END page-rpl ──────────────────────────────────────── -->
+
   <div id="page-search" class="page" style="display:none;padding:16px;padding-bottom:100px">
 
     <!-- AI mode toggle -->
@@ -1862,6 +1926,7 @@
       </button>
       <button id="sidebar-user-mgmt" onclick="openUserMgmt();closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-users-cog" style="color:#60a5fa;width:16px;text-align:center"></i><span>Manajemen User</span></button>
       <div style="margin:6px 0;border-top:1px solid rgba(255,255,255,0.06)"></div>
+      <button id="sidebar-rpl" onclick="navigateTo('rpl');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-id-card-clip" style="color:#a78bfa;width:16px;text-align:center"></i><span>RPL Portfolio</span><span style="margin-left:auto;font-size:9px;background:rgba(167,139,250,0.2);color:#a78bfa;padding:1px 6px;border-radius:20px;font-weight:700">KKNI</span></button>
       <button id="sidebar-legal" onclick="navigateTo('legal');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-file-contract" style="color:#34d399;width:16px;text-align:center"></i><span>Legal Perjanjian</span></button>
       <button onclick="navigateTo('rental');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-key" style="color:#fb923c;width:16px;text-align:center"></i><span>Status Sewa</span></button>
       <button onclick="navigateTo('wa-contacts');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-brands fa-whatsapp" style="color:#25d366;width:16px;text-align:center"></i><span>Buku Kontak WA</span></button>

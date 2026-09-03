@@ -5491,8 +5491,251 @@ function checkAdminMenu() {
     const wagRoles = ['admin', 'kantor', 'principal', 'superadmin'];
     sbWag.style.display = wagRoles.includes(role) ? 'flex' : 'none';
   }
+
+  // ★ RPL Portfolio — hanya admin/principal/kantor/superadmin
+  const sbRpl = document.getElementById('sidebar-rpl');
+  if (sbRpl) {
+    const rplRoles = ['admin', 'kantor', 'principal', 'superadmin'];
+    sbRpl.style.display = rplRoles.includes(role) ? 'flex' : 'none';
+  }
 }
 
+// ─────────────────────────────────────────────────────────
+// RPL PORTFOLIO KKNI VI
+// ─────────────────────────────────────────────────────────
+let _rplLastData = null;
+
+async function loadRplPage() {
+  try {
+    const res  = await API.get('/agents');
+    const list = (res.data || res || []).filter(a =>
+      a.Status !== 'inactive' && a.Role !== 'superadmin'
+    );
+    const sel = document.getElementById('rpl-agent-select');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- Pilih Agen --</option>' +
+      list.map(a =>
+        `<option value="${a.ID}">${a.Nama} (${a.Role}${a.Nama_Kantor ? ' · ' + a.Nama_Kantor.replace('MANSION : ','') : ''})</option>`
+      ).join('');
+
+    // Default tanggal: awal tahun ini sampai hari ini
+    const today = new Date();
+    const y     = today.getFullYear();
+    const pad   = n => String(n).padStart(2,'0');
+    const todayStr = `${y}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+    const el1 = document.getElementById('rpl-date-start');
+    const el2 = document.getElementById('rpl-date-end');
+    if (el1 && !el1.value) el1.value = `${y}-01-01`;
+    if (el2 && !el2.value) el2.value = todayStr;
+
+    // Reset hasil sebelumnya
+    document.getElementById('rpl-result').style.display  = 'none';
+    document.getElementById('rpl-loading').style.display = 'none';
+  } catch(e) {
+    console.error('[RPL] loadRplPage:', e);
+  }
+}
+
+async function generateRplPortfolio() {
+  const agenId = document.getElementById('rpl-agent-select')?.value;
+  const mulai  = document.getElementById('rpl-date-start')?.value;
+  const selesai= document.getElementById('rpl-date-end')?.value;
+
+  if (!agenId)  return showToast('Pilih agen terlebih dahulu', 'error');
+  if (!mulai || !selesai) return showToast('Isi rentang tanggal', 'error');
+  if (mulai > selesai)    return showToast('Tanggal mulai harus sebelum selesai', 'error');
+
+  const loading = document.getElementById('rpl-loading');
+  const result  = document.getElementById('rpl-result');
+  loading.style.display = 'block';
+  result.style.display  = 'none';
+
+  try {
+    const res = await API.get(`/rpl/portfolio?agen_id=${agenId}&tanggal_mulai=${mulai}&tanggal_selesai=${selesai}`);
+    _rplLastData = res.data || res;
+    renderRplResult(_rplLastData);
+    loading.style.display = 'none';
+    result.style.display  = 'block';
+    result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e) {
+    loading.style.display = 'none';
+    showToast(e.message || 'Gagal generate portfolio', 'error');
+  }
+}
+
+function renderRplResult(data) {
+  const meta   = data.metadata;
+  const summ   = data.summary_skkni;
+  const units  = summ.unit_summary;
+
+  // ── Summary card ──
+  const memenuhi = summ.unit_memenuhi;
+  const pctColor = memenuhi >= 4 ? '#4ade80' : memenuhi >= 3 ? '#f59e0b' : '#f87171';
+  const summCard = document.getElementById('rpl-summary-card');
+  summCard.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:2px">${meta.agen.nama}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.45)">${meta.agen.kantor} · No. LSP: ${meta.agen.nomer_lsp}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${meta.periode.label}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:28px;font-weight:800;color:${pctColor};line-height:1">${memenuhi}/5</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4)">unit memenuhi</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:rgba(0,0,0,0.2);font-size:12px;color:rgba(255,255,255,0.65);line-height:1.5">
+      ${summ.rekomendasi}
+    </div>`;
+
+  // ── Unit accordions ──
+  const UNIT_ICONS = {
+    unit_1:'fa-building', unit_2:'fa-calendar-check',
+    unit_3:'fa-calculator', unit_4:'fa-bullhorn', unit_5:'fa-handshake',
+  };
+  const container = document.getElementById('rpl-units');
+  container.innerHTML = '';
+
+  const unitMap = [
+    { key:'unit_1', data: data.unit_1_kelola_listing },
+    { key:'unit_2', data: data.unit_2_aktivitas_harian },
+    { key:'unit_3', data: data.unit_3_kalkulator_finansial },
+    { key:'unit_4', data: data.unit_4_pemasaran_digital },
+    { key:'unit_5', data: data.unit_5_transaksi },
+  ];
+
+  unitMap.forEach(({ key, data: ud }, i) => {
+    const u     = units[key];
+    const ok    = u.memenuhi;
+    const icon  = UNIT_ICONS[key];
+    const badge = ok
+      ? '<span style="font-size:10px;background:rgba(74,222,128,0.15);color:#4ade80;padding:2px 8px;border-radius:20px;font-weight:700">MEMENUHI</span>'
+      : '<span style="font-size:10px;background:rgba(248,113,113,0.15);color:#f87171;padding:2px 8px;border-radius:20px;font-weight:700">PERLU LENGKAP</span>';
+
+    const body = renderRplUnitBody(key, ud);
+
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.style.cssText = 'padding:0;overflow:hidden';
+    el.innerHTML = `
+      <div onclick="this.parentElement.querySelector('.rpl-unit-body').classList.toggle('rpl-open')"
+           style="padding:14px 16px;display:flex;align-items:center;gap:10px;cursor:pointer">
+        <i class="fa-solid ${icon}" style="color:${ok?'#a78bfa':'rgba(255,255,255,0.3)'};width:16px;text-align:center"></i>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:#fff">${u.nama}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px">${u.skkni}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${badge}
+          <i class="fa-solid fa-chevron-down" style="color:rgba(255,255,255,0.3);font-size:11px;transition:transform .2s"></i>
+        </div>
+      </div>
+      <div class="rpl-unit-body" style="display:none;padding:0 16px 14px;border-top:1px solid rgba(255,255,255,0.06)">
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);padding:8px 0 10px">${u.catatan}</div>
+        ${body}
+      </div>`;
+    container.appendChild(el);
+  });
+
+  // Toggle chevron
+  container.querySelectorAll('.rpl-unit-body').forEach(b => {
+    const obs = new MutationObserver(() => {
+      const chevron = b.previousElementSibling?.querySelector('.fa-chevron-down');
+      if (chevron) chevron.style.transform = b.classList.contains('rpl-open') ? 'rotate(180deg)' : '';
+    });
+    obs.observe(b, { attributes: true, attributeFilter: ['class'] });
+  });
+}
+
+function renderRplUnitBody(key, ud) {
+  if (!ud) return '';
+  const fmt = (n) => n ? `Rp ${Number(n).toLocaleString('id-ID')}` : '-';
+  const row = (label, val) =>
+    `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px">
+      <span style="color:rgba(255,255,255,0.45)">${label}</span>
+      <span style="color:#fff;font-weight:500;text-align:right;max-width:60%">${val ?? '-'}</span>
+    </div>`;
+
+  if (key === 'unit_1') {
+    const r = ud.ringkasan;
+    return `
+      ${row('Total Listing Portfolio', r.total_listing_portfolio)}
+      ${row('Ditambah Periode Ini', r.listing_ditambah_periode)}
+      ${row('Aktif / Terjual / Tersewa', `${r.listing_aktif} / ${r.listing_terjual} / ${r.listing_tersewa}`)}
+      ${row('Listing dengan Foto', r.listing_dengan_foto)}
+      ${row('Listing dengan Video ViGen', r.listing_dengan_video_vigen)}
+      ${row('Tayang di Web', r.listing_tayang_web)}
+      ${row('Co-Own', r.listing_co_own)}
+      <div style="margin-top:10px;font-size:11px;color:rgba(255,255,255,0.35)">*Detail listing tersedia di file JSON</div>`;
+  }
+  if (key === 'unit_2') {
+    const r = ud.ringkasan;
+    return `
+      ${row('Hari Aktif Input', r.total_hari_aktif)}
+      ${row('Input SOP 16.00–21.00', r.input_dalam_sop_1621)}
+      ${row('% Compliance SOP', r.pct_sop_compliance)}
+      ${row('Leads Baru', r.total_leads_baru)}
+      ${row('Viewing (Pengantaran Lokasi)', r.total_viewing)}
+      ${row('Meeting', r.total_meeting)}
+      ${row('Follow-Up Tasks', r.total_fu_tasks)}
+      ${row('WA Terkirim', r.total_wa_terkirim)}
+      ${row('Canvasing Lapangan', r.total_canvasing)}
+      ${row('Canvasing Converted', r.canvasing_converted)}`;
+  }
+  if (key === 'unit_3') {
+    const r = ud.ringkasan;
+    const m = ud.metodologi;
+    return `
+      ${row('Kalkulasi Vendor Net Sheet', r.total_kalkulasi_vendor)}
+      ${row('Kalkulasi Buyer Acquisition', r.total_kalkulasi_buyer)}
+      ${row('Kalkulasi Investasi Properti', r.total_kalkulasi_investasi)}
+      <div style="margin-top:10px;padding:10px;border-radius:8px;background:rgba(255,255,255,0.04);font-size:11px;color:rgba(255,255,255,0.4);line-height:1.6">
+        <b style="color:rgba(255,255,255,0.6)">Metodologi:</b><br>
+        PPh Final: ${m.pph_final}<br>
+        BPHTB: ${m.bphtb}<br>
+        Notaris: ${m.notaris}<br>
+        KPR: ${m.kpr}
+      </div>`;
+  }
+  if (key === 'unit_4') {
+    const r = ud.ringkasan;
+    const sp = r.share_per_platform || {};
+    return `
+      ${row('Total Share Konten', r.total_share_konten)}
+      ${row('Listing Unik Dishare', r.listing_unik_dishare)}
+      ${row('KPI Min. 5 Listing Tercapai', r.memenuhi_kpi_min_5 ? '✅ YA' : '❌ BELUM')}
+      ${row('WA / WA Business', `${sp.wa||0} / ${sp.wa_business||0}`)}
+      ${row('Instagram / TikTok / Facebook', `${sp.instagram||0} / ${sp.tiktok||0} / ${sp.facebook||0}`)}
+      ${row('Video ViGen Done', r.total_video_vigen_done)}
+      ${row('Video ViGen Request', r.total_video_vigen_request)}
+      ${row('PA Jobs Selesai', r.pa_jobs_selesai)}`;
+  }
+  if (key === 'unit_5') {
+    const r = ud.ringkasan;
+    const lk = r.legal_per_kategori || {};
+    return `
+      ${row('Total Deal Closing', r.total_deal_closed)}
+      ${row('Komisi Diajukan', r.total_komisi_diajukan)}
+      ${row('Komisi Disetujui', r.total_komisi_disetujui)}
+      ${row('Total Komisi Earned', r.total_komisi_format)}
+      ${row('Rental Aktif', r.total_rental_aktif)}
+      ${row('Legal Docs (PJB / Sewa / SPR)', `${lk.PJB||0} / ${lk.Sewa||0} / ${lk.SPR||0}`)}`;
+  }
+  return '';
+}
+
+function downloadRplJson() {
+  if (!_rplLastData) return;
+  const blob = new Blob([JSON.stringify(_rplLastData, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const nama = (_rplLastData.metadata?.agen?.nama || 'agen').replace(/\s+/g, '_');
+  const tgl  = (_rplLastData.metadata?.periode?.mulai || '').replace(/-/g,'');
+  a.href     = url;
+  a.download = `RPL_KKNI_VI_${nama}_${tgl}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // ─────────────────────────────────────────────────────────
 // NOTIFICATIONS

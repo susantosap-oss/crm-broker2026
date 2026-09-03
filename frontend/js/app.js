@@ -237,6 +237,7 @@ async function navigateTo(page) {
     pipeline:  'Pipeline Kanban',
     komisi:    'Request Komisi',
     search:    'Property Search',
+    rpl:       'RPL Portfolio KKNI VI',
   };
   setText('page-title', titles[page] || page);
   STATE.currentPage = page;
@@ -252,6 +253,7 @@ async function navigateTo(page) {
   if (page === 'rental')    await loadRentals();
   if (page === 'komisi' && typeof loadKomisiPage === 'function') await loadKomisiPage();
   if (page === 'search') await loadSearchPage();
+  if (page === 'rpl' && typeof loadRplPage === 'function') await loadRplPage();
 
   // Scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' });
