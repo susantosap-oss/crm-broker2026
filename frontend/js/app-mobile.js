@@ -5919,24 +5919,33 @@ function downloadRplPdf() {
         const vns = ud.vendor_net_sheet || [];
         if (vns.length) {
           y += 4; hdr('VENDOR NET SHEET (' + Math.min(vns.length,8) + ' dari ' + vns.length + ')');
+          // right-aligned columns: no overflow between cols
+          const C1x=ml+2, C1w=58, C2r=ml+95, C3r=ml+127, C4r=ml+174;
           sf(C.purple); pdf.rect(ml, y-3, cW, 6, 'F');
-          pdf.setFont('helvetica','bold'); pdf.setFontSize(7.5); sc(C.white);
-          tx('Listing', ml+2, y+1); tx('Harga Jual', ml+70, y+1);
-          tx('PPh 2.5%', ml+100, y+1); tx('Net Penjual', ml+130, y+1);
+          pdf.setFont('helvetica','bold'); pdf.setFontSize(7); sc(C.white);
+          tx('Kode & Nama Listing', C1x, y+1);
+          tx('Harga Jual', C2r, y+1, { align:'right' });
+          tx('PPh 2.5%',   C3r, y+1, { align:'right' });
+          tx('Net Penjual', C4r, y+1, { align:'right' });
           y += 7;
           vns.slice(0, 8).forEach((v, i) => {
-            cy(8);
-            if (i%2===0) { sf(C.light); pdf.rect(ml, y-3, cW, 7, 'F'); }
-            pdf.setFont('helvetica','bold'); pdf.setFontSize(7.5); sc(C.purple);
-            tx(esc(v.kode_listing), ml+2, y);
+            cy(12);
+            if (i%2===0) { sf(C.light); pdf.rect(ml, y-3, cW, 11, 'F'); }
+            // kode (line 1, bold purple)
+            pdf.setFont('helvetica','bold'); pdf.setFontSize(6.5); sc(C.purple);
+            tx(esc(v.kode_listing), C1x, y);
+            // nama (line 2, normal dark, max C1w)
             pdf.setFont('helvetica','normal'); sc(C.dark);
-            const nl = pdf.splitTextToSize(esc(v.nama_listing||''), 55);
-            tx(nl[0], ml+22, y);
-            tx(esc(v.harga_jual_format||'-'), ml+70, y);
-            tx(esc(v.pph_format||'-'), ml+100, y);
+            const nl = pdf.splitTextToSize(esc(v.nama_listing||''), C1w);
+            tx(nl[0], C1x, y+4.5);
+            // values right-aligned at fixed right edges
+            pdf.setFontSize(7); sc(C.dark);
+            tx(esc(v.harga_jual_format||'-'), C2r, y+2, { align:'right' });
+            sc(C.gray);
+            tx(esc(v.pph_format||'-'), C3r, y+2, { align:'right' });
             pdf.setFont('helvetica','bold'); sc(C.green);
-            tx(esc(v.net_income_format||'-'), ml+130, y);
-            y += 7;
+            tx(esc(v.net_income_format||'-'), C4r, y+2, { align:'right' });
+            y += 11;
           });
         }
       }
