@@ -148,6 +148,8 @@ app.use('/api/v1/knowledge',      require('./routes/knowledge.routes'));
 app.use('/api/v1/search',         require('./routes/search.routes'));
 // ★ WAG Autopost — Auto-share ke WhatsApp Group Internal
 app.use('/api/v1/wag',            require('./routes/wag-autopost.routes'));
+// ★ RPL — Portofolio Bukti KKNI VI untuk pengajuan RPL
+app.use('/api/v1/rpl',            require('./routes/rpl.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)
 app.post('/api/v1/admin/trigger-rental-reminder', require('./middleware/auth.middleware').authMiddleware, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: 'Forbidden' });
