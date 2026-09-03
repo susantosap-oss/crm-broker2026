@@ -363,6 +363,7 @@ class WagAutopostService {
     const idx  = name => cols.indexOf(name);
 
     // SOP: Status=Publish + Foto_1_URL + Harga_Limit_Lelang + Kode_Asset + Est_Harga_Pasar (wajib untuk rasio)
+    // Rasio = Est_Harga_Pasar / Harga_Limit — jika rasio ≥ 2.0 → ditandai SELLABLE di caption
     const eligible = (rows || []).filter(r =>
       r[idx('Status')] === 'Publish' &&
       r[idx('Foto_1_URL')] &&
@@ -434,14 +435,17 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
     if (a.Luas_Bangunan) spek.push(`• LB          : ${a.Luas_Bangunan} m²`);
     if (a.Sertifikat)    spek.push(`• Sertifikat  : ${a.Sertifikat}`);
 
-    // Nilai Rasio: Harga Limit / Est Harga Pasar × 100%
+    // Nilai Rasio = Est_Harga_Pasar / Harga_Limit (multiplier)
+    // Contoh: Pasar 2B / Limit 1B = 2.0x → Sellable (min ratio ≥ 2.0)
     let rasioLine = '';
     const limitNum  = Number(a.Harga_Limit_Lelang) || 0;
     const pasarNum  = Number(a.Est_Harga_Pasar)    || 0;
     if (limitNum > 0 && pasarNum > 0) {
-      const rasio   = Math.round((limitNum / pasarNum) * 100);
+      const rasio    = pasarNum / limitNum;
+      const rasioFmt = rasio.toFixed(1);
+      const sellable = rasio >= 2 ? ' ✅ *SELLABLE*' : '';
       const pasarFmt = a.Est_Harga_Pasar_Format || `Rp ${pasarNum.toLocaleString('id-ID')}`;
-      rasioLine = `\n📊 Est. Harga Pasar: ${pasarFmt}\n📉 Nilai Rasio: *${rasio}%* dari harga pasar`;
+      rasioLine = `\n📊 Est. Harga Pasar: ${pasarFmt}\n📊 Nilai Rasio: *${rasioFmt}x*${sellable}`;
     }
 
     const label = (a.Label_Asset || 'Eksekusi').toUpperCase();
