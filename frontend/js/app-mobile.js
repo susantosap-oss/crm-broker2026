@@ -5506,33 +5506,38 @@ function checkAdminMenu() {
 let _rplLastData = null;
 
 async function loadRplPage() {
+  const sel = document.getElementById('rpl-agent-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- Memuat... --</option>';
   try {
     const res  = await API.get('/agents');
-    const list = (res.data || res || []).filter(a =>
-      a.Status !== 'inactive' && a.Role !== 'superadmin'
-    );
-    const sel = document.getElementById('rpl-agent-select');
-    if (!sel) return;
+    const list = (res.data || []).filter(a => a.ID && a.Status !== 'Nonaktif');
+    if (!list.length) {
+      sel.innerHTML = '<option value="">-- Tidak ada agen tersedia --</option>';
+      return;
+    }
     sel.innerHTML = '<option value="">-- Pilih Agen --</option>' +
-      list.map(a =>
-        `<option value="${a.ID}">${a.Nama} (${a.Role}${a.Nama_Kantor ? ' · ' + a.Nama_Kantor.replace('MANSION : ','') : ''})</option>`
-      ).join('');
+      list.map(a => {
+        const kantor = (a.Nama_Kantor || '').replace('MANSION : ', '');
+        const label  = `${a.Nama} (${a.Role}${kantor ? ' · ' + kantor : ''})`;
+        return `<option value="${a.ID}">${label}</option>`;
+      }).join('');
 
-    // Default tanggal: awal tahun ini sampai hari ini
-    const today = new Date();
-    const y     = today.getFullYear();
-    const pad   = n => String(n).padStart(2,'0');
+    const today    = new Date();
+    const y        = today.getFullYear();
+    const pad      = n => String(n).padStart(2, '0');
     const todayStr = `${y}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
     const el1 = document.getElementById('rpl-date-start');
     const el2 = document.getElementById('rpl-date-end');
     if (el1 && !el1.value) el1.value = `${y}-01-01`;
     if (el2 && !el2.value) el2.value = todayStr;
 
-    // Reset hasil sebelumnya
     document.getElementById('rpl-result').style.display  = 'none';
     document.getElementById('rpl-loading').style.display = 'none';
   } catch(e) {
     console.error('[RPL] loadRplPage:', e);
+    sel.innerHTML = '<option value="">-- Gagal memuat agen --</option>';
+    showToast('Gagal memuat daftar agen: ' + (e.message || ''), 'error');
   }
 }
 
