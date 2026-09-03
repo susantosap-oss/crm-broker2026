@@ -1653,10 +1653,15 @@
       <!-- Summary bar -->
       <div id="rpl-summary-card" class="card" style="margin-bottom:14px;padding:16px;background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(167,139,250,0.08));border:1px solid rgba(167,139,250,0.25)"></div>
 
-      <!-- Download button -->
-      <button onclick="downloadRplJson()" style="width:100%;padding:11px;border-radius:10px;background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.3);color:#a78bfa;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:16px">
-        <i class="fa-solid fa-download" style="margin-right:6px"></i>Download JSON
-      </button>
+      <!-- Download buttons -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        <button onclick="downloadRplJson()" style="padding:11px;border-radius:10px;background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.3);color:#a78bfa;font-size:13px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-download" style="margin-right:6px"></i>Download JSON
+        </button>
+        <button onclick="downloadRplPdf()" style="padding:11px;border-radius:10px;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:#f87171;font-size:13px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-file-pdf" style="margin-right:6px"></i>Download PDF
+        </button>
+      </div>
 
       <!-- Unit accordions -->
       <div id="rpl-units" style="display:flex;flex-direction:column;gap:10px"></div>

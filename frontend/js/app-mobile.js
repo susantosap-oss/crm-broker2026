@@ -5729,6 +5729,277 @@ function renderRplUnitBody(key, ud) {
   return '';
 }
 
+function downloadRplPdf() {
+  if (!_rplLastData) return showToast('Generate portfolio dulu', 'error');
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pW   = 210, pH = 297, ml = 18, mr = 18, cW = pW - ml - mr;
+    let y = 25;
+
+    const C = {
+      purple: [124, 58, 237], gold: [212, 168, 83], white: [255, 255, 255],
+      dark: [13, 21, 38], gray: [120, 120, 140], green: [40, 180, 99],
+      red: [220, 60, 60], light: [245, 243, 255], lightGray: [230, 230, 240],
+    };
+
+    const d       = _rplLastData;
+    const meta    = d.metadata;
+    const summ    = d.summary_skkni;
+    const uSumm   = summ.unit_summary;
+
+    const sc  = (rgb) => pdf.setTextColor(...rgb);
+    const sf  = (rgb) => pdf.setFillColor(...rgb);
+    const sd  = (rgb) => pdf.setDrawColor(...rgb);
+    const tx  = (s, x, yy, o) => pdf.text(String(s ?? ''), x, yy, o || {});
+    const np  = () => { pdf.addPage(); y = 22; };
+    const cy  = (n) => { if (y + n > pH - 15) np(); };
+    const esc = (s) => String(s ?? '').replace(/[^\x00-\x7F]/g, c => {
+      const map = { 'a':'a','i':'i','u':'u','e':'e','o':'o','A':'A','I':'I','U':'U','E':'E','O':'O' };
+      return map[c] || c;
+    });
+
+    const hdr = (title, sub) => {
+      cy(14);
+      sf(C.purple); pdf.rect(ml, y - 4, cW, 9, 'F');
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9.5); sc(C.white);
+      tx(title, ml + 3, y + 1.5);
+      if (sub) {
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); sc([200, 190, 255]);
+        tx(sub, ml + 3, y + 6); y += 13;
+      } else { y += 11; }
+    };
+
+    const kv = (label, val, alt) => {
+      cy(7);
+      if (alt) { sf(C.light); pdf.rect(ml, y - 3.5, cW, 6, 'F'); }
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); sc(C.gray);
+      tx(label, ml + 2, y);
+      pdf.setFont('helvetica', 'bold'); sc(C.dark);
+      const ws = pdf.splitTextToSize(esc(String(val ?? '-')), 78);
+      tx(ws, ml + 90, y); y += 5.5 + Math.max(0, ws.length - 1) * 4;
+    };
+
+    // ── COVER ─────────────────────────────────────────────
+    sf(C.purple); pdf.rect(0, 0, pW, 48, 'F');
+    sf(C.gold);   pdf.rect(0, 48, pW, 2, 'F');
+
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(17); sc(C.white);
+    tx('BERKAS BUKTI PORTOFOLIO RPL KKNI LEVEL VI', pW/2, 20, { align: 'center' });
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); sc([210, 200, 255]);
+    tx('Rekognisi Pembelajaran Lampau - Agen Properti Profesional', pW/2, 30, { align: 'center' });
+    pdf.setFontSize(8.5); sc([180, 175, 230]);
+    tx('Skema: Agen Properti KKNI Level VI', pW/2, 38, { align: 'center' });
+
+    y = 60;
+
+    // Agent info
+    sf(C.light); sd(C.purple);
+    pdf.roundedRect(ml, y, cW, 52, 3, 3, 'FD');
+    y += 10;
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(14); sc(C.purple);
+    tx(esc(meta.agen.nama), pW/2, y, { align: 'center' });
+    y += 7;
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); sc(C.gray);
+    tx(esc(meta.agen.kantor), pW/2, y, { align: 'center' });
+    y += 6;
+    pdf.setFontSize(8.5);
+    tx('No. LSP: ' + esc(meta.agen.nomer_lsp) + '   |   Role: ' + meta.agen.role.toUpperCase(), pW/2, y, { align: 'center' });
+    y += 6;
+    tx('Join: ' + esc(meta.agen.join_date) + '   |   No WA: ' + esc(meta.agen.no_wa), pW/2, y, { align: 'center' });
+    y += 9;
+    sf(C.purple); pdf.roundedRect(ml + 28, y - 4, cW - 56, 8, 2, 2, 'F');
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9.5); sc(C.white);
+    tx('Periode: ' + esc(meta.periode.label), pW/2, y + 1, { align: 'center' });
+    y += 14;
+
+    // 5-unit status boxes
+    const uKeys  = ['unit_1','unit_2','unit_3','unit_4','unit_5'];
+    const uShort = ['Listing','Aktivitas','Kalkulator','Pemasaran','Transaksi'];
+    const bW = (cW - 8) / 5;
+    uKeys.forEach((k, i) => {
+      const u = uSumm[k], ok = u.memenuhi;
+      const bx = ml + i * (bW + 2);
+      sf(ok ? [220, 252, 231] : [254, 226, 226]); sd(ok ? C.green : C.red);
+      pdf.roundedRect(bx, y, bW, 22, 2, 2, 'FD');
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(14);
+      sc(ok ? C.green : C.red);
+      tx(ok ? 'YA' : 'TDK', bx + bW/2, y + 10, { align: 'center' });
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(6.5); sc([60, 60, 80]);
+      tx(uShort[i], bx + bW/2, y + 16, { align: 'center' });
+      tx('(' + u.bukti + ')', bx + bW/2, y + 20, { align: 'center' });
+    });
+    y += 30;
+
+    // Recommendation box
+    sf(C.lightGray); sd(C.gray);
+    const recLines = pdf.splitTextToSize(esc(summ.rekomendasi), cW - 8);
+    pdf.roundedRect(ml, y, cW, 8 + recLines.length * 5, 2, 2, 'FD');
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5); sc(C.purple);
+    tx('REKOMENDASI:', ml + 4, y + 6);
+    pdf.setFont('helvetica', 'normal'); sc(C.dark);
+    tx(recLines, ml + 4, y + 11);
+    y += 14 + Math.max(0, recLines.length - 1) * 5;
+
+    y += 5;
+    pdf.setFont('helvetica', 'italic'); pdf.setFontSize(7.5); sc(C.gray);
+    tx('Digenerate otomatis oleh Mansion CRM pada ' +
+      new Date(meta.generated_at).toLocaleString('id-ID'), pW/2, y, { align: 'center' });
+    y += 6;
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10.5);
+    sc(summ.unit_memenuhi >= 4 ? C.green : C.red);
+    tx(summ.unit_memenuhi + ' dari ' + summ.total_unit + ' unit memenuhi persyaratan', pW/2, y, { align: 'center' });
+
+    // ── UNIT PAGES ───────────────────────────────────────
+    const unitPages = [
+      { key:'unit_1', label:'UNIT 1 - KELOLA LISTING',                skkni:'SKKNI Unit 4, 10, 11 & L.68BPR20.009.2',       data: d.unit_1_kelola_listing },
+      { key:'unit_2', label:'UNIT 2 - AKTIVITAS HARIAN & PROSPEKSI',  skkni:'SKKNI Unit 7, 8, 13 & L.68BPR20.012.2',        data: d.unit_2_aktivitas_harian },
+      { key:'unit_3', label:'UNIT 3 - KALKULATOR FINANSIAL',          skkni:'SKKNI Unit 15, 16 & L.68BPR20.008.2',          data: d.unit_3_kalkulator_finansial },
+      { key:'unit_4', label:'UNIT 4 - PEMASARAN DIGITAL & KONTEN',    skkni:'SKKNI Unit 12 & L.68BPR20.013.2, .014.2',      data: d.unit_4_pemasaran_digital },
+      { key:'unit_5', label:'UNIT 5 - TRANSAKSI & AKAD NOTARIS',      skkni:'SKKNI Unit 14, 17 & L.68BPR20.015.2, .016.2',  data: d.unit_5_transaksi },
+    ];
+
+    unitPages.forEach(({ key, label, skkni, data: ud }) => {
+      np();
+      const u = uSumm[key], ok = u.memenuhi;
+
+      // page header band
+      sf(C.dark); pdf.rect(0, 0, pW, 20, 'F');
+      sf(ok ? C.green : C.red); pdf.rect(0, 20, pW, 2, 'F');
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11.5); sc(C.white);
+      tx(label, ml, 12);
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); sc([180, 180, 210]);
+      tx(skkni, ml, 17.5);
+      // badge
+      sf(ok ? C.green : C.red);
+      pdf.roundedRect(pW - mr - 36, 6.5, 34, 7, 2, 2, 'F');
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(7.5); sc(C.white);
+      tx(ok ? 'MEMENUHI' : 'PERLU LENGKAP', pW - mr - 36 + 17, 11.5, { align: 'center' });
+      y = 30;
+
+      // ringkasan
+      hdr('RINGKASAN DATA', u.catatan);
+      const r = ud.ringkasan || {};
+      let alt = false;
+      Object.entries(r).forEach(([k2, v]) => {
+        if (v && typeof v === 'object' && !Array.isArray(v)) {
+          Object.entries(v).forEach(([k3, v3]) => { kv(k3.replace(/_/g,' '), v3, alt); alt=!alt; });
+        } else { kv(k2.replace(/_/g,' '), v, alt); alt=!alt; }
+      });
+
+      // Unit-specific tables
+      if (key === 'unit_1' && ud.records?.length) {
+        y += 4; hdr('DAFTAR LISTING (' + ud.records.length + ' total)');
+        // table header
+        sf(C.purple);
+        pdf.rect(ml, y - 3, cW, 6, 'F');
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(7.5); sc(C.white);
+        tx('Kode', ml+2, y+1); tx('Nama Listing', ml+22, y+1);
+        tx('Status', ml+112, y+1); tx('Harga', ml+140, y+1);
+        y += 7;
+        ud.records.slice(0, 25).forEach((l, i) => {
+          cy(7);
+          if (i%2===0) { sf(C.light); pdf.rect(ml, y-3, cW, 6, 'F'); }
+          pdf.setFont('helvetica', 'bold'); pdf.setFontSize(7.5); sc(C.purple);
+          tx(esc(l.kode||'-'), ml+2, y);
+          pdf.setFont('helvetica', 'normal'); sc(C.dark);
+          const n = pdf.splitTextToSize(esc(l.nama||'-'), 86);
+          tx(n[0], ml+22, y);
+          sc(C.gray); tx(esc(l.status_listing||'-'), ml+112, y);
+          tx(esc(l.harga_format||'-'), ml+140, y);
+          y += 6.5;
+        });
+        if (ud.records.length > 25) {
+          pdf.setFont('helvetica','italic'); pdf.setFontSize(7.5); sc(C.gray);
+          tx('... dan ' + (ud.records.length-25) + ' listing lainnya (lihat file JSON)', ml, y); y+=6;
+        }
+      }
+
+      if (key === 'unit_3') {
+        const vns = ud.vendor_net_sheet || [];
+        if (vns.length) {
+          y += 4; hdr('VENDOR NET SHEET (' + Math.min(vns.length,8) + ' dari ' + vns.length + ')');
+          sf(C.purple); pdf.rect(ml, y-3, cW, 6, 'F');
+          pdf.setFont('helvetica','bold'); pdf.setFontSize(7.5); sc(C.white);
+          tx('Listing', ml+2, y+1); tx('Harga Jual', ml+70, y+1);
+          tx('PPh 2.5%', ml+100, y+1); tx('Net Penjual', ml+130, y+1);
+          y += 7;
+          vns.slice(0, 8).forEach((v, i) => {
+            cy(8);
+            if (i%2===0) { sf(C.light); pdf.rect(ml, y-3, cW, 7, 'F'); }
+            pdf.setFont('helvetica','bold'); pdf.setFontSize(7.5); sc(C.purple);
+            tx(esc(v.kode_listing), ml+2, y);
+            pdf.setFont('helvetica','normal'); sc(C.dark);
+            const nl = pdf.splitTextToSize(esc(v.nama_listing||''), 55);
+            tx(nl[0], ml+22, y);
+            tx(esc(v.harga_jual_format||'-'), ml+70, y);
+            tx(esc(v.pph_format||'-'), ml+100, y);
+            pdf.setFont('helvetica','bold'); sc(C.green);
+            tx(esc(v.net_income_format||'-'), ml+130, y);
+            y += 7;
+          });
+        }
+      }
+
+      if (key === 'unit_5') {
+        const deals = ud.deals || [];
+        if (deals.length) {
+          y += 4; hdr('HISTORY DEAL CLOSING (' + deals.length + ')');
+          sf(C.purple); pdf.rect(ml, y-3, cW, 6, 'F');
+          pdf.setFont('helvetica','bold'); pdf.setFontSize(7.5); sc(C.white);
+          tx('Buyer', ml+2, y+1); tx('Tipe', ml+75, y+1);
+          tx('Listing/Proyek', ml+100, y+1); tx('Komisi', ml+148, y+1);
+          y += 7;
+          deals.slice(0, 12).forEach((dl, i) => {
+            cy(8);
+            if (i%2===0) { sf(C.light); pdf.rect(ml, y-3, cW, 7, 'F'); }
+            pdf.setFont('helvetica','bold'); pdf.setFontSize(7.5); sc(C.dark);
+            tx((i+1)+'. '+esc(dl.nama_buyer||'-'), ml+2, y);
+            pdf.setFont('helvetica','normal'); sc(C.gray);
+            tx(esc(dl.closing_tipe||'-'), ml+75, y);
+            const ln = pdf.splitTextToSize(esc(dl.listing_nama||'-'), 44);
+            tx(ln[0], ml+100, y);
+            if (dl.komisi) { pdf.setFont('helvetica','bold'); sc(C.green); tx(esc(dl.komisi.nominal||'-'), ml+148, y); }
+            y += 7;
+          });
+        }
+        const legal = ud.legal_docs || [];
+        if (legal.length) {
+          y += 4; hdr('DOKUMEN LEGAL (' + legal.length + ')');
+          legal.slice(0, 10).forEach((l, i) => {
+            cy(8);
+            if (i%2===0) { sf(C.light); pdf.rect(ml, y-3, cW, 7, 'F'); }
+            pdf.setFont('helvetica','bold'); pdf.setFontSize(7.5); sc(C.purple);
+            tx(esc(l.kategori||'-'), ml+2, y);
+            pdf.setFont('helvetica','normal'); sc(C.dark);
+            tx(esc(l.nama_klien||'-'), ml+20, y);
+            sc(C.gray);
+            tx(esc(l.alamat_unit||'-'), ml+80, y);
+            y += 7;
+          });
+        }
+      }
+    });
+
+    // ── page numbers ──────────────────────────────────────
+    const totalPages = pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); sc(C.gray);
+      tx('Mansion CRM - Portofolio RPL KKNI VI - ' + esc(meta.agen.nama), ml, pH - 8);
+      tx('Halaman ' + i + ' / ' + totalPages, pW - mr, pH - 8, { align: 'right' });
+    }
+
+    const nama = esc(meta.agen.nama || 'agen').replace(/\s+/g, '_');
+    const tgl  = (meta.periode.mulai || '').replace(/-/g, '');
+    pdf.save('RPL_KKNI_VI_' + nama + '_' + tgl + '.pdf');
+    showToast('PDF berhasil diunduh!', 'success');
+  } catch(e) {
+    console.error('[RPL PDF]', e);
+    showToast('Gagal buat PDF: ' + e.message, 'error');
+  }
+}
+
 function downloadRplJson() {
   if (!_rplLastData) return;
   const blob = new Blob([JSON.stringify(_rplLastData, null, 2)], { type: 'application/json' });
