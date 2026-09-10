@@ -2071,7 +2071,56 @@ async function saveJudulListing(id) {
 
 // PR 7: Share to WhatsApp — plain text, no emoji, + Hubungi agen
 // ── Share WA helpers ──────────────────────────────────────
-let _shareWAListingId = null;
+let _shareWAListingId    = null;
+let _shareSelectedFotoUrl = null;
+
+// Tampilkan photo picker bottom-sheet; panggil onSelect(url) saat user memilih.
+// Jika hanya 1 foto tersedia, langsung panggil onSelect tanpa UI.
+function _openFotoPicker(fotoUrls, onSelect) {
+  const existing = document.getElementById('foto-picker-popup');
+  if (existing) { existing.remove(); return; }
+
+  const validFotos = fotoUrls.filter(Boolean);
+  if (validFotos.length <= 1) { onSelect(validFotos[0] || null); return; }
+
+  window._fotoPickerUrls     = validFotos;
+  window._fotoPickerOnSelect = onSelect;
+
+  const popup = document.createElement('div');
+  popup.id = 'foto-picker-popup';
+  popup.style.cssText = [
+    'position:fixed;bottom:0;left:0;right:0',
+    'background:#141E35;border-top:1px solid rgba(212,168,83,0.4)',
+    'border-radius:20px 20px 0 0;padding:16px 16px 28px',
+    'z-index:9999;box-shadow:0 -8px 32px rgba(0,0,0,0.5)',
+  ].join(';');
+
+  const thumbsHtml = validFotos.map((url, i) => `
+    <div onclick="_pickFotoByIdx(${i})" style="flex:0 0 auto;width:100px;height:75px;border-radius:10px;overflow:hidden;border:2px solid rgba(212,168,83,0.25);cursor:pointer;position:relative;">
+      <img src="${url}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>
+      <div style="position:absolute;bottom:3px;right:4px;font-size:10px;color:#fff;background:rgba(0,0,0,0.55);padding:1px 5px;border-radius:4px">Foto ${i+1}</div>
+    </div>`).join('');
+
+  popup.innerHTML = `
+    <div style="width:36px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:0 auto 14px;"></div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:12px;text-align:center">Pilih foto untuk di-share</div>
+    <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;">${thumbsHtml}</div>
+    <button onclick="document.getElementById('foto-picker-popup')?.remove()" style="width:100%;padding:10px;margin-top:14px;border-radius:12px;background:transparent;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer">Batal</button>
+  `;
+
+  document.body.appendChild(popup);
+  setTimeout(() => {
+    document.addEventListener('click', function handler(e) {
+      if (!popup.contains(e.target)) { popup.remove(); document.removeEventListener('click', handler); }
+    });
+  }, 100);
+}
+
+function _pickFotoByIdx(idx) {
+  document.getElementById('foto-picker-popup')?.remove();
+  const url = (window._fotoPickerUrls || [])[idx] || null;
+  if (window._fotoPickerOnSelect) window._fotoPickerOnSelect(url);
+}
 
 // Coba Web Share API dengan foto; kalau tidak support panggil fallbackFn()
 async function _webShareWithPhotoOrFallback(fotoUrl, text, fallbackFn) {
@@ -2266,7 +2315,7 @@ async function doShareWAStatus(type = 'wa') {
     ? (STATE.user?.no_wa_biz || STATE.user?.no_wa || '')
     : (STATE.user?.no_wa || STATE.user?.no_wa_biz || '');
   const text     = _buildStatusText(listing, isOwner, waNum);
-  const fotoUrl  = listing.Foto_Utama_URL;
+  const fotoUrl  = _shareSelectedFotoUrl || listing.Foto_Utama_URL;
   const platform = type === 'wab' ? 'wa_business_status' : 'wa_status';
 
   // Coba Web Share API dengan foto (Android/iOS modern)
@@ -2339,9 +2388,14 @@ async function shareListingWA(listingId) {
     } catch (_) {}
   }
 
-  const text = _buildShareText(listing, isOwnerOrCoOwner);
-  const shared = await _webShareWithPhotoOrFallback(listing.Foto_Utama_URL, text, () => openShareWAPicker(listingId));
-  if (shared) _logShare('listing', listing.ID, listing.Judul || listing.Kode_Listing || '', 'wa');
+  const text  = _buildShareText(listing, isOwnerOrCoOwner);
+  const fotos = [listing.Foto_Utama_URL, listing.Foto_2_URL, listing.Foto_3_URL];
+
+  _openFotoPicker(fotos, async (selectedFoto) => {
+    _shareSelectedFotoUrl = selectedFoto;
+    const shared = await _webShareWithPhotoOrFallback(selectedFoto, text, () => openShareWAPicker(listingId));
+    if (shared) _logShare('listing', listing.ID, listing.Judul || listing.Kode_Listing || '', 'wa');
+  });
 }
 
 // PR 17: WA Business Catalog format
@@ -7117,7 +7171,7 @@ async function doShareProjectWAStatus(type = 'wa') {
     ? (STATE.user?.no_wa_biz || STATE.user?.no_wa || '')
     : (STATE.user?.no_wa || STATE.user?.no_wa_biz || '');
   const text     = _buildProjectStatusText(project, waNum);
-  const fotoUrl  = project.Foto_1_URL;
+  const fotoUrl  = _shareSelectedFotoUrl || project.Foto_1_URL;
   const platform = type === 'wab' ? 'wa_business_status' : 'wa_status';
 
   // Coba Web Share API dengan foto (Android/iOS modern)
@@ -7171,9 +7225,14 @@ async function shareProjectWA() {
   if (!_currentProjectId) return;
   const project = _projectsData.find(p => p.ID === _currentProjectId);
   if (!project) return;
-  const text = _buildProjectShareText(project);
-  const shared = await _webShareWithPhotoOrFallback(project.Foto_1_URL, text, openShareProjectWAPicker);
-  if (shared) _logShare('project', project.ID, project.Nama_Proyek || '', 'wa', project.Koordinator_ID || '');
+  const text  = _buildProjectShareText(project);
+  const fotos = [project.Foto_1_URL, project.Foto_2_URL, project.Foto_3_URL, project.Foto_4_URL];
+
+  _openFotoPicker(fotos, async (selectedFoto) => {
+    _shareSelectedFotoUrl = selectedFoto;
+    const shared = await _webShareWithPhotoOrFallback(selectedFoto, text, openShareProjectWAPicker);
+    if (shared) _logShare('project', project.ID, project.Nama_Proyek || '', 'wa', project.Koordinator_ID || '');
+  });
 }
 
 // ─────────────────────────────────────────────────────────
