@@ -33,19 +33,21 @@ router.get('/', async (req, res) => {
     if (role === 'principal') {
       teams = teams.filter(t => t.Principal_ID === id);
     } else if (role === 'business_manager') {
-      teams = teams.filter(t => t.BM_ID === id);
+      teams = teams.filter(t => parseBMIds(t.BM_ID).includes(id));
     } else if (role === 'agen' || role === 'admin') {
       teams = teams.filter(t => {
         try {
           const members = JSON.parse(t.Member_IDs || '[]');
-          return members.includes(id) || t.BM_ID === id;
+          return members.includes(id) || parseBMIds(t.BM_ID).includes(id);
         } catch { return false; }
       });
     }
 
-    // Parse member arrays
+    // Parse member and BM arrays
     teams = teams.map(t => ({
       ...t,
+      bm_ids:       parseBMIds(t.BM_ID),
+      bm_names:     tryParse(t.BM_Nama, t.BM_Nama ? [t.BM_Nama] : []),
       member_ids:   tryParse(t.Member_IDs, []),
       member_names: tryParse(t.Member_Names, []),
     }));
@@ -60,6 +62,8 @@ router.get('/:id', async (req, res) => {
     const result = await sheetsService.findRowById(SHEETS.TEAMS, req.params.id, 0);
     if (!result) return res.status(404).json({ success: false, message: 'Tim tidak ditemukan' });
     const team = rowToTeam(result.data);
+    team.bm_ids       = parseBMIds(team.BM_ID);
+    team.bm_names     = tryParse(team.BM_Nama, team.BM_Nama ? [team.BM_Nama] : []);
     team.member_ids   = tryParse(team.Member_IDs, []);
     team.member_names = tryParse(team.Member_Names, []);
     res.json({ success: true, data: team });
@@ -69,15 +73,16 @@ router.get('/:id', async (req, res) => {
 // POST /teams — buat tim baru (principal only)
 router.post('/', requireRole('principal', 'superadmin'), async (req, res) => {
   try {
-    const { Nama_Team, BM_ID, member_ids = [] } = req.body;
+    const { Nama_Team, BM_IDs = [], member_ids = [] } = req.body;
     if (!Nama_Team) return res.status(400).json({ success: false, message: 'Nama tim wajib diisi' });
+    const bmIds = Array.isArray(BM_IDs) ? BM_IDs.filter(Boolean) : (BM_IDs ? [BM_IDs] : []);
 
     const team_id = uuidv4();
     const now = new Date().toISOString();
 
-    // Get agent data for BM and members
+    // Get agent data for BMs and members
     const allAgents = await getAllAgents();
-    const bm = allAgents.find(a => a.ID === BM_ID);
+    const bms = allAgents.filter(a => bmIds.includes(a.ID));
     const members = allAgents.filter(a => member_ids.includes(a.ID));
 
     const row = COLUMNS.TEAMS.map(col => {
@@ -85,8 +90,8 @@ router.post('/', requireRole('principal', 'superadmin'), async (req, res) => {
       if (col === 'Nama_Team')     return Nama_Team;
       if (col === 'Principal_ID')  return req.user.id;
       if (col === 'Principal_Nama') return req.user.nama;
-      if (col === 'BM_ID')         return BM_ID || '';
-      if (col === 'BM_Nama')       return bm?.Nama || '';
+      if (col === 'BM_ID')         return JSON.stringify(bmIds);
+      if (col === 'BM_Nama')       return JSON.stringify(bms.map(b => b.Nama));
       if (col === 'Member_IDs')    return JSON.stringify(member_ids);
       if (col === 'Member_Names')  return JSON.stringify(members.map(m => m.Nama));
       if (col === 'Status')        return 'Aktif';
@@ -97,8 +102,8 @@ router.post('/', requireRole('principal', 'superadmin'), async (req, res) => {
 
     await sheetsService.appendRow(SHEETS.TEAMS, row);
 
-    // Update Team_ID di AGENTS untuk BM dan members
-    await updateAgentsTeamId([BM_ID, ...member_ids].filter(Boolean), team_id, allAgents);
+    // Update Team_ID di AGENTS untuk semua BM dan members
+    await updateAgentsTeamId([...bmIds, ...member_ids].filter(Boolean), team_id, allAgents);
 
     res.status(201).json({ success: true, data: { team_id, Nama_Team }, message: `Tim ${Nama_Team} berhasil dibuat` });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
@@ -115,17 +120,20 @@ router.put('/:id', requireRole('principal', 'superadmin'), async (req, res) => {
       return res.status(403).json({ success: false, message: 'Bukan tim Anda' });
     }
 
-    const { Nama_Team, BM_ID, member_ids, Status } = req.body;
+    const { Nama_Team, BM_IDs, member_ids, Status } = req.body;
     const allAgents = await getAllAgents();
-    const bm = allAgents.find(a => a.ID === (BM_ID || existing.BM_ID));
+    const newBmIds = BM_IDs != null
+      ? (Array.isArray(BM_IDs) ? BM_IDs.filter(Boolean) : (BM_IDs ? [BM_IDs] : []))
+      : parseBMIds(existing.BM_ID);
+    const bms = allAgents.filter(a => newBmIds.includes(a.ID));
     const newMemberIds = member_ids || tryParse(existing.Member_IDs, []);
     const members = allAgents.filter(a => newMemberIds.includes(a.ID));
 
     const merged = {
       ...existing,
       Nama_Team:     Nama_Team     || existing.Nama_Team,
-      BM_ID:         BM_ID         || existing.BM_ID,
-      BM_Nama:       bm?.Nama      || existing.BM_Nama,
+      BM_ID:         JSON.stringify(newBmIds),
+      BM_Nama:       JSON.stringify(bms.map(b => b.Nama)),
       Member_IDs:    JSON.stringify(newMemberIds),
       Member_Names:  JSON.stringify(members.map(m => m.Nama)),
       Status:        Status        || existing.Status,
@@ -135,8 +143,8 @@ router.put('/:id', requireRole('principal', 'superadmin'), async (req, res) => {
     const row = COLUMNS.TEAMS.map(col => merged[col] || '');
     await sheetsService.updateRow(SHEETS.TEAMS, result.rowIndex, row);
 
-    // Update Team_ID di agents
-    const allMemberIds = [merged.BM_ID, ...newMemberIds].filter(Boolean);
+    // Update Team_ID di agents untuk semua BM dan members
+    const allMemberIds = [...newBmIds, ...newMemberIds].filter(Boolean);
     await updateAgentsTeamId(allMemberIds, req.params.id, allAgents);
 
     res.json({ success: true, message: 'Tim berhasil diupdate' });
@@ -189,6 +197,15 @@ async function updateAgentsTeamId(agentIds, teamId, allAgents) {
 
 function tryParse(str, fallback) {
   try { return JSON.parse(str) || fallback; } catch { return fallback; }
+}
+
+function parseBMIds(val) {
+  if (!val) return [];
+  try {
+    const p = JSON.parse(val);
+    if (Array.isArray(p)) return p.filter(Boolean);
+    return p ? [p] : [];
+  } catch { return val ? [val] : []; }
 }
 
 module.exports = router;

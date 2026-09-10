@@ -1843,17 +1843,21 @@
       <button class="nav-btn" id="nav-calculator" onclick="navigateTo('calculator')"><i class="fa-solid fa-calculator"></i><span>Kalkulator</span></button>
       <button class="nav-btn" id="nav-primary" onclick="navigateTo('primary')" style="display:none"><i class="fa-solid fa-star"></i><span>Primary</span></button>
       <button class="nav-btn" id="nav-asset" onclick="navigateTo('asset')" style="display:none"><i class="fa-solid fa-gavel"></i><span>Asset</span></button>
-      <div style="flex:1;position:relative;min-width:0">
-        <button onclick="openQuickAdd()" style="width:52px;height:52px;border-radius:50%;background:#D4A853;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(212,168,83,0.35);position:absolute;bottom:6px;left:50%;transform:translateX(-50%)" onmousedown="this.style.transform='translateX(-50%) scale(0.92)'" onmouseup="this.style.transform='translateX(-50%) scale(1)'">
-          <i class="fa-solid fa-plus" style="color:#0D1526;font-size:20px"></i>
-        </button>
-      </div>
       <button class="nav-btn" id="nav-team" onclick="navigateTo('team')" style="display:none"><i class="fa-solid fa-users-gear"></i><span>Tim</span></button>
       <button class="nav-btn" id="nav-member" onclick="navigateTo('member')"><i class="fa-solid fa-building-user"></i><span>Member</span></button>
       <button class="nav-btn" id="nav-leads" onclick="navigateTo('leads')"><i class="fa-solid fa-users"></i><span>Leads</span></button>
       <button class="nav-btn" id="nav-tasks" onclick="navigateTo('tasks')"><i class="fa-solid fa-clipboard-list"></i><span>Aktivitas</span></button>
     </div>
   </nav>
+
+  <!-- FLOATING ACTION BUTTON — independent dari navbar agar tidak tergeser -->
+  <button onclick="openQuickAdd()" id="fab-quick-add"
+    style="position:fixed;bottom:calc(56px + env(safe-area-inset-bottom,0px) + 10px);left:50%;transform:translateX(-50%);width:52px;height:52px;border-radius:50%;background:#D4A853;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(212,168,83,0.35);z-index:41"
+    onmousedown="this.style.transform='translateX(-50%) scale(0.92)'"
+    onmouseup="this.style.transform='translateX(-50%) scale(1)'"
+    ontouchend="this.style.transform='translateX(-50%) scale(1)'">
+    <i class="fa-solid fa-plus" style="color:#0D1526;font-size:20px"></i>
+  </button>
 
   <!-- SIDEBAR -->
   <div id="sidebar-overlay" class="hidden" onclick="closeSidebar()" style="position:fixed;inset:0;z-index:48;background:rgba(0,0,0,0.6)"></div>

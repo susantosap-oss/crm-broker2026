@@ -6366,9 +6366,8 @@ async function loadTeamPage() {
       <div id="team-modal" class="hidden" style="position:fixed;bottom:0;left:0;right:0;z-index:51;background:#141E35;border-radius:20px 20px 0 0;padding:24px;max-height:85vh;overflow-y:auto">
         <h3 id="team-modal-title" style="color:#fff;font-size:16px;font-weight:700;margin-bottom:20px">Buat Tim Baru</h3>
         <input id="tm-nama" placeholder="Nama Tim" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:10px;padding:12px;font-size:14px;margin-bottom:12px;box-sizing:border-box">
-        <select id="tm-bm" style="width:100%;background:#141E35;border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:10px;padding:12px;font-size:14px;margin-bottom:12px;box-sizing:border-box">
-          <option value="">-- Pilih Business Manager --</option>
-        </select>
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px">Pilih Business Manager <span style="color:#D4A853">(maks. 2)</span>:</div>
+        <div id="tm-bm-list" style="max-height:140px;overflow-y:auto;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:4px;margin-bottom:12px"></div>
         <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:8px">Pilih Anggota Tim:</div>
         <div id="tm-members-list" style="max-height:200px;overflow-y:auto;margin-bottom:16px"></div>
         <button onclick="saveTeam()" style="width:100%;background:#D4A853;color:#0D1526;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">Simpan Tim</button>
@@ -6399,21 +6398,29 @@ async function openEditTeamModal(teamId) {
     const res = await API.get('/teams/' + teamId);
     const team = res.data || {};
     document.getElementById('tm-nama').value = team.Nama_Team || '';
-    await loadAgentsForModal(team.BM_ID, team.member_ids || []);
+    let bmIds = [];
+    try { const p = JSON.parse(team.BM_ID||'[]'); bmIds = Array.isArray(p)?p:(p?[p]:[]); } catch { bmIds = team.BM_ID?[team.BM_ID]:[]; }
+    await loadAgentsForModal(bmIds, team.member_ids || []);
     document.getElementById('team-modal-overlay').classList.remove('hidden');
     document.getElementById('team-modal').classList.remove('hidden');
   } catch(e) { showToast('Gagal memuat data tim', 'error'); }
 }
 
-async function loadAgentsForModal(selectedBM = '', selectedMembers = []) {
+async function loadAgentsForModal(selectedBMs = [], selectedMembers = []) {
   try {
     const res = await API.get('/teams/members/available');
     _allAgentsList = res.data || [];
     const bms = _allAgentsList.filter(a => a.Role === 'business_manager');
     const members = _allAgentsList.filter(a => ['agen','koordinator','admin'].includes(a.Role));
-    const bmSel = document.getElementById('tm-bm');
-    bmSel.innerHTML = '<option value="">-- Pilih Business Manager --</option>' +
-      bms.map(a => `<option value="${a.ID}" ${a.ID===selectedBM?'selected':''}>${escapeHtml(a.Nama)}</option>`).join('');
+    const bmList = document.getElementById('tm-bm-list');
+    bmList.innerHTML = bms.length === 0
+      ? '<p style="color:rgba(255,255,255,0.4);font-size:12px;padding:8px">Tidak ada BM tersedia</p>'
+      : bms.map(a => `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px;cursor:pointer">
+          <input type="checkbox" value="${a.ID}" ${selectedBMs.includes(a.ID)?'checked':''} style="accent-color:#D4A853" onchange="limitBMSelection(this)">
+          <span style="font-size:13px;color:rgba(255,255,255,0.8)">${escapeHtml(a.Nama)} <span style="color:rgba(255,255,255,0.3);font-size:11px">BM</span></span>
+        </label>
+      `).join('');
     const memberList = document.getElementById('tm-members-list');
     memberList.innerHTML = members.map(a => `
       <label style="display:flex;align-items:center;gap:10px;padding:8px;cursor:pointer">
@@ -6422,6 +6429,14 @@ async function loadAgentsForModal(selectedBM = '', selectedMembers = []) {
       </label>
     `).join('');
   } catch(e) { document.getElementById('tm-members-list').innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:12px">Gagal memuat agen</p>'; }
+}
+
+function limitBMSelection(checkbox) {
+  const checked = document.querySelectorAll('#tm-bm-list input[type=checkbox]:checked');
+  if (checked.length > 2) {
+    checkbox.checked = false;
+    showToast('Maksimal 2 Business Manager per tim', 'error');
+  }
 }
 
 function closeTeamModal() {
@@ -6451,15 +6466,16 @@ async function confirmDeleteTeam(teamId, teamName) {
 
 async function saveTeam() {
   const nama = document.getElementById('tm-nama').value.trim();
-  const bm_id = document.getElementById('tm-bm').value;
+  const bmCheckboxes = document.querySelectorAll('#tm-bm-list input[type=checkbox]:checked');
+  const bm_ids = [...bmCheckboxes].map(c => c.value);
   const memberCheckboxes = document.querySelectorAll('#tm-members-list input[type=checkbox]:checked');
   const member_ids = [...memberCheckboxes].map(c => c.value);
   if (!nama) { showToast('Nama tim wajib diisi', 'error'); return; }
   try {
     if (_teamEditId) {
-      await API.put('/teams/' + _teamEditId, { Nama_Team: nama, BM_ID: bm_id, member_ids });
+      await API.put('/teams/' + _teamEditId, { Nama_Team: nama, BM_IDs: bm_ids, member_ids });
     } else {
-      await API.post('/teams', { Nama_Team: nama, BM_ID: bm_id, member_ids });
+      await API.post('/teams', { Nama_Team: nama, BM_IDs: bm_ids, member_ids });
     }
     showToast(_teamEditId ? 'Tim diupdate' : 'Tim berhasil dibuat', 'success');
     closeTeamModal();
