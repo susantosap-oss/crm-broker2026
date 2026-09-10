@@ -238,6 +238,15 @@ router.patch('/:id', async (req, res) => {
 
     const merged = { ...existing, ...req.body, Updated_At: new Date().toISOString() };
 
+    // Jika ada FU baru, prepend ke FU_History
+    if (req.body.FU_Tanggal) {
+      let history = [];
+      try { history = JSON.parse(existing.FU_History || '[]'); } catch { history = []; }
+      if (!Array.isArray(history)) history = [];
+      history.unshift({ tanggal: req.body.FU_Tanggal, keterangan: req.body.FU_Keterangan || '', saved_at: new Date().toISOString() });
+      merged.FU_History = JSON.stringify(history);
+    }
+
     // Auto-set Tanggal_Dihubungi saat pertama kali status berubah dari 'Baru'
     const wasNew    = existing.Status_Lead === 'Baru';
     const nowNotNew = req.body.Status_Lead && req.body.Status_Lead !== 'Baru';

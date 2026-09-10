@@ -2481,18 +2481,38 @@ function renderLeadDetail(lead) {
 
     <!-- Follow Up Manual -->
     <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:14px">
-      <label class="form-label">Follow Up</label>
-      ${lead.FU_Tanggal ? `<div style="background:#131F38;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:rgba(255,255,255,0.65)"><span style="color:#D4A853;font-weight:600">${lead.FU_Tanggal}</span> — ${escapeHtml(lead.FU_Keterangan||'')}</div>` : ''}
+      <label class="form-label">Riwayat Follow Up</label>
+      ${(() => {
+        let history = [];
+        try { history = JSON.parse(lead.FU_History || '[]'); } catch { history = []; }
+        if (!Array.isArray(history)) history = [];
+        // fallback: jika history kosong tapi ada FU_Tanggal lama (data sebelum fitur ini)
+        if (history.length === 0 && lead.FU_Tanggal) {
+          history = [{ tanggal: lead.FU_Tanggal, keterangan: lead.FU_Keterangan || '', saved_at: '' }];
+        }
+        if (history.length === 0) return '<div style="font-size:12px;color:rgba(255,255,255,0.25);margin-bottom:10px">Belum ada riwayat follow up</div>';
+        return `<div style="max-height:180px;overflow-y:auto;margin-bottom:12px;display:flex;flex-direction:column;gap:6px">${
+          history.map((h, i) => `
+            <div style="background:#131F38;border-radius:10px;padding:10px 12px;border-left:3px solid ${i===0?'#D4A853':'rgba(255,255,255,0.1)'}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+                <span style="color:#D4A853;font-weight:700;font-size:12px">${escapeHtml(h.tanggal||'')}</span>
+                ${h.saved_at ? `<span style="font-size:10px;color:rgba(255,255,255,0.25)">${new Date(h.saved_at).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}</span>` : ''}
+              </div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.65)">${escapeHtml(h.keterangan||'—')}</div>
+            </div>
+          `).join('')
+        }</div>`;
+      })()}
       <div style="display:grid;gap:8px">
         <div>
-          <label style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:3px;display:block">Tanggal FU</label>
-          <input type="date" id="fu-tanggal-input" value="${lead.FU_Tanggal||''}" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;box-sizing:border-box"/>
+          <label style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:3px;display:block">Tanggal FU Baru</label>
+          <input type="date" id="fu-tanggal-input" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;box-sizing:border-box"/>
         </div>
         <div>
           <label style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:3px;display:block">Keterangan</label>
-          <textarea id="fu-keterangan-input" rows="2" placeholder="Hasil follow up..." style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;box-sizing:border-box;resize:none">${escapeHtml(lead.FU_Keterangan||'')}</textarea>
+          <textarea id="fu-keterangan-input" rows="2" placeholder="Hasil follow up..." style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;box-sizing:border-box;resize:none"></textarea>
         </div>
-        <button onclick="saveFU('${escapeHtml(lead.ID)}')" style="background:rgba(212,168,83,0.12);color:#D4A853;border:1px solid rgba(212,168,83,0.25);border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">Simpan Follow Up</button>
+        <button onclick="saveFU('${escapeHtml(lead.ID)}')" style="background:rgba(212,168,83,0.12);color:#D4A853;border:1px solid rgba(212,168,83,0.25);border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">+ Tambah Follow Up</button>
       </div>
     </div>
 
@@ -2825,40 +2845,71 @@ async function loadKomisiPage() {
   if (!list) return;
   list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:30px 0;font-size:13px">Memuat...</div>';
 
+  const role = STATE.user?.role || '';
+  const isManager = ['superadmin','principal','kantor','business_manager','admin'].includes(role);
+
   try {
-    const res  = await API.get('/komisi/gform');
-    const data = res.data || [];
-
-    if (!data.length) {
-      list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px 0;font-size:13px">Belum ada data transaksi</div>';
-      return;
+    if (isManager) {
+      // Principal/Admin: baca dari gform untuk monitor semua submission
+      const res   = await API.get('/komisi/gform');
+      const data  = res.data || [];
+      if (!data.length) {
+        list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px 0;font-size:13px">Belum ada data transaksi</div>';
+        return;
+      }
+      const statusColor = { Pending:'#fbbf24', YA:'#34d399', 'Co Broke':'#60a5fa' };
+      list.innerHTML = data.map(k => {
+        const nominal = k.komisi_nominal ? 'Rp ' + Number(k.komisi_nominal).toLocaleString('id-ID') : '—';
+        const harga   = k.harga ? 'Rp ' + Number(k.harga).toLocaleString('id-ID') : '—';
+        const sc      = statusColor[k.status_data] || '#94a3b8';
+        const label   = k.status_data === 'YA' ? 'Disetujui' : (k.status_data || 'Pending');
+        return `<div style="background:#131F38;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.07);margin-bottom:8px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+            <div style="min-width:0;flex:1">
+              <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(k.alamat || '—')}</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:3px">${escapeHtml(k.nama_penjual||'')}${k.nama_pembeli?' → '+escapeHtml(k.nama_pembeli):''}</div>
+              <div style="font-size:12px;font-weight:700;color:#D4A853">${nominal} <span style="font-weight:400;color:rgba(255,255,255,0.3);font-size:10px">(dari ${harga})</span></div>
+            </div>
+            <div style="flex-shrink:0;text-align:right">
+              <div style="font-size:10px;color:rgba(255,255,255,0.3)">${escapeHtml(k.tanggal_transaksi||'')}</div>
+              <span style="display:inline-block;font-size:10px;font-weight:700;color:${sc};background:${sc}22;border-radius:6px;padding:2px 7px;margin-top:4px">${escapeHtml(label)}</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      // Agen: baca dari KOMISI_REQUEST agar status yang diproses admin terlihat real-time
+      const res  = await API.get('/komisi');
+      const data = res.data || [];
+      if (!data.length) {
+        list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px 0;font-size:13px">Belum ada data request komisi</div>';
+        return;
+      }
+      const statusColor = { Pending:'#fbbf24', Diproses:'#60a5fa', Disetujui:'#34d399', Ditolak:'#f87171' };
+      list.innerHTML = data.map(k => {
+        const nominal = k.Komisi_Nominal ? 'Rp ' + Number(k.Komisi_Nominal).toLocaleString('id-ID') : '—';
+        const harga   = k.Harga_Deal     ? 'Rp ' + Number(k.Harga_Deal).toLocaleString('id-ID')     : '—';
+        const tgl     = k.Tanggal ? new Date(k.Tanggal).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '';
+        const status  = k.Status || 'Pending';
+        const sc      = statusColor[status] || '#94a3b8';
+        const reviewInfo = (k.Status === 'Disetujui' || k.Status === 'Ditolak') && k.Reviewed_By
+          ? `<div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:3px">oleh ${escapeHtml(k.Reviewed_By)}</div>` : '';
+        return `<div style="background:#131F38;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.07);margin-bottom:8px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+            <div style="min-width:0;flex:1">
+              <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(k.Listing_Judul || '—')}</div>
+              ${k.Catatan ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:3px">${escapeHtml(k.Catatan)}</div>` : ''}
+              <div style="font-size:12px;font-weight:700;color:#D4A853">${nominal} <span style="font-weight:400;color:rgba(255,255,255,0.3);font-size:10px">(dari ${harga})</span></div>
+            </div>
+            <div style="flex-shrink:0;text-align:right">
+              <div style="font-size:10px;color:rgba(255,255,255,0.3)">${tgl}</div>
+              <span style="display:inline-block;font-size:10px;font-weight:700;color:${sc};background:${sc}22;border-radius:6px;padding:2px 7px;margin-top:4px">${escapeHtml(status)}</span>
+              ${reviewInfo}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
     }
-
-    const statusColor = { Pending:'#fbbf24', YA:'#34d399' };
-    const jenisColor  = { Jual:'#60a5fa', Sewa:'#34d399', Primary:'#a78bfa' };
-
-    list.innerHTML = data.map(k => {
-      const nominal  = k.komisi_nominal ? 'Rp ' + Number(k.komisi_nominal).toLocaleString('id-ID') : '—';
-      const harga    = k.harga ? 'Rp ' + Number(k.harga).toLocaleString('id-ID') : '—';
-      const tgl      = k.tanggal_transaksi || '';
-      const sc       = statusColor[k.status_data] || '#94a3b8';
-      const jc       = jenisColor[k.jenis] || '#94a3b8';
-      const statusLabel = k.status_data === 'YA' ? 'Disetujui' : (k.status_data || 'Pending');
-      return `<div style="background:#131F38;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.07);margin-bottom:8px">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-          <div style="min-width:0;flex:1">
-            <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(k.alamat || '—')}</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:3px">${escapeHtml(k.nama_penjual||'')}${k.nama_pembeli ? ' → '+escapeHtml(k.nama_pembeli) : ''}</div>
-            <div style="font-size:12px;font-weight:700;color:#D4A853">${nominal} <span style="font-weight:400;color:rgba(255,255,255,0.3);font-size:10px">(dari ${harga})</span></div>
-          </div>
-          <div style="flex-shrink:0;text-align:right">
-            <span style="display:inline-block;font-size:10px;font-weight:700;color:${jc};background:${jc}22;border-radius:6px;padding:3px 8px;margin-bottom:4px">${escapeHtml(k.jenis||'')}</span>
-            <div style="font-size:10px;color:rgba(255,255,255,0.3)">${tgl}</div>
-            <span style="display:inline-block;font-size:10px;font-weight:700;color:${sc};background:${sc}22;border-radius:6px;padding:2px 7px;margin-top:4px">${escapeHtml(statusLabel)}</span>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
   } catch (e) {
     list.innerHTML = `<div style="text-align:center;color:#f87171;padding:30px 0;font-size:13px">Gagal memuat: ${escapeHtml(e.message)}</div>`;
   }
@@ -7726,9 +7777,36 @@ function resetProjectPhotoPreview(slot) {
   if (delBtn)  { delBtn.style.display = 'none'; }
 }
 
+function _dataURLtoBlob(dataURL) {
+  const arr  = dataURL.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8 = new Uint8Array(n);
+  while (n--) u8[n] = bstr.charCodeAt(n);
+  return new Blob([u8], { type: mime });
+}
+
+async function _compressImage(dataURL, maxPx = 1600, quality = 0.82) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width >= height) { height = Math.round(height * maxPx / width); width = maxPx; }
+        else                 { width  = Math.round(width  * maxPx / height); height = maxPx; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataURL); // fallback tanpa kompresi
+    img.src = dataURL;
+  });
+}
+
 async function uploadPendingProjectPhotos() {
-  // Gunakan window._CLOUD_NAME yang sudah diload saat startup (loadCloudinaryConfig)
-  // Jika belum ada, fetch ulang
   if (!window._CLOUD_NAME) {
     try {
       const cfg = await API.get('/config/cloudinary');
@@ -7736,45 +7814,56 @@ async function uploadPendingProjectPhotos() {
         window._CLOUD_NAME    = cfg.cloudName;
         window._UPLOAD_PRESET = cfg.uploadPreset || 'crm_unsigned';
       }
-    } catch (_) { /* lanjut, akan fallback ke URL lama */ }
+    } catch (_) {}
   }
 
   const cloudName    = window._CLOUD_NAME;
   const uploadPreset = window._UPLOAD_PRESET || 'crm_unsigned';
+  const total = [1,2,3,4].filter(s => _projectPhotos[s]?._preview).length;
+  let done = 0;
 
   for (const slot of [1, 2, 3, 4]) {
     const photo = _projectPhotos[slot];
-    // Cek ada file baru — gunakan _preview sebagai indikator (lebih reliable dari _file)
     if (!photo?._preview) continue;
 
     if (!cloudName) {
       _projectPhotos[slot] = { url: photo._existingUrl || '', cloudId: '' };
-      showToast(`Konfigurasi upload tidak ditemukan. Foto ${slot} tidak berubah.`, 'error');
+      showToast(`Konfigurasi upload tidak ditemukan. Foto ${slot} dilewati.`, 'error');
       continue;
     }
 
     try {
-      showToast(`Mengupload foto ${slot}...`, 'info');
+      done++;
+      showToast(`Mengupload foto ${done}/${total}...`, 'info');
 
-      // Gunakan data URL (_preview) untuk upload — menghindari stale File reference
-      // pada Android browser yang invalidate input.files setelah input.value = ''
-      const blob = await fetch(photo._preview).then(r => r.blob());
-      const ext  = blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg';
+      // Kompres sebelum upload (maks 1600px, JPEG 82%) agar cepat
+      const compressed = await _compressImage(photo._preview);
+      const blob = _dataURLtoBlob(compressed);
 
       const formData = new FormData();
-      formData.append('file', blob, `foto_${slot}.${ext}`);
+      formData.append('file', blob, `foto_${slot}.jpg`);
       formData.append('upload_preset', uploadPreset);
       formData.append('folder', 'crm_projects');
 
-      const res  = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-        method: 'POST', body: formData,
-      });
+      // Timeout 90 detik per foto
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 90000);
+      let res;
+      try {
+        res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+          method: 'POST', body: formData, signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+
       const data = await res.json();
       if (!data.secure_url) throw new Error(data.error?.message || 'Upload gagal');
       _projectPhotos[slot] = { url: data.secure_url, cloudId: data.public_id };
     } catch (e) {
+      const msg = e.name === 'AbortError' ? 'Timeout (foto terlalu besar)' : e.message;
       _projectPhotos[slot] = { url: photo._existingUrl || '', cloudId: '' };
-      showToast(`Gagal upload foto ${slot}: ${e.message}`, 'error');
+      showToast(`Gagal upload foto ${slot}: ${msg}`, 'error');
     }
   }
 }

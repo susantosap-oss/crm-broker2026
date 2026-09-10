@@ -350,22 +350,24 @@ async function loadDashboardKomisiWidget() {
   if (!widget || !list) return;
 
   try {
-    const res   = await API.get('/komisi/gform');
+    // Baca dari KOMISI_REQUEST agar status yang sudah diproses admin terlihat benar
+    const res   = await API.get('/komisi');
     const items = (res.data || []).slice(0, 5);
 
     if (!items.length) { widget.style.display = 'none'; return; }
 
-    const statusColor = { Pending:'#fbbf24', YA:'#34d399', 'Co Broke':'#60a5fa' };
+    const statusColor = { Pending:'#fbbf24', Diproses:'#60a5fa', Disetujui:'#34d399', Ditolak:'#f87171' };
     list.innerHTML = items.map(k => {
-      const sc      = statusColor[k.status_data] || '#94a3b8';
-      const nominal = k.komisi_nominal ? 'Rp ' + Number(k.komisi_nominal).toLocaleString('id-ID') : '—';
-      const label   = k.status_data === 'YA' ? 'Disetujui' : (k.status_data || 'Pending');
+      const status  = k.Status || 'Pending';
+      const sc      = statusColor[status] || '#94a3b8';
+      const nominal = k.Komisi_Nominal ? 'Rp ' + Number(k.Komisi_Nominal).toLocaleString('id-ID') : '—';
+      const tgl     = k.Tanggal || '';
       return `<div style="background:#131F38;border-radius:12px;padding:10px 14px;border:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <div style="min-width:0;flex:1">
-          <div style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(k.alamat || '—')}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${nominal} · ${escHtml(k.tanggal_transaksi || '')}</div>
+          <div style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(k.Listing_Judul || '—')}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${nominal} · ${escHtml(k.Agen_Nama || '')} · ${escHtml(tgl)}</div>
         </div>
-        <span style="font-size:10px;font-weight:700;color:${sc};background:${sc}22;border-radius:6px;padding:3px 8px;flex-shrink:0;margin-left:10px">${escHtml(label)}</span>
+        <span style="font-size:10px;font-weight:700;color:${sc};background:${sc}22;border-radius:6px;padding:3px 8px;flex-shrink:0;margin-left:10px">${escHtml(status)}</span>
       </div>`;
     }).join('');
 

@@ -156,6 +156,7 @@ const COLUMNS = {
     'Tanggal_Dihubungi',  // AH  Timestamp pertama kali agen hubungi lead
     'FU_Tanggal',         // AI ★ Tanggal follow-up terakhir (manual input)
     'FU_Keterangan',      // AJ ★ Keterangan hasil follow-up
+    'FU_History',         // AK ★ JSON array riwayat semua follow-up [{tanggal,keterangan,saved_at}]
   ],
 
   AGENTS: [
