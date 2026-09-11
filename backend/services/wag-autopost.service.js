@@ -227,7 +227,10 @@ class WagAutopostService {
         tipe:    VALID_TIPES.has(r[4]) ? r[4] : 'all',
         created: VALID_TIPES.has(r[4]) ? r[5] : r[4],
       }));
-    } catch (_) { return []; }
+    } catch (e) {
+      console.error('[WAG] getConfig gagal baca sheet:', e.message);
+      return [];
+    }
   }
 
   async saveConfig(groups) {
@@ -254,7 +257,8 @@ class WagAutopostService {
   async autoPost(forceType = null, waitMs = 0, textOnly = false) {
     const config = await this.getConfig();
     const activeGroups = config.filter(g => g.aktif);
-    console.log(`[WAG] autoPost: status=${this._status} config=${config.length} aktif=${activeGroups.length}`);
+    console.log(`[WAG] autoPost: status=${this._status} config=${config.length} aktif=${activeGroups.length}` +
+      (activeGroups.length ? ` [${activeGroups.map(g => `${g.nama}(${g.tipe||'all'})`).join(', ')}]` : ''));
     if (!activeGroups.length) return { skipped: true, reason: 'Tidak ada WAG aktif' };
 
     const useFonnte = !!process.env.FONNTE_TOKEN;
@@ -282,12 +286,14 @@ class WagAutopostService {
 
     // Pilih tipe: forceType jika ada, else random 50/50
     const pick = forceType || (Math.random() < 0.5 ? 'listing' : 'aset');
+    console.log(`[WAG] pick=${pick} forceType=${forceType || 'null'}`);
 
     // Filter grup berdasarkan tipe konten yang dipilih
     const targetGroups = activeGroups.filter(g => {
       const t = g.tipe || 'all';
       return t === 'all' || t === pick;
     });
+    console.log(`[WAG] targetGroups=${targetGroups.length} (dari ${activeGroups.length} aktif — skip karena tipe beda: ${activeGroups.filter(g=>(g.tipe||'all')!=='all'&&(g.tipe||'all')!==pick).map(g=>g.nama).join(', ')||'none'})`);
     if (!targetGroups.length) return { skipped: true, reason: `Tidak ada WAG aktif untuk tipe ${pick}` };
 
     let item, caption, imageUrl;
@@ -491,7 +497,7 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
       tipe,
       tipe === 'listing' ? (item.Kode_Listing || item.ID) : (item.Kode_Asset || item.ID),
       results.filter(r => r.status === 'sent' || r.status === 'sent_fonnte').length,
-      results.filter(r => r.status === 'failed').length,
+      results.filter(r => r.status === 'failed' || r.status === 'failed_fonnte').length,
       JSON.stringify(results),
     ];
     await sheetsService.appendRow(SHEETS.WAG_POST_LOG, row);
@@ -513,13 +519,11 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
         body: JSON.stringify({ target, message: caption, countryCode: '62' }),
       });
       const data = await res.json();
-      // Fonnte kadang return status:false tapi pesan tetap terkirim (false negative)
-      // Log warning tapi tetap anggap sent jika HTTP 200
       if (!data.status) {
-        console.warn(`[WAG] Fonnte status false → ${group.nama}: ${data.reason} (pesan mungkin tetap terkirim)`);
-      } else {
-        console.log(`[WAG] Fonnte OK → ${group.nama} (${target})`);
+        console.warn(`[WAG] Fonnte GAGAL → ${group.nama} (${target}): ${data.reason}`);
+        return { jid: group.jid, nama: group.nama, status: 'failed_fonnte', error: data.reason || 'Fonnte status false' };
       }
+      console.log(`[WAG] Fonnte OK → ${group.nama} (${target})`);
       return { jid: group.jid, nama: group.nama, status: 'sent_fonnte', note: data.reason || null };
     } catch (e) {
       const errMsg = e.message || String(e);
