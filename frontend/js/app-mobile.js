@@ -947,9 +947,9 @@ function renderListingsGrid(listings) {
     const isInactive = ['Terjual','Tersewa'].includes(l.Status_Listing);
 
     return `
-      <div data-id="${escapeHtml(l.ID)}" data-inactive="${isInactive}" onclick="if(!this.dataset.inactive||this.dataset.inactive==='false')openListingDetail(this.dataset.id)"
-        style="display:flex;gap:12px;background:${isInactive?'rgba(19,31,56,0.55)':'#131F38'};border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:12px;${isInactive?'opacity:0.55;cursor:not-allowed;filter:grayscale(0.5)':'cursor:pointer'};transition:border-color 0.2s"
-        onmouseenter="if(!this.dataset.inactive||this.dataset.inactive==='false')this.style.borderColor='rgba(212,168,83,0.25)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'">
+      <div data-id="${escapeHtml(l.ID)}" data-inactive="${isInactive}" onclick="openListingDetail(this.dataset.id)"
+        style="display:flex;gap:12px;background:${isInactive?'rgba(19,31,56,0.55)':'#131F38'};border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:12px;cursor:pointer;${isInactive?'opacity:0.55;filter:grayscale(0.5)':''};transition:border-color 0.2s"
+        onmouseenter="this.style.borderColor='rgba(212,168,83,0.25)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'">
         <div style="width:80px;height:80px;border-radius:10px;background:#1C2D52;overflow:hidden;flex-shrink:0">
           ${l.Foto_Utama_URL
             ? `<img src="${escapeHtml(l.Foto_Utama_URL)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>`
@@ -1012,7 +1012,31 @@ async function openListingDetail(id) {
   const caption = listing.Caption_Sosmed || listing.Caption || '';
   const deskripsi = listing.Deskripsi || '';
 
+  const isInactiveListing = ['Terjual','Tersewa'].includes(listing.Status_Listing);
+  const inactiveColor = listing.Status_Listing === 'Terjual' ? '#9CA3AF' : '#60a5fa';
+  const inactiveBg    = listing.Status_Listing === 'Terjual' ? 'rgba(107,114,128,0.12)' : 'rgba(59,130,246,0.12)';
+  const inactiveBorder= listing.Status_Listing === 'Terjual' ? 'rgba(107,114,128,0.3)' : 'rgba(59,130,246,0.3)';
+  const inactiveIcon  = listing.Status_Listing === 'Terjual' ? 'fa-tag' : 'fa-key';
+  const canManageStatus = listing.Agen_ID === STATE.user?.id || ['superadmin','principal','kantor','admin'].includes(STATE.user?.role);
+
   body.innerHTML = `
+    <!-- Inactive Banner -->
+    ${isInactiveListing ? `
+    <div style="background:${inactiveBg};border:1px solid ${inactiveBorder};border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <i class="fa-solid ${inactiveIcon}" style="color:${inactiveColor};font-size:16px;flex-shrink:0"></i>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:${inactiveColor}">Listing ${escapeHtml(listing.Status_Listing)}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px">Tidak aktif ditawarkan · tidak tampil di web</div>
+        </div>
+      </div>
+      ${canManageStatus ? `
+      <button onclick="openStatusPicker('${escapeHtml(id)}','${escapeHtml(listing.Status_Listing)}')"
+        style="flex-shrink:0;padding:8px 14px;border-radius:10px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#4ade80;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
+        <i class="fa-solid fa-rotate-right" style="margin-right:5px"></i>Aktifkan
+      </button>` : ''}
+    </div>` : ''}
+
     <!-- Photos -->
     ${listing.Foto_Utama_URL ? `
       <div style="border-radius:14px;overflow:hidden;position:relative">
@@ -3553,19 +3577,21 @@ function openStatusPicker(listingId, currentStatus) {
 async function confirmStatusChange(listingId, newStatus) {
   document.getElementById('status-picker-overlay')?.remove();
   const isInactive = ['Terjual','Tersewa'].includes(newStatus);
-  
+
   try {
     await API.patch('/listings/' + listingId, {
       Status_Listing: newStatus,
-      Tampilkan_di_Web: isInactive ? 'FALSE' : undefined,
+      Tampilkan_di_Web: isInactive ? 'FALSE' : 'TRUE',
     });
     showToast(
-      newStatus === 'Aktif' ? '✅ Listing diaktifkan kembali' :
+      newStatus === 'Aktif' ? '✅ Listing diaktifkan kembali & dipublish ke web' :
       newStatus === 'Terjual' ? '🏷️ Listing ditandai Terjual' :
       '🔑 Listing ditandai Tersewa',
       'success'
     );
     await loadListings();
+    const detailModal = document.getElementById('modal-listing-detail');
+    if (detailModal && detailModal.classList.contains('open')) openListingDetail(listingId);
   } catch(e) {
     showToast('Gagal update status: ' + e.message, 'error');
   }
