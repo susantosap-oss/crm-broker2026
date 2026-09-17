@@ -1,6 +1,6 @@
 # Mansion CRM — Developer Notes for Claude
 
-> **Versi aktif:** v2.4.78 · **Last updated:** 2026-08-20
+> **Versi aktif:** v2.5.16 · **Last updated:** 2026-09-17
 
 ---
 
@@ -53,10 +53,10 @@ gcloud run revisions list --service=crm-broker-properti \
   --region=asia-southeast2 --project=crm-broker2026 --quiet
 
 # Hapus semua image lama di Artifact Registry (sisakan hanya digest aktif):
-ACTIVE_DIGEST=$(gcloud run services describe crm-broker-properti \
-  --region=asia-southeast2 --project=crm-broker2026 \
-  --format="value(spec.template.spec.containers[0].image)" | cut -d'@' -f2)
+# CATATAN: image pakai tag :latest (bukan @sha256), jadi ambil digest via artifacts describe
 REPO="asia-southeast2-docker.pkg.dev/crm-broker2026/cloud-run-source-deploy/crm-broker-properti"
+ACTIVE_DIGEST=$(gcloud artifacts docker images describe "${REPO}:latest" \
+  --project=crm-broker2026 --format="value(image_summary.digest)")
 
 gcloud artifacts docker images list "$REPO" \
   --project=crm-broker2026 --format="value(version)" | \
