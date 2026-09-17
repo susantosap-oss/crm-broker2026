@@ -234,6 +234,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', app: process.env.APP_NAME, timestamp: new Date().toISOString(), version: APP_VERSION });
 });
 
+// ── Version Check (unauthenticated, ringan untuk polling PWA) ──
+app.get('/api/version', (req, res) => {
+  res.json({ version: APP_VERSION });
+});
+
 // ── Global Error Handler ───────────────────────────────────
 app.use((err, req, res, next) => {
   console.error('[ERROR]', err.stack);

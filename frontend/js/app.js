@@ -84,15 +84,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
   setupPWA();
   setHeroDate();
+  checkAppVersion();
 
   // Simpan draft saat PWA di-background; hapus jika kembali tanpa reload
   // Guard: jangan hapus jika _startupDraft belum dikonsumsi oleh restoreDraftState
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) saveDraftState();
-    else if (!_startupDraft) localStorage.removeItem('crm_draft_state');
+    else { if (!_startupDraft) localStorage.removeItem('crm_draft_state'); checkAppVersion(); }
   });
   window.addEventListener('pagehide', saveDraftState);
+  setInterval(checkAppVersion, 5 * 60 * 1000);
 });
+
+async function checkAppVersion() {
+  try {
+    const current = document.querySelector('meta[name="app-version"]')?.content;
+    if (!current) return;
+    const res = await fetch('/api/version', { cache: 'no-store' });
+    if (!res.ok) return;
+    const { version: latest } = await res.json();
+    const btn = document.getElementById('sidebar-update-btn');
+    const lbl = document.getElementById('sidebar-update-label');
+    if (!btn) return;
+    if (latest && latest !== current) {
+      if (lbl) lbl.textContent = `Update v${latest}`;
+      btn.style.display = 'block';
+    } else {
+      btn.style.display = 'none';
+    }
+  } catch (_) {}
+}
+
+async function doAppUpdate() {
+  const btn = document.getElementById('sidebar-update-btn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch (_) {}
+  window.location.reload();
+}
 
 // ── AUTH ───────────────────────────────────────────────────
 async function handleLogin() {
