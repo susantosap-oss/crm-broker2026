@@ -316,12 +316,10 @@ class WagAutopostService {
     }
     if (!item) return { skipped: true, reason: `Tidak ada ${pick} yang memenuhi SOP` };
 
-    // Link foto tidak dikirim ke WAG (baik listing maupun aset)
-
     // Kirim ke WAG yang sesuai tipe
     const results = [];
     for (const group of targetGroups) {
-      const sent = await this._sendToGroup(group, null, null, caption);
+      const sent = await this._sendToGroup(group, null, imageUrl, caption);
       results.push(sent);
       if (sent.status.startsWith('sent')) await new Promise(r => setTimeout(r, 3000));
     }
@@ -384,7 +382,7 @@ class WagAutopostService {
     cols.forEach((c, i) => { item[c] = r[i]; });
 
     const caption = this._captionAset(item);
-    return { item, caption, imageUrl: null }; // link foto aset tidak dikirim ke WAG
+    return { item, caption, imageUrl: item.Foto_1_URL || null };
   }
 
   _captionListing(l, agenWA) {
@@ -412,7 +410,6 @@ class WagAutopostService {
     if (l.Fasilitas) spek.push(`• Fasilitas   : ${l.Fasilitas}`);
 
     const loc   = [l.Kecamatan, l.Kota].filter(Boolean).join(', ');
-    const link  = `https://crm.mansionpro.id`;
     const kode  = l.Kode_Listing || l.ID;
 
     return `${emoji} *${aksi} ${(l.Tipe_Properti || '').toUpperCase()}* | ${harga}
@@ -428,7 +425,6 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
 
 *Info lebih lanjut:*
 👤 ${l.Agen_Nama || ''}${agenWA ? `\n📱 ${agenWA}` : ''}
-🔗 ${link}
 🏷 Kode: ${kode}`;
   }
 
@@ -465,7 +461,6 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
 
 💰 Harga Limit: *${harga}*${rasioLine}
 
-🔗 https://crm.mansionpro.id
 🏷 Kode: ${a.Kode_Asset}`;
   }
 
@@ -505,18 +500,20 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
 
   // ── Fonnte API sender ────────────────────────────────────────
 
-  async _sendViaFonnte(group, caption) {
+  async _sendViaFonnte(group, caption, imageUrl = null) {
     const token  = process.env.FONNTE_TOKEN;
     // Kirim full JID (termasuk @g.us) — Fonnte menerima format ini untuk grup
     const target = group.jid;
     const ctrl   = new AbortController();
     const timer  = setTimeout(() => ctrl.abort(), 30_000);
     try {
+      const payload = { target, message: caption, countryCode: '62' };
+      if (imageUrl) payload.url = imageUrl;
       const res = await fetch('https://api.fonnte.com/send', {
         method: 'POST',
         signal: ctrl.signal,
         headers: { 'Authorization': token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target, message: caption, countryCode: '62' }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!data.status) {
@@ -534,11 +531,11 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
     }
   }
 
-  async _sendToGroup(group, _imgBuffer, _imageUrl, caption) {
+  async _sendToGroup(group, _imgBuffer, imageUrl, caption) {
     if (process.env.FONNTE_TOKEN) {
       // Fonnte: HTTP POST — tidak butuh Baileys session
       try {
-        return await this._sendViaFonnte(group, caption);
+        return await this._sendViaFonnte(group, caption, imageUrl);
       } catch (e) {
         return { jid: group.jid, nama: group.nama, status: 'failed', error: e.message };
       }

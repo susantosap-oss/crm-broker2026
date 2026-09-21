@@ -1,6 +1,6 @@
 # Mansion CRM — Developer Notes for Claude
 
-> **Versi aktif:** v2.5.16 · **Last updated:** 2026-09-17
+> **Versi aktif:** v2.5.17 · **Last updated:** 2026-09-21
 
 ---
 
