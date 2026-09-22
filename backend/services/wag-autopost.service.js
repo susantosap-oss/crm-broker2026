@@ -507,20 +507,23 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
     const ctrl   = new AbortController();
     const timer  = setTimeout(() => ctrl.abort(), 30_000);
     try {
-      const payload = { target, message: caption, countryCode: '62' };
-      if (imageUrl) payload.url = imageUrl;
+      // Fonnte API: dokumentasi resmi hanya mencontohkan form-urlencoded (PHP CURLOPT_POSTFIELDS array),
+      // tidak pernah JSON. Body JSON tampaknya diterima untuk field dasar (target/message) tapi field
+      // 'url' (attachment) tidak konsisten diproses — pesan tetap terkirim (status:true) tanpa foto.
+      const form = new URLSearchParams({ target, message: caption, countryCode: '62' });
+      if (imageUrl) form.set('url', imageUrl);
       const res = await fetch('https://api.fonnte.com/send', {
         method: 'POST',
         signal: ctrl.signal,
-        headers: { 'Authorization': token, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        headers: { 'Authorization': token, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: form,
       });
       const data = await res.json();
       if (!data.status) {
-        console.warn(`[WAG] Fonnte GAGAL → ${group.nama} (${target}): ${data.reason}`);
+        console.warn(`[WAG] Fonnte GAGAL → ${group.nama} (${target}): ${JSON.stringify(data)}`);
         return { jid: group.jid, nama: group.nama, status: 'failed_fonnte', error: data.reason || 'Fonnte status false' };
       }
-      console.log(`[WAG] Fonnte OK → ${group.nama} (${target})`);
+      console.log(`[WAG] Fonnte OK → ${group.nama} (${target})${imageUrl ? ' [+foto]' : ' [teks saja]'}: ${JSON.stringify(data)}`);
       return { jid: group.jid, nama: group.nama, status: 'sent_fonnte', note: data.reason || null };
     } catch (e) {
       const errMsg = e.message || String(e);

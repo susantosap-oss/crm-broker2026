@@ -106,7 +106,28 @@
       "Bash(gh repo *)",
       "PowerShell(gh repo *)",
       "PowerShell(Get-Content *)",
-      "Bash(awk 'NR>=90 && NR<=115')"
+      "Bash(awk 'NR>=90 && NR<=115')",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\susan\\\\crm-broker2026\" -ErrorAction SilentlyContinue; if \\(-not \\(Test-Path \"C:\\\\Users\\\\susan\\\\crm-broker2026\"\\)\\) { \"Directory does not exist\" } else { \"Directory exists\" })",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\susan\\\\crm-broker2026\" -Recurse -File)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Measure-Object)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\susan\\\\crm-broker2026\" -Recurse -File | Where-Object { $_.Name -match \"calc|kpr|mortgage|kalkulator\" -or $_.FullName -match \"calc|kpr|mortgage|kalkulator\" } | Select-Object -ExpandProperty FullName)",
+      "Bash(gcloud version *)",
+      "PowerShell(gcloud version *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git config *)",
+      "Bash(git push *)",
+      "PowerShell(Get-Command *)",
+      "Bash(python3 -c ' *)",
+      "PowerShell(wsl --list --quiet 2>&1)",
+      "PowerShell(winget *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "Bash(git checkout *)",
+      "Bash(gcloud builds submit *)",
+      "Bash(gcloud run deploy crm-broker-properti *)",
+      "Bash(curl -s https://crm.mansionpro.id/sw.js)"
     ]
   }
 }
