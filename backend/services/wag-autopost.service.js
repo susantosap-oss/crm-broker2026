@@ -507,15 +507,20 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
     const ctrl   = new AbortController();
     const timer  = setTimeout(() => ctrl.abort(), 30_000);
     try {
-      // Fonnte API: dokumentasi resmi hanya mencontohkan form-urlencoded (PHP CURLOPT_POSTFIELDS array),
-      // tidak pernah JSON. Body JSON tampaknya diterima untuk field dasar (target/message) tapi field
-      // 'url' (attachment) tidak konsisten diproses — pesan tetap terkirim (status:true) tanpa foto.
-      const form = new URLSearchParams({ target, message: caption, countryCode: '62' });
-      if (imageUrl) form.set('url', imageUrl);
+      // Fonnte API: contoh resmi PHP kirim CURLOPT_POSTFIELDS sebagai array — di PHP-cURL ini
+      // SELALU multipart/form-data (bukan x-www-form-urlencoded, terbukti dari Fonnte message
+      // history: kirim urlencoded → Type tercatat "text" & kolom Url kosong, field url diabaikan).
+      // Harus multipart/form-data agar field 'url' (attachment) dikenali sebagai media.
+      const form = new FormData();
+      form.append('target', target);
+      form.append('message', caption);
+      form.append('countryCode', '62');
+      if (imageUrl) form.append('url', imageUrl);
       const res = await fetch('https://api.fonnte.com/send', {
         method: 'POST',
         signal: ctrl.signal,
-        headers: { 'Authorization': token, 'Content-Type': 'application/x-www-form-urlencoded' },
+        // Jangan set Content-Type manual — fetch generate boundary multipart otomatis dari FormData
+        headers: { 'Authorization': token },
         body: form,
       });
       const data = await res.json();
