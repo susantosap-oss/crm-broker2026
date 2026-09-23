@@ -199,8 +199,20 @@ app.post('/api/v1/scheduler/wag-autopost', schedulerAuth, async (req, res) => {
   try {
     const wagService = require('./services/wag-autopost.service');
     // Scheduler boleh tunggu reconnect hingga 25 detik sebelum kirim
-    const result = await wagService.autoPost(req.body?.type, 25_000);
+    // listing → internal only (default), aset → tanpa filter kategori
+    const result = await wagService.autoPost(req.body?.type, 25_000, false, req.body?.kategori ?? null);
     res.json({ success: true, message: 'WAG autopost selesai', result });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/v1/scheduler/wag-autopost-external', schedulerAuth, async (req, res) => {
+  try {
+    const wagService = require('./services/wag-autopost.service');
+    // Khusus listing external — jam 12:00 + 19:00 WIB
+    const result = await wagService.autoPost('listing', 25_000, false, 'external');
+    res.json({ success: true, message: 'WAG autopost external selesai', result });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }

@@ -1,6 +1,6 @@
 # Mansion CRM — Developer Notes for Claude
 
-> **Versi aktif:** v2.5.19 · **Last updated:** 2026-09-22
+> **Versi aktif:** v2.5.20 · **Last updated:** 2026-09-23
 
 ---
 
@@ -110,7 +110,11 @@ Dockerfile            — di root, build backend/ + frontend/
   - `cron-jadwal-harian` → 19:00 WIB → `POST /api/v1/scheduler/check-jadwal-harian`
   - `cron-rental-reminders` → 08:00 WIB → `POST /api/v1/scheduler/check-rental-reminders`
   - `poll-vigen` → tiap 2 menit → `POST /api/v1/scheduler/poll-vigen`
+  - WAG autopost internal (listing) → 08:00 + 16:00 WIB → `POST /api/v1/scheduler/wag-autopost` body `{"type":"listing"}`
+  - WAG autopost aset → 09:00 + 15:00 WIB → `POST /api/v1/scheduler/wag-autopost` body `{"type":"aset"}`
+  - WAG autopost external (listing) → 12:00 + 19:00 WIB → `POST /api/v1/scheduler/wag-autopost-external` (**baru v2.5.20**)
   - Auth: header `X-Scheduler-Secret` (nilai di `.env.yaml` key `SCHEDULER_SECRET`)
+  - WAG_CONFIG kolom `Kategori` (F): `internal|external` — hanya berlaku untuk tipe listing/all
 
 ---
 

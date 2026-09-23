@@ -216,17 +216,26 @@ class WagAutopostService {
 
   async getConfig() {
     const VALID_TIPES = new Set(['listing', 'aset', 'all']);
+    const VALID_KATS  = new Set(['internal', 'external']);
     try {
       const rows = await sheetsService.getRows(SHEETS.WAG_CONFIG);
-      return (rows || []).map(r => ({
-        id:      r[0],
-        jid:     r[1],
-        nama:    r[2],
-        aktif:   r[3] === 'TRUE',
-        // r[4] bisa berisi Tipe (data baru) atau Created_At (data lama 5-kolom) — validasi
-        tipe:    VALID_TIPES.has(r[4]) ? r[4] : 'all',
-        created: VALID_TIPES.has(r[4]) ? r[5] : r[4],
-      }));
+      return (rows || []).map(r => {
+        // r[4] bisa Tipe (data baru) atau Created_At (data lama 5-kolom)
+        const hasTipe = VALID_TIPES.has(r[4]);
+        const tipe     = hasTipe ? r[4] : 'all';
+        // r[5] bisa Kategori (data baru 7-kolom) atau Created_At (6-kolom)
+        const hasKat   = hasTipe && VALID_KATS.has(r[5]);
+        const kategori = hasKat ? r[5] : 'internal';
+        return {
+          id:      r[0],
+          jid:     r[1],
+          nama:    r[2],
+          aktif:   r[3] === 'TRUE',
+          tipe,
+          kategori,
+          created: hasKat ? r[6] : (hasTipe ? r[5] : r[4]),
+        };
+      });
     } catch (e) {
       console.error('[WAG] getConfig gagal baca sheet:', e.message);
       return [];
@@ -245,7 +254,8 @@ class WagAutopostService {
       g.jid,
       g.nama,
       g.aktif ? 'TRUE' : 'FALSE',
-      g.tipe || 'all',
+      g.tipe     || 'all',
+      g.kategori || 'internal',
       new Date().toISOString(),
     ]);
     if (newRows.length) await sheetsService.appendRows(SHEETS.WAG_CONFIG, newRows);
@@ -254,11 +264,11 @@ class WagAutopostService {
 
   // ── Auto-Post (dipanggil Cloud Scheduler) ────────────────────
 
-  async autoPost(forceType = null, waitMs = 0, textOnly = false) {
+  async autoPost(forceType = null, waitMs = 0, textOnly = false, filterKategori = null) {
     const config = await this.getConfig();
     const activeGroups = config.filter(g => g.aktif);
     console.log(`[WAG] autoPost: status=${this._status} config=${config.length} aktif=${activeGroups.length}` +
-      (activeGroups.length ? ` [${activeGroups.map(g => `${g.nama}(${g.tipe||'all'})`).join(', ')}]` : ''));
+      (activeGroups.length ? ` [${activeGroups.map(g => `${g.nama}(${g.tipe||'all'}/${g.kategori||'internal'})`).join(', ')}]` : ''));
     if (!activeGroups.length) return { skipped: true, reason: 'Tidak ada WAG aktif' };
 
     const useFonnte = !!process.env.FONNTE_TOKEN;
@@ -288,12 +298,19 @@ class WagAutopostService {
     const pick = forceType || (Math.random() < 0.5 ? 'listing' : 'aset');
     console.log(`[WAG] pick=${pick} forceType=${forceType || 'null'}`);
 
-    // Filter grup berdasarkan tipe konten yang dipilih
+    // Kategori efektif: explicit filterKategori > default (listing→internal, aset→tanpa filter)
+    const effKategori = filterKategori ?? (pick === 'listing' ? 'internal' : null);
+    console.log(`[WAG] filterKategori=${filterKategori ?? 'null'} effKategori=${effKategori ?? 'null'}`);
+
+    // Filter grup berdasarkan tipe konten DAN kategori
     const targetGroups = activeGroups.filter(g => {
       const t = g.tipe || 'all';
-      return t === 'all' || t === pick;
+      const k = g.kategori || 'internal';
+      const tipeMatch = t === 'all' || t === pick;
+      const katMatch  = effKategori ? k === effKategori : true;
+      return tipeMatch && katMatch;
     });
-    console.log(`[WAG] targetGroups=${targetGroups.length} (dari ${activeGroups.length} aktif — skip karena tipe beda: ${activeGroups.filter(g=>(g.tipe||'all')!=='all'&&(g.tipe||'all')!==pick).map(g=>g.nama).join(', ')||'none'})`);
+    console.log(`[WAG] targetGroups=${targetGroups.length} (tipe=${pick} kategori=${effKategori ?? 'semua'}: [${targetGroups.map(g=>g.nama).join(', ')||'none'}])`);
     if (!targetGroups.length) return { skipped: true, reason: `Tidak ada WAG aktif untuk tipe ${pick}` };
 
     let item, caption, imageUrl;

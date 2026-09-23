@@ -662,7 +662,8 @@ const COLUMNS = {
     'Nama_Grup',  // C  Nama display grup
     'Aktif',      // D  TRUE|FALSE
     'Tipe',       // E  listing|aset|all — target konten untuk grup ini
-    'Created_At', // F  ISO datetime
+    'Kategori',   // F  internal|external — hanya berlaku untuk tipe listing/all
+    'Created_At', // G  ISO datetime
   ],
 
   // ★ WAG_POST_LOG — Log setiap kiriman auto-post

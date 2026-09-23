@@ -11047,16 +11047,22 @@ function wagRenderGroupList() {
     return;
   }
   const tipeLabel = { listing: 'Listing', aset: 'Aset', all: 'All' };
+  const katLabel  = { internal: 'Internal', external: 'External' };
   list.innerHTML = _wagState.groups.map(g => {
-    const cfg    = configMap[g.jid];
-    const active = !!cfg?.aktif;
-    const tipe   = cfg?.tipe || 'all';
+    const cfg      = configMap[g.jid];
+    const active   = !!cfg?.aktif;
+    const tipe     = cfg?.tipe     || 'all';
+    const kategori = cfg?.kategori || 'internal';
+    const showKat  = tipe === 'listing' || tipe === 'all';
     if (readOnly) {
+      const katChip = active && showKat
+        ? ` · <span style="color:${kategori==='external'?'#f59e0b':'#60a5fa'}">${katLabel[kategori]||kategori}</span>`
+        : '';
       return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0d1829;border:1px solid ${active ? 'rgba(37,211,102,0.25)' : 'rgba(255,255,255,0.08)'};border-radius:10px">
         <span style="width:8px;height:8px;border-radius:50%;background:${active ? '#25D366' : '#374151'};flex-shrink:0"></span>
         <div style="flex:1">
           <div style="color:#fff;font-size:13px;font-weight:600">${escapeHtml(g.nama)}</div>
-          <div style="color:rgba(255,255,255,0.35);font-size:11px">${g.anggota} anggota${active ? ` · <span style="color:#25D366">Aktif</span> · <span style="color:#94a3b8">${tipeLabel[tipe]||tipe}</span>` : ''}</div>
+          <div style="color:rgba(255,255,255,0.35);font-size:11px">${g.anggota} anggota${active ? ` · <span style="color:#25D366">Aktif</span> · <span style="color:#94a3b8">${tipeLabel[tipe]||tipe}</span>${katChip}` : ''}</div>
         </div>
       </div>`;
     }
@@ -11067,13 +11073,27 @@ function wagRenderGroupList() {
         <div style="color:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(g.nama)}</div>
         <div style="color:rgba(255,255,255,0.35);font-size:11px">${g.anggota} anggota</div>
       </div>
-      <select data-jid-tipe="${g.jid}" style="background:#1a2744;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#e2e8f0;font-size:11px;padding:3px 6px;flex-shrink:0">
-        <option value="all" ${tipe==='all'?'selected':''}>All</option>
+      <select data-jid-tipe="${g.jid}" onchange="wagToggleKatSelect(this)"
+        style="background:#1a2744;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#e2e8f0;font-size:11px;padding:3px 6px;flex-shrink:0">
+        <option value="all"     ${tipe==='all'?'selected':''}>All</option>
         <option value="listing" ${tipe==='listing'?'selected':''}>Listing</option>
-        <option value="aset" ${tipe==='aset'?'selected':''}>Aset</option>
+        <option value="aset"    ${tipe==='aset'?'selected':''}>Aset</option>
+      </select>
+      <select data-jid-kat="${g.jid}"
+        style="background:#1a2744;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#e2e8f0;font-size:11px;padding:3px 6px;flex-shrink:0;${showKat ? '' : 'display:none'}">
+        <option value="internal" ${kategori==='internal'?'selected':''}>Internal</option>
+        <option value="external" ${kategori==='external'?'selected':''}>External</option>
       </select>
     </div>`;
   }).join('');
+}
+
+function wagToggleKatSelect(tipeEl) {
+  const jid   = tipeEl.dataset.jidTipe;
+  const katEl = document.querySelector(`[data-jid-kat="${jid}"]`);
+  if (!katEl) return;
+  const show  = tipeEl.value === 'listing' || tipeEl.value === 'all';
+  katEl.style.display = show ? '' : 'none';
 }
 
 async function wagTestPost(type) {
@@ -11102,10 +11122,18 @@ async function wagSaveConfig() {
   const selected = [];
   checkboxes.forEach(cb => {
     const tipeEl = document.querySelector(`[data-jid-tipe="${cb.dataset.jid}"]`);
-    selected.push({ jid: cb.dataset.jid, nama: cb.dataset.nama, aktif: cb.checked, tipe: tipeEl?.value || 'all' });
+    const katEl  = document.querySelector(`[data-jid-kat="${cb.dataset.jid}"]`);
+    const tipe   = tipeEl?.value || 'all';
+    selected.push({
+      jid:      cb.dataset.jid,
+      nama:     cb.dataset.nama,
+      aktif:    cb.checked,
+      tipe,
+      kategori: (tipe === 'listing' || tipe === 'all') ? (katEl?.value || 'internal') : 'internal',
+    });
   });
   const aktifCount = selected.filter(g => g.aktif).length;
-  if (aktifCount > 10) return showToast('Maksimal 10 WAG aktif', 'error');
+  if (aktifCount > 15) return showToast('Maksimal 15 WAG aktif', 'error');
   try {
     await _wagFetch('/api/v1/wag/config', { method: 'POST', body: JSON.stringify({ groups: selected }) });
     _wagState.config = selected;
