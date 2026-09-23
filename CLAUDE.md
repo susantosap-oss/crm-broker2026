@@ -63,6 +63,11 @@ gcloud artifacts docker images list "$REPO" \
   grep -v "$ACTIVE_DIGEST" | \
   xargs -P4 -I{} gcloud artifacts docker images delete \
   "${REPO}@{}" --project=crm-broker2026 --delete-tags --quiet
+
+# Hapus Cloud Build source artifacts di GCS (penyebab Cloud Storage spike):
+# Lifecycle policy 7-hari sudah terpasang (2026-09-23), tapi hapus manual juga aman
+gcloud storage rm "gs://crm-broker2026_cloudbuild/source/**" \
+  --project=crm-broker2026 2>/dev/null || true
 ```
 
 ### WRONG — Jangan deploy ke ini
