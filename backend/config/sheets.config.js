@@ -64,6 +64,8 @@ const SHEETS = {
   // ★ WAG Autopost — Auto-share ke WhatsApp Group Internal
   WAG_CONFIG:     'WAG_CONFIG',
   WAG_POST_LOG:   'WAG_POST_LOG',
+  // ★ Materi Training — Product Knowledge files (Cloudinary)
+  PRODUCT_KNOWLEDGE: 'PRODUCT_KNOWLEDGE',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -677,6 +679,18 @@ const COLUMNS = {
     'Detail',     // G  JSON hasil per grup
   ],
 
+  // ★ PRODUCT_KNOWLEDGE — Metadata file PK yang diupload via CRM (Cloudinary storage)
+  PRODUCT_KNOWLEDGE: [
+    'ID',           // A  UUID
+    'Folder',       // B  Nama subfolder (kategori PK)
+    'Filename',     // C  Nama file asli
+    'URL',          // D  Cloudinary secure_url
+    'MimeType',     // E  application/pdf | image/jpeg | image/png
+    'Size',         // F  Bytes
+    'Uploaded_By',  // G  Nama agen
+    'Uploaded_At',  // H  ISO datetime
+  ],
+
 };
 
 // ── Role Hierarchy ─────────────────────────────────────────
@@ -729,6 +743,28 @@ function getSheetsClient() {
   return _sheets;
 }
 
+let _driveAuth = null;
+let _drive = null;
+
+function getDriveClient() {
+  if (_drive) return _drive;
+  const privateKey  = process.env.GOOGLE_PRIVATE_KEY;
+  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  if (privateKey && clientEmail) {
+    _driveAuth = new google.auth.JWT({
+      email: clientEmail,
+      key: privateKey.replace(/\\n/g, '\n'),
+      scopes: ['https://www.googleapis.com/auth/drive'],
+    });
+  } else {
+    _driveAuth = new google.auth.GoogleAuth({
+      scopes: ['https://www.googleapis.com/auth/drive'],
+    });
+  }
+  _drive = google.drive({ version: 'v3', auth: _driveAuth });
+  return _drive;
+}
+
 const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_ID;
 
 module.exports = {
@@ -739,4 +775,5 @@ module.exports = {
   SPREADSHEET_ID,
   getGoogleAuth,
   getSheetsClient,
+  getDriveClient,
 };

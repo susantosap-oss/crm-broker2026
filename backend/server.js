@@ -150,6 +150,8 @@ app.use('/api/v1/search',         require('./routes/search.routes'));
 app.use('/api/v1/wag',            require('./routes/wag-autopost.routes'));
 // ★ RPL — Portofolio Bukti KKNI VI untuk pengajuan RPL
 app.use('/api/v1/rpl',            require('./routes/rpl.routes'));
+// ★ Materi Training — PDF dari Google Drive
+app.use('/api/v1/training',       require('./routes/training.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)
 app.post('/api/v1/admin/trigger-rental-reminder', require('./middleware/auth.middleware').authMiddleware, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: 'Forbidden' });
@@ -366,6 +368,8 @@ async function migrateHeaders() {
     // ★ WAG Autopost
     { sheet: SHEETS.WAG_CONFIG,      cols: COLUMNS.WAG_CONFIG },
     { sheet: SHEETS.WAG_POST_LOG,    cols: COLUMNS.WAG_POST_LOG },
+    // ★ Materi Training — Product Knowledge
+    { sheet: SHEETS.PRODUCT_KNOWLEDGE, cols: COLUMNS.PRODUCT_KNOWLEDGE },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)

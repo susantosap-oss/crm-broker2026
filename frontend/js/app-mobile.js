@@ -889,6 +889,8 @@ function printListingPDF(mode, format) {
 // ─────────────────────────────────────────────────────────
 let _listingTab = 'mine';
 let _allListings = [];
+let _listingPage = 1;
+let _currentListings = [];
 
 async function setListingTab(tab, btn) {
   _listingTab = tab;
@@ -921,7 +923,9 @@ async function loadListings() {
       : '/listings';
     const res = await API.get(endpoint);
     _allListings = res.data || [];
+    _allListings.reverse();
     window._allListings = _allListings;
+    _listingPage = 1;
 
     let toShow = _allListings;
     if (_listingTab === 'fav') toShow = _allListings.filter(l => _favourites.has(l.ID));
@@ -936,11 +940,20 @@ async function loadListings() {
 function renderListingsGrid(listings) {
   const grid = document.getElementById('listings-grid');
   if (!grid) return;
-  if (!listings.length) { grid.innerHTML = emptyState('Belum ada listing'); return; }
+  _currentListings = listings;
+  const total = listings.length;
+  const totalPages = Math.max(1, Math.ceil(total / 15));
+  if (_listingPage > totalPages) _listingPage = totalPages;
+  if (!total) {
+    grid.innerHTML = emptyState('Belum ada listing');
+    _renderListingPagination(0, 1);
+    return;
+  }
+  const sliced = listings.slice((_listingPage - 1) * 15, _listingPage * 15);
 
   const statusColor = { Aktif:'#22C55E', Terjual:'#6B7280', Tersewa:'#3B82F6', Ditarik:'#ef4444' };
 
-  grid.innerHTML = listings.map(l => {
+  grid.innerHTML = sliced.map(l => {
     const sc = statusColor[l.Status_Listing] || '#6B7280';
     const harga = l.Harga_Format || formatRupiah(l.Harga);
     const isFav = _favourites.has(l.ID);
@@ -987,9 +1000,48 @@ function renderListingsGrid(listings) {
       </div>
     `;
   }).join('');
+  _renderListingPagination(total, totalPages);
+}
+
+function _renderListingPagination(total, totalPages) {
+  const grid = document.getElementById('listings-grid');
+  if (!grid) return;
+  let bar = document.getElementById('listing-pagination');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'listing-pagination';
+    grid.parentNode.insertBefore(bar, grid.nextSibling);
+  }
+  if (total <= 15) { bar.innerHTML = ''; return; }
+  const canPrev = _listingPage > 1;
+  const canNext = _listingPage < totalPages;
+  const btnStyle = (active) =>
+    `padding:6px 16px;border-radius:8px;border:1px solid rgba(255,255,255,${active?'0.12':'0.05'});` +
+    `background:rgba(255,255,255,${active?'0.07':'0.02'});color:${active?'#fff':'rgba(255,255,255,0.2)'};` +
+    `font-size:12px;font-weight:600;cursor:${active?'pointer':'default'}`;
+  bar.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:12px;padding:14px 0 6px';
+  bar.innerHTML =
+    `<button onclick="prevListingPage()" ${canPrev?'':'disabled'} style="${btnStyle(canPrev)}">← Prev</button>` +
+    `<span style="font-size:12px;color:rgba(255,255,255,0.4)">Hal ${_listingPage} dari ${totalPages}</span>` +
+    `<button onclick="nextListingPage()" ${canNext?'':'disabled'} style="${btnStyle(canNext)}">Next →</button>`;
+}
+
+function prevListingPage() {
+  if (_listingPage <= 1) return;
+  _listingPage--;
+  renderListingsGrid(_currentListings);
+  document.getElementById('listings-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function nextListingPage() {
+  if (_listingPage >= Math.ceil(_currentListings.length / 15)) return;
+  _listingPage++;
+  renderListingsGrid(_currentListings);
+  document.getElementById('listings-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function filterListings() {
+  _listingPage = 1;
   const q = document.getElementById('listing-search')?.value?.toLowerCase() || '';
   let filtered = _listingTab === 'fav'
     ? _allListings.filter(l => _favourites.has(l.ID))
@@ -4699,7 +4751,7 @@ async function navigateTo(page) {
     b.className = b.id === `nav-${page}` ? 'nav-btn active' : 'nav-btn';
   });
 
-  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Aktivitas', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti', komisi:'Request Komisi', 'asset-komersial':'Komersial Luar Jatim' };
+  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Aktivitas', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti', komisi:'Request Komisi', 'asset-komersial':'Komersial Luar Jatim', training:'Materi Training' };
   setEl('page-title', titles[page] || page);
   STATE.currentPage = page;
 
@@ -4746,6 +4798,7 @@ async function navigateTo(page) {
   if (page === 'whatsapp')    await loadWaLeadsSelect();
   if (page === 'wa-contacts') await loadWAContacts();
   if (page === 'komisi')      await loadKomisiPage();
+  if (page === 'training')    await loadTrainingPage();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -8666,6 +8719,8 @@ async function _ensureAssetModals() {
 }
 
 let _assetsData = [];
+let _assetPage = 1;
+let _sortedAssetsCache = [];
 let _currentAsset = null;
 let _assetEditorIds = [];
 let _assetPhotoPending = { 1: null, 2: null, 3: null }; // { slot: File }
@@ -8747,6 +8802,7 @@ async function fetchAssets(silent = false) {
 
     const res = await API.get('/assets?' + params.toString());
     _assetsData = res.data || [];
+    if (!silent) _assetPage = 1;
     populateAssetFilters();
     renderAssetGrid(_assetsData);
   } catch (e) {
@@ -8773,6 +8829,8 @@ function renderAssetGrid(assets) {
   if (!grid) return;
   if (!assets.length) {
     grid.innerHTML = '';
+    const _pbarEmpty = document.getElementById('asset-pagination');
+    if (_pbarEmpty) _pbarEmpty.innerHTML = '';
     const _tblWrapEmpty = document.getElementById('asset-table-wrap');
     if (_tblWrapEmpty) _tblWrapEmpty.style.display = 'none';
     const _topScrollEmpty = document.getElementById('asset-table-top-scroll');
@@ -8827,8 +8885,49 @@ function renderAssetGrid(assets) {
     grid.style.display = 'grid';
     if (tblWrap) tblWrap.style.display = 'none';
     if (topScroll) topScroll.style.display = 'none';
-    grid.innerHTML = _sorted.map(a => buildAssetCard(a)).join('');
+    _sortedAssetsCache = _sorted;
+    const _aTotalPages = Math.max(1, Math.ceil(_sorted.length / 15));
+    if (_assetPage > _aTotalPages) _assetPage = _aTotalPages;
+    grid.innerHTML = _sorted.slice((_assetPage - 1) * 15, _assetPage * 15).map(a => buildAssetCard(a)).join('');
+    _renderAssetPagination(_sorted.length, _aTotalPages);
   }
+}
+
+function _renderAssetPagination(total, totalPages) {
+  const grid = document.getElementById('asset-grid');
+  if (!grid) return;
+  let bar = document.getElementById('asset-pagination');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'asset-pagination';
+    grid.parentNode.insertBefore(bar, grid.nextSibling);
+  }
+  if (total <= 15) { bar.innerHTML = ''; return; }
+  const canPrev = _assetPage > 1;
+  const canNext = _assetPage < totalPages;
+  const btnStyle = (active) =>
+    `padding:6px 16px;border-radius:8px;border:1px solid rgba(255,255,255,${active?'0.12':'0.05'});` +
+    `background:rgba(255,255,255,${active?'0.07':'0.02'});color:${active?'#fff':'rgba(255,255,255,0.2)'};` +
+    `font-size:12px;font-weight:600;cursor:${active?'pointer':'default'}`;
+  bar.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:12px;padding:14px 0 6px';
+  bar.innerHTML =
+    `<button onclick="prevAssetPage()" ${canPrev?'':'disabled'} style="${btnStyle(canPrev)}">← Prev</button>` +
+    `<span style="font-size:12px;color:rgba(255,255,255,0.4)">Hal ${_assetPage} dari ${totalPages}</span>` +
+    `<button onclick="nextAssetPage()" ${canNext?'':'disabled'} style="${btnStyle(canNext)}">Next →</button>`;
+}
+
+function prevAssetPage() {
+  if (_assetPage <= 1) return;
+  _assetPage--;
+  renderAssetGrid(_assetsData);
+  document.getElementById('asset-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function nextAssetPage() {
+  if (_assetPage >= Math.ceil(_sortedAssetsCache.length / 15)) return;
+  _assetPage++;
+  renderAssetGrid(_assetsData);
+  document.getElementById('asset-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function buildAssetCard(a) {
@@ -11140,5 +11239,283 @@ async function wagSaveConfig() {
     showToast(`Config WAG disimpan — ${aktifCount} grup aktif`, 'success');
   } catch (e) {
     showToast('Gagal simpan config: ' + e.message, 'error');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// MATERI TRAINING
+// ─────────────────────────────────────────────────────────
+async function loadTrainingPage() {
+  const el = document.getElementById('training-content');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:48px 0"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;color:rgba(255,255,255,0.25)"></i></div>';
+  try {
+    const res = await API.get('/training/materials');
+    renderTrainingPage(res.data || []);
+  } catch (e) {
+    el.innerHTML = '<div style="text-align:center;padding:48px 0;color:rgba(255,255,255,0.25);font-size:13px"><i class="fa-solid fa-circle-exclamation" style="font-size:28px;display:block;margin-bottom:10px"></i>Gagal memuat materi</div>';
+  }
+}
+
+function renderTrainingPage(categories) {
+  const el = document.getElementById('training-content');
+  if (!el) return;
+  if (!categories.length) {
+    el.innerHTML = '<div style="text-align:center;padding:48px 0;color:rgba(255,255,255,0.25);font-size:13px"><i class="fa-solid fa-book-open" style="font-size:32px;display:block;margin-bottom:12px"></i>Belum ada materi tersedia</div>';
+    return;
+  }
+  const role = STATE.user?.role;
+  const canUpload = ['superadmin', 'principal', 'kantor', 'koordinator'].includes(role);
+
+  window._pkSubfolders = [];
+  el.innerHTML = categories.map(cat => {
+    const isPK = cat.type === 'product-knowledge' || cat.name.trim().toLowerCase() === 'product knowledge';
+    if (isPK) window._pkSubfolders = (cat.subfolders || []).map(s => s.name.trim()).filter(Boolean);
+    if (isPK) {
+      const totalFiles = (cat.subfolders || []).reduce((n, s) => n + s.files.length, 0);
+      return `
+        <div style="margin-bottom:24px">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0 10px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:12px">
+            <i class="fa-solid fa-folder-open" style="color:#D4A853;font-size:13px"></i>
+            <span style="font-size:14px;font-weight:700;color:#fff">${escapeHtml(cat.name)}</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.25);margin-left:auto">${totalFiles} file</span>
+            ${canUpload ? `<button onclick="openPKUploadModal()" style="margin-left:8px;padding:4px 10px;border-radius:7px;background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:11px;font-weight:600;cursor:pointer"><i class="fa-solid fa-plus" style="margin-right:4px;font-size:9px"></i>Add File</button>` : ''}
+          </div>
+          ${!cat.subfolders?.length
+            ? `<p style="font-size:12px;color:rgba(255,255,255,0.2);padding:4px 0 0 4px;margin:0">Belum ada konten</p>`
+            : cat.subfolders.map(sub => `
+              <div style="margin-bottom:14px">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                  <i class="fa-solid fa-folder" style="color:rgba(212,168,83,0.6);font-size:11px"></i>
+                  <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.7)">${escapeHtml(sub.name)}</span>
+                  <span style="font-size:10px;color:rgba(255,255,255,0.2)">${sub.files.length} file</span>
+                </div>
+                ${sub.files.length === 0
+                  ? `<p style="font-size:11px;color:rgba(255,255,255,0.15);padding:0 0 0 18px;margin:0">Kosong</p>`
+                  : sub.files.map(f => _trainingFileCard(f, canUpload)).join('')}
+              </div>
+            `).join('')}
+        </div>
+      `;
+    }
+    // Regular category
+    return `
+      <div style="margin-bottom:22px">
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0 10px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:10px">
+          <i class="fa-solid fa-folder-open" style="color:#D4A853;font-size:13px"></i>
+          <span style="font-size:13px;font-weight:700;color:#fff">${escapeHtml(cat.name)}</span>
+          <span style="font-size:10px;color:rgba(255,255,255,0.25);margin-left:auto">${(cat.files||[]).length} file</span>
+        </div>
+        ${!(cat.files||[]).length
+          ? `<p style="font-size:12px;color:rgba(255,255,255,0.2);padding:4px 0 0 4px;margin:0">Belum ada file di folder ini</p>`
+          : cat.files.map(f => _trainingFileCard(f, false)).join('')}
+      </div>
+    `;
+  }).join('');
+}
+
+function _trainingFileCard(f, canDelete = false) {
+  const isPdf = f.mimeType === 'application/pdf';
+  const icon  = isPdf ? 'fa-file-pdf' : 'fa-file-image';
+  const color = isPdf ? '#ef4444' : '#3b82f6';
+  const bg    = isPdf ? 'rgba(239,68,68,0.1)' : 'rgba(59,130,246,0.1)';
+  const rawHref = f.url || `https://drive.google.com/file/d/${escapeHtml(f.id)}/view`;
+  const href = (isPdf && f.url) ? `https://drive.google.com/viewerng/viewer?url=${encodeURIComponent(f.url)}` : rawHref;
+  const deleteBtn = (canDelete && f.id)
+    ? `<button onclick="event.preventDefault();event.stopPropagation();deletePKFile('${escapeHtml(f.id)}',this)"
+        style="margin-left:6px;width:28px;height:28px;border-radius:7px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"
+        title="Hapus file">
+        <i class="fa-solid fa-trash" style="font-size:11px;pointer-events:none"></i>
+      </button>`
+    : '';
+  return `
+    <a href="${href}" target="_blank" rel="noopener"
+      style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#131F38;border:1px solid rgba(255,255,255,0.06);margin-bottom:8px;cursor:pointer;text-decoration:none"
+      onmouseenter="this.style.borderColor='rgba(212,168,83,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'">
+      <div style="width:38px;height:38px;border-radius:9px;background:${bg};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fa-solid ${icon}" style="color:${color};font-size:17px"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(f.name.replace(/\.(pdf|jpg|jpeg|png)$/i,''))}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:2px">${f.size ? _trainingFmtSize(f.size) : (isPdf?'PDF':'Gambar')}</div>
+      </div>
+      <i class="fa-solid fa-arrow-up-right-from-square" style="color:rgba(255,255,255,0.25);font-size:11px;flex-shrink:0"></i>
+      ${deleteBtn}
+    </a>
+  `;
+}
+
+async function deletePKFile(fileId, btnEl) {
+  if (!confirm('Hapus file ini?')) return;
+  btnEl.disabled = true;
+  btnEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size:11px;pointer-events:none"></i>';
+  try {
+    const r = await fetch(`/api/v1/training/product-knowledge/${fileId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${STATE.token}` },
+    });
+    const data = await r.json();
+    if (!data.success) throw new Error(data.message || 'Gagal menghapus');
+    // Remove the card from DOM
+    btnEl.closest('a')?.remove();
+  } catch (e) {
+    alert('Gagal hapus: ' + e.message);
+    btnEl.disabled = false;
+    btnEl.innerHTML = '<i class="fa-solid fa-trash" style="font-size:11px;pointer-events:none"></i>';
+  }
+}
+
+function _trainingFmtSize(bytes) {
+  const b = parseInt(bytes);
+  if (b > 1024 * 1024) return (b / 1024 / 1024).toFixed(1) + ' MB';
+  if (b > 1024) return Math.round(b / 1024) + ' KB';
+  return b + ' B';
+}
+
+async function refreshTrainingCache() {
+  const btn = document.getElementById('btn-training-refresh');
+  if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size:12px"></i>';
+  try {
+    await API.post('/training/refresh');
+    await loadTrainingPage();
+    showToast('Materi diperbarui', 'success');
+  } catch (e) {
+    showToast('Gagal refresh: ' + e.message, 'error');
+  } finally {
+    if (btn) btn.innerHTML = '<i class="fa-solid fa-rotate-right" style="font-size:12px"></i>';
+  }
+}
+
+function openPKUploadModal() {
+  // Bangun ulang modal setiap kali supaya chips folder selalu fresh
+  const old = document.getElementById('modal-pk-upload');
+  if (old) old.remove();
+
+  const existingFolders = window._pkSubfolders || [];
+  const chipsHtml = existingFolders.length
+    ? `<div style="margin-bottom:14px">
+        <label style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:8px;display:block">Pilih folder yang sudah ada:</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${existingFolders.map(name => `
+            <button type="button" onclick="document.getElementById('pk-folder-name').value=this.dataset.name;document.querySelectorAll('.pk-chip').forEach(c=>c.style.background='rgba(255,255,255,0.05)');this.style.background='rgba(212,168,83,0.2)'"
+              class="pk-chip" data-name="${escapeHtml(name)}"
+              style="padding:5px 12px;border-radius:20px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer">
+              <i class="fa-solid fa-folder" style="color:rgba(212,168,83,0.6);margin-right:5px;font-size:10px"></i>${escapeHtml(name)}
+            </button>
+          `).join('')}
+        </div>
+        <div style="margin:12px 0;display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:1px;background:rgba(255,255,255,0.06)"></div>
+          <span style="font-size:10px;color:rgba(255,255,255,0.25)">atau ketik nama folder baru</span>
+          <div style="flex:1;height:1px;background:rgba(255,255,255,0.06)"></div>
+        </div>
+      </div>`
+    : '';
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-pk-upload';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.65)';
+  modal.innerHTML = `
+    <div style="background:#0D1526;border-radius:20px 20px 0 0;width:100%;max-width:540px;padding:24px 20px 32px;border-top:1px solid rgba(255,255,255,0.08);max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#fff">Add File — Product Knowledge</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px">PDF atau Gambar (JPG/PNG), maks. 30MB/file</div>
+        </div>
+        <button onclick="closePKUploadModal()" style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.06);border:none;color:rgba(255,255,255,0.5);font-size:16px;cursor:pointer">×</button>
+      </div>
+
+      ${chipsHtml}
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px;display:block">Nama Folder <span style="color:#ef4444">*</span></label>
+        <input id="pk-folder-name" type="text" placeholder="cth: Teknik Negosiasi, Pengenalan Produk..."
+          style="width:100%;padding:10px 12px;border-radius:10px;background:#131F38;border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:13px;box-sizing:border-box;outline:none"
+          onfocus="this.style.borderColor='rgba(212,168,83,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+        <div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:4px">Folder baru dibuat otomatis, atau file ditambahkan ke folder yang sudah ada</div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px;display:block">File <span style="color:#ef4444">*</span></label>
+        <label for="pk-file-input"
+          style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px;border-radius:10px;border:1.5px dashed rgba(255,255,255,0.15);background:rgba(255,255,255,0.02);cursor:pointer"
+          onmouseenter="this.style.borderColor='rgba(212,168,83,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.15)'">
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size:24px;color:rgba(255,255,255,0.3)"></i>
+          <span style="font-size:12px;color:rgba(255,255,255,0.4)">Tap untuk pilih file</span>
+          <span style="font-size:10px;color:rgba(255,255,255,0.25)">PDF, JPG, PNG — multi-file diizinkan</span>
+        </label>
+        <input id="pk-file-input" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple style="display:none" onchange="onPKFilesSelected(this)"/>
+        <div id="pk-file-preview" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <button onclick="submitPKUpload()" id="btn-pk-upload-save"
+        style="width:100%;padding:12px;border-radius:12px;background:#D4A853;border:none;color:#000;font-size:14px;font-weight:700;cursor:pointer">
+        <i class="fa-solid fa-cloud-arrow-up" style="margin-right:6px"></i>Upload ke Product Knowledge
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) closePKUploadModal(); });
+  _modalStack.push('modal-pk-upload');
+  history.pushState({ modal: 'modal-pk-upload' }, '');
+}
+
+function closePKUploadModal() {
+  const modal = document.getElementById('modal-pk-upload');
+  if (modal) modal.style.display = 'none';
+}
+
+function onPKFilesSelected(input) {
+  const preview = document.getElementById('pk-file-preview');
+  if (!preview) return;
+  const files = Array.from(input.files);
+  if (!files.length) { preview.innerHTML = ''; return; }
+  preview.innerHTML = files.map((f, i) => {
+    const isPdf = f.type === 'application/pdf';
+    const icon  = isPdf ? 'fa-file-pdf' : 'fa-file-image';
+    const color = isPdf ? '#ef4444' : '#3b82f6';
+    const size  = _trainingFmtSize(f.size);
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.04)">
+        <i class="fa-solid ${icon}" style="color:${color};font-size:14px;width:16px;text-align:center"></i>
+        <span style="font-size:12px;color:rgba(255,255,255,0.7);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(f.name)}</span>
+        <span style="font-size:10px;color:rgba(255,255,255,0.3)">${size}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+async function submitPKUpload() {
+  const folderName = document.getElementById('pk-folder-name')?.value?.trim();
+  const fileInput  = document.getElementById('pk-file-input');
+  const btn        = document.getElementById('btn-pk-upload-save');
+
+  if (!folderName) { showToast('Nama folder wajib diisi', 'error'); return; }
+  if (!fileInput?.files?.length) { showToast('Pilih minimal 1 file', 'error'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Mengupload…';
+
+  try {
+    const fd = new FormData();
+    fd.append('folderName', folderName);
+    Array.from(fileInput.files).forEach(f => fd.append('files', f));
+
+    const res = await fetch('/api/v1/training/product-knowledge/upload', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('crm_token')}` },
+      body: fd,
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message);
+
+    showToast(`✅ ${data.message}`, 'success');
+    closePKUploadModal();
+    await loadTrainingPage();
+  } catch (e) {
+    showToast('Upload gagal: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up" style="margin-right:6px"></i>Upload ke Product Knowledge';
   }
 }

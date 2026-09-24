@@ -1670,6 +1670,25 @@
   </div>
   <!-- ── END page-rpl ──────────────────────────────────────── -->
 
+  <!-- ── Materi Training ───────────────────────────────────── -->
+  <div id="page-training" class="page" style="display:none;padding:16px;padding-bottom:100px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fa-solid fa-graduation-cap" style="color:#D4A853;font-size:15px"></i>
+      </div>
+      <div>
+        <h2 style="font-size:15px;font-weight:700;color:#fff;margin:0">Materi Training</h2>
+        <p style="font-size:11px;color:rgba(255,255,255,0.35);margin:2px 0 0">Coaching & Knowledge Base</p>
+      </div>
+      <button onclick="refreshTrainingCache()" title="Refresh" id="btn-training-refresh"
+        style="margin-left:auto;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center">
+        <i class="fa-solid fa-rotate-right" style="font-size:12px"></i>
+      </button>
+    </div>
+    <div id="training-content" style="margin-top:16px"></div>
+  </div>
+  <!-- ── END page-training ─────────────────────────────────── -->
+
   <div id="page-search" class="page" style="display:none;padding:16px;padding-bottom:100px">
 
     <!-- AI mode toggle -->
@@ -1928,6 +1947,10 @@
           <span style="font-size:9px;background:rgba(43,123,255,0.2);color:#60a5fa;padding:1px 6px;border-radius:20px;font-weight:700">KPR</span>
           <span style="font-size:9px;background:rgba(212,168,83,0.15);color:#D4A853;padding:1px 6px;border-radius:20px;font-weight:700">APR</span>
         </span>
+      </button>
+      <button onclick="navigateTo('training');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'">
+        <i class="fa-solid fa-graduation-cap" style="color:#D4A853;width:16px;text-align:center"></i>
+        <span>Materi Training</span>
       </button>
       <button onclick="openSettings();closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-gear" style="color:rgba(255,255,255,0.4);width:16px;text-align:center"></i><span>Pengaturan Profil</span></button>
       <button onclick="navigateTo('komisi');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-money-bill-wave" style="color:#D4A853;width:16px;text-align:center"></i><span>Request Komisi</span></button>

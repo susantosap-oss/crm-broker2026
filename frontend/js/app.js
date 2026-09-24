@@ -18,6 +18,8 @@ const STATE = {
   fabOpen: false,
 };
 let _currentBundle = null; // sosmed bundle state (not stored in HTML attr)
+let _listingPageDesk = 1;
+let _currentListingsDesk = [];
 
 // ── API CLIENT ─────────────────────────────────────────────
 const API = {
@@ -571,6 +573,8 @@ async function loadListings() {
   try {
     const res = await API.get('/listings');
     STATE.listings = res.data || [];
+    STATE.listings.reverse();
+    _listingPageDesk = 1;
     renderListingsGrid(STATE.listings);
   } catch (e) {
     grid.innerHTML = '<div class="text-center py-12 text-slate-500 text-sm">Gagal memuat listing</div>';
@@ -579,6 +583,7 @@ async function loadListings() {
 }
 
 function filterListings(statusFilter, btn) {
+  _listingPageDesk = 1;
   if (btn) {
     document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -603,15 +608,21 @@ function filterListings(statusFilter, btn) {
 function renderListingsGrid(listings) {
   const grid = document.getElementById('listings-grid');
   if (!grid) return;
+  _currentListingsDesk = listings;
+  const total = listings.length;
+  const totalPages = Math.max(1, Math.ceil(total / 15));
+  if (_listingPageDesk > totalPages) _listingPageDesk = totalPages;
 
-  if (!listings.length) {
+  if (!total) {
     grid.innerHTML = '<div class="text-center py-12 text-slate-500 text-sm"><i class="fa-solid fa-building-circle-xmark text-3xl mb-3 block opacity-30"></i>Tidak ada listing ditemukan</div>';
+    _renderListingPaginationDesk(0, 1);
     return;
   }
+  const sliced = listings.slice((_listingPageDesk - 1) * 15, _listingPageDesk * 15);
 
   const statusColors = { Aktif: '#22C55E', Terjual: '#D4A853', Tersewa: '#3B82F6', Ditarik: '#64748B' };
 
-  grid.innerHTML = listings.map(l => {
+  grid.innerHTML = sliced.map(l => {
     const statusColor = statusColors[l.Status_Listing] || '#64748B';
     const hargaFmt = l.Harga_Format || formatHarga(l.Harga) || 'Hubungi Kami';
     const specs = [];
@@ -664,6 +675,44 @@ function renderListingsGrid(listings) {
       </div>
     `;
   }).join('');
+  _renderListingPaginationDesk(total, totalPages);
+}
+
+function _renderListingPaginationDesk(total, totalPages) {
+  const grid = document.getElementById('listings-grid');
+  if (!grid) return;
+  let bar = document.getElementById('listing-pagination-desk');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'listing-pagination-desk';
+    grid.parentNode.insertBefore(bar, grid.nextSibling);
+  }
+  if (total <= 15) { bar.innerHTML = ''; return; }
+  const canPrev = _listingPageDesk > 1;
+  const canNext = _listingPageDesk < totalPages;
+  const btnStyle = (active) =>
+    `padding:6px 18px;border-radius:8px;border:1px solid rgba(255,255,255,${active?'0.12':'0.05'});` +
+    `background:rgba(255,255,255,${active?'0.07':'0.02'});color:${active?'#fff':'rgba(255,255,255,0.2)'};` +
+    `font-size:13px;font-weight:600;cursor:${active?'pointer':'default'}`;
+  bar.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:14px;padding:16px 0 8px';
+  bar.innerHTML =
+    `<button onclick="prevListingPageDesk()" ${canPrev?'':'disabled'} style="${btnStyle(canPrev)}">← Prev</button>` +
+    `<span style="font-size:13px;color:rgba(255,255,255,0.4)">Hal ${_listingPageDesk} dari ${totalPages}</span>` +
+    `<button onclick="nextListingPageDesk()" ${canNext?'':'disabled'} style="${btnStyle(canNext)}">Next →</button>`;
+}
+
+function prevListingPageDesk() {
+  if (_listingPageDesk <= 1) return;
+  _listingPageDesk--;
+  renderListingsGrid(_currentListingsDesk);
+  document.getElementById('listings-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function nextListingPageDesk() {
+  if (_listingPageDesk >= Math.ceil(_currentListingsDesk.length / 15)) return;
+  _listingPageDesk++;
+  renderListingsGrid(_currentListingsDesk);
+  document.getElementById('listings-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function toggleWebVisibility(id, makeVisible) {
