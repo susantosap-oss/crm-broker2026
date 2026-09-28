@@ -1689,6 +1689,60 @@
   </div>
   <!-- ── END page-training ─────────────────────────────────── -->
 
+  <!-- ── ELITE Partnership (info page, all roles) ─────────── -->
+  <div id="page-elite-partnership" class="page" style="display:none;padding:16px;padding-bottom:100px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fa-solid fa-star" style="color:#D4A853;font-size:15px"></i>
+      </div>
+      <div>
+        <h2 style="font-size:15px;font-weight:700;color:#fff;margin:0">ELITE Partnership</h2>
+        <p style="font-size:11px;color:rgba(255,255,255,0.35);margin:2px 0 0">Program Kemitraan Eksklusif</p>
+      </div>
+      <button id="btn-elite-content-edit" onclick="openEliteContentEdit()" style="display:none;margin-left:auto;padding:7px 14px;border-radius:8px;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:12px;font-weight:600;cursor:pointer">
+        <i class="fa-solid fa-pen" style="margin-right:5px"></i>Edit Konten
+      </button>
+    </div>
+    <div id="elite-partnership-content"></div>
+  </div>
+  <!-- ── END page-elite-partnership ───────────────────────── -->
+
+  <!-- ── ELITE Partner Mgmt (admin/principal) ─────────────── -->
+  <div id="page-elite-partner" class="page" style="display:none;padding:16px;padding-bottom:100px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fa-solid fa-crown" style="color:#D4A853;font-size:15px"></i>
+      </div>
+      <div>
+        <h2 style="font-size:15px;font-weight:700;color:#fff;margin:0">ELITE Partner Management</h2>
+        <p style="font-size:11px;color:rgba(255,255,255,0.35);margin:2px 0 0">Kelola status dan checklist ELITE</p>
+      </div>
+      <button onclick="loadElitePartnerPage()" style="margin-left:auto;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center">
+        <i class="fa-solid fa-rotate-right" style="font-size:12px"></i>
+      </button>
+    </div>
+    <div id="elite-partner-content"></div>
+  </div>
+  <!-- ── END page-elite-partner ───────────────────────────── -->
+
+  <!-- ── ELITE Transaksi (agen ELITE only) ─────────────────── -->
+  <div id="page-elite-trx" class="page" style="display:none;padding:16px;padding-bottom:100px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fa-solid fa-receipt" style="color:#D4A853;font-size:15px"></i>
+      </div>
+      <div>
+        <h2 style="font-size:15px;font-weight:700;color:#fff;margin:0">ELITE Transaksi Saya</h2>
+        <p style="font-size:11px;color:rgba(255,255,255,0.35);margin:2px 0 0">Catat & pantau transaksi ELITE</p>
+      </div>
+      <button onclick="openEliteTrxModal(null)" style="margin-left:auto;padding:8px 14px;border-radius:8px;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">
+        <i class="fa-solid fa-plus"></i><span>Tambah</span>
+      </button>
+    </div>
+    <div id="elite-trx-content"></div>
+  </div>
+  <!-- ── END page-elite-trx ───────────────────────────────── -->
+
   <div id="page-search" class="page" style="display:none;padding:16px;padding-bottom:100px">
 
     <!-- AI mode toggle -->
@@ -1968,6 +2022,9 @@
       <button id="sidebar-legal" onclick="navigateTo('legal');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-file-contract" style="color:#34d399;width:16px;text-align:center"></i><span>Legal Perjanjian</span></button>
       <button onclick="navigateTo('rental');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-key" style="color:#fb923c;width:16px;text-align:center"></i><span>Status Sewa</span></button>
       <button onclick="navigateTo('wa-contacts');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-brands fa-whatsapp" style="color:#25d366;width:16px;text-align:center"></i><span>Buku Kontak WA</span></button>
+      <button id="sb-elite-partnership" onclick="navigateTo('elite-partnership');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-star" style="color:#D4A853;width:16px;text-align:center"></i><span>ELITE Partnership</span><span style="margin-left:auto;font-size:9px;background:rgba(212,168,83,0.2);color:#D4A853;padding:1px 6px;border-radius:20px;font-weight:700">ELITE</span></button>
+      <button id="sb-elite-partner" onclick="navigateTo('elite-partner');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-crown" style="color:#D4A853;width:16px;text-align:center"></i><span>ELITE Partner Mgmt</span></button>
+      <button id="sb-elite-trx" onclick="navigateTo('elite-trx');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-receipt" style="color:#D4A853;width:16px;text-align:center"></i><span>ELITE Transaksi Saya</span></button>
     </nav>
     <div style="padding:12px">
       <button onclick="logout()" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);cursor:pointer;color:#f87171;font-size:13px" onmouseenter="this.style.background='rgba(239,68,68,0.15)'" onmouseleave="this.style.background='rgba(239,68,68,0.08)'">
@@ -3755,6 +3812,176 @@
     </div>
   </div>
 
+<!-- MODAL: ELITE Checklist -->
+<div id="modal-elite-checklist" class="modal-overlay">
+  <div class="modal-sheet" style="max-width:500px">
+    <div class="mheader">
+      <div class="drag-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff"><i class="fa-solid fa-crown" style="color:#D4A853;margin-right:8px"></i>Checklist ELITE</h3>
+        <button onclick="closeModal('modal-elite-checklist')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p id="elite-checklist-agent-label" style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px"></p>
+    </div>
+    <div class="mbody" style="display:flex;flex-direction:column;gap:16px">
+      <input type="hidden" id="elite-checklist-agent-id"/>
+      <!-- Form E-1 -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:600;color:#fff">1. Form E-1</span>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="ec-form-e1-verified" onchange="updateEliteChecklistUI()" style="width:16px;height:16px;accent-color:#D4A853"/>
+            <span style="font-size:12px;color:rgba(255,255,255,0.6)">Verified</span>
+          </label>
+        </div>
+        <textarea id="ec-form-e1-catatan" class="form-input" rows="2" placeholder="Catatan Form E-1 (opsional)" style="resize:none;font-size:12px"></textarea>
+      </div>
+      <!-- EQT -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:600;color:#fff">2. EQT (Entry Qualification Test)</span>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="ec-eqt-verified" onchange="updateEliteChecklistUI()" style="width:16px;height:16px;accent-color:#D4A853"/>
+            <span style="font-size:12px;color:rgba(255,255,255,0.6)">Verified</span>
+          </label>
+        </div>
+        <input id="ec-eqt-nilai" type="number" class="form-input" placeholder="Nilai EQT (angka)" style="font-size:12px"/>
+      </div>
+      <!-- Kontrak -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:13px;font-weight:600;color:#fff">3. Kontrak ELITE</span>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="ec-kontrak-verified" onchange="updateEliteChecklistUI()" style="width:16px;height:16px;accent-color:#D4A853"/>
+            <span style="font-size:12px;color:rgba(255,255,255,0.6)">Verified</span>
+          </label>
+        </div>
+      </div>
+      <!-- Target Kuartal -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:600;color:#fff">4. Target Kuartal</span>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="ec-target-verified" onchange="updateEliteChecklistUI()" style="width:16px;height:16px;accent-color:#D4A853"/>
+            <span style="font-size:12px;color:rgba(255,255,255,0.6)">Verified</span>
+          </label>
+        </div>
+        <input id="ec-target-nilai" type="number" class="form-input" placeholder="Target nilai transaksi per kuartal (Rp)" style="font-size:12px"/>
+      </div>
+      <div style="display:flex;gap:10px;padding-top:4px">
+        <button onclick="closeModal('modal-elite-checklist')" class="btn-ghost" style="flex:1">Batal</button>
+        <button onclick="saveEliteChecklist()" class="btn-gold" style="flex:1"><i class="fa-solid fa-floppy-disk" style="margin-right:6px"></i>Simpan Draft</button>
+      </div>
+      <button id="btn-activate-elite" onclick="activateElite(document.getElementById('elite-checklist-agent-id').value)" class="btn-gold" style="width:100%;display:none;background:linear-gradient(135deg,#D4A853,#b8892e)"><i class="fa-solid fa-crown" style="margin-right:6px"></i>Aktifkan ELITE Partner</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ELITE Terminate -->
+<div id="modal-elite-terminate" class="modal-overlay">
+  <div class="modal-sheet" style="max-width:420px">
+    <div class="mheader">
+      <div class="drag-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff"><i class="fa-solid fa-circle-xmark" style="color:#f87171;margin-right:8px"></i>Non-Aktifkan ELITE</h3>
+        <button onclick="closeModal('modal-elite-terminate')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="mbody" style="display:flex;flex-direction:column;gap:14px">
+      <input type="hidden" id="elite-terminate-program-id"/>
+      <p id="elite-terminate-agent-label" style="font-size:13px;color:rgba(255,255,255,0.6)"></p>
+      <div>
+        <label class="form-label">Alasan Non-Aktif <span style="color:#f87171">*</span></label>
+        <textarea id="elite-terminate-reason" class="form-input" rows="3" placeholder="Masukkan alasan..." style="resize:none"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;padding-top:4px">
+        <button onclick="closeModal('modal-elite-terminate')" class="btn-ghost" style="flex:1">Batal</button>
+        <button onclick="confirmTerminateElite()" style="flex:1;padding:12px;border-radius:12px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#f87171;font-size:14px;font-weight:600;cursor:pointer">Konfirmasi Non-Aktif</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ELITE TRX Add/Edit -->
+<div id="modal-elite-trx" class="modal-overlay">
+  <div class="modal-sheet" style="max-width:480px">
+    <div class="mheader">
+      <div class="drag-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h3 id="elite-trx-modal-title" style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff"><i class="fa-solid fa-receipt" style="color:#D4A853;margin-right:8px"></i>Tambah Transaksi</h3>
+        <button onclick="closeModal('modal-elite-trx')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="mbody" style="display:flex;flex-direction:column;gap:14px">
+      <input type="hidden" id="elite-trx-id"/>
+      <div>
+        <label class="form-label">Tanggal <span style="color:#f87171">*</span></label>
+        <input id="et-tanggal" type="date" class="form-input"/>
+      </div>
+      <div>
+        <label class="form-label">Alamat Properti <span style="color:#f87171">*</span></label>
+        <input id="et-alamat" type="text" class="form-input" placeholder="Alamat lengkap properti transaksi"/>
+      </div>
+      <div>
+        <label class="form-label">Tipe Transaksi</label>
+        <select id="et-tipe" class="form-input">
+          <option value="Jual">Jual</option>
+          <option value="Sewa">Sewa</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Nilai Transaksi (Rp) <span style="color:#f87171">*</span></label>
+        <input id="et-nilai-trx" type="number" class="form-input" placeholder="0" min="0"/>
+      </div>
+      <div>
+        <label class="form-label">Komisi (%)</label>
+        <input id="et-komisi-persen" type="number" class="form-input" placeholder="2.5" min="0" max="100" step="0.1"/>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px">
+        <input type="checkbox" id="et-cobroke" style="width:16px;height:16px;accent-color:#D4A853"/>
+        <div>
+          <label for="et-cobroke" style="font-size:13px;color:#fff;cursor:pointer">Co-Broke</label>
+          <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:2px 0 0">Nilai efektif akan dihitung 50% dari nilai transaksi</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;padding-top:4px">
+        <button onclick="closeModal('modal-elite-trx')" class="btn-ghost" style="flex:1">Batal</button>
+        <button onclick="saveEliteTrx()" class="btn-gold" style="flex:1"><i class="fa-solid fa-check" style="margin-right:6px"></i>Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ELITE Content Edit -->
+<div id="modal-elite-content" class="modal-overlay">
+  <div class="modal-sheet" style="max-width:500px">
+    <div class="mheader">
+      <div class="drag-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff"><i class="fa-solid fa-pen" style="color:#D4A853;margin-right:8px"></i>Edit Konten ELITE</h3>
+        <button onclick="closeModal('modal-elite-content')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="mbody" style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label class="form-label">Penjelasan Program</label>
+        <textarea id="ec-penjelasan" class="form-input" rows="4" placeholder="Jelaskan program ELITE secara singkat..." style="resize:none"></textarea>
+      </div>
+      <div>
+        <label class="form-label">Ketentuan Program</label>
+        <textarea id="ec-ketentuan" class="form-input" rows="4" placeholder="Syarat dan ketentuan..." style="resize:none"></textarea>
+      </div>
+      <div>
+        <label class="form-label">Cara Mendaftar</label>
+        <textarea id="ec-cara-daftar" class="form-input" rows="3" placeholder="Langkah-langkah pendaftaran..." style="resize:none"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;padding-top:4px">
+        <button onclick="closeModal('modal-elite-content')" class="btn-ghost" style="flex:1">Batal</button>
+        <button onclick="saveEliteContent()" class="btn-gold" style="flex:1"><i class="fa-solid fa-floppy-disk" style="margin-right:6px"></i>Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 // ═══════════════════════════════════════════════════════════

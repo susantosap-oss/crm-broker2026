@@ -152,6 +152,9 @@ app.use('/api/v1/wag',            require('./routes/wag-autopost.routes'));
 app.use('/api/v1/rpl',            require('./routes/rpl.routes'));
 // ★ Materi Training — PDF dari Google Drive
 app.use('/api/v1/training',       require('./routes/training.routes'));
+// ★ ELITE Partner System
+app.use('/api/v1/elite',              require('./routes/elite.routes'));
+app.use('/api/v1/elite-transactions', require('./routes/elite-transactions.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)
 app.post('/api/v1/admin/trigger-rental-reminder', require('./middleware/auth.middleware').authMiddleware, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: 'Forbidden' });
@@ -215,6 +218,26 @@ app.post('/api/v1/scheduler/wag-autopost-external', schedulerAuth, async (req, r
     // Khusus listing external — jam 12:00 + 19:00 WIB
     const result = await wagService.autoPost('listing', 25_000, false, 'external');
     res.json({ success: true, message: 'WAG autopost external selesai', result });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/v1/scheduler/elite-check', schedulerAuth, async (req, res) => {
+  try {
+    const eliteSvc = require('./services/elite.service');
+    const results = await eliteSvc.runEliteCheck();
+    res.json({ success: true, message: 'Elite check selesai', results });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/v1/scheduler/elite-kinerja', schedulerAuth, async (req, res) => {
+  try {
+    const eliteSvc = require('./services/elite.service');
+    const results = await eliteSvc.runEliteKinerja();
+    res.json({ success: true, message: 'Elite kinerja check selesai', results });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -370,6 +393,10 @@ async function migrateHeaders() {
     { sheet: SHEETS.WAG_POST_LOG,    cols: COLUMNS.WAG_POST_LOG },
     // ★ Materi Training — Product Knowledge
     { sheet: SHEETS.PRODUCT_KNOWLEDGE, cols: COLUMNS.PRODUCT_KNOWLEDGE },
+    // ★ ELITE Partner System
+    { sheet: SHEETS.ELITE_PROGRAM,      cols: COLUMNS.ELITE_PROGRAM },
+    { sheet: SHEETS.ELITE_TRANSACTIONS, cols: COLUMNS.ELITE_TRANSACTIONS },
+    { sheet: SHEETS.ELITE_CONTENT,      cols: COLUMNS.ELITE_CONTENT },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)

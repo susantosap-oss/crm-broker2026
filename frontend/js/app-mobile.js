@@ -4751,7 +4751,7 @@ async function navigateTo(page) {
     b.className = b.id === `nav-${page}` ? 'nav-btn active' : 'nav-btn';
   });
 
-  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Aktivitas', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti', komisi:'Request Komisi', 'asset-komersial':'Komersial Luar Jatim', training:'Materi Training' };
+  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Aktivitas', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti', komisi:'Request Komisi', 'asset-komersial':'Komersial Luar Jatim', training:'Materi Training', 'elite-partnership':'ELITE Partnership', 'elite-partner':'ELITE Partner Mgmt', 'elite-trx':'ELITE Transaksi' };
   setEl('page-title', titles[page] || page);
   STATE.currentPage = page;
 
@@ -4799,6 +4799,9 @@ async function navigateTo(page) {
   if (page === 'wa-contacts') await loadWAContacts();
   if (page === 'komisi')      await loadKomisiPage();
   if (page === 'training')    await loadTrainingPage();
+  if (page === 'elite-partnership') await loadElitePartnershipPage();
+  if (page === 'elite-partner')     await loadElitePartnerPage();
+  if (page === 'elite-trx')         await loadEliteTrxPage();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -5681,6 +5684,22 @@ function checkAdminMenu() {
   if (sbRpl) {
     const rplRoles = ['admin', 'kantor', 'principal', 'superadmin'];
     sbRpl.style.display = rplRoles.includes(role) ? 'flex' : 'none';
+  }
+
+  // ★ ELITE Partner System
+  const sbElitePartnership = document.getElementById('sb-elite-partnership');
+  if (sbElitePartnership) sbElitePartnership.style.display = 'flex';
+
+  const sbElitePartner = document.getElementById('sb-elite-partner');
+  if (sbElitePartner) {
+    const eliteManageRoles = ['admin', 'kantor', 'principal', 'superadmin'];
+    sbElitePartner.style.display = eliteManageRoles.includes(role) ? 'flex' : 'none';
+  }
+
+  const sbEliteTrx = document.getElementById('sb-elite-trx');
+  if (sbEliteTrx) {
+    const isElite = STATE.user?.statusElite === 'ELITE';
+    sbEliteTrx.style.display = isElite ? 'flex' : 'none';
   }
 }
 
@@ -11518,4 +11537,436 @@ async function submitPKUpload() {
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up" style="margin-right:6px"></i>Upload ke Product Knowledge';
   }
+}
+
+// ─────────────────────────────────────────────────────────
+// ELITE PARTNER SYSTEM
+// ─────────────────────────────────────────────────────────
+
+function fmtRp(n) {
+  const num = parseFloat(n) || 0;
+  if (num >= 1e9) return 'Rp ' + (num/1e9).toFixed(2).replace(/\.?0+$/,'') + ' M';
+  if (num >= 1e6) return 'Rp ' + (num/1e6).toFixed(1).replace('.0','') + ' Jt';
+  return 'Rp ' + Math.round(num).toLocaleString('id-ID');
+}
+
+function eliteSisaHariLabel(sisaHari) {
+  if (sisaHari === null || sisaHari === undefined) return '<span style="color:rgba(255,255,255,0.3)">—</span>';
+  if (sisaHari < 0) return '<span style="color:#f87171">Berakhir</span>';
+  if (sisaHari <= 30) return `<span style="color:#f87171">${sisaHari} hari</span>`;
+  if (sisaHari <= 60) return `<span style="color:#fbbf24">${sisaHari} hari</span>`;
+  return `<span style="color:#4ade80">${sisaHari} hari</span>`;
+}
+
+function eliteStatusBadge(status) {
+  const map = {
+    Aktif:          ['#D4A853','rgba(212,168,83,0.15)'],
+    Draft:          ['#60a5fa','rgba(96,165,250,0.15)'],
+    Gugur_Expired:  ['#f87171','rgba(239,68,68,0.12)'],
+    Gugur_Kinerja:  ['#fb923c','rgba(251,146,60,0.12)'],
+    Gugur_Manual:   ['#9ca3af','rgba(156,163,175,0.12)'],
+    Non_Aktif:      ['#9ca3af','rgba(156,163,175,0.12)'],
+  };
+  const [color, bg] = map[status] || ['#9ca3af','rgba(156,163,175,0.12)'];
+  return `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${bg};color:${color}">${status}</span>`;
+}
+
+// ── Page: ELITE Partnership (info) ───────────────────────
+
+async function loadElitePartnershipPage() {
+  const el = document.getElementById('page-elite-partnership');
+  if (!el) return;
+  const contentEl = document.getElementById('elite-partnership-content');
+  if (contentEl) contentEl.innerHTML = '<div style="text-align:center;padding:40px"><i class="fa-solid fa-spinner fa-spin" style="color:#D4A853;font-size:24px"></i></div>';
+
+  const editBtn = document.getElementById('btn-elite-content-edit');
+  const manageRoles = ['superadmin','principal','kantor','admin'];
+  if (editBtn) editBtn.style.display = manageRoles.includes(STATE.user?.role) ? 'flex' : 'none';
+
+  try {
+    const res = await API.get('/elite/content');
+    const c = res.data || {};
+    if (contentEl) contentEl.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:rgba(212,168,83,0.06);border:1px solid rgba(212,168,83,0.2);border-radius:14px;padding:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <i class="fa-solid fa-star" style="color:#D4A853"></i>
+            <span style="font-size:14px;font-weight:700;color:#D4A853">Penjelasan Program</span>
+          </div>
+          <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-line">${c.Penjelasan_Program || '<span style="color:rgba(255,255,255,0.3)">Belum ada konten. Klik Edit Konten untuk mengisi.</span>'}</p>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <i class="fa-solid fa-scroll" style="color:#a78bfa"></i>
+            <span style="font-size:14px;font-weight:700;color:#a78bfa">Ketentuan Program</span>
+          </div>
+          <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-line">${c.Ketentuan_Program || '<span style="color:rgba(255,255,255,0.3)">—</span>'}</p>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <i class="fa-solid fa-list-check" style="color:#4ade80"></i>
+            <span style="font-size:14px;font-weight:700;color:#4ade80">Cara Mendaftar</span>
+          </div>
+          <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-line">${c.Cara_Daftar || '<span style="color:rgba(255,255,255,0.3)">—</span>'}</p>
+        </div>
+        ${c.Updated_At ? `<p style="font-size:10px;color:rgba(255,255,255,0.25);text-align:right">Terakhir diperbarui: ${c.Updated_At.slice(0,10)} oleh ${c.Updated_By || '—'}</p>` : ''}
+      </div>`;
+  } catch(e) {
+    if (contentEl) contentEl.innerHTML = '<p style="color:#f87171;padding:16px">Gagal memuat: ' + e.message + '</p>';
+  }
+}
+
+function openEliteContentEdit() {
+  API.get('/elite/content').then(res => {
+    const c = res.data || {};
+    const p = document.getElementById('ec-penjelasan');
+    const k = document.getElementById('ec-ketentuan');
+    const d = document.getElementById('ec-cara-daftar');
+    if (p) p.value = c.Penjelasan_Program || '';
+    if (k) k.value = c.Ketentuan_Program || '';
+    if (d) d.value = c.Cara_Daftar || '';
+    openModal('modal-elite-content');
+  }).catch(e => showToast('Gagal: ' + e.message, 'error'));
+}
+
+async function saveEliteContent() {
+  const penjelasanProgram = document.getElementById('ec-penjelasan')?.value?.trim() || '';
+  const ketentuanProgram  = document.getElementById('ec-ketentuan')?.value?.trim() || '';
+  const caraDaftar        = document.getElementById('ec-cara-daftar')?.value?.trim() || '';
+  try {
+    await API.put('/elite/content', { penjelasanProgram, ketentuanProgram, caraDaftar });
+    showToast('Konten ELITE berhasil diperbarui', 'success');
+    closeModal('modal-elite-content');
+    await loadElitePartnershipPage();
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+}
+
+// ── Page: ELITE Partner Mgmt ─────────────────────────────
+
+async function loadElitePartnerPage() {
+  const el = document.getElementById('page-elite-partner');
+  if (!el) return;
+  const contentEl = document.getElementById('elite-partner-content');
+  if (contentEl) contentEl.innerHTML = '<div style="text-align:center;padding:40px"><i class="fa-solid fa-spinner fa-spin" style="color:#D4A853;font-size:24px"></i></div>';
+  try {
+    const res = await API.get('/elite/agents');
+    const list = res.data || [];
+    if (!list.length) {
+      if (contentEl) contentEl.innerHTML = `
+        <div style="text-align:center;padding:40px">
+          <i class="fa-solid fa-crown" style="color:rgba(212,168,83,0.3);font-size:40px;margin-bottom:12px"></i>
+          <p style="color:rgba(255,255,255,0.4);font-size:13px">Belum ada ELITE Partner</p>
+        </div>`;
+      return;
+    }
+    const rows = list.map(p => `
+      <div style="background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;margin-bottom:10px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font-size:14px;font-weight:700;color:#fff">${escapeHtml(p.Agen_Nama)}</span>
+              ${eliteStatusBadge(p.Status)}
+            </div>
+            <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:0 0 8px">${escapeHtml(p.Nama_Kantor || '—')}</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:rgba(255,255,255,0.5)">
+              <span><i class="fa-solid fa-calendar-check" style="margin-right:4px;color:#4ade80"></i>${p.Tanggal_Mulai || '—'}</span>
+              <span><i class="fa-solid fa-calendar-xmark" style="margin-right:4px;color:#f87171"></i>${p.Tanggal_Berakhir || '—'}</span>
+              <span><i class="fa-solid fa-hourglass-half" style="margin-right:4px;color:#D4A853"></i>${eliteSisaHariLabel(p.sisaHari)}</span>
+              <span><i class="fa-solid fa-chart-line" style="margin-right:4px;color:#60a5fa"></i>${fmtRp(p.totalTrxEfektif)}</span>
+            </div>
+            ${p.Target_Kuartal_Nilai ? `<p style="font-size:10px;color:rgba(255,255,255,0.35);margin:6px 0 0">Target 80%: ${fmtRp(p.target80)}</p>` : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button onclick="openGrantEliteModal('${escapeHtml(p.Agent_ID)}','${escapeHtml(p.Agen_Nama)}','${escapeHtml(p.Nama_Kantor || '')}')"
+              style="padding:6px 10px;border-radius:8px;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            ${p.Status === 'Aktif' ? `
+            <button onclick="openTerminateEliteModal('${escapeHtml(p.ID)}','${escapeHtml(p.Agen_Nama)}')"
+              style="padding:6px 10px;border-radius:8px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;font-size:11px;cursor:pointer;white-space:nowrap">
+              <i class="fa-solid fa-ban"></i>
+            </button>` : ''}
+          </div>
+        </div>
+      </div>`).join('');
+
+    if (contentEl) contentEl.innerHTML = `
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+        <button onclick="openEliteGrantSearch()" style="padding:8px 16px;border-radius:10px;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:12px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-plus" style="margin-right:6px"></i>Grant ELITE ke Agen
+        </button>
+      </div>
+      ${rows}`;
+  } catch(e) {
+    if (contentEl) contentEl.innerHTML = '<p style="color:#f87171;padding:16px">Gagal memuat: ' + e.message + '</p>';
+  }
+}
+
+async function openEliteGrantSearch() {
+  const agentName = prompt('Masukkan nama atau ID agen:');
+  if (!agentName) return;
+  try {
+    const res = await API.get('/agents');
+    const agents = (res.data || []).filter(a => a.Status === 'Aktif' &&
+      (a.Nama.toLowerCase().includes(agentName.toLowerCase()) || a.ID === agentName));
+    if (!agents.length) { showToast('Agen tidak ditemukan', 'error'); return; }
+    if (agents.length === 1) {
+      openGrantEliteModal(agents[0].ID, agents[0].Nama, agents[0].Nama_Kantor || '');
+    } else {
+      const names = agents.map((a,i) => `${i+1}. ${a.Nama} (${a.Nama_Kantor || '—'})`).join('\n');
+      const idx = parseInt(prompt(`Pilih agen (nomor):\n${names}`)) - 1;
+      if (idx >= 0 && idx < agents.length) {
+        openGrantEliteModal(agents[idx].ID, agents[idx].Nama, agents[idx].Nama_Kantor || '');
+      }
+    }
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+}
+
+let _eliteCurrentAgentId = null;
+let _eliteCurrentAgentNama = null;
+let _eliteCurrentKantor = null;
+
+async function openGrantEliteModal(agentId, agenNama, namaKantor) {
+  _eliteCurrentAgentId = agentId;
+  _eliteCurrentAgentNama = agenNama;
+  _eliteCurrentKantor = namaKantor;
+
+  const label = document.getElementById('elite-checklist-agent-label');
+  const hiddenId = document.getElementById('elite-checklist-agent-id');
+  if (label) label.textContent = `Agen: ${agenNama} — ${namaKantor || '—'}`;
+  if (hiddenId) hiddenId.value = agentId;
+
+  const resetFields = () => {
+    ['ec-form-e1-verified','ec-eqt-verified','ec-kontrak-verified','ec-target-verified'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.checked = false;
+    });
+    ['ec-form-e1-catatan','ec-eqt-nilai','ec-target-nilai'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  };
+  resetFields();
+
+  try {
+    const res = await API.get(`/elite/agent/${agentId}`);
+    const p = res.data;
+    if (p) {
+      const setChk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val === 'TRUE'; };
+      setChk('ec-form-e1-verified', p.Form_E1_Verified);
+      setChk('ec-eqt-verified', p.EQT_Verified);
+      setChk('ec-kontrak-verified', p.Kontrak_Verified);
+      setChk('ec-target-verified', p.Target_Kuartal_Verified);
+      const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+      setVal('ec-form-e1-catatan', p.Form_E1_Catatan);
+      setVal('ec-eqt-nilai', p.EQT_Nilai);
+      setVal('ec-target-nilai', p.Target_Kuartal_Nilai);
+    }
+  } catch(e) { console.warn('[ELITE] load draft:', e.message); }
+
+  updateEliteChecklistUI();
+  openModal('modal-elite-checklist');
+}
+
+function updateEliteChecklistUI() {
+  const ids = ['ec-form-e1-verified','ec-eqt-verified','ec-kontrak-verified','ec-target-verified'];
+  const allChecked = ids.every(id => document.getElementById(id)?.checked);
+  const btn = document.getElementById('btn-activate-elite');
+  if (btn) btn.style.display = allChecked ? 'block' : 'none';
+}
+
+async function saveEliteChecklist() {
+  const agentId = document.getElementById('elite-checklist-agent-id')?.value;
+  if (!agentId) { showToast('Agent ID tidak ditemukan', 'error'); return; }
+  const payload = {
+    agentId,
+    agenNama: _eliteCurrentAgentNama || '',
+    namaKantor: _eliteCurrentKantor || '',
+    formE1Verified: document.getElementById('ec-form-e1-verified')?.checked ? 'TRUE' : 'FALSE',
+    formE1Catatan:  document.getElementById('ec-form-e1-catatan')?.value || '',
+    eqtNilai:       document.getElementById('ec-eqt-nilai')?.value || '',
+    eqtVerified:    document.getElementById('ec-eqt-verified')?.checked ? 'TRUE' : 'FALSE',
+    kontrakVerified: document.getElementById('ec-kontrak-verified')?.checked ? 'TRUE' : 'FALSE',
+    targetKuartalNilai: document.getElementById('ec-target-nilai')?.value || '',
+    targetKuartalVerified: document.getElementById('ec-target-verified')?.checked ? 'TRUE' : 'FALSE',
+  };
+  try {
+    await API.post('/elite/grant', payload);
+    showToast('Checklist disimpan', 'success');
+    closeModal('modal-elite-checklist');
+    if (typeof loadElitePartnerPage === 'function') loadElitePartnerPage();
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+}
+
+async function activateElite(agentId) {
+  if (!agentId) return;
+  if (!confirm('Aktifkan ELITE Partner untuk agen ini?\n\nSplit komisi akan berubah menjadi 70:30 dan berlaku selama 365 hari.')) return;
+  try {
+    await API.post(`/elite/activate/${agentId}`, {});
+    showToast('ELITE Partner berhasil diaktifkan!', 'success');
+    closeModal('modal-elite-checklist');
+    if (typeof loadElitePartnerPage === 'function') loadElitePartnerPage();
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+}
+
+function openTerminateEliteModal(programId, agenNama) {
+  const idEl = document.getElementById('elite-terminate-program-id');
+  const lbl  = document.getElementById('elite-terminate-agent-label');
+  const reason = document.getElementById('elite-terminate-reason');
+  if (idEl) idEl.value = programId;
+  if (lbl) lbl.textContent = `Agen: ${agenNama}`;
+  if (reason) reason.value = '';
+  openModal('modal-elite-terminate');
+}
+
+async function confirmTerminateElite() {
+  const programId = document.getElementById('elite-terminate-program-id')?.value;
+  const reason    = document.getElementById('elite-terminate-reason')?.value?.trim();
+  if (!programId) return;
+  if (!reason) { showToast('Alasan wajib diisi', 'error'); return; }
+  try {
+    await API.put(`/elite/terminate/${programId}`, { reason });
+    showToast('Program ELITE dihentikan', 'success');
+    closeModal('modal-elite-terminate');
+    if (typeof loadElitePartnerPage === 'function') loadElitePartnerPage();
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+}
+
+// ── Page: ELITE Transaksi ────────────────────────────────
+
+async function loadEliteTrxPage() {
+  const el = document.getElementById('page-elite-trx');
+  if (!el) return;
+  const contentEl = document.getElementById('elite-trx-content');
+  if (contentEl) contentEl.innerHTML = '<div style="text-align:center;padding:40px"><i class="fa-solid fa-spinner fa-spin" style="color:#D4A853;font-size:24px"></i></div>';
+  try {
+    const agentId = STATE.user?.id;
+    const res = await API.get(`/elite-transactions/${agentId}`);
+    const list = res.data || [];
+    const monthly = res.monthlySummary || [];
+
+    const monthlyHtml = monthly.length ? `
+      <div style="margin-bottom:16px">
+        <p style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.5);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em">Rekap Bulanan</p>
+        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px">
+          ${monthly.map(m => `
+            <div style="flex-shrink:0;min-width:130px;background:#131F38;border:1px solid rgba(212,168,83,0.2);border-radius:10px;padding:10px 12px">
+              <p style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:4px">${m.bulan}</p>
+              <p style="font-size:13px;font-weight:700;color:#D4A853;margin:0">${fmtRp(m.totalEfektif)}</p>
+              <p style="font-size:10px;color:rgba(255,255,255,0.35);margin:2px 0 0">${m.count} transaksi</p>
+            </div>`).join('')}
+        </div>
+      </div>` : '';
+
+    const trxRows = list.length ? list.map(t => `
+      <div style="background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px;margin-bottom:8px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font-size:11px;font-weight:700;color:#D4A853;background:rgba(212,168,83,0.12);padding:2px 8px;border-radius:6px">${escapeHtml(t.ID)}</span>
+              <span style="font-size:10px;color:rgba(255,255,255,0.4)">${t.Tanggal}</span>
+            </div>
+            <p style="font-size:13px;font-weight:600;color:#fff;margin:0 0 4px">${escapeHtml(t.Alamat_Transaksi || '—')}</p>
+            <div style="display:flex;gap:10px;font-size:11px;color:rgba(255,255,255,0.5)">
+              <span>${t.Tipe || 'Jual'}</span>
+              ${t.Co_Broke === 'TRUE' ? '<span style="color:#fb923c">Co-Broke</span>' : ''}
+              <span>${fmtRp(t.Nilai_Transaksi)}</span>
+              <span style="color:#4ade80">Efektif: ${fmtRp(t.Nilai_Efektif)}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button onclick="openEliteTrxModal('${escapeHtml(t.ID)}')"
+              style="width:30px;height:30px;border-radius:8px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.2);color:#60a5fa;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button onclick="deleteEliteTrx('${escapeHtml(t.ID)}')"
+              style="width:30px;height:30px;border-radius:8px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#f87171;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>`).join('') : '<p style="color:rgba(255,255,255,0.3);text-align:center;padding:24px;font-size:13px">Belum ada transaksi</p>';
+
+    if (contentEl) contentEl.innerHTML = monthlyHtml + trxRows;
+  } catch(e) {
+    if (contentEl) contentEl.innerHTML = '<p style="color:#f87171;padding:16px">Gagal memuat: ' + e.message + '</p>';
+  }
+}
+
+let _eliteTrxEditId = null;
+
+function openEliteTrxModal(trxId) {
+  _eliteTrxEditId = trxId;
+  const title = document.getElementById('elite-trx-modal-title');
+  if (title) title.innerHTML = trxId
+    ? '<i class="fa-solid fa-pen" style="color:#D4A853;margin-right:8px"></i>Edit Transaksi'
+    : '<i class="fa-solid fa-plus" style="color:#D4A853;margin-right:8px"></i>Tambah Transaksi';
+
+  const today = new Date().toISOString().slice(0,10);
+  if (!trxId) {
+    const tgl = document.getElementById('et-tanggal');
+    if (tgl) tgl.value = today;
+    const alamat = document.getElementById('et-alamat');
+    if (alamat) alamat.value = '';
+    const tipe = document.getElementById('et-tipe');
+    if (tipe) tipe.value = 'Jual';
+    const nilaiTrx = document.getElementById('et-nilai-trx');
+    if (nilaiTrx) nilaiTrx.value = '';
+    const komisi = document.getElementById('et-komisi-persen');
+    if (komisi) komisi.value = '';
+    const cobroke = document.getElementById('et-cobroke');
+    if (cobroke) cobroke.checked = false;
+    openModal('modal-elite-trx');
+    return;
+  }
+  API.get(`/elite-transactions/${STATE.user.id}`).then(res => {
+    const trx = (res.data || []).find(t => t.ID === trxId);
+    if (!trx) { showToast('Transaksi tidak ditemukan', 'error'); return; }
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    set('et-tanggal', trx.Tanggal);
+    set('et-alamat', trx.Alamat_Transaksi);
+    set('et-tipe', trx.Tipe);
+    set('et-nilai-trx', trx.Nilai_Transaksi);
+    set('et-komisi-persen', trx.Komisi_Persen);
+    const cobroke = document.getElementById('et-cobroke');
+    if (cobroke) cobroke.checked = trx.Co_Broke === 'TRUE';
+    openModal('modal-elite-trx');
+  }).catch(e => showToast('Gagal: ' + e.message, 'error'));
+}
+
+async function saveEliteTrx() {
+  const tanggal = document.getElementById('et-tanggal')?.value;
+  const alamat  = document.getElementById('et-alamat')?.value?.trim();
+  const nilaiTrx = document.getElementById('et-nilai-trx')?.value;
+  if (!tanggal || !alamat || !nilaiTrx) { showToast('Tanggal, alamat, dan nilai transaksi wajib diisi', 'error'); return; }
+
+  const payload = {
+    tanggal,
+    alamatTransaksi: alamat,
+    tipe:        document.getElementById('et-tipe')?.value || 'Jual',
+    nilaiTransaksi: nilaiTrx,
+    komisiPersen: document.getElementById('et-komisi-persen')?.value || '0',
+    coBroke: document.getElementById('et-cobroke')?.checked || false,
+  };
+
+  try {
+    if (_eliteTrxEditId) {
+      await API.put(`/elite-transactions/${_eliteTrxEditId}`, payload);
+      showToast('Transaksi diperbarui', 'success');
+    } else {
+      await API.post('/elite-transactions', payload);
+      showToast('Transaksi berhasil ditambahkan', 'success');
+    }
+    closeModal('modal-elite-trx');
+    await loadEliteTrxPage();
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+}
+
+async function deleteEliteTrx(id) {
+  if (!confirm('Hapus transaksi ini?')) return;
+  try {
+    await API.delete(`/elite-transactions/${id}`);
+    showToast('Transaksi dihapus', 'success');
+    await loadEliteTrxPage();
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
 }

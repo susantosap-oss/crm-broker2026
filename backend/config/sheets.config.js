@@ -66,6 +66,10 @@ const SHEETS = {
   WAG_POST_LOG:   'WAG_POST_LOG',
   // ★ Materi Training — Product Knowledge files (Cloudinary)
   PRODUCT_KNOWLEDGE: 'PRODUCT_KNOWLEDGE',
+  // ★ ELITE Partner System
+  ELITE_PROGRAM:      'ELITE_PROGRAM',
+  ELITE_TRANSACTIONS: 'ELITE_TRANSACTIONS',
+  ELITE_CONTENT:      'ELITE_CONTENT',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -186,6 +190,8 @@ const COLUMNS = {
     'Tampilkan_di_Web',  // V  ★ FALSE = sembunyikan dari daftar agen website publik
     'Konversi_Rate',    // W  ★ Konversi Deal/Listing atau Deal/Leads (%), ditulis CRM saat closing
     'Leads_Count',      // X  ★ Total leads diterima agen (denominator konversi Selling)
+    'Split_Komisi',     // Y  ★ Split komisi e.g. "60:40", "70:30"
+    'Status_Elite',     // Z  ★ "ELITE" atau ""
   ],
 
   // ★ NEW SHEET
@@ -689,6 +695,62 @@ const COLUMNS = {
     'Size',         // F  Bytes
     'Uploaded_By',  // G  Nama agen
     'Uploaded_At',  // H  ISO datetime
+  ],
+
+  // ★ ELITE_PROGRAM — Data program ELITE Partner per agen
+  ELITE_PROGRAM: [
+    'ID',                     // A  UUID
+    'Agent_ID',               // B  FK ke AGENTS
+    'Agen_Nama',              // C  denormalized
+    'Nama_Kantor',            // D  denormalized
+    'Tanggal_Mulai',          // E  YYYY-MM-DD
+    'Tanggal_Berakhir',       // F  YYYY-MM-DD (Mulai + 365 hari)
+    'Status',                 // G  Draft|Aktif|Non_Aktif|Gugur_Expired|Gugur_Kinerja|Gugur_Manual
+    'Form_E1_Verified',       // H  TRUE|FALSE
+    'Form_E1_Catatan',        // I  Catatan Form E-1
+    'Form_E1_Tgl',            // J  Tanggal verifikasi
+    'EQT_Nilai',              // K  Nilai EQT (angka)
+    'EQT_Verified',           // L  TRUE|FALSE
+    'EQT_Tgl',                // M  Tanggal verifikasi EQT
+    'Kontrak_Verified',       // N  TRUE|FALSE
+    'Kontrak_Tgl',            // O  Tanggal verifikasi kontrak
+    'Target_Kuartal_Nilai',   // P  Target per kuartal (angka)
+    'Target_Kuartal_Verified',// Q  TRUE|FALSE
+    'Target_Kuartal_Tgl',     // R  Tanggal verifikasi target
+    'Split_Sebelumnya',       // S  Split sebelum ELITE (untuk rollback)
+    'Alasan_NonAktif',        // T  Alasan jika gugur/nonaktif
+    'Notif_60_Terkirim',      // U  TRUE|FALSE — 60-day warning sent
+    'Dibuat_Oleh',            // V  agent_id yang membuat
+    'Dibuat_Pada',            // W  ISO datetime
+    'Diperbarui_Pada',        // X  ISO datetime
+  ],
+
+  // ★ ELITE_TRANSACTIONS — Transaksi per agen ELITE
+  ELITE_TRANSACTIONS: [
+    'ID',                // A  ELTRX-0001
+    'Elite_Program_ID',  // B  FK ke ELITE_PROGRAM
+    'Agent_ID',          // C  FK ke AGENTS
+    'Agen_Nama',         // D  denormalized
+    'Tanggal',           // E  YYYY-MM-DD
+    'Bulan',             // F  YYYY-MM
+    'Alamat_Transaksi',  // G  Alamat properti transaksi
+    'Tipe',              // H  Jual|Sewa
+    'Co_Broke',          // I  TRUE|FALSE
+    'Nilai_Transaksi',   // J  Nominal transaksi (angka)
+    'Komisi_Persen',     // K  Persentase komisi
+    'Nilai_Komisi',      // L  Nominal komisi
+    'Nilai_Efektif',     // M  Co_Broke=TRUE → ×50%, else full
+    'Dibuat_Pada',       // N  ISO datetime
+    'Diperbarui_Pada',   // O  ISO datetime
+  ],
+
+  // ★ ELITE_CONTENT — Konten program ELITE (single row data)
+  ELITE_CONTENT: [
+    'Penjelasan_Program', // A  Teks penjelasan program
+    'Ketentuan_Program',  // B  Teks ketentuan program
+    'Cara_Daftar',        // C  Teks cara mendaftar
+    'Updated_By',         // D  Nama admin terakhir update
+    'Updated_At',         // E  ISO datetime
   ],
 
 };

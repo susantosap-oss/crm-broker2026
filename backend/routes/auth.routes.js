@@ -50,15 +50,17 @@ router.post('/login', loginLimiter, async (req, res) => {
     const agentObj = COLUMNS.AGENTS.reduce((obj, col, i) => { obj[col] = agentRow[i] || ''; return obj; }, {});
 
     const user = {
-      id:          agentObj.ID,
-      nama:        agentObj.Nama,
-      email:       agentObj.Email,
-      role:        agentObj.Role || 'agen',
-      team_id:     agentObj.Team_ID || '',
-      no_wa:       agentObj.No_WA          || '',
-      no_wa_biz:   agentObj.No_WA_Business || '',
-      nama_kantor: agentObj.Nama_Kantor    || '',
-      foto_url:    agentObj.Foto_URL       || '',
+      id:           agentObj.ID,
+      nama:         agentObj.Nama,
+      email:        agentObj.Email,
+      role:         agentObj.Role || 'agen',
+      team_id:      agentObj.Team_ID || '',
+      no_wa:        agentObj.No_WA          || '',
+      no_wa_biz:    agentObj.No_WA_Business || '',
+      nama_kantor:  agentObj.Nama_Kantor    || '',
+      foto_url:     agentObj.Foto_URL       || '',
+      statusElite:  agentObj.Status_Elite   || '',
+      splitKomisi:  agentObj.Split_Komisi   || '',
     };
 
     const token = jwt.sign(user, process.env.JWT_SECRET, {
