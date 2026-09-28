@@ -173,7 +173,7 @@ async function activateElite(agentId, activatedBy) {
   program.Diperbarui_Pada = now.toISOString();
   await sheetsService.updateRow(SHEETS.ELITE_PROGRAM, program._rowIdx, COLUMNS.ELITE_PROGRAM.map(c => program[c] || ''));
 
-  await updateAgentEliteFields(agentId, '70:30', 'ELITE');
+  await updateAgentEliteFields(agentId, '70', 'ELITE');
 
   const msg = `✅ *ELITE Partner Aktif!*\n\nHalo ${agent.Nama}, selamat! Anda resmi menjadi ELITE Partner Mansion.\n\n📅 Berlaku: ${tanggalMulai} s/d ${tanggalBerakhir}\n💰 Split Komisi: 70:30\n\nTetap semangat dan raih target Anda!`;
   const agentToken = await getAgentFonnteToken(agentId);

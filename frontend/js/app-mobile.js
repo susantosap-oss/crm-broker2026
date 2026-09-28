@@ -5471,7 +5471,7 @@ async function loadUserList() {
             <span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${roleColor[u.Role]||'#6B7280'}18;color:${roleColor[u.Role]||'#6B7280'};font-weight:600">${{ superadmin:'Super Admin', principal:'Principal', kantor:'Kantor', business_manager:'Business Mgr', project_manager:'Project Mgr', admin:'Admin', agen:'Agen', koordinator:'Koordinator' }[u.Role] || u.Role || 'agen'}</span>
             <span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${statusColor[u.Status]||'#6B7280'}18;color:${statusColor[u.Status]||'#6B7280'};font-weight:600">● ${u.Status||'Aktif'}</span>
             ${u.Status_Elite === 'ELITE' ? '<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(212,168,83,0.2);color:#D4A853;font-weight:700">★ ELITE</span>' : ''}
-            ${u.Split_Komisi ? `<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4)">${escapeHtml(u.Split_Komisi)}</span>` : ''}
+            ${u.Split_Komisi ? `<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4)">Split ${escapeHtml(u.Split_Komisi)}%</span>` : ''}
             ${u.Telegram_ID ? '<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(43,123,255,0.12);color:#60a5fa">TG ✓</span>' : ''}
             ${u.Nomer_LSP ? `<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(37,99,235,0.12);color:#60a5fa;font-weight:600">LSP ✓</span>` : ''}
           </div>
