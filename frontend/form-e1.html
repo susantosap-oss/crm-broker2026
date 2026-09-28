@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Form E-1 — Permohonan Migrasi Tim ELITE | Mansion Pro</title>
+  <meta name="robots" content="noindex, nofollow"/>
+  <style>
+    :root {
+      --gold:    #d4a843;
+      --gold-lt: #f0c84e;
+      --dark:    #0f1117;
+      --card:    #181c26;
+      --border:  #2a2f3e;
+      --text:    #e8e8e8;
+      --muted:   #8892a4;
+      --red:     #ef4444;
+      --green:   #22c55e;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--dark);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #0f1117 0%, #1a1f2e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 20px 20px;
+      text-align: center;
+    }
+    .header-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .header-logo .crown {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-lt) 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .header-logo span {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 1px;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .header p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .badge-elite {
+      display: inline-block;
+      background: linear-gradient(90deg, var(--gold) 0%, var(--gold-lt) 100%);
+      color: #000;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-top: 8px;
+    }
+
+    /* ── Main ── */
+    .main {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+    }
+
+    /* ── Info box ── */
+    .info-box {
+      background: rgba(212, 168, 67, 0.08);
+      border: 1px solid rgba(212, 168, 67, 0.25);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: #c8b77a;
+      line-height: 1.7;
+    }
+    .info-box strong { color: var(--gold); }
+
+    /* ── Section card ── */
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 20px;
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Form fields ── */
+    .field {
+      margin-bottom: 16px;
+    }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 6px;
+    }
+    .field label .req {
+      color: var(--gold);
+      margin-left: 2px;
+    }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      background: #0f1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color .2s;
+      -webkit-appearance: none;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--gold);
+    }
+    .field input::placeholder, .field textarea::placeholder {
+      color: var(--muted);
+    }
+    .field .hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .field.error input, .field.error select {
+      border-color: var(--red);
+    }
+    .field .err-msg {
+      font-size: 11px;
+      color: var(--red);
+      margin-top: 4px;
+      display: none;
+    }
+    .field.error .err-msg { display: block; }
+
+    /* Two column grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 16px;
+    }
+    @media (max-width: 500px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    /* ── Radio group (Ya/Tidak) ── */
+    .radio-group {
+      display: flex;
+      gap: 10px;
+    }
+    .radio-group label {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: #0f1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      transition: border-color .2s, color .2s;
+      text-transform: none;
+      letter-spacing: 0;
+      margin: 0;
+    }
+    .radio-group input[type="radio"] { display: none; }
+    .radio-group input[type="radio"]:checked + span {
+      /* handled by JS class */
+    }
+    .radio-group label.selected-ya {
+      border-color: var(--green);
+      color: var(--green);
+      background: rgba(34, 197, 94, 0.08);
+    }
+    .radio-group label.selected-tidak {
+      border-color: var(--red);
+      color: var(--red);
+      background: rgba(239, 68, 68, 0.08);
+    }
+
+    /* ── Checklist items ── */
+    .checklist-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .checklist-item:last-child { border-bottom: none; }
+    .checklist-item input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      accent-color: var(--gold);
+      cursor: pointer;
+      margin-top: 1px;
+    }
+    .checklist-item .item-text {
+      font-size: 13.5px;
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .checklist-item .item-text strong {
+      color: var(--gold);
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    /* ── Submit button ── */
+    .submit-wrap {
+      margin-top: 28px;
+      text-align: center;
+    }
+    .btn-submit {
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-lt) 100%);
+      color: #000;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 48px;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      width: 100%;
+      max-width: 320px;
+    }
+    .btn-submit:hover { opacity: 0.9; }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Alert ── */
+    .alert {
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 14px;
+      margin-top: 20px;
+      display: none;
+    }
+    .alert.success {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: var(--green);
+    }
+    .alert.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--red);
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 32px 20px 20px;
+      border-top: 1px solid var(--border);
+      margin-top: 8px;
+    }
+    .footer a { color: var(--gold); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo">
+    <div class="crown">👑</div>
+    <span>MANSION PRO</span>
+  </div>
+  <h1>Form E-1</h1>
+  <p>Permohonan Migrasi Tim ELITE</p>
+  <div class="badge-elite">ELITE PARTNER PROGRAM</div>
+</header>
+
+<main class="main">
+
+  <div class="info-box">
+    <strong>Persyaratan Umum:</strong><br>
+    Program ELITE Partner adalah jalur karir premium untuk agen berprestasi tinggi dengan split komisi <strong>70%</strong>.
+    Isi formulir ini dengan jujur dan lengkap. Tim kami akan menghubungi Anda dalam <strong>1×24 jam</strong> kerja setelah verifikasi.
+  </div>
+
+  <form id="form-e1" novalidate>
+
+    <!-- A. Data Diri -->
+    <div class="section">
+      <div class="section-title">A. Data Diri</div>
+
+      <div class="grid-2">
+        <div class="field" id="f-nama">
+          <label>Nama Lengkap <span class="req">*</span></label>
+          <input type="text" name="nama_lengkap" placeholder="Nama sesuai KTP" autocomplete="name"/>
+          <div class="err-msg">Nama lengkap wajib diisi.</div>
+        </div>
+        <div class="field" id="f-kode">
+          <label>Kode Agen <span class="req">*</span></label>
+          <input type="text" name="kode_agent" placeholder="cth: AGN-001" style="text-transform:uppercase"/>
+          <div class="err-msg">Kode agen wajib diisi.</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field" id="f-wa">
+          <label>No. WhatsApp <span class="req">*</span></label>
+          <input type="tel" name="no_wa" placeholder="628xxxxxxxxxx" inputmode="numeric"/>
+          <div class="hint">Format internasional tanpa +, cth: 628123456789</div>
+          <div class="err-msg">No. WhatsApp wajib diisi.</div>
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" name="email" placeholder="email@domain.com" autocomplete="email"/>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label>Nama Team Leader / BM</label>
+          <input type="text" name="team_leader_bm" placeholder="Nama atasan langsung"/>
+        </div>
+        <div class="field">
+          <label>Nama Project Manager</label>
+          <input type="text" name="project_manager_pm" placeholder="Nama PM (jika ada)"/>
+        </div>
+      </div>
+
+      <div class="field" id="f-bergabung">
+        <label>Tanggal Bergabung <span class="req">*</span></label>
+        <input type="date" name="tanggal_bergabung"/>
+        <div class="err-msg">Tanggal bergabung wajib diisi.</div>
+      </div>
+    </div>
+
+    <!-- B. Prasyarat -->
+    <div class="section">
+      <div class="section-title">B. Prasyarat Keikutsertaan</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:18px;">
+        Jawab dengan jujur. Semua kriteria wajib terpenuhi untuk mengajukan permohonan ini.
+      </p>
+
+      <div class="field">
+        <label>1. Sudah menyelesaikan Materi Bisnis Teknis (MBT) D1 & D2? <span class="req">*</span></label>
+        <div class="radio-group" id="rg-k1">
+          <label id="lbl-k1-ya">
+            <input type="radio" name="kriteria_1" value="Ya"/>
+            <span>Ya</span>
+          </label>
+          <label id="lbl-k1-tidak">
+            <input type="radio" name="kriteria_1" value="Tidak"/>
+            <span>Tidak</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>2. Sudah pernah melakukan minimal 1× closing? <span class="req">*</span></label>
+        <div class="radio-group" id="rg-k2">
+          <label id="lbl-k2-ya">
+            <input type="radio" name="kriteria_2" value="Ya"/>
+            <span>Ya</span>
+          </label>
+          <label id="lbl-k2-tidak">
+            <input type="radio" name="kriteria_2" value="Tidak"/>
+            <span>Tidak</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>3. Tidak sedang dalam masa sanksi atau Surat Peringatan (SP)? <span class="req">*</span></label>
+        <div class="radio-group" id="rg-k3">
+          <label id="lbl-k3-ya">
+            <input type="radio" name="kriteria_3" value="Ya"/>
+            <span>Ya</span>
+          </label>
+          <label id="lbl-k3-tidak">
+            <input type="radio" name="kriteria_3" value="Tidak"/>
+            <span>Tidak</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>4. Sanggup menanggung biaya promosi secara mandiri? <span class="req">*</span></label>
+        <div class="radio-group" id="rg-k4">
+          <label id="lbl-k4-ya">
+            <input type="radio" name="kriteria_4" value="Ya"/>
+            <span>Ya</span>
+          </label>
+          <label id="lbl-k4-tidak">
+            <input type="radio" name="kriteria_4" value="Tidak"/>
+            <span>Tidak</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- C. Pernyataan Komitmen -->
+    <div class="section">
+      <div class="section-title">C. Pernyataan Komitmen</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+        Centang semua pernyataan berikut sebagai tanda persetujuan Anda.
+      </p>
+
+      <div class="checklist-item">
+        <input type="checkbox" id="p1" name="pernyataan_target" value="true"/>
+        <div class="item-text">
+          <strong>Target Kinerja</strong>
+          Saya bersedia dan berkomitmen untuk mencapai target transaksi minimum <strong>Rp 3.000.000.000</strong> (tiga miliar rupiah) per kuartal sebagai syarat mempertahankan status ELITE.
+        </div>
+      </div>
+
+      <div class="checklist-item">
+        <input type="checkbox" id="p2" name="pernyataan_eqt" value="true"/>
+        <div class="item-text">
+          <strong>Evaluasi Kuartalan (EQT)</strong>
+          Saya bersedia mengikuti Evaluasi Kuartalan Tim (EQT) dan memahami bahwa nilai minimum kelulusan adalah <strong>80 dari 100</strong>. Kegagalan berulang dapat mengakibatkan penurunan status.
+        </div>
+      </div>
+
+      <div class="checklist-item">
+        <input type="checkbox" id="p3" name="pernyataan_admin" value="true"/>
+        <div class="item-text">
+          <strong>Administrasi Transaksi (UTJ)</strong>
+          Saya berkomitmen untuk menyerahkan Uang Tanda Jadi (UTJ) dari klien ke rekening escrow kantor dalam waktu <strong>1×24 jam</strong> setelah diterima, tanpa pengecualian.
+        </div>
+      </div>
+
+      <div class="checklist-item">
+        <input type="checkbox" id="p4" name="pernyataan_sanksi" value="true"/>
+        <div class="item-text">
+          <strong>Konsekuensi Pelanggaran</strong>
+          Saya memahami dan menerima bahwa pelanggaran terhadap ketentuan ELITE — termasuk kegagalan target, pelanggaran administrasi, atau perilaku tidak profesional — akan mengakibatkan <strong>degradasi otomatis</strong> dari program ELITE.
+        </div>
+      </div>
+
+      <div class="checklist-item">
+        <input type="checkbox" id="p5" name="pernyataan_nda" value="true"/>
+        <div class="item-text">
+          <strong>Kerahasiaan (NDA Internal)</strong>
+          Saya berkomitmen untuk <strong>tidak mengungkapkan besaran split komisi 70%</strong> kepada pihak luar, termasuk sesama agen non-ELITE, sebagai bentuk menjaga kondusivitas tim dan profesionalisme organisasi.
+        </div>
+      </div>
+
+      <div id="checklist-err" style="font-size:12px;color:var(--red);margin-top:10px;display:none;">
+        Semua pernyataan komitmen wajib disetujui.
+      </div>
+    </div>
+
+    <!-- D. Tanggal Pengajuan -->
+    <div class="section">
+      <div class="section-title">D. Persetujuan & Pengajuan</div>
+
+      <div class="field" id="f-tgl">
+        <label>Tanggal Pengajuan <span class="req">*</span></label>
+        <input type="date" name="tanggal_pengajuan" id="tanggal_pengajuan"/>
+        <div class="err-msg">Tanggal pengajuan wajib diisi.</div>
+      </div>
+
+      <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-top:4px;">
+        Dengan mengklik <strong style="color:var(--gold)">Kirim Permohonan</strong>, saya menyatakan bahwa seluruh informasi yang saya berikan adalah benar dan saya menyetujui semua pernyataan komitmen di atas.
+      </p>
+    </div>
+
+    <div class="submit-wrap">
+      <button type="submit" class="btn-submit" id="btn-submit">Kirim Permohonan</button>
+      <div class="alert success" id="alert-success">
+        ✅ Permohonan berhasil dikirim! Tim kami akan menghubungi Anda dalam 1×24 jam kerja.
+      </div>
+      <div class="alert error" id="alert-error"></div>
+    </div>
+
+  </form>
+</main>
+
+<footer class="footer">
+  &copy; 2026 <a href="https://www.mansionpro.id" target="_blank">Mansion Pro</a> — ELITE Partner Program
+</footer>
+
+<script>
+  // ── Set today as default tanggal_pengajuan ──
+  document.getElementById('tanggal_pengajuan').value = new Date().toISOString().split('T')[0];
+
+  // ── Radio group visual toggle ──
+  document.querySelectorAll('.radio-group').forEach(rg => {
+    rg.querySelectorAll('input[type="radio"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        rg.querySelectorAll('label').forEach(lbl => {
+          lbl.classList.remove('selected-ya', 'selected-tidak');
+        });
+        const lbl = radio.closest('label');
+        lbl.classList.add(radio.value === 'Ya' ? 'selected-ya' : 'selected-tidak');
+      });
+    });
+  });
+
+  // ── Form submit ──
+  document.getElementById('form-e1').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const form = e.target;
+    let valid = true;
+
+    // Clear previous errors
+    document.querySelectorAll('.field.error').forEach(f => f.classList.remove('error'));
+    document.getElementById('checklist-err').style.display = 'none';
+    document.getElementById('alert-success').style.display = 'none';
+    document.getElementById('alert-error').style.display = 'none';
+
+    const getVal = name => (form.elements[name]?.value || '').trim();
+    const markErr = (id) => { document.getElementById(id).classList.add('error'); valid = false; };
+
+    if (!getVal('nama_lengkap'))     markErr('f-nama');
+    if (!getVal('kode_agent'))       markErr('f-kode');
+    if (!getVal('no_wa'))            markErr('f-wa');
+    if (!getVal('tanggal_bergabung')) markErr('f-bergabung');
+    if (!getVal('tanggal_pengajuan')) markErr('f-tgl');
+
+    // Pernyataan
+    const allChecked = ['p1','p2','p3','p4','p5'].every(id => document.getElementById(id).checked);
+    if (!allChecked) {
+      document.getElementById('checklist-err').style.display = 'block';
+      valid = false;
+    }
+
+    if (!valid) {
+      document.querySelector('.field.error, #checklist-err[style*="block"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true;
+    btn.textContent = 'Mengirim...';
+
+    const payload = {
+      nama_lengkap:       getVal('nama_lengkap'),
+      kode_agent:         getVal('kode_agent'),
+      no_wa:              getVal('no_wa'),
+      email:              getVal('email'),
+      team_leader_bm:     getVal('team_leader_bm'),
+      project_manager_pm: getVal('project_manager_pm'),
+      tanggal_bergabung:  getVal('tanggal_bergabung'),
+      kriteria_1:         form.elements['kriteria_1']?.value || 'Tidak',
+      kriteria_2:         form.elements['kriteria_2']?.value || 'Tidak',
+      kriteria_3:         form.elements['kriteria_3']?.value || 'Tidak',
+      kriteria_4:         form.elements['kriteria_4']?.value || 'Tidak',
+      pernyataan_target:  'true',
+      pernyataan_eqt:     'true',
+      pernyataan_admin:   'true',
+      pernyataan_sanksi:  'true',
+      pernyataan_nda:     'true',
+      tanggal_pengajuan:  getVal('tanggal_pengajuan'),
+    };
+
+    try {
+      const res = await fetch('/api/v1/form-e1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        form.style.display = 'none';
+        const successDiv = document.getElementById('alert-success');
+        successDiv.style.display = 'block';
+        successDiv.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        throw new Error(data.message || 'Gagal mengirim permohonan.');
+      }
+    } catch (err) {
+      const errDiv = document.getElementById('alert-error');
+      errDiv.textContent = '❌ ' + (err.message || 'Gagal mengirim. Coba lagi.');
+      errDiv.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Kirim Permohonan';
+    }
+  });
+</script>
+</body>
+</html>

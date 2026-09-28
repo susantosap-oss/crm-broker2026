@@ -70,6 +70,8 @@ const SHEETS = {
   ELITE_PROGRAM:      'ELITE_PROGRAM',
   ELITE_TRANSACTIONS: 'ELITE_TRANSACTIONS',
   ELITE_CONTENT:      'ELITE_CONTENT',
+  // ★ Form E-1 — Permohonan Migrasi Tim ELITE
+  FORM_E1:            'FORM_E1',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -751,6 +753,36 @@ const COLUMNS = {
     'Cara_Daftar',        // C  Teks cara mendaftar
     'Updated_By',         // D  Nama admin terakhir update
     'Updated_At',         // E  ISO datetime
+  ],
+
+  // ★ FORM_E1 — Permohonan Migrasi Tim ELITE (public form submission)
+  FORM_E1: [
+    'ID',                  // A  UUID
+    'Tanggal_Submit',      // B  ISO datetime
+    // A. Data Diri
+    'Nama_Lengkap',        // C
+    'Kode_Agent',          // D
+    'No_WA',               // E
+    'Email',               // F
+    'Team_Leader_BM',      // G  Nama Team Leader / BM
+    'Project_Manager_PM',  // H  Nama Project Manager
+    'Tanggal_Bergabung',   // I  YYYY-MM-DD
+    // B. Prasyarat (Ya/Tidak)
+    'Kriteria_1_MBT',      // J  Selesai MBT D1 & D2
+    'Kriteria_2_Closing',  // K  Min 1x closing
+    'Kriteria_3_SP',       // L  Bebas sanksi/SP
+    'Kriteria_4_Biaya',    // M  Biaya promosi mandiri
+    // C. Pernyataan (TRUE/FALSE)
+    'Pernyataan_Target',   // N  Target Rp 3M/kuartal
+    'Pernyataan_EQT',      // O  Bersedia EQT min 80
+    'Pernyataan_Admin',    // P  UTJ ke escrow 1x24 jam
+    'Pernyataan_Sanksi',   // Q  Terima degradasi jika gagal
+    'Pernyataan_NDA',      // R  Jaga kerahasiaan komisi 70%
+    // D. Persetujuan
+    'Tanggal_Pengajuan',   // S  YYYY-MM-DD (diisi agen)
+    // Admin
+    'Status',              // T  Pending/Diproses/Disetujui/Ditolak
+    'Catatan_Admin',       // U  Catatan internal admin
   ],
 
 };
