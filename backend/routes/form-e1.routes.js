@@ -49,12 +49,12 @@ router.put('/:id', authMiddleware, async (req, res) => {
     const idxStatus  = headers.indexOf('Status');
     const idxCatatan = headers.indexOf('Catatan_Admin');
 
-    const rowArr = [...(rows[item._rowIdx] || [])];
+    const rowArr = [...(rows[item._rowIdx - 1] || [])];
     while (rowArr.length <= Math.max(idxStatus, idxCatatan)) rowArr.push('');
     if (status  !== undefined && idxStatus  >= 0) rowArr[idxStatus]  = status;
     if (catatan !== undefined && idxCatatan >= 0) rowArr[idxCatatan] = catatan;
 
-    await sheetsService.updateRow(SHEETS.FORM_E1, item._rowIdx + 1, rowArr);
+    await sheetsService.updateRow(SHEETS.FORM_E1, item._rowIdx, rowArr);
 
     // Notif WA ke agen jika status berubah ke Disetujui/Ditolak
     if (status === 'Disetujui' || status === 'Ditolak') {
