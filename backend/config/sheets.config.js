@@ -761,6 +761,7 @@ const ROLES = {
   PRINCIPAL:        'principal',
   KANTOR:           'kantor',           // ★ Role kantor: privilege = principal, hidden dari member
   BUSINESS_MANAGER: 'business_manager',
+  PROJECT_MANAGER:  'project_manager',  // ★ Manajer proyek primary/developer
   AGEN:             'agen',
   ADMIN:            'admin',
   KOORDINATOR:      'koordinator',
@@ -772,6 +773,7 @@ const ROLE_LEVEL = {
   principal:        4,
   kantor:           4,  // ★ Sama level dengan principal; penerima webhook Meta Ads
   business_manager: 3,
+  project_manager:  2,  // ★ Setara admin; fokus proyek developer
   admin:            2,
   agen:             1,
   koordinator:      1,  // sama dengan agen; hak tambahan ditambah eksplisit per route

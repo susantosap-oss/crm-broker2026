@@ -32,7 +32,7 @@ const _photoUpload = multer({
   },
 });
 
-const VALID_ROLES = ['superadmin', 'principal', 'kantor', 'business_manager', 'admin', 'agen', 'koordinator'];
+const VALID_ROLES = ['superadmin', 'principal', 'kantor', 'business_manager', 'project_manager', 'admin', 'agen', 'koordinator'];
 
 function rowToAgent(row, headers) {
   const cols = headers || COLUMNS.AGENTS;

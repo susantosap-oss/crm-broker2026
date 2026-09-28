@@ -5454,7 +5454,7 @@ async function loadUserList() {
     const res = await API.get('/agents');
     _userList = res.data || [];
     if (!_userList.length) { el.innerHTML = '<p style="text-align:center;color:rgba(255,255,255,0.3);font-size:12px;padding:20px">Belum ada user</p>'; return; }
-    const roleColor = { superadmin:'#EF4444', principal:'#F97316', kantor:'#fb923c', business_manager:'#A855F7', admin:'#D4A853', agen:'#4ade80', koordinator:'#22d3ee' };
+    const roleColor = { superadmin:'#EF4444', principal:'#F97316', kantor:'#fb923c', business_manager:'#A855F7', project_manager:'#8b5cf6', admin:'#D4A853', agen:'#4ade80', koordinator:'#22d3ee' };
     const statusColor = { Aktif:'#4ade80', Cuti:'#9ca3af', Nonaktif:'#ef4444' };
     el.innerHTML = _userList.map(u => `
       <div style="display:flex;align-items:center;gap:12px;background:#131F38;border-radius:14px;padding:12px 14px;border:1px solid rgba(255,255,255,0.06)">
@@ -5468,7 +5468,7 @@ async function loadUserList() {
           </div>
           <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px">${escapeHtml(u.Email||'')}</div>
           <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
-            <span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${roleColor[u.Role]||'#6B7280'}18;color:${roleColor[u.Role]||'#6B7280'};font-weight:600">${{ superadmin:'Super Admin', principal:'Principal', kantor:'Kantor', business_manager:'Business Mgr', admin:'Admin', agen:'Agen', koordinator:'Koordinator' }[u.Role] || u.Role || 'agen'}</span>
+            <span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${roleColor[u.Role]||'#6B7280'}18;color:${roleColor[u.Role]||'#6B7280'};font-weight:600">${{ superadmin:'Super Admin', principal:'Principal', kantor:'Kantor', business_manager:'Business Mgr', project_manager:'Project Mgr', admin:'Admin', agen:'Agen', koordinator:'Koordinator' }[u.Role] || u.Role || 'agen'}</span>
             <span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${statusColor[u.Status]||'#6B7280'}18;color:${statusColor[u.Status]||'#6B7280'};font-weight:600">● ${u.Status||'Aktif'}</span>
             ${u.Status_Elite === 'ELITE' ? '<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(212,168,83,0.2);color:#D4A853;font-weight:700">★ ELITE</span>' : ''}
             ${u.Split_Komisi ? `<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4)">${escapeHtml(u.Split_Komisi)}</span>` : ''}
@@ -5478,7 +5478,7 @@ async function loadUserList() {
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
           <button onclick="openEditUser('${escapeHtml(u.ID)}')" style="font-size:10px;padding:5px 10px;border-radius:7px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);color:#D4A853;cursor:pointer"><i class="fa-solid fa-pen"></i></button>
-          ${['admin','principal','kantor','superadmin'].includes(STATE.user?.role) && u.Role === 'agen' ? `<button onclick="openGrantEliteModal('${escapeHtml(u.ID)}','${escapeHtml(u.Nama)}','${escapeHtml(u.Nama_Kantor||'')}')" style="font-size:10px;padding:5px 10px;border-radius:7px;background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.3);color:#D4A853;cursor:pointer" title="Grant ELITE"><i class="fa-solid fa-crown"></i></button>` : ''}
+          ${['admin','principal','kantor','superadmin'].includes(STATE.user?.role) && !['admin','principal','kantor','superadmin'].includes(u.Role) ? `<button onclick="openGrantEliteModal('${escapeHtml(u.ID)}','${escapeHtml(u.Nama)}','${escapeHtml(u.Nama_Kantor||'')}')" style="font-size:10px;padding:5px 10px;border-radius:7px;background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.3);color:#D4A853;cursor:pointer" title="Grant ELITE"><i class="fa-solid fa-crown"></i></button>` : ''}
           ${u.ID !== STATE.user?.id ? `<button onclick="confirmDeleteUser('${escapeHtml(u.ID)}','${escapeHtml(u.Nama)}')" style="font-size:10px;padding:5px 10px;border-radius:7px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;cursor:pointer"><i class="fa-solid fa-trash"></i></button>` : ''}
         </div>
       </div>
@@ -5661,7 +5661,7 @@ function checkAdminMenu() {
   const navTeam = document.getElementById('nav-team');
   if (navTeam && ['principal','kantor','business_manager','superadmin'].includes(role)) navTeam.style.display = 'flex';
   const roleBadge = document.getElementById('sidebar-role-badge');
-  const roleLabel = { superadmin:'Super Admin', principal:'Principal', kantor:'Kantor', business_manager:'Business Manager', admin:'Admin', agen:'Agen', koordinator:'Koordinator' };
+  const roleLabel = { superadmin:'Super Admin', principal:'Principal', kantor:'Kantor', business_manager:'Business Manager', project_manager:'Project Manager', admin:'Admin', agen:'Agen', koordinator:'Koordinator' };
   if (roleBadge) roleBadge.textContent = roleLabel[role] || role;
 
   // Admin & kantor tidak bisa akses Leads — sembunyikan nav & sidebar
