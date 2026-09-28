@@ -3,6 +3,8 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const sheetsService = require('../services/sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
+const { authMiddleware } = require('../middleware/auth.middleware');
+const { rowsToObjects } = require('../services/elite.service');
 
 // Rate limit khusus form: 5 submission per IP per jam
 const rateLimit = require('express-rate-limit');
@@ -12,6 +14,72 @@ const formLimiter = rateLimit({
   message: { success: false, message: 'Terlalu banyak submission, coba lagi dalam 1 jam.' },
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+const MANAGE_ROLES = ['superadmin', 'principal', 'kantor', 'admin'];
+
+// GET /api/v1/form-e1 — list semua submission (admin/principal/kantor/superadmin)
+router.get('/', authMiddleware, async (req, res) => {
+  if (!MANAGE_ROLES.includes(req.user.role)) return res.status(403).json({ success: false, message: 'Akses ditolak' });
+  try {
+    const rows = await sheetsService.getRange(SHEETS.FORM_E1);
+    const list = rowsToObjects(rows);
+    res.json({ success: true, data: list });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// PUT /api/v1/form-e1/:id — update Status + Catatan_Admin
+router.put('/:id', authMiddleware, async (req, res) => {
+  if (!MANAGE_ROLES.includes(req.user.role)) return res.status(403).json({ success: false, message: 'Akses ditolak' });
+  try {
+    const { status, catatan } = req.body;
+    const VALID_STATUS = ['Pending', 'Diproses', 'Disetujui', 'Ditolak'];
+    if (status && !VALID_STATUS.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Status tidak valid' });
+    }
+
+    const rows = await sheetsService.getRange(SHEETS.FORM_E1);
+    const list = rowsToObjects(rows);
+    const item = list.find(r => r.ID === req.params.id);
+    if (!item) return res.status(404).json({ success: false, message: 'Submission tidak ditemukan' });
+
+    const headers = rows[0];
+    const idxStatus  = headers.indexOf('Status');
+    const idxCatatan = headers.indexOf('Catatan_Admin');
+
+    const rowArr = [...(rows[item._rowIdx] || [])];
+    while (rowArr.length <= Math.max(idxStatus, idxCatatan)) rowArr.push('');
+    if (status  !== undefined && idxStatus  >= 0) rowArr[idxStatus]  = status;
+    if (catatan !== undefined && idxCatatan >= 0) rowArr[idxCatatan] = catatan;
+
+    await sheetsService.updateRow(SHEETS.FORM_E1, item._rowIdx + 1, rowArr);
+
+    // Notif WA ke agen jika status berubah ke Disetujui/Ditolak
+    if (status === 'Disetujui' || status === 'Ditolak') {
+      try {
+        const eliteSvc = require('../services/elite.service');
+        const noWa = item.No_WA;
+        if (noWa) {
+          const emoji = status === 'Disetujui' ? '✅' : '❌';
+          const msg =
+            `${emoji} *Update Form E-1 Anda*\n\n` +
+            `Nama: ${item.Nama_Lengkap}\n` +
+            `Status: *${status}*\n` +
+            (catatan ? `Catatan: ${catatan}\n` : '') +
+            `\nSilakan hubungi admin untuk informasi lebih lanjut.`;
+          await eliteSvc.sendWA(noWa, msg);
+        }
+      } catch (notifErr) {
+        console.warn('[FormE1] WA notif update gagal:', notifErr.message);
+      }
+    }
+
+    res.json({ success: true, message: 'Status diperbarui' });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
 });
 
 // POST /api/v1/form-e1 — public, no auth

@@ -11654,12 +11654,33 @@ async function loadElitePartnerPage() {
   const el = document.getElementById('page-elite-partner');
   if (!el) return;
   const contentEl = document.getElementById('elite-partner-content');
-  if (contentEl) contentEl.innerHTML = '<div style="text-align:center;padding:40px"><i class="fa-solid fa-spinner fa-spin" style="color:#D4A853;font-size:24px"></i></div>';
+
+  // Render tab wrapper sekali saja
+  if (!document.getElementById('ep-tab-content-partners')) {
+    contentEl.innerHTML = `
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button id="ep-tab-partners" onclick="elitePartnerTabSwitch('partners')"
+          style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(212,168,83,0.4);background:rgba(212,168,83,0.15);color:#D4A853;font-size:12px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-crown" style="margin-right:5px"></i>ELITE Partners
+        </button>
+        <button id="ep-tab-form-e1" onclick="elitePartnerTabSwitch('form-e1')"
+          style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-clipboard-list" style="margin-right:5px"></i>Form E-1 <span class="fe1-badge" style="background:rgba(245,158,11,0.2);color:#f59e0b;padding:1px 6px;border-radius:6px;font-size:10px"></span>
+        </button>
+      </div>
+      <div id="ep-tab-content-partners"></div>
+      <div id="ep-tab-content-form-e1" style="display:none"></div>`;
+  }
+
+  _fe1ActiveTab = 'partners';
+  const partnersDiv = document.getElementById('ep-tab-content-partners');
+  if (partnersDiv) partnersDiv.innerHTML = '<div style="text-align:center;padding:40px"><i class="fa-solid fa-spinner fa-spin" style="color:#D4A853;font-size:24px"></i></div>';
+
   try {
     const res = await API.get('/elite/agents');
     const list = res.data || [];
     if (!list.length) {
-      if (contentEl) contentEl.innerHTML = `
+      if (partnersDiv) partnersDiv.innerHTML = `
         <div style="text-align:center;padding:40px">
           <i class="fa-solid fa-crown" style="color:rgba(212,168,83,0.3);font-size:40px;margin-bottom:12px"></i>
           <p style="color:rgba(255,255,255,0.4);font-size:13px">Belum ada ELITE Partner</p>
@@ -11697,7 +11718,7 @@ async function loadElitePartnerPage() {
         </div>
       </div>`).join('');
 
-    if (contentEl) contentEl.innerHTML = `
+    if (partnersDiv) partnersDiv.innerHTML = `
       <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
         <button onclick="openEliteGrantSearch()" style="padding:8px 16px;border-radius:10px;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);color:#D4A853;font-size:12px;font-weight:600;cursor:pointer">
           <i class="fa-solid fa-plus" style="margin-right:6px"></i>Grant ELITE ke Agen
@@ -11705,8 +11726,135 @@ async function loadElitePartnerPage() {
       </div>
       ${rows}`;
   } catch(e) {
-    if (contentEl) contentEl.innerHTML = '<p style="color:#f87171;padding:16px">Gagal memuat: ' + e.message + '</p>';
+    if (partnersDiv) partnersDiv.innerHTML = '<p style="color:#f87171;padding:16px">Gagal memuat: ' + e.message + '</p>';
   }
+}
+
+// ── Page: Form E-1 Review (tab di dalam page-elite-partner) ──
+
+let _fe1ActiveTab = 'partners';
+
+function elitePartnerTabSwitch(tab) {
+  _fe1ActiveTab = tab;
+  const tabs = ['partners', 'form-e1'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`ep-tab-${t}`);
+    if (btn) {
+      btn.style.background    = t === tab ? 'rgba(212,168,83,0.15)' : 'transparent';
+      btn.style.borderColor   = t === tab ? 'rgba(212,168,83,0.4)'  : 'rgba(255,255,255,0.08)';
+      btn.style.color         = t === tab ? '#D4A853'               : 'rgba(255,255,255,0.4)';
+    }
+  });
+  const partnersDiv = document.getElementById('ep-tab-content-partners');
+  const formsDiv    = document.getElementById('ep-tab-content-form-e1');
+  if (partnersDiv) partnersDiv.style.display = tab === 'partners' ? 'block' : 'none';
+  if (formsDiv)    formsDiv.style.display    = tab === 'form-e1'  ? 'block' : 'none';
+  if (tab === 'form-e1') loadFormE1Reviews();
+}
+
+async function loadFormE1Reviews() {
+  const container = document.getElementById('ep-tab-content-form-e1');
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center;padding:32px"><i class="fa-solid fa-spinner fa-spin" style="color:#D4A853;font-size:22px"></i></div>';
+  try {
+    const res = await API.get('/form-e1');
+    const list = (res.data || []).slice().reverse();
+
+    if (!list.length) {
+      container.innerHTML = '<p style="text-align:center;color:rgba(255,255,255,0.3);padding:32px;font-size:13px">Belum ada submission Form E-1</p>';
+      return;
+    }
+
+    const statusColor = { Pending:'#f59e0b', Diproses:'#60a5fa', Disetujui:'#4ade80', Ditolak:'#f87171' };
+    const rows = list.map(f => `
+      <div style="background:#131F38;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer" onclick="openFormE1Review('${escapeHtml(f.ID)}')">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+              <span style="font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(f.Nama_Lengkap || '—')}</span>
+              <span style="font-size:10px;font-weight:600;color:${statusColor[f.Status] || '#aaa'};background:rgba(255,255,255,0.05);padding:1px 7px;border-radius:6px;flex-shrink:0">${f.Status || 'Pending'}</span>
+            </div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4)">
+              ${escapeHtml(f.Kode_Agent || '—')} &nbsp;·&nbsp; ${escapeHtml(f.No_WA || '—')} &nbsp;·&nbsp; ${(f.Tanggal_Submit || '').slice(0,10)}
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right" style="color:rgba(255,255,255,0.2);font-size:11px;flex-shrink:0"></i>
+        </div>
+      </div>`).join('');
+
+    container.innerHTML = rows;
+
+    // Update badge count di tab button
+    const tabBtn = document.getElementById('ep-tab-form-e1');
+    const pending = list.filter(f => f.Status === 'Pending').length;
+    if (tabBtn && pending > 0) {
+      const badge = tabBtn.querySelector('.fe1-badge');
+      if (badge) badge.textContent = pending;
+    }
+  } catch(e) {
+    container.innerHTML = `<p style="color:#f87171;padding:16px;font-size:13px">Gagal memuat: ${e.message}</p>`;
+  }
+}
+
+let _fe1ReviewCache = {};
+
+async function openFormE1Review(id) {
+  try {
+    const res = await API.get('/form-e1');
+    const list = res.data || [];
+    const item = list.find(f => f.ID === id);
+    if (!item) { showToast('Data tidak ditemukan', 'error'); return; }
+    _fe1ReviewCache[id] = item;
+
+    document.getElementById('fe1r-id').value = id;
+    document.getElementById('fe1r-status').value  = item.Status || 'Pending';
+    document.getElementById('fe1r-catatan').value = item.Catatan_Admin || '';
+
+    const ya  = s => `<span style="color:#4ade80;font-weight:600">${s}</span>`;
+    const tdk = s => `<span style="color:#f87171;font-weight:600">${s}</span>`;
+    const kv  = (label, val) => `<span style="color:rgba(255,255,255,0.4)">${label}:</span> <span style="color:#fff">${escapeHtml(val || '—')}</span>`;
+
+    document.getElementById('fe1r-info').innerHTML = `
+      ${kv('Nama', item.Nama_Lengkap)}<br>
+      ${kv('Kode Agen', item.Kode_Agent)}<br>
+      ${kv('No WA', item.No_WA)}<br>
+      ${kv('Email', item.Email)}<br>
+      ${kv('Team Leader / BM', item.Team_Leader_BM)}<br>
+      ${kv('Project Manager', item.Project_Manager_PM)}<br>
+      ${kv('Tgl Bergabung', item.Tanggal_Bergabung)}<br>
+      ${kv('Tgl Pengajuan', item.Tanggal_Pengajuan)}`;
+
+    const kriteriaCheck = (val, label) => {
+      const ok = val === 'Ya';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px">
+        <i class="fa-solid fa-${ok ? 'check-circle' : 'circle-xmark'}" style="color:${ok ? '#4ade80' : '#f87171'};font-size:14px"></i>
+        <span style="color:rgba(255,255,255,0.7);flex:1">${label}</span>
+        ${ok ? ya('Ya') : tdk('Tidak')}
+      </div>`;
+    };
+
+    document.getElementById('fe1r-kriteria').innerHTML = `
+      <p style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Prasyarat</p>
+      ${kriteriaCheck(item.Kriteria_1_MBT,     'Selesai MBT D1 & D2')}
+      ${kriteriaCheck(item.Kriteria_2_Closing, 'Min 1x closing')}
+      ${kriteriaCheck(item.Kriteria_3_SP,      'Bebas sanksi / SP')}
+      ${kriteriaCheck(item.Kriteria_4_Biaya,   'Sanggup biaya promosi mandiri')}`;
+
+    openModal('modal-form-e1-review');
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+}
+
+async function saveFormE1Review() {
+  const id      = document.getElementById('fe1r-id').value;
+  const status  = document.getElementById('fe1r-status').value;
+  const catatan = document.getElementById('fe1r-catatan').value.trim();
+  if (!id) return;
+  try {
+    await API.put(`/form-e1/${id}`, { status, catatan });
+    showToast('Status berhasil diperbarui', 'success');
+    closeModal('modal-form-e1-review');
+    loadFormE1Reviews();
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
 }
 
 async function openEliteGrantSearch() {

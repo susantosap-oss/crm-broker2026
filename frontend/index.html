@@ -3989,6 +3989,39 @@
   </div>
 </div>
 
+<!-- MODAL: Form E-1 Review -->
+<div id="modal-form-e1-review" class="modal-overlay">
+  <div class="modal-sheet" style="max-width:520px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:16px">
+      <h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff"><i class="fa-solid fa-clipboard-list" style="color:#D4A853;margin-right:8px"></i>Review Form E-1</h3>
+      <button onclick="closeModal('modal-form-e1-review')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <input type="hidden" id="fe1r-id"/>
+    <!-- Info Pemohon -->
+    <div id="fe1r-info" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;line-height:1.9;color:rgba(255,255,255,0.6)"></div>
+    <!-- Prasyarat -->
+    <div id="fe1r-kriteria" style="margin-bottom:14px"></div>
+    <!-- Status & Catatan -->
+    <div style="margin-bottom:12px">
+      <label style="display:block;font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Status</label>
+      <select id="fe1r-status" style="width:100%;background:#0A1628;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;padding:10px 12px;outline:none">
+        <option value="Pending">Pending</option>
+        <option value="Diproses">Diproses</option>
+        <option value="Disetujui">Disetujui ✅</option>
+        <option value="Ditolak">Ditolak ❌</option>
+      </select>
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="display:block;font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Catatan Admin</label>
+      <textarea id="fe1r-catatan" rows="3" placeholder="Catatan internal untuk pemohon..." style="width:100%;background:#0A1628;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;padding:10px 12px;outline:none;resize:none"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;padding-top:4px">
+      <button onclick="closeModal('modal-form-e1-review')" class="btn-ghost" style="flex:1">Tutup</button>
+      <button onclick="saveFormE1Review()" class="btn-gold" style="flex:1"><i class="fa-solid fa-floppy-disk" style="margin-right:6px"></i>Simpan</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════════════
 // CALCULATOR — KPR & APPRAISAL
