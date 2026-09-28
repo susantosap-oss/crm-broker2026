@@ -337,17 +337,10 @@
     <div class="section">
       <div class="section-title">A. Data Diri</div>
 
-      <div class="grid-2">
-        <div class="field" id="f-nama">
-          <label>Nama Lengkap <span class="req">*</span></label>
-          <input type="text" name="nama_lengkap" placeholder="Nama sesuai KTP" autocomplete="name"/>
-          <div class="err-msg">Nama lengkap wajib diisi.</div>
-        </div>
-        <div class="field" id="f-kode">
-          <label>Kode Agen <span class="req">*</span></label>
-          <input type="text" name="kode_agent" placeholder="cth: AGN-001" style="text-transform:uppercase"/>
-          <div class="err-msg">Kode agen wajib diisi.</div>
-        </div>
+      <div class="field" id="f-nama">
+        <label>Nama Lengkap <span class="req">*</span></label>
+        <input type="text" name="nama_lengkap" placeholder="Nama sesuai KTP" autocomplete="name"/>
+        <div class="err-msg">Nama lengkap wajib diisi.</div>
       </div>
 
       <div class="grid-2">
@@ -561,7 +554,6 @@
     const markErr = (id) => { document.getElementById(id).classList.add('error'); valid = false; };
 
     if (!getVal('nama_lengkap'))     markErr('f-nama');
-    if (!getVal('kode_agent'))       markErr('f-kode');
     if (!getVal('no_wa'))            markErr('f-wa');
     if (!getVal('tanggal_bergabung')) markErr('f-bergabung');
     if (!getVal('tanggal_pengajuan')) markErr('f-tgl');
@@ -584,7 +576,6 @@
 
     const payload = {
       nama_lengkap:       getVal('nama_lengkap'),
-      kode_agent:         getVal('kode_agent'),
       no_wa:              getVal('no_wa'),
       email:              getVal('email'),
       team_leader_bm:     getVal('team_leader_bm'),

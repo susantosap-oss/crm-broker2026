@@ -88,7 +88,7 @@ router.post('/', formLimiter, async (req, res) => {
     const b = req.body;
 
     // Validasi wajib
-    const required = ['nama_lengkap', 'kode_agent', 'no_wa', 'tanggal_bergabung', 'tanggal_pengajuan'];
+    const required = ['nama_lengkap', 'no_wa', 'tanggal_bergabung', 'tanggal_pengajuan'];
     for (const f of required) {
       if (!b[f]?.toString().trim()) {
         return res.status(400).json({ success: false, message: `Field wajib tidak lengkap: ${f}` });
