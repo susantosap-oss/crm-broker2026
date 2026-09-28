@@ -2920,6 +2920,10 @@
           <input type="file" id="eu-photo" accept="image/*" style="display:none" onchange="previewUserPhoto('eu',this)"/>
         </label>
       </div>
+      <div id="eu-split-wrap">
+        <label class="form-label">Split Komisi <span style="color:rgba(255,255,255,0.3)">(opsional, cth: 60:40)</span></label>
+        <input id="eu-split-komisi" type="text" class="form-input" placeholder="60:40" maxlength="10"/>
+      </div>
     </div>
     <div style="display:flex;gap:10px;padding:14px 20px;flex-shrink:0;border-top:1px solid rgba(255,255,255,0.06)">
       <button onclick="closeModal('modal-edit-user')" class="btn-ghost" style="flex:1">Batal</button>

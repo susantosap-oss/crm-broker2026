@@ -5470,12 +5470,15 @@ async function loadUserList() {
           <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
             <span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${roleColor[u.Role]||'#6B7280'}18;color:${roleColor[u.Role]||'#6B7280'};font-weight:600">${{ superadmin:'Super Admin', principal:'Principal', kantor:'Kantor', business_manager:'Business Mgr', admin:'Admin', agen:'Agen', koordinator:'Koordinator' }[u.Role] || u.Role || 'agen'}</span>
             <span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${statusColor[u.Status]||'#6B7280'}18;color:${statusColor[u.Status]||'#6B7280'};font-weight:600">● ${u.Status||'Aktif'}</span>
+            ${u.Status_Elite === 'ELITE' ? '<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(212,168,83,0.2);color:#D4A853;font-weight:700">★ ELITE</span>' : ''}
+            ${u.Split_Komisi ? `<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4)">${escapeHtml(u.Split_Komisi)}</span>` : ''}
             ${u.Telegram_ID ? '<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(43,123,255,0.12);color:#60a5fa">TG ✓</span>' : ''}
             ${u.Nomer_LSP ? `<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(37,99,235,0.12);color:#60a5fa;font-weight:600">LSP ✓</span>` : ''}
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
           <button onclick="openEditUser('${escapeHtml(u.ID)}')" style="font-size:10px;padding:5px 10px;border-radius:7px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);color:#D4A853;cursor:pointer"><i class="fa-solid fa-pen"></i></button>
+          ${['admin','principal','kantor','superadmin'].includes(STATE.user?.role) && u.Role === 'agen' ? `<button onclick="openGrantEliteModal('${escapeHtml(u.ID)}','${escapeHtml(u.Nama)}','${escapeHtml(u.Nama_Kantor||'')}')" style="font-size:10px;padding:5px 10px;border-radius:7px;background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.3);color:#D4A853;cursor:pointer" title="Grant ELITE"><i class="fa-solid fa-crown"></i></button>` : ''}
           ${u.ID !== STATE.user?.id ? `<button onclick="confirmDeleteUser('${escapeHtml(u.ID)}','${escapeHtml(u.Nama)}')" style="font-size:10px;padding:5px 10px;border-radius:7px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;cursor:pointer"><i class="fa-solid fa-trash"></i></button>` : ''}
         </div>
       </div>
@@ -5497,6 +5500,9 @@ function openEditUser(id) {
   setVal('eu-lsp', u.Nomer_LSP||'');
   setVal('eu-role', u.Role||'agen');
   setVal('eu-status', u.Status||'Aktif');
+  setVal('eu-split-komisi', u.Split_Komisi||'');
+  const splitWrap = document.getElementById('eu-split-wrap');
+  if (splitWrap) splitWrap.style.display = ['superadmin','admin','principal','kantor'].includes(STATE.user?.role) ? 'block' : 'none';
   const editorCb = document.getElementById('eu-asset-editor');
   if (editorCb) editorCb.checked = _assetEditorIds.includes(u.ID);
   const photoInput = document.getElementById('eu-photo');
@@ -5526,6 +5532,7 @@ async function submitEditUser() {
     Status: getVal('eu-status'),
     Telegram_ID: getVal('eu-telegram').trim(),
     Nomer_LSP: getVal('eu-lsp').trim(),
+    Split_Komisi: getVal('eu-split-komisi').trim(),
   };
   const newPass = getVal('eu-password').trim();
   if (newPass) payload.newPassword = newPass;
