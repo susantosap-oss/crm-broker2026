@@ -1,0 +1,124 @@
+/**
+ * Elite Qualification Test (EQT) Service
+ * Menyimpan & membaca hasil ujian dari sheet ELITE_QUIZ_RESULTS,
+ * lalu mengupdate EQT_Nilai + EQT_Verified di ELITE_PROGRAM jika lulus.
+ */
+
+const { v4: uuidv4 } = require('uuid');
+const sheetsService = require('./sheets.service');
+const { SHEETS, COLUMNS } = require('../config/sheets.config');
+
+function rowsToObjects(rows) {
+  if (!rows || rows.length < 2) return [];
+  const [headers, ...dataRows] = rows;
+  return dataRows.map((row, idx) => {
+    const obj = { _rowIdx: idx + 2 };
+    headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+    return obj;
+  });
+}
+
+// ── Submit ──────────────────────────────────────────────────
+
+async function submitQuiz({ nilai, persen, status, waktuDetik, jawabanJson }, user) {
+  const now = new Date().toISOString();
+
+  // Hitung attempt ke-N untuk agen ini
+  const existing = rowsToObjects(await sheetsService.getRange(SHEETS.ELITE_QUIZ_RESULTS));
+  const attempt = existing.filter(r => r.Agent_ID === user.id).length + 1;
+
+  const row = {
+    ID:          uuidv4(),
+    Agent_ID:    user.id,
+    Agen_Nama:   user.nama || '',
+    Nama_Kantor: user.nama_kantor || '',
+    Tanggal:     now,
+    Nilai:       String(nilai),
+    Persen:      String(persen),
+    Status:      status,
+    Waktu_Detik: String(waktuDetik || 0),
+    Attempt_Ke:  String(attempt),
+    Jawaban_JSON: typeof jawabanJson === 'string' ? jawabanJson : JSON.stringify(jawabanJson || {}),
+  };
+
+  await sheetsService.appendRow(SHEETS.ELITE_QUIZ_RESULTS, COLUMNS.ELITE_QUIZ_RESULTS.map(c => row[c] || ''));
+
+  // Jika Lulus → auto-update EQT di ELITE_PROGRAM (ambil nilai tertinggi)
+  if (status === 'Lulus') {
+    await _updateEliteEQT(user.id, nilai, persen, now);
+  }
+
+  return { ...row, attempt };
+}
+
+async function _updateEliteEQT(agentId, nilai, persen, now) {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.ELITE_PROGRAM);
+    const objs = rowsToObjects(rows);
+    const program = objs.find(p => p.Agent_ID === agentId && ['Draft', 'Aktif'].includes(p.Status));
+    if (!program) return;
+
+    // Simpan hanya jika nilai baru lebih tinggi dari yang sudah ada
+    const existingNilai = parseFloat(program.EQT_Nilai) || 0;
+    if (nilai <= existingNilai && program.EQT_Verified === 'TRUE') return;
+
+    program.EQT_Nilai    = String(nilai);
+    program.EQT_Verified = 'TRUE';
+    program.EQT_Tgl      = now.slice(0, 10);
+    program.Diperbarui_Pada = now;
+
+    await sheetsService.updateRow(
+      SHEETS.ELITE_PROGRAM,
+      program._rowIdx,
+      COLUMNS.ELITE_PROGRAM.map(c => program[c] || '')
+    );
+  } catch (e) {
+    console.error('[EQT] update ELITE_PROGRAM error:', e.message);
+  }
+}
+
+// ── Queries ─────────────────────────────────────────────────
+
+async function getMyResults(agentId) {
+  const rows = rowsToObjects(await sheetsService.getRange(SHEETS.ELITE_QUIZ_RESULTS));
+  return rows
+    .filter(r => r.Agent_ID === agentId)
+    .sort((a, b) => new Date(b.Tanggal) - new Date(a.Tanggal));
+}
+
+async function getAllResults() {
+  const rows = rowsToObjects(await sheetsService.getRange(SHEETS.ELITE_QUIZ_RESULTS));
+  return rows.sort((a, b) => new Date(b.Tanggal) - new Date(a.Tanggal));
+}
+
+// Ringkasan per agen: attempt total, nilai tertinggi, terakhir submit
+async function getSummaryByAgent() {
+  const rows = rowsToObjects(await sheetsService.getRange(SHEETS.ELITE_QUIZ_RESULTS));
+  const map = {};
+  for (const r of rows) {
+    if (!map[r.Agent_ID]) {
+      map[r.Agent_ID] = {
+        Agent_ID:    r.Agent_ID,
+        Agen_Nama:   r.Agen_Nama,
+        Nama_Kantor: r.Nama_Kantor,
+        total_attempt: 0,
+        nilai_tertinggi: 0,
+        terakhir_submit: '',
+        terakhir_status: '',
+      };
+    }
+    const s = map[r.Agent_ID];
+    s.total_attempt++;
+    const n = parseInt(r.Nilai) || 0;
+    if (n > s.nilai_tertinggi) {
+      s.nilai_tertinggi = n;
+      s.terakhir_status = r.Status;
+    }
+    if (!s.terakhir_submit || r.Tanggal > s.terakhir_submit) {
+      s.terakhir_submit = r.Tanggal;
+    }
+  }
+  return Object.values(map);
+}
+
+module.exports = { submitQuiz, getMyResults, getAllResults, getSummaryByAgent };

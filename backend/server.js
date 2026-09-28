@@ -157,6 +157,8 @@ app.use('/api/v1/elite',              require('./routes/elite.routes'));
 app.use('/api/v1/elite-transactions', require('./routes/elite-transactions.routes'));
 // ★ Form E-1 — Permohonan Migrasi Tim ELITE (public, no auth)
 app.use('/api/v1/form-e1',            require('./routes/form-e1.routes'));
+// ★ ELITE Qualification Test — submit & baca hasil EQT
+app.use('/api/v1/elite-quiz',         require('./routes/elite-quiz.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)
 app.post('/api/v1/admin/trigger-rental-reminder', require('./middleware/auth.middleware').authMiddleware, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: 'Forbidden' });
@@ -401,6 +403,8 @@ async function migrateHeaders() {
     { sheet: SHEETS.ELITE_CONTENT,      cols: COLUMNS.ELITE_CONTENT },
     // ★ Form E-1 — Permohonan Migrasi Tim ELITE
     { sheet: SHEETS.FORM_E1,            cols: COLUMNS.FORM_E1 },
+    // ★ ELITE Qualification Test — hasil ujian
+    { sheet: SHEETS.ELITE_QUIZ_RESULTS, cols: COLUMNS.ELITE_QUIZ_RESULTS },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)

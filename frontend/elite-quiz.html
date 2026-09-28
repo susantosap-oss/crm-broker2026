@@ -1,0 +1,794 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Elite Qualification Test — Mansion Properti</title>
+<style>
+:root {
+  --navy:#0A2342; --gold:#C9A46A; --bg:#F7F8FA;
+  --green:#1f8b4c; --red:#c0392b; --muted:#667085; --border:#d9dee7;
+}
+* { box-sizing:border-box; }
+body { margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:var(--bg); color:#1f2937; }
+.container { max-width:980px; margin:0 auto; padding:20px 14px 50px; }
+.header { background:linear-gradient(135deg,var(--navy),#153d6f); color:#fff;
+  border-radius:18px; padding:22px 20px; margin-bottom:16px; }
+.header h1 { margin:0 0 6px; font-size:clamp(20px,4vw,30px); }
+.header p { margin:4px 0; opacity:.95; font-size:14px; }
+.meta-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px; }
+.meta { background:rgba(255,255,255,.10); padding:10px 12px; border-radius:10px; font-size:14px; }
+.auth-bar { display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.12);
+  border-radius:10px; padding:8px 12px; margin-top:14px; font-size:13px; }
+.auth-bar .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.dot-ok { background:#4ade80; } .dot-warn { background:#facc15; }
+.back-btn { display:inline-flex; align-items:center; gap:6px; color:rgba(255,255,255,.8);
+  text-decoration:none; font-size:13px; padding:6px 0; }
+.back-btn:hover { color:#fff; }
+.sticky { position:sticky; top:0; z-index:20; background:rgba(247,248,250,.95);
+  backdrop-filter:blur(8px); padding:10px 0; }
+.toolbar { background:#fff; border:1px solid var(--border); border-radius:14px; padding:12px;
+  display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;
+  box-shadow:0 4px 16px rgba(15,23,42,.05); }
+.name-box { flex:1 1 260px; }
+.name-box input { width:100%; border:1px solid var(--border); border-radius:10px; padding:11px 12px; font-size:15px; }
+.name-box input:disabled { background:#f3f4f6; color:#6b7280; }
+.timer { font-weight:800; color:var(--red); font-variant-numeric:tabular-nums; font-size:20px;
+  min-width:90px; text-align:center; }
+.progress-wrap { flex:1 1 180px; }
+.progress-bar { height:8px; background:#e5e7eb; border-radius:999px; overflow:hidden; }
+.progress-fill { height:100%; width:0; background:var(--gold); transition:width .2s; }
+.progress-text { margin-top:5px; color:var(--muted); font-size:12px; }
+.question-card { margin-top:15px; background:#fff; border:1px solid var(--border); border-radius:16px;
+  padding:18px; box-shadow:0 3px 12px rgba(15,23,42,.04); }
+.qmeta { color:var(--gold); font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:.4px; }
+.question-card h2 { margin:8px 0 14px; font-size:18px; line-height:1.45; }
+.qnum { color:var(--navy); }
+.options { display:grid; gap:9px; }
+.option { display:flex; gap:10px; align-items:flex-start; padding:12px; border:1px solid var(--border);
+  border-radius:12px; cursor:pointer; transition:.15s; line-height:1.45; }
+.option:hover { border-color:var(--navy); background:#fafcff; }
+.option input { margin-top:3px; }
+.option.selected { border-color:var(--navy); background:#eef4fb; }
+.letter { width:28px; height:28px; flex:0 0 28px; border-radius:50%; display:flex;
+  align-items:center; justify-content:center; background:#eef1f5; font-weight:700; }
+.actions { text-align:center; margin:24px 0; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+button { border:0; border-radius:12px; padding:13px 20px; font-weight:800; cursor:pointer; font-size:15px; }
+#submitBtn { background:var(--navy); color:#fff; }
+#submitBtn:disabled { opacity:.55; cursor:not-allowed; }
+#resetBtn { background:#fff; border:1px solid var(--border); }
+#resetBtn:disabled { opacity:.4; cursor:not-allowed; }
+.result { display:none; margin-top:18px; background:#fff; border-radius:18px; border:1px solid var(--border);
+  padding:22px; text-align:center; }
+.score { font-size:46px; font-weight:900; color:var(--navy); }
+.status { font-size:24px; font-weight:900; margin:5px 0 10px; }
+.pass { color:var(--green); } .fail { color:var(--red); }
+.summary { color:var(--muted); }
+.review { margin-top:16px; text-align:left; border-top:1px solid var(--border); padding-top:14px; }
+.review-item { padding:10px 0; border-bottom:1px dashed #e5e7eb; }
+.review-item:last-child { border-bottom:0; }
+.correct { color:var(--green); } .incorrect { color:var(--red); }
+.review-answer { margin-top:4px; font-size:14px; }
+.question-card.correct-card { border-color:#a7e0bc; }
+.question-card.incorrect-card { border-color:#f0b2ad; }
+.question-card.correct-card .review-note { display:block; background:#effaf3; color:var(--green); }
+.question-card.incorrect-card .review-note { display:block; background:#fff4f2; color:var(--red); }
+.review-note { display:none; margin-top:10px; font-size:14px; padding:10px; border-radius:10px; }
+.save-banner { margin-top:14px; padding:12px 16px; border-radius:12px; font-weight:700; font-size:14px; }
+.save-banner.saving { background:#fff7ed; color:#92400e; border:1px solid #fcd34d; }
+.save-banner.saved-ok { background:#effaf3; color:var(--green); border:1px solid #a7e0bc; }
+.save-banner.saved-err { background:#fff4f2; color:var(--red); border:1px solid #f0b2ad; }
+.history-section { margin-top:24px; border-top:1px solid var(--border); padding-top:16px; }
+.history-section h3 { margin:0 0 12px; font-size:16px; color:var(--navy); }
+.history-table { width:100%; border-collapse:collapse; font-size:13px; }
+.history-table th { background:#f3f4f6; padding:8px 10px; text-align:left; font-size:12px; color:var(--muted); }
+.history-table td { padding:8px 10px; border-bottom:1px solid #f0f0f0; }
+.badge { display:inline-block; padding:3px 10px; border-radius:99px; font-size:12px; font-weight:700; }
+.badge-pass { background:#dcfce7; color:#166534; }
+.badge-fail { background:#fee2e2; color:#991b1b; }
+@media(max-width:700px) {
+  .meta-grid { grid-template-columns:1fr; }
+  .question-card h2 { font-size:16px; }
+  .history-table { font-size:12px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="header">
+    <a href="/" class="back-btn">← Kembali ke CRM</a>
+    <h1>UJIAN KELAYAKAN &amp; PEMAHAMAN PROPERTI</h1>
+    <p>ELITE QUALIFICATION TEST (EQT) — Internal Training Mansion Properti</p>
+    <div class="meta-grid">
+      <div class="meta"><b>Jumlah Soal</b><br>20 Soal</div>
+      <div class="meta"><b>Waktu</b><br>Maksimal 20 Menit</div>
+      <div class="meta"><b>Kelulusan</b><br>Minimal 16/20 (80%)</div>
+    </div>
+    <div class="auth-bar" id="authBar">
+      <span class="dot dot-warn" id="authDot"></span>
+      <span id="authMsg">Memeriksa sesi login…</span>
+    </div>
+  </header>
+
+  <div class="sticky">
+    <div class="toolbar">
+      <div class="name-box">
+        <input id="nameInput" type="text" placeholder="Nama peserta">
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+        <div id="progressText" class="progress-text">0 dari 20 soal dijawab</div>
+      </div>
+      <div id="timer" class="timer">20:00</div>
+    </div>
+  </div>
+
+  <main id="quiz">
+<section class="question-card" id="qcard-1">
+            <div class="qmeta">A. LEGALITAS &amp; SERTIFIKASI HUKUM PROPERTI</div>
+            <h2><span class="qnum">1.</span> Klien Anda (WNI) hendak membeli rumah impian dengan Sertifikat Hak Guna Bangunan (SHGB) atas nama PT yang akan berakhir 3 tahun lagi. Langkah legalitas paling tepat yang wajib Anda sarankan adalah...</h2>
+            <div class="options"><label class="option" data-q="1" data-letter="A">
+                <input type="radio" name="q1" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Meminta penjual memperpanjang SHGB PT terlebih dahulu sebelum transaksi di PPAT.</span>
+            </label><label class="option" data-q="1" data-letter="B">
+                <input type="radio" name="q1" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Langsung melakukan transaksi Jual Beli di PPAT karena SHGB PT dapat otomatis berubah menjadi Hak Milik (SHM) atas nama pembeli perorangan saat balik nama.</span>
+            </label><label class="option" data-q="1" data-letter="C">
+                <input type="radio" name="q1" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Melakukan transaksi Akta Jual Beli (AJB) di depan PPAT, lalu pembeli mengajukan peningkatan hak dari SHGB PT menjadi Hak Milik (SHM) di BPN.</span>
+            </label><label class="option" data-q="1" data-letter="D">
+                <input type="radio" name="q1" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Membuat Perjanjian Pengikatan Jual Beli (PPJB) Notariil terlebih dahulu hingga status SHGB PT diturunkan menjadi Hak Pelaksanaan sebelum AJB.</span>
+            </label></div>
+            <div class="review-note" id="review-1"></div>
+        </section>
+<section class="question-card" id="qcard-2">
+            <div class="qmeta">A. LEGALITAS &amp; SERTIFIKASI HUKUM PROPERTI</div>
+            <h2><span class="qnum">2.</span> Dalam transaksi properti Secondary, terdapat perbedaan mendasar antara PPJB (Perjanjian Pengikatan Jual Beli) dan AJB (Akta Jual Beli). Pernyataan yang paling tepat di bawah ini adalah...</h2>
+            <div class="options"><label class="option" data-q="2" data-letter="A">
+                <input type="radio" name="q2" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">PPJB adalah bukti peralihan hak atas tanah yang sah di mata BPN, sedangkan AJB adalah perjanjian pendahuluan saat pembayaran belum lunas.</span>
+            </label><label class="option" data-q="2" data-letter="B">
+                <input type="radio" name="q2" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">PPJB dibuat oleh Notaris/di bawah tangan untuk mengikat janji jual beli saat syarat belum terpenuhi, sedangkan AJB dibuat oleh PPAT sebagai bukti resmi peralihan hak atas tanah.</span>
+            </label><label class="option" data-q="2" data-letter="C">
+                <input type="radio" name="q2" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">PPJB wajib dibuat oleh Pejabat Pembuat Akta Tanah (PPAT), sedangkan AJB cukup dibuat di hadapan Notaris tempat lokasi tanah berada.</span>
+            </label><label class="option" data-q="2" data-letter="D">
+                <input type="radio" name="q2" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">PPJB dan AJB memiliki kekuatan hukum yang sama untuk balik nama sertifikat, perbedaannya hanya pada besaran pajak pelunasan.</span>
+            </label></div>
+            <div class="review-note" id="review-2"></div>
+        </section>
+<section class="question-card" id="qcard-3">
+            <div class="qmeta">A. LEGALITAS &amp; SERTIFIKASI HUKUM PROPERTI</div>
+            <h2><span class="qnum">3.</span> Sebuah sertifikat rumah tinggal berstatus SHM tercantum nama suami dan istri (harta bersama). Namun saat pelunasan, suami sedang berada di luar negeri dan tidak bisa hadir saat penandatanganan AJB. Prosedur yang sah secara hukum adalah...</h2>
+            <div class="options"><label class="option" data-q="3" data-letter="A">
+                <input type="radio" name="q3" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Istri boleh menandatangani AJB sendirian asal melampirkan Buku Nikah asli dan KTP suami.</span>
+            </label><label class="option" data-q="3" data-letter="B">
+                <input type="radio" name="q3" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Suami wajib membuat Surat Kuasa Membeli (SKM) di bawah tangan yang ditandatangani di atas materai.</span>
+            </label><label class="option" data-q="3" data-letter="C">
+                <input type="radio" name="q3" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Suami wajib membuat Surat Kuasa Menjual legalisasi Notaris lokal atau Surat Kuasa dari Kedutaan/Kensul RI di negara tempat suami berada.</span>
+            </label><label class="option" data-q="3" data-letter="D">
+                <input type="radio" name="q3" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Transaksi otomatis dibatalkan dan wajib ditunda sampai suami pulang ke Indonesia.</span>
+            </label></div>
+            <div class="review-note" id="review-3"></div>
+        </section>
+<section class="question-card" id="qcard-4">
+            <div class="qmeta">B. PERPAJAKAN &amp; BIAYA TRANSAKSI PROPERTI</div>
+            <h2><span class="qnum">4.</span> Penjual persetujuan menjual rumah seharga Rp 1.000.000.000 (1 Milyar). Diketahui Nilai Jual Objek Pajak (NJOP) adalah Rp 800.000.000 dan Nilai Perolehan Objek Pajak Tidak Kena Pajak (NPOPTKP) daerah tersebut adalah Rp 80.000.000. Berapakah nilai Pajak Pembeli (BPHTB) yang wajib dibayar?</h2>
+            <div class="options"><label class="option" data-q="4" data-letter="A">
+                <input type="radio" name="q4" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Rp 46.000.000</span>
+            </label><label class="option" data-q="4" data-letter="B">
+                <input type="radio" name="q4" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Rp 36.000.000</span>
+            </label><label class="option" data-q="4" data-letter="C">
+                <input type="radio" name="q4" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Rp 41.000.000</span>
+            </label><label class="option" data-q="4" data-letter="D">
+                <input type="radio" name="q4" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Rp 50.000.000</span>
+            </label></div>
+            <div class="review-note" id="review-4"></div>
+        </section>
+<section class="question-card" id="qcard-5">
+            <div class="qmeta">B. PERPAJAKAN &amp; BIAYA TRANSAKSI PROPERTI</div>
+            <h2><span class="qnum">5.</span> Komponen Pajak Penghasilan (PPh Final) untuk transaksi Penjualan Properti Secondary ditetapkan sebesar 2,5%. Dasar perhitungan persentase PPh Final tersebut dihitung dari...</h2>
+            <div class="options"><label class="option" data-q="5" data-letter="A">
+                <input type="radio" name="q5" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Nilai Jual Objek Pajak (NJOP) yang tercantum di SPPT PBB tahun berjalan.</span>
+            </label><label class="option" data-q="5" data-letter="B">
+                <input type="radio" name="q5" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Nilai yang tertinggi antara harga kesepakatan transaksi riil atau Nilai Jual Objek Pajak (NJOP).</span>
+            </label><label class="option" data-q="5" data-letter="C">
+                <input type="radio" name="q5" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Selisih keuntungan bersih antara harga beli lama dengan harga jual baru penjual.</span>
+            </label><label class="option" data-q="5" data-letter="D">
+                <input type="radio" name="q5" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Nilai transaksi riil yang tercantum di dalam draft Akta Jual Beli (AJB) setelah dikurangi biaya agen.</span>
+            </label></div>
+            <div class="review-note" id="review-5"></div>
+        </section>
+<section class="question-card" id="qcard-6">
+            <div class="qmeta">B. PERPAJAKAN &amp; BIAYA TRANSAKSI PROPERTI</div>
+            <h2><span class="qnum">6.</span> Siapakah pihak yang secara aturan perundang-undangan menjadi subjek pemungutan biaya balik nama sertifikat dan honorarium Notaris/PPAT pada transaksi reguler?</h2>
+            <div class="options"><label class="option" data-q="6" data-letter="A">
+                <input type="radio" name="q6" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Selalu ditanggung 100% oleh Penjual karena penyerahan barang dalam kondisi bersih.</span>
+            </label><label class="option" data-q="6" data-letter="B">
+                <input type="radio" name="q6" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Ditanggung oleh Pembeli, kecuali jika ada kesepakatan tertulis khusus antara Penjual dan Pembeli.</span>
+            </label><label class="option" data-q="6" data-letter="C">
+                <input type="radio" name="q6" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Wajib dibagi rata 50:50 antara Penjual dan Pembeli tanpa terkecuali.</span>
+            </label><label class="option" data-q="6" data-letter="D">
+                <input type="radio" name="q6" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Dipotong langsung dari komisi kotor (Gross Commission) kantor agen properti.</span>
+            </label></div>
+            <div class="review-note" id="review-6"></div>
+        </section>
+<section class="question-card" id="qcard-7">
+            <div class="qmeta">C. PERBANKAN &amp; PROSEDUR KPR</div>
+            <h2><span class="qnum">7.</span> Pembeli Anda ingin mengambil KPR dengan plafon Rp 700.000.000 tenor 15 tahun. Faktor paling utama yang digunakan analisis kredit perbankan dalam menentukan kecukupan kemampuan bayar (Debt Burden Ratio / DBR) nasabah adalah...</h2>
+            <div class="options"><label class="option" data-q="7" data-letter="A">
+                <input type="radio" name="q7" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Total cicilan KPR maksimal 50% dari THP (Take Home Pay) gabungan suami-istri.</span>
+            </label><label class="option" data-q="7" data-letter="B">
+                <input type="radio" name="q7" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Total seluruh cicilan utang nasabah (KPR + Kartu Kredit + Pinjaman lain) maksimal 30% - 40% dari penghasilan bersih bulanan.</span>
+            </label><label class="option" data-q="7" data-letter="C">
+                <input type="radio" name="q7" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Nilai appraisal jaminan rumah minimal 2 kali lipat dari harga plafon KPR yang diajukan.</span>
+            </label><label class="option" data-q="7" data-letter="D">
+                <input type="radio" name="q7" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Saldo tabungan mengendap nasabah di bank minimal setara dengan 6 kali angsuran bulanan.</span>
+            </label></div>
+            <div class="review-note" id="review-7"></div>
+        </section>
+<section class="question-card" id="qcard-8">
+            <div class="qmeta">C. PERBANKAN &amp; PROSEDUR KPR</div>
+            <h2><span class="qnum">8.</span> Apa yang terjadi jika hasil Appraisal (penilaian fisik) dari Bank untuk rumah secondary keluar lebih rendah (under-appraise) dari harga kesepakatan Jual Beli antara Penjual dan Pembeli?</h2>
+            <div class="options"><label class="option" data-q="8" data-letter="A">
+                <input type="radio" name="q8" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Bank otomatis membatalkan pengajuan KPR nasabah secara sepihak.</span>
+            </label><label class="option" data-q="8" data-letter="B">
+                <input type="radio" name="q8" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Penjual secara hukum diwajibkan menurunkan harga rumah sesuai hasil penilaian appraisal bank.</span>
+            </label><label class="option" data-q="8" data-letter="C">
+                <input type="radio" name="q8" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Pembeli wajib menambahkan uang muka (DP) tunai untuk menutup selisih antara plafond KPR cair dengan harga jual beli.</span>
+            </label><label class="option" data-q="8" data-letter="D">
+                <input type="radio" name="q8" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Kantor agen properti wajib memotong komisi untuk menutupi kekurangan plafond bank.</span>
+            </label></div>
+            <div class="review-note" id="review-8"></div>
+        </section>
+<section class="question-card" id="qcard-9">
+            <div class="qmeta">C. PERBANKAN &amp; PROSEDUR KPR</div>
+            <h2><span class="qnum">9.</span> Pembeli mengalami kendala persetujuan KPR akibat status BI Checking / SLIK OJK berada di &quot;Kolektibilitas 2&quot; (Dalam Perhatian Khusus). Solusi taktis terbaik agen adalah...</h2>
+            <div class="options"><label class="option" data-q="9" data-letter="A">
+                <input type="radio" name="q9" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Menyuruh pembeli mendaftar KPR atas nama saudara/kerabat lain yang SLIK-nya bersih.</span>
+            </label><label class="option" data-q="9" data-letter="B">
+                <input type="radio" name="q9" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Mengarahkan pembeli segera melunasi tunggakan, meminta Surat Keterangan Lunas (SKL) dari bank terkait, dan mengajukan ke bank KPR spesialis pemutihan.</span>
+            </label><label class="option" data-q="9" data-letter="C">
+                <input type="radio" name="q9" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Meminta Notaris memalsukan dokumen riwayat pinjaman untuk dilampirkan ke analis bank.</span>
+            </label><label class="option" data-q="9" data-letter="D">
+                <input type="radio" name="q9" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Menyarankan pembeli langsung beralih mengambil skema Inhouse ke penjual tanpa mengecek SLIK.</span>
+            </label></div>
+            <div class="review-note" id="review-9"></div>
+        </section>
+<section class="question-card" id="qcard-10">
+            <div class="qmeta">D. TEKNIK LISTING, MARKETING &amp; VALUASI PROPERTI</div>
+            <h2><span class="qnum">10.</span> Dalam dunia agen properti profesional, manakah perbedaan paling mendasar antara Exclusive Listing dan Open Listing?</h2>
+            <div class="options"><label class="option" data-q="10" data-letter="A">
+                <input type="radio" name="q10" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Exclusive Listing hanya berlaku untuk proyek Primary, sedangkan Open Listing khusus proyek Secondary.</span>
+            </label><label class="option" data-q="10" data-letter="B">
+                <input type="radio" name="q10" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Pada Exclusive Listing, penjual terikat komitmen komisi hanya kepada 1 kantor agen resmi dalam jangka waktu tertentu, sedangkan Open Listing bebas dipasarkan oleh banyak agen/penjual sendiri.</span>
+            </label><label class="option" data-q="10" data-letter="C">
+                <input type="radio" name="q10" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Exclusive Listing menentukan komisi minimal 5%, sedangkan Open Listing komisinya maksimal 2%.</span>
+            </label><label class="option" data-q="10" data-letter="D">
+                <input type="radio" name="q10" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Pada Exclusive Listing, biaya promosi dan iklan ditanggung oleh Penjual, sedangkan Open Listing ditanggung Agen.</span>
+            </label></div>
+            <div class="review-note" id="review-10"></div>
+        </section>
+<section class="question-card" id="qcard-11">
+            <div class="qmeta">D. TEKNIK LISTING, MARKETING &amp; VALUASI PROPERTI</div>
+            <h2><span class="qnum">11.</span> Anda akan menentukan harga pasar (Comparative Market Analysis / CMA) sebuah rumah di kawasan perumahan. Metode terbaik untuk mendapatkan indikasi harga penawaran (Listing Price) yang kompetitif adalah...</h2>
+            <div class="options"><label class="option" data-q="11" data-letter="A">
+                <input type="radio" name="q11" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Mengalihkan harga sesuai keinginan subjektif pemilik rumah tanpa memperhitungkan kondisi bangunan.</span>
+            </label><label class="option" data-q="11" data-letter="B">
+                <input type="radio" name="q11" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Menghitung Nilai NJOP PBB terbaru lalu mengalikannya langsung dengan angka 3 kali lipat.</span>
+            </label><label class="option" data-q="11" data-letter="C">
+                <input type="radio" name="q11" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Membandingkan minimal 3 properti sejenis yang sedang dijual/terjual di lokasi terdekat dalam kurun 3-6 bulan terakhir, disesuaikan dengan luas &amp; kondisi fisik.</span>
+            </label><label class="option" data-q="11" data-letter="D">
+                <input type="radio" name="q11" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Menggunakan harga patokan pengembang pada proyek rumah baru di kawasan kota terdekat.</span>
+            </label></div>
+            <div class="review-note" id="review-11"></div>
+        </section>
+<section class="question-card" id="qcard-12">
+            <div class="qmeta">D. TEKNIK LISTING, MARKETING &amp; VALUASI PROPERTI</div>
+            <h2><span class="qnum">12.</span> Ketika mengambil foto dan deskripsi Listing properti Secondary premium untuk ditayangkan di portal digital, tindakan yang WAJIB dihindari oleh agen ELITE adalah...</h2>
+            <div class="options"><label class="option" data-q="12" data-letter="A">
+                <input type="radio" name="q12" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Mengambil foto luas dengan sudut Wide Angle dan pencahayaan alami yang terang.</span>
+            </label><label class="option" data-q="12" data-letter="B">
+                <input type="radio" name="q12" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Mengedit foto dengan menghapus tiang listrik/bangunan tetangga permanen di depan rumah menggunakan software editing digital.</span>
+            </label><label class="option" data-q="12" data-letter="C">
+                <input type="radio" name="q12" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Mencantumkan detail spesifikasi teknis (Luas Tanah, Luas Bangunan, Daya Listrik, Orientasi Hadap).</span>
+            </label><label class="option" data-q="12" data-letter="D">
+                <input type="radio" name="q12" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Menuliskan Call to Action (CTA) dan nomor kontak agen yang jelas di akhir deskripsi.</span>
+            </label></div>
+            <div class="review-note" id="review-12"></div>
+        </section>
+<section class="question-card" id="qcard-13">
+            <div class="qmeta">E. OPERASIONAL CLOSING &amp; SKEMA MANSION ELITE</div>
+            <h2><span class="qnum">13.</span> Di bawah ini yang merupakan tindakan paling tepat yang wajib dilakukan agen ELITE saat memegang uang Tanda Jadi (UTJ / Booking Fee) dari Pembeli pada pasar Secondary adalah...</h2>
+            <div class="options"><label class="option" data-q="13" data-letter="A">
+                <input type="radio" name="q13" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Menyimpan uang UTJ ke rekening pribadi agen sebagai bukti komitmen pembeli.</span>
+            </label><label class="option" data-q="13" data-letter="B">
+                <input type="radio" name="q13" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Menyerahkan seluruh uang UTJ langsung ke Penjual tanpa perlu membuatkan bukti kuitansi titipan.</span>
+            </label><label class="option" data-q="13" data-letter="C">
+                <input type="radio" name="q13" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Mentransfer uang UTJ ke Rekening Resmi Kantor Mansion Properti / Rekening Penampungan (Escrow) disertai Form Surat Pemesanan &amp; Kuitansi Titipan resmi.</span>
+            </label><label class="option" data-q="13" data-letter="D">
+                <input type="radio" name="q13" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Membagi dua uang UTJ tersebut bersama agen cobroke sebagai pemotongan awal komisi.</span>
+            </label></div>
+            <div class="review-note" id="review-13"></div>
+        </section>
+<section class="question-card" id="qcard-14">
+            <div class="qmeta">E. OPERASIONAL CLOSING &amp; SKEMA MANSION ELITE</div>
+            <h2><span class="qnum">14.</span> Apabila terjadi transaksi Cobroking (Kerja sama agen) antara Agen ELITE Mansion Properti dengan Agen dari Kantor Agen Luar, aturan komisi kotor (Gross Commission) yang adil adalah...</h2>
+            <div class="options"><label class="option" data-q="14" data-letter="A">
+                <input type="radio" name="q14" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Komisi kotor dipotong dulu untuk porsi kantor Mansion (30%), baru sisanya dibagi dua dengan agen luar.</span>
+            </label><label class="option" data-q="14" data-letter="B">
+                <input type="radio" name="q14" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Total komisi kotor dari penjual/pembeli dibagi 50:50 terlebih dahulu antar kedua kantor agen, lalu porsi Mansion (50%) diolah sesuai split internal (70:30).</span>
+            </label><label class="option" data-q="14" data-letter="C">
+                <input type="radio" name="q14" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Agen ELITE berhak mengambil 70% dari total komisi kotor, lalu 30% sisa diberikan kepada agen luar.</span>
+            </label><label class="option" data-q="14" data-letter="D">
+                <input type="radio" name="q14" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Agen luar diwajibkan mendaftar sebagai anggota ELITE Mansion terlebih dahulu sebelum komisi dibagi.</span>
+            </label></div>
+            <div class="review-note" id="review-14"></div>
+        </section>
+<section class="question-card" id="qcard-15">
+            <div class="qmeta">E. OPERASIONAL CLOSING &amp; SKEMA MANSION ELITE</div>
+            <h2><span class="qnum">15.</span> Manakah perbedaan mendasar mengenai alur legalitas dan ikatan perjanjian awal antara transaksi proyek Primary (Developer) dengan proyek Secondary (Pemilik Perorangan)?</h2>
+            <div class="options"><label class="option" data-q="15" data-letter="A">
+                <input type="radio" name="q15" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Transaksi Primary menggunakan Akta Jual Beli (AJB) Notaris di awal booking, sedangkan Secondary menggunakan Surat Pemesanan Rumah (SPR) dari pemilik.</span>
+            </label><label class="option" data-q="15" data-letter="B">
+                <input type="radio" name="q15" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Transaksi Primary diikat awal menggunakan Surat Pemesanan Rumah (SPR) / NUP yang dilanjutkan ke PPJB Developer, sedangkan Secondary diikat awal menggunakan Kesepakatan Jual Beli / UTJ yang dilanjutkan langsung ke AJB PPAT saat syarat pelunasan terpenuhi.</span>
+            </label><label class="option" data-q="15" data-letter="C">
+                <input type="radio" name="q15" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Transaksi Primary wajib melalui proses Balik Nama Sertifikat sebelum bangunan didirikan, sedangkan Secondary proses Balik Nama dilakukan setelah rumah dihuni minimal 1 tahun.</span>
+            </label><label class="option" data-q="15" data-letter="D">
+                <input type="radio" name="q15" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Transaksi Primary tidak memerlukan jaminan Sertifikat dari Pengembang, sedangkan Secondary wajib melampirkan Sertifikat asli saat tanda jadi.</span>
+            </label></div>
+            <div class="review-note" id="review-15"></div>
+        </section>
+<section class="question-card" id="qcard-16">
+            <div class="qmeta">E. OPERASIONAL CLOSING &amp; SKEMA MANSION ELITE</div>
+            <h2><span class="qnum">16.</span> Seorang agen ELITE memasarkan properti kategori &quot;Aset Bank / AYDA (Agunan Yang Diambil Alih)&quot;. Pernyataan yang paling tepat mengenai kondisi legalitas dan prosedur penguasaan fisik aset tersebut adalah...</h2>
+            <div class="options"><label class="option" data-q="16" data-letter="A">
+                <input type="radio" name="q16" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Aset Bank selalu dijual dalam kondisi kosong dan siap huni tanpa perlu koordinasi penyerahan kunci dari debitur lama.</span>
+            </label><label class="option" data-q="16" data-letter="B">
+                <input type="radio" name="q16" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Transaksi Aset Bank melalui lelang/AYDA memiliki risiko penguasaan fisik di mana pemenang lelang/pembeli terkadang harus mengurus proses pengosongan bangunan secara mandiri jika debitur lama masih menempati objek.</span>
+            </label><label class="option" data-q="16" data-letter="C">
+                <input type="radio" name="q16" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Pembeli Aset Bank bebas dari semua biaya tunggakan PBB, PLN, dan PDAM masa lalu karena otomatis diampuni oleh negara.</span>
+            </label><label class="option" data-q="16" data-letter="D">
+                <input type="radio" name="q16" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Prosedur balik nama Aset Bank dilakukan menggunakan Akta Jual Beli (AJB) reguler dari PPAT tanpa memerlukan Risalah Lelang dari KPKNL.</span>
+            </label></div>
+            <div class="review-note" id="review-16"></div>
+        </section>
+<section class="question-card" id="qcard-17">
+            <div class="qmeta">E. OPERASIONAL CLOSING &amp; SKEMA MANSION ELITE</div>
+            <h2><span class="qnum">17.</span> Dalam prosedur transaksi Primary Project yang masih berupa bangunan indent (belum siap huni), kapan idealnya proses Akad KPR dan penandatanganan AJB dilakukan oleh konsumen dan Bank?</h2>
+            <div class="options"><label class="option" data-q="17" data-letter="A">
+                <input type="radio" name="q17" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Akad KPR dan AJB wajib ditandatangani bersamaan pada saat konsumen membayar Booking Fee (UTJ).</span>
+            </label><label class="option" data-q="17" data-letter="B">
+                <input type="radio" name="q17" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Akad KPR dilakukan setelah bangunan mencapai progress teknis sesuai syarat bank (misal: struktur rampung/spesifikasi tertentu), sedangkan penandatanganan AJB dilakukan setelah bangunan pecah sertifikat &amp; sertifikat induk displit atas nama pembeli.</span>
+            </label><label class="option" data-q="17" data-letter="C">
+                <input type="radio" name="q17" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">AJB ditandatangani lebih dulu di awal transaksi, sedangkan Akad KPR dilakukan setelah konsumen menerima Kunci (Bast).</span>
+            </label><label class="option" data-q="17" data-letter="D">
+                <input type="radio" name="q17" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Akad KPR dan AJB baru bisa dilaksanakan setelah masa garansi pemeliharaan developer (3-6 bulan) berakhir secara penuh.</span>
+            </label></div>
+            <div class="review-note" id="review-17"></div>
+        </section>
+<section class="question-card" id="qcard-18">
+            <div class="qmeta">E. OPERASIONAL CLOSING &amp; SKEMA MANSION ELITE</div>
+            <h2><span class="qnum">18.</span> Pembeli bermaksud membeli rumah Secondary secara KPR, namun Sertifikat Hak Milik (SHM) objek tersebut saat ini masih terjaminkan (diagunkan) di Bank lain oleh Penjual karena KPR Penjual belum lunas. Prosedur transaksi KPR yang aman dan sah di perbankan adalah...</h2>
+            <div class="options"><label class="option" data-q="18" data-letter="A">
+                <input type="radio" name="q18" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Pembeli menransfer dana DP langsung ke rekening pribadi Penjual untuk melunasi utangnya di bank lama tanpa melibatkan Notaris/Bank baru.</span>
+            </label><label class="option" data-q="18" data-letter="B">
+                <input type="radio" name="q18" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Bank KPR Pembeli melakukan prosedur Take Over KPR / Bridging Loan dan pelunasan bersama di bank asal penjual dengan pengawasan Notaris mitra bank untuk pengambilan sertifikat asli.</span>
+            </label><label class="option" data-q="18" data-letter="C">
+                <input type="radio" name="q18" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Penjual mengambil sertifikat secara sepihak dari bank tanpa melunasi sisa utang KPR-nya.</span>
+            </label><label class="option" data-q="18" data-letter="D">
+                <input type="radio" name="q18" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Transaksi dibatalkan secara mutlak karena sertifikat yang sedang diagunkan di bank tidak boleh diperjualbelikan sama sekali.</span>
+            </label></div>
+            <div class="review-note" id="review-18"></div>
+        </section>
+<section class="question-card" id="qcard-19">
+            <div class="qmeta">E. OPERASIONAL CLOSING &amp; SKEMA MANSION ELITE</div>
+            <h2><span class="qnum">19.</span> Dari sudut pandang skema pembiayaan dan komponen biaya awal konsumen, keunggulan utama membeli rumah Primary Project dibandingkan rumah Secondary adalah...</h2>
+            <div class="options"><label class="option" data-q="19" data-letter="A">
+                <input type="radio" name="q19" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Rumah Primary selalu memiliki luas tanah yang jauh lebih besar dibanding rumah Secondary dengan harga yang sama.</span>
+            </label><label class="option" data-q="19" data-letter="B">
+                <input type="radio" name="q19" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Rumah Primary sering kali menawarkan promo Free Biaya-Biaya (Free BPHTB, AJB, BBN, bahkan Biaya KPR) yang disubsidi oleh developer, sedangkan pada Secondary seluruh komponen pajak &amp; biaya balik nama umumnya menjadi beban pembeli/penjual secara terpisah.</span>
+            </label><label class="option" data-q="19" data-letter="C">
+                <input type="radio" name="q19" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Pembelian rumah Primary tidak dikenakan PPN (Pajak Pertambahan Nilai) sama sekali oleh pemerintah.</span>
+            </label><label class="option" data-q="19" data-letter="D">
+                <input type="radio" name="q19" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Rumah Secondary pasti memerlukan waktu pengurusan sertifikat lebih lama dibanding rumah Primary yang dipasarkan pengembang.</span>
+            </label></div>
+            <div class="review-note" id="review-19"></div>
+        </section>
+<section class="question-card" id="qcard-20">
+            <div class="qmeta">E. OPERASIONAL CLOSING &amp; SKEMA MANSION ELITE</div>
+            <h2><span class="qnum">20.</span> Karakteristik utama yang membedakan transaksi Aset Properti Lelang (KPKNL) dengan transaksi Secondary Reguler dalam hal kepastian waktu dan pembayaran adalah...</h2>
+            <div class="options"><label class="option" data-q="20" data-letter="A">
+                <input type="radio" name="q20" value="A">
+                <span class="letter">A</span>
+                <span class="opt-text">Pembelian Aset Lelang KPKNL dapat dicicil secara bertahap selama 5 tahun tanpa bunga kepada panitia lelang.</span>
+            </label><label class="option" data-q="20" data-letter="B">
+                <input type="radio" name="q20" value="B">
+                <span class="letter">B</span>
+                <span class="opt-text">Pembeli Aset Lelang wajib menyetorkan Uang Jaminan Penawaran Lelang (UJPL) di awal dan pelunasan harga lelang wajib diselesaikan dalam batas waktu singkat (umumnya 5 hari kerja) setelah ditunjuk sebagai pemenang, tanpa mekanisme pengajuan KPR reguler di pertengahan jalan.</span>
+            </label><label class="option" data-q="20" data-letter="C">
+                <input type="radio" name="q20" value="C">
+                <span class="letter">C</span>
+                <span class="opt-text">Transaksi Aset Lelang tidak memungut Bea Lelang maupun pajak BPHTB dari pihak pemenang lelang.</span>
+            </label><label class="option" data-q="20" data-letter="D">
+                <input type="radio" name="q20" value="D">
+                <span class="letter">D</span>
+                <span class="opt-text">Penjualan Aset Lelang selalu menyertakan garansi kerusakan bangunan selama 1 tahun dari kantor lelang.</span>
+            </label></div>
+            <div class="review-note" id="review-20"></div>
+        </section>
+  </main>
+
+  <div class="actions">
+    <button id="submitBtn" type="button">Selesai Ujian</button>
+    <button id="resetBtn" type="button" disabled>Ulangi</button>
+  </div>
+
+  <section id="result" class="result"></section>
+</div>
+
+<script>
+const ANSWERS = {"q1":"C","q2":"B","q3":"C","q4":"A","q5":"B","q6":"B","q7":"B","q8":"C","q9":"B","q10":"B","q11":"C","q12":"B","q13":"C","q14":"B","q15":"B","q16":"B","q17":"B","q18":"B","q19":"B","q20":"B"};
+const QUESTIONS = 20;
+let remaining = 20 * 60;
+let startTime = Date.now();
+let submitted = false;
+
+// ── Auth ─────────────────────────────────────────────────────
+let _token = null;
+let _user  = null;
+
+function initAuth() {
+  try {
+    const raw = localStorage.getItem('token');
+    if (!raw) { setAuthUI(false); return; }
+    const parts = raw.split('.');
+    if (parts.length !== 3) { setAuthUI(false); return; }
+    const payload = JSON.parse(atob(parts[1]));
+    if (payload.exp && payload.exp * 1000 < Date.now()) { setAuthUI(false); return; }
+    _token = raw;
+    _user  = payload;
+    setAuthUI(true);
+  } catch { setAuthUI(false); }
+}
+
+function setAuthUI(ok) {
+  const dot = document.getElementById('authDot');
+  const msg = document.getElementById('authMsg');
+  const inp = document.getElementById('nameInput');
+  dot.className = 'dot ' + (ok ? 'dot-ok' : 'dot-warn');
+  if (ok) {
+    msg.textContent = `Login sebagai ${_user.nama || _user.id} — hasil akan tersimpan ke CRM otomatis`;
+    inp.value = _user.nama || '';
+    inp.disabled = true;
+  } else {
+    msg.textContent = 'Belum login — hasil tidak akan tersimpan ke CRM. Silakan login dari halaman utama.';
+  }
+}
+
+// ── Progress & Timer ─────────────────────────────────────────
+function updateProgress() {
+  const answered = Object.keys(ANSWERS).filter(q => document.querySelector(`input[name="${q}"]:checked`)).length;
+  document.getElementById('progressFill').style.width = `${answered / QUESTIONS * 100}%`;
+  document.getElementById('progressText').textContent = `${answered} dari ${QUESTIONS} soal dijawab`;
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+const timerEl = document.getElementById('timer');
+const timer = setInterval(() => {
+  if (submitted) return;
+  timerEl.textContent = formatTime(remaining);
+  if (remaining <= 0) { clearInterval(timer); submitQuiz(true); return; }
+  remaining--;
+  if (remaining <= 60) timerEl.style.color = '#b91c1c';
+}, 1000);
+
+document.querySelectorAll('.option').forEach(el => {
+  el.addEventListener('click', () => {
+    const q = el.dataset.q;
+    document.querySelectorAll(`.option[data-q="${q}"]`).forEach(x => x.classList.remove('selected'));
+    el.classList.add('selected');
+    updateProgress();
+  });
+});
+updateProgress();
+
+// ── Submit ───────────────────────────────────────────────────
+async function submitQuiz(auto = false) {
+  if (submitted) return;
+  submitted = true;
+  clearInterval(timer);
+
+  let score = 0;
+  const review = [];
+  const jawabanJson = {};
+
+  Object.entries(ANSWERS).forEach(([q, correct]) => {
+    const qNum = q.replace('q', '');
+    const selected = document.querySelector(`input[name="${q}"]:checked`);
+    const card  = document.getElementById(`qcard-${qNum}`);
+    const note  = document.getElementById(`review-${qNum}`);
+    const chosen = selected ? selected.value : '-';
+    jawabanJson[q] = chosen;
+
+    document.querySelectorAll(`.option[data-q="${qNum}"]`).forEach(x => x.classList.remove('selected'));
+
+    if (chosen === correct) {
+      score++;
+      card.classList.add('correct-card');
+      note.textContent = '✓ Jawaban benar';
+      review.push({ q: qNum, chosen, correct, ok: true });
+    } else {
+      card.classList.add('incorrect-card');
+      const correctEl = document.querySelector(`.option[data-q="${qNum}"][data-letter="${correct}"] .opt-text`);
+      note.textContent = `✗ Salah. Jawaban benar: ${correct}. ${correctEl ? correctEl.textContent : ''}`;
+      review.push({ q: qNum, chosen, correct, ok: false, correctText: correctEl ? correctEl.textContent : '' });
+    }
+  });
+
+  document.querySelectorAll('input[type="radio"]').forEach(i => i.disabled = true);
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('resetBtn').disabled  = false;
+
+  const percent  = Math.round(score / QUESTIONS * 100);
+  const passed   = score >= 16;
+  const status   = passed ? 'Lulus' : 'Tidak_Lulus';
+  const name     = (document.getElementById('nameInput').value || 'Peserta').trim();
+  const unanswered = review.filter(x => x.chosen === '-').length;
+
+  const reviewHtml = review.filter(x => !x.ok).map(x => `
+    <div class="review-item">
+      <div><b>Soal ${x.q}</b> — <span class="incorrect">Salah</span></div>
+      <div class="review-answer">Jawaban Anda: <b>${x.chosen}</b></div>
+      <div class="review-answer">Jawaban Benar: <b>${x.correct}</b> — ${esc(x.correctText || '')}</div>
+    </div>`).join('');
+
+  document.getElementById('result').innerHTML = `
+    <div style="font-weight:800;color:#667085">${esc(name)}</div>
+    <div class="score">${score}/${QUESTIONS}</div>
+    <div class="status ${passed ? 'pass' : 'fail'}">${passed ? 'LULUS ✅' : 'TIDAK LULUS ❌'}</div>
+    <div class="summary">Nilai: <b>${percent}%</b> · Benar: <b>${score}</b> · Salah: <b>${QUESTIONS - score}</b> · Tidak dijawab: <b>${unanswered}</b></div>
+    ${auto ? '<div style="margin-top:8px;color:#b91c1c;font-weight:700">Waktu habis — jawaban dikumpulkan otomatis.</div>' : ''}
+    <div id="saveBanner"></div>
+    <div class="review">
+      <h3>Review Jawaban Salah</h3>
+      ${reviewHtml || '<div class="correct">Semua jawaban benar. Mantap!</div>'}
+    </div>
+    <div id="historySection"></div>`;
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Simpan ke CRM jika login
+  if (_token) {
+    await saveToBackend({ score, percent, status, jawabanJson });
+    await loadHistory();
+  }
+}
+
+async function saveToBackend({ score, percent, status, jawabanJson }) {
+  const banner = document.getElementById('saveBanner');
+  banner.className = 'save-banner saving';
+  banner.textContent = 'Menyimpan hasil ke CRM…';
+
+  const waktuDetik = Math.round((Date.now() - startTime) / 1000);
+
+  try {
+    const res = await fetch('/api/v1/elite-quiz/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${_token}` },
+      body: JSON.stringify({ nilai: score, persen: percent, status, waktuDetik, jawabanJson }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      banner.className = 'save-banner saved-ok';
+      const eqtNote = status === 'Lulus' ? ' EQT terverifikasi di program ELITE Anda.' : '';
+      banner.textContent = `✓ Hasil tersimpan ke CRM (Attempt ke-${data.data.attempt}).${eqtNote}`;
+    } else {
+      throw new Error(data.message || 'Gagal simpan');
+    }
+  } catch (e) {
+    banner.className = 'save-banner saved-err';
+    banner.textContent = `Gagal simpan ke CRM: ${e.message}`;
+  }
+}
+
+async function loadHistory() {
+  try {
+    const res  = await fetch('/api/v1/elite-quiz/my-results', {
+      headers: { Authorization: `Bearer ${_token}` },
+    });
+    const data = await res.json();
+    if (!data.success || !data.data.length) return;
+
+    const rows = data.data.map(r => `
+      <tr>
+        <td>${r.Attempt_Ke}</td>
+        <td>${new Date(r.Tanggal).toLocaleString('id-ID')}</td>
+        <td><b>${r.Nilai}/20</b></td>
+        <td>${r.Persen}%</td>
+        <td><span class="badge ${r.Status === 'Lulus' ? 'badge-pass' : 'badge-fail'}">${r.Status === 'Lulus' ? 'Lulus' : 'Tdk Lulus'}</span></td>
+        <td>${formatDetik(parseInt(r.Waktu_Detik))}</td>
+      </tr>`).join('');
+
+    document.getElementById('historySection').innerHTML = `
+      <div class="history-section">
+        <h3>Riwayat Ujian Anda</h3>
+        <table class="history-table">
+          <thead><tr><th>Ke</th><th>Tanggal</th><th>Nilai</th><th>%</th><th>Status</th><th>Durasi</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  } catch { /* silent */ }
+}
+
+function formatDetik(s) {
+  if (!s) return '-';
+  const m = Math.floor(s / 60), sec = s % 60;
+  return `${m}m ${sec}s`;
+}
+
+document.getElementById('submitBtn').addEventListener('click', () => submitQuiz(false));
+document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+function esc(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+initAuth();
+</script>
+</body>
+</html>

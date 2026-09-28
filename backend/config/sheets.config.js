@@ -72,6 +72,8 @@ const SHEETS = {
   ELITE_CONTENT:      'ELITE_CONTENT',
   // ★ Form E-1 — Permohonan Migrasi Tim ELITE
   FORM_E1:            'FORM_E1',
+  // ★ ELITE Qualification Test — Hasil ujian per agen
+  ELITE_QUIZ_RESULTS: 'ELITE_QUIZ_RESULTS',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -783,6 +785,21 @@ const COLUMNS = {
     // Admin
     'Status',              // T  Pending/Diproses/Disetujui/Ditolak
     'Catatan_Admin',       // U  Catatan internal admin
+  ],
+
+  // ★ ELITE_QUIZ_RESULTS — Hasil EQT per attempt
+  ELITE_QUIZ_RESULTS: [
+    'ID',               // A  UUID
+    'Agent_ID',         // B  FK ke AGENTS
+    'Agen_Nama',        // C  denormalized
+    'Nama_Kantor',      // D  denormalized
+    'Tanggal',          // E  ISO datetime
+    'Nilai',            // F  angka 0-20
+    'Persen',           // G  angka 0-100
+    'Status',           // H  Lulus | Tidak_Lulus
+    'Waktu_Detik',      // I  detik pengerjaan
+    'Attempt_Ke',       // J  urutan attempt ke-N agen ini
+    'Jawaban_JSON',     // K  JSON string jawaban per soal
   ],
 
 };

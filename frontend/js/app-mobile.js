@@ -11578,6 +11578,14 @@ function eliteStatusBadge(status) {
   return `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${bg};color:${color}">${status}</span>`;
 }
 
+// Konversi URL dalam teks plain menjadi <a> yang bisa diklik
+function linkifyText(text) {
+  if (!text) return '';
+  const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return escaped.replace(/(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener" style="color:#D4A853;text-decoration:underline;word-break:break-all">$1</a>');
+}
+
 // ── Page: ELITE Partnership (info) ───────────────────────
 
 async function loadElitePartnershipPage() {
@@ -11600,21 +11608,21 @@ async function loadElitePartnershipPage() {
             <i class="fa-solid fa-star" style="color:#D4A853"></i>
             <span style="font-size:14px;font-weight:700;color:#D4A853">Penjelasan Program</span>
           </div>
-          <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-line">${c.Penjelasan_Program || '<span style="color:rgba(255,255,255,0.3)">Belum ada konten. Klik Edit Konten untuk mengisi.</span>'}</p>
+          <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-line">${c.Penjelasan_Program ? linkifyText(c.Penjelasan_Program) : '<span style="color:rgba(255,255,255,0.3)">Belum ada konten. Klik Edit Konten untuk mengisi.</span>'}</p>
         </div>
         <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
             <i class="fa-solid fa-scroll" style="color:#a78bfa"></i>
             <span style="font-size:14px;font-weight:700;color:#a78bfa">Ketentuan Program</span>
           </div>
-          <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-line">${c.Ketentuan_Program || '<span style="color:rgba(255,255,255,0.3)">—</span>'}</p>
+          <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-line">${c.Ketentuan_Program ? linkifyText(c.Ketentuan_Program) : '<span style="color:rgba(255,255,255,0.3)">—</span>'}</p>
         </div>
         <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
             <i class="fa-solid fa-list-check" style="color:#4ade80"></i>
             <span style="font-size:14px;font-weight:700;color:#4ade80">Cara Mendaftar</span>
           </div>
-          <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-line">${c.Cara_Daftar || '<span style="color:rgba(255,255,255,0.3)">—</span>'}</p>
+          <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-line">${c.Cara_Daftar ? linkifyText(c.Cara_Daftar) : '<span style="color:rgba(255,255,255,0.3)">—</span>'}</p>
         </div>
         ${c.Updated_At ? `<p style="font-size:10px;color:rgba(255,255,255,0.25);text-align:right">Terakhir diperbarui: ${c.Updated_At.slice(0,10)} oleh ${c.Updated_By || '—'}</p>` : ''}
       </div>`;

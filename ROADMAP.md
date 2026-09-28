@@ -1,7 +1,7 @@
 # CRM Broker Properti — Development Roadmap
 
-> **Last updated:** 2026-05-25
-> **Versi aktif:** v1.9.9 · live di [crm.mansionpro.id](https://crm.mansionpro.id)
+> **Last updated:** 2026-09-28
+> **Versi aktif:** v2.5.35 · live di [crm.mansionpro.id](https://crm.mansionpro.id)
 > **GCP:** project `crm-broker2026` · service `crm-broker-properti` · region `asia-southeast2`
 
 ---
@@ -25,6 +25,7 @@
 | Meta Ads — launch campaign | ⏳ Pending | — |
 | Smart Lead Cascade (Cloud Tasks) | ⏳ Pending | — |
 | Konversi Rate Agen (Leads_Count) | ⏳ Pending | — |
+| Native App Android APK + iOS (Capacitor) | ⏳ Pending | — |
 
 ---
 
@@ -99,6 +100,31 @@
 LEAD_NOTIFICATIONS: ID, Lead_ID, Step, Target_Agen_ID, Token,
                     Sent_At, Expires_At, Claimed_At, Status
 ```
+
+---
+
+### Native App — Android APK + iOS IPA via Capacitor ⏳
+
+**Strategi:** Mode Remote URL — Capacitor sebagai shell tipis, WebView load `https://crm.mansionpro.id`.
+Update app = deploy ke Cloud Run seperti biasa, tidak perlu rebuild APK.
+
+**Android:**
+- Distribusi APK via link langsung / Firebase App Distribution (sideload)
+- Tidak perlu Play Store
+
+**iOS:**
+- Opsi 1: tetap PWA (Add to Home Screen dari Safari) — paling simpel
+- Opsi 2: IPA via Apple Developer Account ($99/tahun) + TestFlight (maks 90 hari / 10k tester)
+- Opsi 3: Enterprise Certificate ($299/tahun) untuk distribusi internal unlimited
+
+**Yang perlu dikerjakan saat implementasi:**
+1. `npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios`
+2. `capacitor.config.json` — set `server.url = "https://crm.mansionpro.id"`
+3. Gradle build untuk APK
+4. Review permission native (kamera, notifikasi, storage) — sebagian besar sudah handled PWA
+5. Push notif: migrasi dari VAPID Web Push ke `@capacitor/push-notifications` (opsional)
+
+**Estimasi:** 1 sesi (~2–3 jam) untuk Android APK siap distribusi.
 
 ---
 
