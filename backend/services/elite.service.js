@@ -22,37 +22,26 @@ function toRow(obj, cols) {
   return cols.map(c => obj[c] !== undefined ? obj[c] : '');
 }
 
-async function sendWA(token, target, message) {
+async function sendWA(target, message) {
+  const token = process.env.FONNTE_TOKEN;
   if (!token || !target) return;
   try {
     await axios.post('https://api.fonnte.com/send', { target, message }, {
       headers: { Authorization: token },
+      timeout: 10000,
     });
   } catch (e) {
     console.error('[ELITE] WA send error:', e.message);
   }
 }
 
-async function getAgentFonnteToken(agentId) {
-  try {
-    const rows = await sheetsService.getRange(SHEETS.PA_CREDENTIALS);
-    const objs = rowsToObjects(rows);
-    const cred = objs.find(c => c.Agen_ID === agentId);
-    return cred?.Fonnte_Token || null;
-  } catch { return null; }
-}
-
-async function getPrincipalsTokens() {
+async function getPrincipalsWA() {
   try {
     const rows = await sheetsService.getRange(SHEETS.AGENTS);
     const objs = rowsToObjects(rows);
-    const principals = objs.filter(a => ['principal','kantor','superadmin'].includes(a.Role) && a.Status !== 'Nonaktif');
-    const results = [];
-    for (const p of principals) {
-      const token = await getAgentFonnteToken(p.ID);
-      if (token && p.No_WA) results.push({ token, no_wa: p.No_WA, nama: p.Nama });
-    }
-    return results;
+    return objs
+      .filter(a => ['principal','kantor','superadmin'].includes(a.Role) && a.Status !== 'Nonaktif' && a.No_WA)
+      .map(a => a.No_WA);
   } catch { return []; }
 }
 
@@ -175,13 +164,12 @@ async function activateElite(agentId, activatedBy) {
 
   await updateAgentEliteFields(agentId, '70', 'ELITE');
 
-  const msg = `✅ *ELITE Partner Aktif!*\n\nHalo ${agent.Nama}, selamat! Anda resmi menjadi ELITE Partner Mansion.\n\n📅 Berlaku: ${tanggalMulai} s/d ${tanggalBerakhir}\n💰 Split Komisi: 70:30\n\nTetap semangat dan raih target Anda!`;
-  const agentToken = await getAgentFonnteToken(agentId);
-  if (agentToken && agent.No_WA) await sendWA(agentToken, agent.No_WA, msg);
+  const msg = `✅ *ELITE Partner Aktif!*\n\nHalo ${agent.Nama}, selamat! Anda resmi menjadi ELITE Partner Mansion.\n\n📅 Berlaku: ${tanggalMulai} s/d ${tanggalBerakhir}\n💰 Split Komisi: 70%\n\nTetap semangat dan raih target Anda!`;
+  if (agent.No_WA) await sendWA(agent.No_WA, msg);
 
   const adminMsg = `🏆 *ELITE Partner Baru!*\n\n${agent.Nama} (${agent.Nama_Kantor}) resmi menjadi ELITE Partner.\n📅 Berlaku: ${tanggalMulai} s/d ${tanggalBerakhir}\n\nDiaktifkan oleh: ${activatedBy}`;
-  const principals = await getPrincipalsTokens();
-  for (const p of principals) await sendWA(p.token, p.no_wa, adminMsg);
+  const principalWAs = await getPrincipalsWA();
+  for (const wa of principalWAs) await sendWA(wa, adminMsg);
 
   return program;
 }
@@ -202,12 +190,11 @@ async function terminateProgram(programId, reason, terminatedBy) {
 
   const agent = await getAgentById(program.Agent_ID);
   const msg = `⚠️ *Status ELITE Dihentikan*\n\nHalo ${agent?.Nama || program.Agen_Nama}, status ELITE Partner Anda telah dihentikan.\n\nAlasan: ${reason || '-'}\n\nHubungi kantor untuk informasi lebih lanjut.`;
-  const agentToken = await getAgentFonnteToken(program.Agent_ID);
-  if (agentToken && agent?.No_WA) await sendWA(agentToken, agent.No_WA, msg);
+  if (agent?.No_WA) await sendWA(agent.No_WA, msg);
 
   const adminMsg = `⚠️ *ELITE Partner Dihentikan*\n\n${program.Agen_Nama} (${program.Nama_Kantor})\nAlasan: ${reason || '-'}\nOleh: ${terminatedBy}`;
-  const principals = await getPrincipalsTokens();
-  for (const p of principals) await sendWA(p.token, p.no_wa, adminMsg);
+  const principalWAs = await getPrincipalsWA();
+  for (const wa of principalWAs) await sendWA(wa, adminMsg);
 
   return program;
 }
@@ -346,11 +333,10 @@ async function runEliteCheck() {
     if (diffDays <= 60 && p.Notif_60_Terkirim !== 'TRUE') {
       const agent = await getAgentById(p.Agent_ID);
       const msg = `⏰ *Notifikasi ELITE Partner*\n\nHalo ${p.Agen_Nama}, status ELITE Partner Anda akan berakhir dalam ${diffDays} hari (${p.Tanggal_Berakhir}).\n\nHubungi kantor untuk perpanjangan.`;
-      const token = await getAgentFonnteToken(p.Agent_ID);
-      if (token && agent?.No_WA) await sendWA(token, agent.No_WA, msg);
+      if (agent?.No_WA) await sendWA(agent.No_WA, msg);
       const adminMsg = `⏰ ${p.Agen_Nama}: ELITE akan berakhir ${diffDays} hari lagi (${p.Tanggal_Berakhir})`;
-      const principals = await getPrincipalsTokens();
-      for (const pr of principals) await sendWA(pr.token, pr.no_wa, adminMsg);
+      const principalWAs = await getPrincipalsWA();
+      for (const wa of principalWAs) await sendWA(wa, adminMsg);
       p.Notif_60_Terkirim = 'TRUE';
       p.Diperbarui_Pada = new Date().toISOString();
       await sheetsService.updateRow(SHEETS.ELITE_PROGRAM, p._rowIdx, COLUMNS.ELITE_PROGRAM.map(c => p[c] || ''));
@@ -365,11 +351,10 @@ async function runEliteCheck() {
       await updateAgentEliteFields(p.Agent_ID, p.Split_Sebelumnya || '', '');
       const agent = await getAgentById(p.Agent_ID);
       const msg = `⚠️ *ELITE Partner Berakhir*\n\nHalo ${p.Agen_Nama}, status ELITE Partner Anda telah berakhir (${p.Tanggal_Berakhir}).\n\nHubungi kantor untuk informasi perpanjangan.`;
-      const token = await getAgentFonnteToken(p.Agent_ID);
-      if (token && agent?.No_WA) await sendWA(token, agent.No_WA, msg);
+      if (agent?.No_WA) await sendWA(agent.No_WA, msg);
       const adminMsg = `⚠️ ELITE Expired: ${p.Agen_Nama} (${p.Nama_Kantor}) — ${p.Tanggal_Berakhir}`;
-      const principals = await getPrincipalsTokens();
-      for (const pr of principals) await sendWA(pr.token, pr.no_wa, adminMsg);
+      const principalWAs = await getPrincipalsWA();
+      for (const wa of principalWAs) await sendWA(wa, adminMsg);
       results.push({ id: p.ID, action: 'expired', agent: p.Agen_Nama });
     }
   }
@@ -414,11 +399,10 @@ async function runEliteKinerja() {
       await updateAgentEliteFields(p.Agent_ID, p.Split_Sebelumnya || '', '');
       const agent = await getAgentById(p.Agent_ID);
       const msg = `⚠️ *ELITE Partner: Evaluasi Kinerja*\n\nHalo ${p.Agen_Nama}, evaluasi kinerja Q${diffMonths/3} menunjukkan pencapaian di bawah 80% target.\n\nTotal Efektif: Rp ${totalEfektif.toLocaleString()}\nTarget 80%: Rp ${threshold.toLocaleString()}\n\nStatus ELITE dihentikan. Hubungi kantor untuk informasi lebih lanjut.`;
-      const token = await getAgentFonnteToken(p.Agent_ID);
-      if (token && agent?.No_WA) await sendWA(token, agent.No_WA, msg);
+      if (agent?.No_WA) await sendWA(agent.No_WA, msg);
       const adminMsg = `⚠️ ELITE Gugur Kinerja: ${p.Agen_Nama} — Efektif Rp ${totalEfektif.toLocaleString()} vs target 80% Rp ${threshold.toLocaleString()}`;
-      const principals = await getPrincipalsTokens();
-      for (const pr of principals) await sendWA(pr.token, pr.no_wa, adminMsg);
+      const principalWAs = await getPrincipalsWA();
+      for (const wa of principalWAs) await sendWA(wa, adminMsg);
       results.push({ id: p.ID, action: 'gugur_kinerja', agent: p.Agen_Nama });
     } else {
       results.push({ id: p.ID, action: 'kinerja_ok', agent: p.Agen_Nama, totalEfektif });
