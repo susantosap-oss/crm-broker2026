@@ -248,15 +248,17 @@ router.get('/offices', async (req, res) => {
       const kantor = a.Nama_Kantor || 'MANSION : Kantor Pusat';
       if (!map[kantor]) map[kantor] = { nama_kantor: kantor, members: [] };
       map[kantor].members.push({
-        id:          a.ID,
-        nama:        a.Nama,
-        role:        a.Role,
-        no_wa:       a.No_WA,
-        foto_url:    a.Foto_URL,
-        status:      a.Status,
+        id:           a.ID,
+        nama:         a.Nama,
+        role:         a.Role,
+        no_wa:        a.No_WA,
+        foto_url:     a.Foto_URL,
+        status:       a.Status,
         listing_count: a.Listing_Count || 0,
         deal_count:    a.Deal_Count    || 0,
         join_date:     a.Join_Date     || '',
+        nomer_lsp:     a.Nomer_LSP     || '',
+        status_elite:  a.Status_Elite  || '',
       });
     });
 

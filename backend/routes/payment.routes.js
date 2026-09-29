@@ -17,11 +17,40 @@ const { v4: uuidv4 } = require('uuid');
 const sheetsService  = require('../services/sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 const { authMiddleware }  = require('../middleware/auth.middleware');
+const eliteService   = require('../services/elite.service');
 
 router.use(authMiddleware);
 
 function rowToPayment(row) {
   return COLUMNS.PAYMENT_STAGES.reduce((o, c, i) => { o[c] = row[i] || ''; return o; }, {});
+}
+
+// Auto-push ke ELITE_TRANSACTIONS jika agen berstatus ELITE
+async function syncToEliteIfNeeded(lead, payment) {
+  try {
+    const agentRows = await sheetsService.getRange(SHEETS.AGENTS);
+    const [, ...agentData] = agentRows;
+    const aRow = agentData.find(r => r[0] === lead.Agen_ID);
+    if (!aRow) return;
+    const agen = COLUMNS.AGENTS.reduce((o, c, i) => { o[c] = aRow[i] || ''; return o; }, {});
+    if (agen.Status_Elite !== 'ELITE') return;
+
+    const totalNilai = ['Tanda_Jadi', 'DP1', 'DP2', 'Pelunasan']
+      .reduce((sum, k) => sum + (parseFloat(payment[k]) || 0), 0);
+
+    await eliteService.addTransaction({
+      tanggal:          payment.Tgl_Pelunasan || new Date().toISOString().slice(0, 10),
+      alamatTransaksi:  lead.Closing_Listing_Nama || lead.Properti_Diminati || lead.Closing_Cobroke || '',
+      tipe:             lead.Jenis === 'Sewa' ? 'Sewa' : 'Jual',
+      coBroke:          !!lead.Closing_Cobroke,
+      nilaiTransaksi:   totalNilai,
+      komisiPersen:     0,
+    }, { id: lead.Agen_ID, nama: lead.Agen_Nama, nama_kantor: agen.Nama_Kantor || '' });
+
+    console.log(`[Payment→ELITE] Auto-sync: ${agen.Nama} Rp ${totalNilai.toLocaleString('id-ID')}`);
+  } catch (e) {
+    console.error('[Payment→ELITE] Sync error (non-blocking):', e.message);
+  }
 }
 
 async function getLeadById(leadId) {
@@ -101,7 +130,12 @@ router.put('/lead/:lead_id', async (req, res) => {
       ];
       // +2: row 1 = header, existingIdx 0-based → sheet row = existingIdx + 2
       await sheetsService.updateRow(SHEETS.PAYMENT_STAGES, existingIdx + 2, updated);
-      return res.json({ success: true, data: rowToPayment(updated) });
+      const updatedPayment = rowToPayment(updated);
+      // Auto-sync ke ELITE_TRANSACTIONS hanya saat status baru berubah menjadi 'Selesai'
+      if (existing.Status !== 'Selesai' && updatedPayment.Status === 'Selesai') {
+        await syncToEliteIfNeeded(lead, updatedPayment);
+      }
+      return res.json({ success: true, data: updatedPayment });
     } else {
       // Create new row
       const newRow = [
@@ -123,7 +157,12 @@ router.put('/lead/:lead_id', async (req, res) => {
         now,
       ];
       await sheetsService.appendRow(SHEETS.PAYMENT_STAGES, newRow);
-      return res.json({ success: true, data: rowToPayment(newRow) });
+      const newPayment = rowToPayment(newRow);
+      // Auto-sync ke ELITE_TRANSACTIONS jika langsung dibuat dengan status Selesai
+      if (newPayment.Status === 'Selesai') {
+        await syncToEliteIfNeeded(lead, newPayment);
+      }
+      return res.json({ success: true, data: newPayment });
     }
   } catch (e) {
     console.error('[Payment/upsert]', e.message);

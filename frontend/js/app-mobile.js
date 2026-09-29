@@ -3417,6 +3417,9 @@ async function loadDashboard() {
     // Komisi widget — baca dari Google Form responses sheet
     if (typeof loadDashboardKomisiWidget === 'function') loadDashboardKomisiWidget();
 
+    // ELITE Partner widget
+    loadDashboardEliteWidget();
+
   } catch (e) {
     console.error('[CRM] Dashboard load error:', e.message, e.stack);
     // Jangan biarkan halaman kosong — tampilkan pesan error minimal
@@ -5016,6 +5019,7 @@ function memberRow(m) {
         <div style="display:flex;align-items:center;gap:5px">
           <span style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(m.nama||'—')}${m.nomer_lsp ? ', CRA' : ''}</span>
           ${m.nomer_lsp ? `<span title="CRA Verified" style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#2563EB;flex-shrink:0"><i class="fa-solid fa-check" style="color:#fff;font-size:7px"></i></span>` : ''}
+          ${m.status_elite === 'ELITE' ? `<span style="font-size:9px;font-weight:700;color:#D4A853;background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.3);padding:1px 6px;border-radius:20px;flex-shrink:0">ELITE</span>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
           <span style="font-size:10px;color:rgba(255,255,255,0.35)">${roleLabel}</span>
@@ -5031,6 +5035,66 @@ function memberRow(m) {
         ${waBtn}
       </div>
     </div>`;
+}
+
+async function loadDashboardEliteWidget() {
+  const widget  = document.getElementById('dash-elite-widget');
+  const content = document.getElementById('dash-elite-content');
+  const linkBtn = document.getElementById('dash-elite-link-btn');
+  if (!widget || !content || !linkBtn) return;
+
+  const role = STATE.user?.role;
+  const MANAGE_ROLES = ['superadmin', 'principal', 'kantor', 'admin'];
+
+  try {
+    if (MANAGE_ROLES.includes(role)) {
+      const res = await API.get('/elite/agents');
+      const programs = res.data || [];
+      const aktif = programs.filter(p => p.Status === 'Aktif').length;
+      const draft  = programs.filter(p => p.Status === 'Draft').length;
+      if (!aktif && !draft) { widget.style.display = 'none'; return; }
+
+      linkBtn.textContent = 'Kelola →';
+      linkBtn.onclick = () => navigateTo('elite-partner');
+      content.innerHTML = `
+        <div style="display:flex;gap:14px;align-items:center">
+          <div style="text-align:center;padding:8px 16px;background:rgba(212,168,83,0.1);border-radius:12px;border:1px solid rgba(212,168,83,0.2)">
+            <div style="font-size:22px;font-weight:800;color:#D4A853">${aktif}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px">ELITE Aktif</div>
+          </div>
+          ${draft ? `<div style="text-align:center;padding:8px 16px;background:rgba(251,191,36,0.08);border-radius:12px;border:1px solid rgba(251,191,36,0.2)">
+            <div style="font-size:22px;font-weight:800;color:#fbbf24">${draft}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px">Draft</div>
+          </div>` : ''}
+          <div style="flex:1;font-size:11px;color:rgba(255,255,255,0.4);line-height:1.5">Klik Kelola untuk melihat detail kinerja dan perpanjangan program</div>
+        </div>`;
+      widget.style.display = 'block';
+
+    } else if (role === 'agen') {
+      const res = await API.get(`/elite/agent/${STATE.user.id}`);
+      const program = res.data;
+      if (!program || !['Aktif', 'Draft'].includes(program.Status)) { widget.style.display = 'none'; return; }
+
+      const isAktif = program.Status === 'Aktif';
+      linkBtn.textContent = isAktif ? 'Transaksi →' : 'Detail →';
+      linkBtn.onclick = () => navigateTo(isAktif ? 'elite-trx' : 'elite-partnership');
+
+      const statusColor = isAktif ? '#D4A853' : '#fbbf24';
+      const sisaHari = program.Tanggal_Berakhir
+        ? Math.max(0, Math.floor((new Date(program.Tanggal_Berakhir) - new Date()) / 86400000))
+        : null;
+
+      content.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div>
+            <span style="display:inline-block;font-size:11px;font-weight:700;color:${statusColor};background:${statusColor}22;border:1px solid ${statusColor}44;padding:3px 10px;border-radius:20px">${isAktif ? '★ ELITE Aktif' : '⏳ Menunggu Aktivasi'}</span>
+            ${isAktif && sisaHari !== null ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px">Berakhir ${program.Tanggal_Berakhir} · ${sisaHari} hari lagi</div>` : ''}
+          </div>
+          ${isAktif ? `<div style="text-align:right;flex-shrink:0"><div style="font-size:18px;font-weight:800;color:#D4A853">70%</div><div style="font-size:10px;color:rgba(255,255,255,0.3)">split komisi</div></div>` : ''}
+        </div>`;
+      widget.style.display = 'block';
+    }
+  } catch { widget.style.display = 'none'; }
 }
 
 function toggleOfficeMembers(btn) {
@@ -5636,12 +5700,13 @@ async function doDeleteUser(id, nama) {
 function checkAdminMenu() {
   const _pRoles = ['superadmin','principal','kantor','admin','agen','business_manager','koordinator'];
   if (_pRoles.includes(STATE.user?.role)) {
+// Primary + Asset: visible for all logged-in users
     document.getElementById('nav-primary')?.style.removeProperty('display');
-    document.getElementById('sb-primary')?.style.removeProperty('display');
-    // Asset: visible for all logged-in users
     document.getElementById('nav-asset')?.style.removeProperty('display');
-    document.getElementById('sb-asset')?.style.removeProperty('display');
-    document.getElementById('sb-asset-komersial')?.style.removeProperty('display');
+    const sbAsset = document.getElementById('sb-asset');
+    if (sbAsset) sbAsset.style.display = 'flex';
+    const sbAssetKom = document.getElementById('sb-asset-komersial');
+    if (sbAssetKom) sbAssetKom.style.display = 'flex';
   }
   if (['superadmin','principal','kantor','admin'].includes(STATE.user?.role)) {
     const _ab = document.getElementById('btn-add-project');

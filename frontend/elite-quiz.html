@@ -569,7 +569,6 @@ button { border:0; border-radius:12px; padding:13px 20px; font-weight:800; curso
 
   <div class="actions">
     <button id="submitBtn" type="button">Selesai Ujian</button>
-    <button id="resetBtn" type="button" disabled>Ulangi</button>
   </div>
 
   <section id="result" class="result"></section>
@@ -588,7 +587,7 @@ let _user  = null;
 
 function initAuth() {
   try {
-    const raw = localStorage.getItem('token');
+    const raw = localStorage.getItem('crm_token');
     if (!raw) { setAuthUI(false); return; }
     const parts = raw.split('.');
     if (parts.length !== 3) { setAuthUI(false); return; }
@@ -680,7 +679,6 @@ async function submitQuiz(auto = false) {
 
   document.querySelectorAll('input[type="radio"]').forEach(i => i.disabled = true);
   document.getElementById('submitBtn').disabled = true;
-  document.getElementById('resetBtn').disabled  = false;
 
   const percent  = Math.round(score / QUESTIONS * 100);
   const passed   = score >= 16;
@@ -780,7 +778,6 @@ function formatDetik(s) {
 }
 
 document.getElementById('submitBtn').addEventListener('click', () => submitQuiz(false));
-document.getElementById('resetBtn').addEventListener('click', () => location.reload());
 
 function esc(s) {
   const div = document.createElement('div');

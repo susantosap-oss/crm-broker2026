@@ -264,6 +264,14 @@
           </div>
         </div>
       </div>
+      <!-- Widget: ELITE Partner (admin/principal: shortcut mgmt; agen ELITE: status program) -->
+      <div id="dash-elite-widget" style="display:none;padding:0 16px 20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h3 style="color:rgba(255,255,255,0.65);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em"><i class="fa-solid fa-star" style="color:#D4A853;margin-right:6px"></i>ELITE Partner</h3>
+          <button id="dash-elite-link-btn" style="color:rgba(212,168,83,0.8);font-size:11px;background:none;border:none;cursor:pointer">Kelola →</button>
+        </div>
+        <div id="dash-elite-content" class="card animate-fade-up" style="padding:14px 16px"></div>
+      </div>
       <div style="padding:0 16px 20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <h3 style="color:rgba(255,255,255,0.65);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em">Hot Leads <span style="color:#ef4444">●</span></h3>
@@ -1958,17 +1966,12 @@
         <span>Materi Training</span>
       </button>
       <button onclick="navigateTo('search');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left"><i class="fa-solid fa-magnifying-glass" style="color:#22C55E;width:16px;text-align:center"></i><span>Property Search</span><span style="margin-left:auto;font-size:9px;background:rgba(34,197,94,0.15);color:#22C55E;padding:2px 6px;border-radius:20px;font-weight:700">SEARCH</span></button>
-        <a class="sidebar-link" id="sb-primary" onclick="navigateTo('primary');closeSidebar()" style="display:none">
-          <i class="fa-solid fa-star" style="width:18px;color:#D4A853"></i>
-          <span>Primary</span>
-          <span style="margin-left:auto;font-size:10px;background:rgba(212,168,83,0.2);color:#D4A853;padding:2px 7px;border-radius:20px;font-weight:700">NEW</span>
-        </a>
-        <a class="sidebar-link" id="sb-asset" onclick="navigateTo('asset');closeSidebar()" style="display:none;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'">
+        <a class="sidebar-link" id="sb-asset" onclick="navigateTo('asset');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'">
           <i class="fa-solid fa-gavel" style="color:#f59e0b;width:16px;text-align:center"></i>
           <span>Properti Lelang</span>
           <span style="margin-left:auto;font-size:9px;background:rgba(245,158,11,0.2);color:#f59e0b;padding:1px 6px;border-radius:20px;font-weight:700">ASSET</span>
         </a>
-        <a class="sidebar-link" id="sb-asset-komersial" onclick="navigateTo('asset-komersial');closeSidebar()" style="display:none;align-items:center;gap:12px;padding:11px 14px 11px 28px;border-radius:12px;cursor:pointer;color:rgba(255,255,255,0.55);font-size:13px" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.55)'">
+        <a class="sidebar-link" id="sb-asset-komersial" onclick="navigateTo('asset-komersial');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'">
           <i class="fa-solid fa-building" style="color:#f59e0b;width:16px;text-align:center;font-size:12px"></i>
           <span>Komersial Luar Jatim</span>
           <span style="margin-left:auto;font-size:9px;background:rgba(245,158,11,0.15);color:#f59e0b;padding:1px 6px;border-radius:20px;font-weight:700">NEW</span>
@@ -1996,7 +1999,7 @@
           <span style="margin-left:auto;font-size:9px;background:rgba(212,168,83,0.2);color:#D4A853;padding:1px 7px;border-radius:20px;font-weight:700">PA</span>
         </a>
 
-      <button id="sb-leads" onclick="navigateTo('leads');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-users" style="color:#a855f7;width:16px;text-align:center"></i><span>Manajemen Leads</span></button>
+      <button id="sb-leads" onclick="navigateTo('leads');closeSidebar()" style="width:100%;display:flex;align-items:center;position:relative;padding:11px 14px 11px 42px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-users" style="color:#a855f7;position:absolute;left:14px;width:16px;text-align:center"></i><span>Manajemen Leads</span></button>
       <button onclick="navigateTo('tasks');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-clipboard-list" style="color:#22C55E;width:16px;text-align:center"></i><span>Aktivitas</span></button>
       <button onclick="navigateTo('calculator');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'">
         <i class="fa-solid fa-calculator" style="color:#D4A853;width:16px;text-align:center"></i>
@@ -3224,15 +3227,6 @@
 </script>
 
       
-      <button class="nav-btn" id="nav-primary" onclick="navigateTo('primary')" style="display:none"><i class="fa-solid fa-star"></i><span>Primary</span></button>
-
-
-
-        <a class="sidebar-link" id="sb-primary" onclick="navigateTo('primary');closeSidebar()" style="display:none">
-          <i class="fa-solid fa-star" style="width:18px;color:#D4A853"></i>
-          <span>Primary</span>
-          <span style="margin-left:auto;font-size:10px;background:rgba(212,168,83,0.2);color:#D4A853;padding:2px 7px;border-radius:20px;font-weight:700">NEW</span>
-        </a>
 
 
 
