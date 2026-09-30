@@ -43,27 +43,27 @@ async function submitQuiz({ nilai, persen, status, waktuDetik, jawabanJson }, us
 
   await sheetsService.appendRow(SHEETS.ELITE_QUIZ_RESULTS, COLUMNS.ELITE_QUIZ_RESULTS.map(c => row[c] || ''));
 
-  // Jika Lulus → auto-update EQT di ELITE_PROGRAM (ambil nilai tertinggi)
-  if (status === 'Lulus') {
-    await _updateEliteEQT(user.id, nilai, persen, now);
-  }
+  // Auto-sync EQT_Nilai (dari Persen) + EQT_Verified (dari Status) di ELITE_PROGRAM
+  await _updateEliteEQT(user.id, persen, status, now);
 
   return { ...row, attempt };
 }
 
-async function _updateEliteEQT(agentId, nilai, persen, now) {
+// Sync EQT_Nilai (dari Persen) + EQT_Verified (dari Status: Lulus=TRUE, selain itu FALSE)
+// ke draft/aktif ELITE_PROGRAM milik agen. No-op kalau tidak ada program atau nilai sudah sama.
+async function _updateEliteEQT(agentId, persen, status, now) {
   try {
     const rows = await sheetsService.getRange(SHEETS.ELITE_PROGRAM);
     const objs = rowsToObjects(rows);
     const program = objs.find(p => p.Agent_ID === agentId && ['Draft', 'Aktif'].includes(p.Status));
-    if (!program) return;
+    if (!program) return false;
 
-    // Simpan hanya jika nilai baru lebih tinggi dari yang sudah ada
-    const existingNilai = parseFloat(program.EQT_Nilai) || 0;
-    if (nilai <= existingNilai && program.EQT_Verified === 'TRUE') return;
+    const nilaiBaru    = String(persen ?? '');
+    const verifiedBaru = status === 'Lulus' ? 'TRUE' : 'FALSE';
+    if (program.EQT_Nilai === nilaiBaru && program.EQT_Verified === verifiedBaru) return false;
 
-    program.EQT_Nilai    = String(nilai);
-    program.EQT_Verified = 'TRUE';
+    program.EQT_Nilai    = nilaiBaru;
+    program.EQT_Verified = verifiedBaru;
     program.EQT_Tgl      = now.slice(0, 10);
     program.Diperbarui_Pada = now;
 
@@ -72,9 +72,34 @@ async function _updateEliteEQT(agentId, nilai, persen, now) {
       program._rowIdx,
       COLUMNS.ELITE_PROGRAM.map(c => program[c] || '')
     );
+    return true;
   } catch (e) {
     console.error('[EQT] update ELITE_PROGRAM error:', e.message);
+    return false;
   }
+}
+
+// Self-heal: sinkronkan attempt TERBARU tiap agen (di ELITE_QUIZ_RESULTS) ke ELITE_PROGRAM.
+// Menangani hasil quiz yang masuk sebelum auto-sync ini ada / sempat gagal. Idempotent.
+async function backfillEQTSync() {
+  const results = rowsToObjects(await sheetsService.getRange(SHEETS.ELITE_QUIZ_RESULTS));
+  const latestByAgent = {};
+  for (const r of results) {
+    if (!r.Agent_ID) continue;
+    const prev = latestByAgent[r.Agent_ID];
+    if (!prev || new Date(r.Tanggal) > new Date(prev.Tanggal)) latestByAgent[r.Agent_ID] = r;
+  }
+
+  const synced = [];
+  for (const r of Object.values(latestByAgent)) {
+    try {
+      const changed = await _updateEliteEQT(r.Agent_ID, r.Persen, r.Status, new Date().toISOString());
+      if (changed) synced.push({ agentId: r.Agent_ID, nama: r.Agen_Nama });
+    } catch (e) {
+      console.warn('[EQT] backfill gagal untuk', r.Agent_ID, e.message);
+    }
+  }
+  return synced;
 }
 
 // ── Queries ─────────────────────────────────────────────────
@@ -121,4 +146,4 @@ async function getSummaryByAgent() {
   return Object.values(map);
 }
 
-module.exports = { submitQuiz, getMyResults, getAllResults, getSummaryByAgent };
+module.exports = { submitQuiz, getMyResults, getAllResults, getSummaryByAgent, backfillEQTSync };

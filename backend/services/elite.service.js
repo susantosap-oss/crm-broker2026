@@ -18,6 +18,24 @@ function rowsToObjects(rows) {
   });
 }
 
+// Normalisasi No_WA ke bentuk tanpa prefix "0"/"62" agar format berbeda
+// (mis. dengan kode negara vs tanpa) tetap bisa dicocokkan.
+function normalizePhoneTail(v) {
+  let s = String(v || '').replace(/\D/g, '');
+  if (s.startsWith('62')) s = s.slice(2);
+  else if (s.startsWith('0')) s = s.slice(1);
+  return s;
+}
+
+// Cari akun AGENTS yang No_WA-nya cocok (setelah normalisasi) dengan noWa.
+async function findAgentByPhone(noWa) {
+  const tail = normalizePhoneTail(noWa);
+  if (!tail) return null;
+  const rows = await sheetsService.getRange(SHEETS.AGENTS);
+  const agents = rowsToObjects(rows);
+  return agents.find(a => a.No_WA && normalizePhoneTail(a.No_WA) === tail) || null;
+}
+
 function toRow(obj, cols) {
   return cols.map(c => obj[c] !== undefined ? obj[c] : '');
 }
@@ -413,6 +431,10 @@ async function runEliteKinerja() {
 
 module.exports = {
   rowsToObjects,
+  sendWA,
+  getPrincipalsWA,
+  normalizePhoneTail,
+  findAgentByPhone,
   listElitePrograms,
   getProgramByAgent,
   getProgramById,

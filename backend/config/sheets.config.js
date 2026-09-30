@@ -74,6 +74,8 @@ const SHEETS = {
   FORM_E1:            'FORM_E1',
   // ★ ELITE Qualification Test — Hasil ujian per agen
   ELITE_QUIZ_RESULTS: 'ELITE_QUIZ_RESULTS',
+  // ★ Kontrak ELITE — Surat Perjanjian ELITE Program (public form submission)
+  ELITE_KONTRAK: 'ELITE_KONTRAK',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -800,6 +802,20 @@ const COLUMNS = {
     'Waktu_Detik',      // I  detik pengerjaan
     'Attempt_Ke',       // J  urutan attempt ke-N agen ini
     'Jawaban_JSON',     // K  JSON string jawaban per soal
+  ],
+
+  // ★ ELITE_KONTRAK — Surat Perjanjian ELITE Program (public form submission)
+  ELITE_KONTRAK: [
+    'ID',                // A  UUID
+    'Tanggal_Submit',    // B  ISO datetime
+    'Nama_Lengkap',      // C  Nama agen sesuai KTP
+    'Nomor_KTP',         // D
+    'Alamat_Domisili',   // E
+    'Asal_Kantor',       // F  Kantor Mansion asal
+    'No_WA',             // G  untuk matching ke AGENTS/ELITE_PROGRAM
+    'Setuju',            // H  TRUE|FALSE — centang [v] Setuju dengan Perjanjian
+    'Program_Synced',    // I  TRUE|FALSE — berhasil auto-update ELITE_PROGRAM
+    'IP_Address',        // J  jejak submission
   ],
 
 };

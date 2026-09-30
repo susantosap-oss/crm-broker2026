@@ -4,7 +4,8 @@ const { v4: uuidv4 } = require('uuid');
 const sheetsService = require('../services/sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 const { authMiddleware } = require('../middleware/auth.middleware');
-const { rowsToObjects } = require('../services/elite.service');
+const eliteSvc = require('../services/elite.service');
+const { rowsToObjects } = eliteSvc;
 
 // Rate limit khusus form: 5 submission per IP per jam
 const rateLimit = require('express-rate-limit');
@@ -18,12 +19,54 @@ const formLimiter = rateLimit({
 
 const MANAGE_ROLES = ['superadmin', 'principal', 'kantor', 'admin'];
 
+// Cocokkan submission Form E-1 ke akun AGENTS (via No_WA) dan pastikan draft
+// ELITE_PROGRAM ada. Idempotent — no-op kalau draft/aktif sudah ada.
+async function ensureEliteProgramDraft(item, actorLabel) {
+  const matchedAgent = await eliteSvc.findAgentByPhone(item.No_WA);
+  if (!matchedAgent) {
+    console.warn('[FormE1] Agen dengan No_WA', item.No_WA, 'tidak ditemukan di AGENTS — draft ELITE_PROGRAM tidak dibuat otomatis');
+    return { created: false, agent: null };
+  }
+
+  const existing = await eliteSvc.getProgramByAgent(matchedAgent.ID);
+  if (existing) return { created: false, agent: matchedAgent, existing: true };
+
+  await eliteSvc.saveChecklist({
+    agentId: matchedAgent.ID,
+    agenNama: item.Nama_Lengkap,
+    namaKantor: matchedAgent.Nama_Kantor,
+    formE1Verified: 'TRUE',
+    formE1Catatan: item.Catatan_Admin || '',
+  }, actorLabel);
+  return { created: true, agent: matchedAgent };
+}
+
 // GET /api/v1/form-e1 — list semua submission (admin/principal/kantor/superadmin)
 router.get('/', authMiddleware, async (req, res) => {
   if (!MANAGE_ROLES.includes(req.user.role)) return res.status(403).json({ success: false, message: 'Akses ditolak' });
   try {
     const rows = await sheetsService.getRange(SHEETS.FORM_E1);
     const list = rowsToObjects(rows);
+
+    // Self-heal: submission yg sudah Disetujui tapi belum punya draft ELITE_PROGRAM
+    // (mis. di-approve sebelum auto-create ini ada / sempat gagal). Idempotent.
+    const approved = list.filter(f => f.Status === 'Disetujui');
+    for (const item of approved) {
+      try {
+        const { created } = await ensureEliteProgramDraft(item, 'system-heal');
+        if (created) {
+          const adminMsg =
+            `🔄 *Backfill ELITE Program*\n\n` +
+            `Form E-1 ${item.Nama_Lengkap} (${item.Kode_Agent}) sudah Disetujui namun draft ELITE_PROGRAM belum ada — sudah dibuat otomatis.\n\n` +
+            `Silakan lanjutkan checklist di ELITE Partner Mgmt.`;
+          const principalWAs = await eliteSvc.getPrincipalsWA();
+          for (const wa of principalWAs) await eliteSvc.sendWA(wa, adminMsg);
+        }
+      } catch (healErr) {
+        console.warn('[FormE1] Self-heal gagal untuk', item.ID, healErr.message);
+      }
+    }
+
     res.json({ success: true, data: list });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
@@ -56,13 +99,29 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
     await sheetsService.updateRow(SHEETS.FORM_E1, item._rowIdx, rowArr);
 
-    // Notif WA ke agen jika status berubah ke Disetujui/Ditolak
+    // Saat Disetujui → auto-buat/update draft di ELITE_PROGRAM agar agen
+    // langsung muncul di ELITE Partner Mgmt (tab Partners) sebagai Draft
+    let programCreated = false;
+    let programNote = '';
+    if (status === 'Disetujui') {
+      try {
+        item.Catatan_Admin = catatan !== undefined ? catatan : item.Catatan_Admin;
+        const result = await ensureEliteProgramDraft(item, req.user.nama || req.user.id);
+        programCreated = result.created;
+        if (result.created) programNote = '\nDraft ELITE_PROGRAM dibuat — lanjutkan checklist di ELITE Partner Mgmt.';
+        else if (result.existing) programNote = '';
+        else programNote = '\n⚠️ No_WA tidak cocok dengan data AGENTS — draft ELITE_PROGRAM belum dibuat, grant manual diperlukan.';
+      } catch (programErr) {
+        console.warn('[FormE1] Auto-create ELITE_PROGRAM draft gagal:', programErr.message);
+      }
+    }
+
+    // Notif WA ke agen + admin jika status berubah ke Disetujui/Ditolak
     if (status === 'Disetujui' || status === 'Ditolak') {
       try {
-        const eliteSvc = require('../services/elite.service');
         const noWa = item.No_WA;
+        const emoji = status === 'Disetujui' ? '✅' : '❌';
         if (noWa) {
-          const emoji = status === 'Disetujui' ? '✅' : '❌';
           const msg =
             `${emoji} *Update Form E-1 Anda*\n\n` +
             `Nama: ${item.Nama_Lengkap}\n` +
@@ -71,12 +130,22 @@ router.put('/:id', authMiddleware, async (req, res) => {
             `\nSilakan hubungi admin untuk informasi lebih lanjut.`;
           await eliteSvc.sendWA(noWa, msg);
         }
+
+        const adminMsg =
+          `${emoji} *Form E-1 ${status}*\n\n` +
+          `Nama: ${item.Nama_Lengkap}\n` +
+          `Kode: ${item.Kode_Agent}\n` +
+          (catatan ? `Catatan: ${catatan}\n` : '') +
+          (status === 'Disetujui' ? programNote : '') +
+          `\nDiproses oleh: ${req.user.nama || req.user.id}`;
+        const principalWAs = await eliteSvc.getPrincipalsWA();
+        for (const wa of principalWAs) await eliteSvc.sendWA(wa, adminMsg);
       } catch (notifErr) {
         console.warn('[FormE1] WA notif update gagal:', notifErr.message);
       }
     }
 
-    res.json({ success: true, message: 'Status diperbarui' });
+    res.json({ success: true, message: 'Status diperbarui', programCreated });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }

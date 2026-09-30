@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Surat Perjanjian ELITE Program | Mansion Pro</title>
+  <meta name="robots" content="noindex, nofollow"/>
+  <style>
+    :root {
+      --gold:    #d4a843;
+      --gold-lt: #f0c84e;
+      --dark:    #0f1117;
+      --card:    #181c26;
+      --border:  #2a2f3e;
+      --text:    #e8e8e8;
+      --muted:   #8892a4;
+      --red:     #ef4444;
+      --green:   #22c55e;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--dark);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #0f1117 0%, #1a1f2e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 20px 20px;
+      text-align: center;
+    }
+    .header-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .header-logo .crown {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-lt) 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .header-logo span {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 1px;
+    }
+    .header h1 {
+      font-size: 21px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .header p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .badge-elite {
+      display: inline-block;
+      background: linear-gradient(90deg, var(--gold) 0%, var(--gold-lt) 100%);
+      color: #000;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-top: 8px;
+    }
+
+    /* ── Main ── */
+    .main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+    }
+
+    /* ── Info box ── */
+    .info-box {
+      background: rgba(212, 168, 67, 0.08);
+      border: 1px solid rgba(212, 168, 67, 0.25);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: #c8b77a;
+      line-height: 1.7;
+    }
+    .info-box strong { color: var(--gold); }
+
+    /* ── Section card ── */
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 20px;
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Contract text ── */
+    .contract-box {
+      max-height: 420px;
+      overflow-y: auto;
+      background: #0f1117;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 16px;
+      font-size: 13px;
+      color: #c9ccd3;
+    }
+    .contract-box::-webkit-scrollbar { width: 8px; }
+    .contract-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+    .contract-title {
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .contract-title .t1 { font-size: 14px; font-weight: 700; color: #fff; }
+    .contract-title .t2 { font-size: 13px; font-weight: 700; color: var(--gold); margin-top: 2px; }
+    .contract-box p { margin-bottom: 10px; }
+    .contract-box .pasal {
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 12.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin: 18px 0 8px;
+    }
+    .contract-box .pasal:first-of-type { margin-top: 14px; }
+    .contract-box ol {
+      margin: 0 0 10px 20px;
+    }
+    .contract-box ol li { margin-bottom: 8px; }
+    .contract-box strong { color: #e8e8e8; }
+
+    /* ── Form fields ── */
+    .field {
+      margin-bottom: 16px;
+    }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 6px;
+    }
+    .field label .req {
+      color: var(--gold);
+      margin-left: 2px;
+    }
+    .field input, .field textarea {
+      width: 100%;
+      background: #0f1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color .2s;
+      -webkit-appearance: none;
+    }
+    .field input:focus, .field textarea:focus {
+      border-color: var(--gold);
+    }
+    .field input::placeholder, .field textarea::placeholder {
+      color: var(--muted);
+    }
+    .field .hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .field.error input {
+      border-color: var(--red);
+    }
+    .field .err-msg {
+      font-size: 11px;
+      color: var(--red);
+      margin-top: 4px;
+      display: none;
+    }
+    .field.error .err-msg { display: block; }
+
+    /* ── Setuju checklist ── */
+    .checklist-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 4px 0;
+    }
+    .checklist-item input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+      min-width: 22px;
+      accent-color: var(--gold);
+      cursor: pointer;
+      margin-top: 1px;
+    }
+    .checklist-item .item-text {
+      font-size: 13.5px;
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .checklist-item .item-text strong {
+      color: var(--gold);
+    }
+    #checklist-err {
+      font-size: 12px;
+      color: var(--red);
+      margin-top: 10px;
+      display: none;
+    }
+
+    /* ── Submit button ── */
+    .submit-wrap {
+      margin-top: 28px;
+      text-align: center;
+    }
+    .btn-submit {
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-lt) 100%);
+      color: #000;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 48px;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      width: 100%;
+      max-width: 320px;
+    }
+    .btn-submit:hover { opacity: 0.9; }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Alert ── */
+    .alert {
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 14px;
+      margin-top: 20px;
+      display: none;
+    }
+    .alert.success {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: var(--green);
+    }
+    .alert.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--red);
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 32px 20px 20px;
+      border-top: 1px solid var(--border);
+      margin-top: 8px;
+    }
+    .footer a { color: var(--gold); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo">
+    <div class="crown">👑</div>
+    <span>MANSION PRO</span>
+  </div>
+  <h1>Surat Perjanjian ELITE Program</h1>
+  <p>Mansion Elite Partnership Club</p>
+  <div class="badge-elite">ELITE PARTNER PROGRAM</div>
+</header>
+
+<main class="main">
+
+  <div class="info-box">
+    <strong>Petunjuk:</strong><br>
+    Baca seluruh isi Surat Perjanjian di bawah ini dengan saksama. Lengkapi data diri Anda,
+    lalu centang <strong>Setuju dengan Perjanjian</strong> untuk menandatangani secara elektronik.
+  </div>
+
+  <form id="form-kontrak" novalidate>
+
+    <!-- Isi Perjanjian -->
+    <div class="section">
+      <div class="section-title">Isi Perjanjian</div>
+      <div class="contract-box">
+        <div class="contract-title">
+          <div class="t1">SURAT PERJANJIAN ELITE PROGRAM</div>
+          <div class="t2">MANSION ELITE PARTNERSHIP CLUB</div>
+        </div>
+        <p style="text-align:center;color:var(--muted);font-size:11px;margin-bottom:14px">Nomor: diterbitkan otomatis oleh sistem saat kontrak disetujui</p>
+
+        <p>Pada hari ini, bertempat di Kantor Mansion Properti, yang bertanda tangan di bawah ini:</p>
+        <ol>
+          <li><strong>MANSION PROPERTI</strong>, berkedudukan dan beroperasional di Indonesia, dalam hal ini diwakili oleh <strong>Principal / Management</strong>, selanjutnya disebut sebagai <strong>PIHAK PERTAMA</strong>.</li>
+          <li>Agen yang mengisi data pada formulir di bawah, dalam hal ini bertindak atas nama pribadi sebagai Agen Properti Mitra, selanjutnya disebut sebagai <strong>PIHAK KEDUA</strong>.</li>
+        </ol>
+        <p>PIHAK PERTAMA dan PIHAK KEDUA secara bersama-sama disebut sebagai <strong>PARA PIHAK</strong>. PARA PIHAK terlebih dahulu menerangkan hal-hal sebagai berikut:</p>
+        <ol>
+          <li>Bahwa PIHAK PERTAMA adalah perusahaan perantara perdagangan properti pemilik brand dan sistem <em>Mansion Elite Partnership Club</em>.</li>
+          <li>Bahwa PIHAK KEDUA telah memenuhi syarat kualifikasi awal (termasuk kelulusan <em>Elite Qualification Test</em>) dan mengajukan diri secara sadar untuk bergabung dalam kualifikasi kemitraan tingkat tinggi (<em>Elite Tier</em>).</li>
+        </ol>
+        <p>Atas dasar pertimbangan tersebut di atas, PARA PIHAK sepakat untuk mengikatkan diri dalam Surat Perjanjian Kemitraan Khusus dengan ketentuan dan syarat-syarat sebagai berikut:</p>
+
+        <div class="pasal">Pasal 1 — Integritas, Etika Profesi &amp; Kepatuhan</div>
+        <ol>
+          <li><strong>Kejujuran &amp; Profesionalisme:</strong> PIHAK KEDUA berjanji dan menjamin akan menjalankan profesi perantara properti dengan menjunjung tinggi integritas, kejujuran, transparansi, serta mematuhi seluruh Kode Etik dan Standard Operating Procedure (SOP) yang berlaku di Mansion Properti.</li>
+          <li><strong>Pengelolaan Uang Konsumen (Escrow Account):</strong> PIHAK KEDUA dilarang keras menerima, menyimpan, atau menggunakan uang Tanda Jadi (UTJ/Booking Fee), DP, maupun komisi transaksi ke rekening pribadi. Seluruh dana konsumen WAJIB ditransfer langsung ke Rekening Penampungan (Escrow) Resmi PIHAK PERTAMA paling lambat <strong>1×24 jam</strong> sejak diterima.</li>
+          <li><strong>Kerahasiaan Informasi (NDA):</strong> PIHAK KEDUA wajib menjaga kerahasiaan seluruh skema hitungan komisi internal 70%, strategi pemasaran, data klien, dan dokumen korporasi Mansion Properti. PIHAK KEDUA dilarang membocorkan informasi ini kepada pihak luar maupun agen non-ELITE.</li>
+        </ol>
+
+        <div class="pasal">Pasal 2 — Pemahaman Cara Kerja &amp; Skema Komisi (Split 70%)</div>
+        <ol>
+          <li><strong>Sistem Operasional Mandiri:</strong> PIHAK KEDUA memahami dan menyetujui bahwa sebagai konsekuensi atas penerimaan split komisi tinggi, PIHAK KEDUA bertanggung jawab penuh (100%) atas biaya operasional pemasaran, promosi portal, spanduk, dan materi iklan pribadi.</li>
+          <li><strong>Hak Split Komisi Utama:</strong> PIHAK KEDUA berhak atas bagian komisi bersih sebesar <strong>70% (Tujuh Puluh Persen)</strong> dari Gross Commission (GC) kantor setelah dipotong Fee Koordinator (untuk proyek Primary).</li>
+          <li><strong>Aturan Transaksi Primary (Overriding Dinamis):</strong> PIHAK KEDUA memahami dan tunduk pada aturan Fee Koordinator Hybrid serta skema pemotongan hak Upline Fee Hybrid sesuai SOP ELITE saat berhubungan dengan Koordinator Project dan aturan Upline Downline.</li>
+        </ol>
+
+        <div class="pasal">Pasal 3 — Target Penjualan &amp; Evaluasi Performa</div>
+        <ol>
+          <li><strong>Batas Target Kuartalan:</strong> PIHAK KEDUA menyetujui dan sanggup mengejar target omzet penjualan properti (Nilai Transaksi) minimal <strong>Rp 3.000.000.000,- (Tiga Milyar Rupiah)</strong> per Kuartal (periode 3 bulan).</li>
+          <li><strong>Jadwal Evaluasi Sistem:</strong> Evaluasi pencapaian target dilakukan oleh PIHAK PERTAMA secara otomatis di setiap akhir Kuartal, yaitu pada tanggal kerja terakhir bulan berjalan.</li>
+        </ol>
+
+        <div class="pasal">Pasal 4 — Hak Reward (Insentif &amp; Apresiasi)</div>
+        <p>Sebagai bentuk apresiasi atas kualifikasi dan pencapaian performa, PIHAK KEDUA berhak mendapatkan:</p>
+        <ol>
+          <li><strong>Welcoming Marketing Kit:</strong> Bonus Saldo Iklan/Banner senilai Rp 150.000 jika lulus Ujian Kualifikasi dengan nilai sempurna (Skor 100).</li>
+          <li><strong>Gimmick Performance Semesteran:</strong> Jika PIHAK KEDUA mencapai 100% target omzet semesteran (Rp 6 Milyar/Semester), PIHAK KEDUA berhak memilih salah satu Reward: (A) Annual Productivity Tools (Canva Pro / ChatGPT Plus / Portal Properti) senilai maksimal Rp 1.000.000, atau (B) Voucher Shopping / BBM / Lifestyle senilai maksimal Rp 1.000.000.</li>
+          <li><strong>Akses VIP &amp; Recognition:</strong> Prioritas penanganan legalitas/aset, pengurusan penagihan komisi (invoicing), serta Pin Emas/Plakat "Elite Member" pada Annual Gathering Perusahaan.</li>
+        </ol>
+
+        <div class="pasal">Pasal 5 — Punishment, Sanksi &amp; Degradasi</div>
+        <p>PIHAK KEDUA secara penuh menyetujui sanksi-sanksi berikut apabila terjadi inkonsistensi kinerja atau pelanggaran ketentuan:</p>
+        <ol>
+          <li><strong>Degradasi Target (Penurunan Tier):</strong> Apabila PIHAK KEDUA tidak berhasil mencapai target omzet Rp 3 Milyar dalam 1 kuartal, maka status keanggotaan ELITE otomatis dicabut dan split komisi PIHAK KEDUA diturunkan kembali ke Skema Reguler Berjenjang (50%–60%) untuk kuartal berikutnya.</li>
+          <li><strong>Sanksi Penyalahgunaan Uang UTJ:</strong> Menyimpan atau menggunakan uang UTJ/Booking Fee di rekening pribadi dikenakan penalti pemotongan komisi sebesar 20% dari transaksi berjalan serta penerbitan Surat Peringatan (SP-1).</li>
+          <li><strong>Sanksi Pelanggaran NDA / Etika Berat:</strong> Membocorkan rahasia skema komisi atau melakukan kecurangan fatal mengakibatkan pencabutan status ELITE seketika (pada hari yang sama), penyesuaian komisi ke Reguler Permanen, serta pembekuan hak Profit Sharing / Overriding.</li>
+        </ol>
+
+        <div class="pasal">Pasal 6 — Klausul Transaksi In-Progress</div>
+        <p>Apabila PIHAK KEDUA mengalami degradasi status ke Reguler, transaksi yang Tanda Jadi (UTJ)-nya telah resmi masuk ke rekening kantor SAAT PIHAK KEDUA masih berstatus ELITE aktif, <strong>TETAP BERHAK</strong> mendapatkan split komisi 70% meskipun pelunasan/pencairan komisi dari Developer/Vendor baru terjadi setelah tanggal degradasi.</p>
+
+        <div class="pasal">Pasal 7 — Masa Berlaku &amp; Penutup</div>
+        <ol>
+          <li>Surat Perjanjian Kemitraan Khusus ini berlaku selama <strong>1 (satu) tahun</strong> sejak tanggal ditandatangani dan akan diperpanjang secara otomatis selama PIHAK KEDUA memenuhi target kualifikasi kuartalan.</li>
+          <li>Perjanjian ini dibuat tanpa ada paksaan dari pihak manapun, dan ditandatangani secara elektronik melalui sistem CRM Mansion Properti yang memiliki kekuatan hukum yang sama dengan tanda tangan basah.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Data Pihak Kedua -->
+    <div class="section">
+      <div class="section-title">Data Pihak Kedua (Agen)</div>
+
+      <div class="field" id="f-nama">
+        <label>Nama Lengkap Agen <span class="req">*</span></label>
+        <input type="text" name="nama_lengkap" placeholder="Nama sesuai KTP" autocomplete="name"/>
+        <div class="err-msg">Nama lengkap wajib diisi.</div>
+      </div>
+
+      <div class="field" id="f-ktp">
+        <label>Nomor KTP <span class="req">*</span></label>
+        <input type="text" name="nomor_ktp" placeholder="16 digit NIK" inputmode="numeric"/>
+        <div class="err-msg">Nomor KTP wajib diisi.</div>
+      </div>
+
+      <div class="field" id="f-alamat">
+        <label>Alamat / Domisili <span class="req">*</span></label>
+        <textarea name="alamat_domisili" rows="2" placeholder="Alamat sesuai domisili saat ini"></textarea>
+        <div class="err-msg">Alamat/domisili wajib diisi.</div>
+      </div>
+
+      <div class="field" id="f-kantor">
+        <label>Asal Kantor (Mansion) <span class="req">*</span></label>
+        <input type="text" name="asal_kantor" placeholder="cth: MANSION : Citraland"/>
+        <div class="err-msg">Asal kantor wajib diisi.</div>
+      </div>
+
+      <div class="field" id="f-wa">
+        <label>No. WhatsApp Aktif <span class="req">*</span></label>
+        <input type="tel" name="no_wa" placeholder="628xxxxxxxxxx" inputmode="numeric"/>
+        <div class="hint">Dipakai sistem untuk mencocokkan data Anda secara otomatis, mis: 628123456789</div>
+        <div class="err-msg">No. WhatsApp wajib diisi.</div>
+      </div>
+    </div>
+
+    <!-- Persetujuan -->
+    <div class="section">
+      <div class="section-title">Persetujuan</div>
+      <div class="checklist-item">
+        <input type="checkbox" id="setuju" name="setuju" value="true"/>
+        <div class="item-text">
+          <strong>[ v ] Setuju dengan Perjanjian</strong><br>
+          Saya, PIHAK KEDUA, telah membaca, memahami, dan menyetujui seluruh isi Surat Perjanjian ELITE Program di atas (Pasal 1 s/d Pasal 7) tanpa paksaan dari pihak manapun, termasuk target Rp 3.000.000.000 per kuartal, skema komisi 70%, serta seluruh ketentuan sanksi dan degradasi yang berlaku.
+        </div>
+      </div>
+      <div id="checklist-err">Anda harus mencentang persetujuan untuk melanjutkan.</div>
+    </div>
+
+    <div class="submit-wrap">
+      <button type="submit" class="btn-submit" id="btn-submit">Tandatangani &amp; Kirim</button>
+      <div class="alert success" id="alert-success">
+        ✅ Kontrak berhasil dikirim! Terima kasih, tim kami akan melanjutkan proses verifikasi.
+      </div>
+      <div class="alert error" id="alert-error"></div>
+    </div>
+
+  </form>
+</main>
+
+<footer class="footer">
+  &copy; 2026 <a href="https://www.mansionpro.id" target="_blank">Mansion Pro</a> — ELITE Partner Program
+</footer>
+
+<script>
+  document.getElementById('form-kontrak').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const form = e.target;
+    let valid = true;
+
+    document.querySelectorAll('.field.error').forEach(f => f.classList.remove('error'));
+    document.getElementById('checklist-err').style.display = 'none';
+    document.getElementById('alert-success').style.display = 'none';
+    document.getElementById('alert-error').style.display = 'none';
+
+    const getVal = name => (form.elements[name]?.value || '').trim();
+    const markErr = (id) => { document.getElementById(id).classList.add('error'); valid = false; };
+
+    if (!getVal('nama_lengkap'))    markErr('f-nama');
+    if (!getVal('nomor_ktp'))       markErr('f-ktp');
+    if (!getVal('alamat_domisili')) markErr('f-alamat');
+    if (!getVal('asal_kantor'))     markErr('f-kantor');
+    if (!getVal('no_wa'))           markErr('f-wa');
+
+    if (!document.getElementById('setuju').checked) {
+      document.getElementById('checklist-err').style.display = 'block';
+      valid = false;
+    }
+
+    if (!valid) {
+      document.querySelector('.field.error, #checklist-err[style*="block"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true;
+    btn.textContent = 'Mengirim...';
+
+    const payload = {
+      nama_lengkap:    getVal('nama_lengkap'),
+      nomor_ktp:       getVal('nomor_ktp'),
+      alamat_domisili: getVal('alamat_domisili'),
+      asal_kantor:     getVal('asal_kantor'),
+      no_wa:           getVal('no_wa'),
+      setuju:          'true',
+    };
+
+    try {
+      const res = await fetch('/api/v1/elite-kontrak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        form.style.display = 'none';
+        const successDiv = document.getElementById('alert-success');
+        successDiv.style.display = 'block';
+        successDiv.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        throw new Error(data.message || 'Gagal mengirim kontrak.');
+      }
+    } catch (err) {
+      const errDiv = document.getElementById('alert-error');
+      errDiv.textContent = '❌ ' + (err.message || 'Gagal mengirim. Coba lagi.');
+      errDiv.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Tandatangani & Kirim';
+    }
+  });
+</script>
+</body>
+</html>

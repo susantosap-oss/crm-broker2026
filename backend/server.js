@@ -159,6 +159,8 @@ app.use('/api/v1/elite-transactions', require('./routes/elite-transactions.route
 app.use('/api/v1/form-e1',            require('./routes/form-e1.routes'));
 // ★ ELITE Qualification Test — submit & baca hasil EQT
 app.use('/api/v1/elite-quiz',         require('./routes/elite-quiz.routes'));
+// ★ Kontrak ELITE — Surat Perjanjian ELITE Program (public, no auth)
+app.use('/api/v1/elite-kontrak',      require('./routes/elite-kontrak.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)
 app.post('/api/v1/admin/trigger-rental-reminder', require('./middleware/auth.middleware').authMiddleware, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: 'Forbidden' });
@@ -405,6 +407,8 @@ async function migrateHeaders() {
     { sheet: SHEETS.FORM_E1,            cols: COLUMNS.FORM_E1 },
     // ★ ELITE Qualification Test — hasil ujian
     { sheet: SHEETS.ELITE_QUIZ_RESULTS, cols: COLUMNS.ELITE_QUIZ_RESULTS },
+    // ★ Kontrak ELITE — Surat Perjanjian ELITE Program
+    { sheet: SHEETS.ELITE_KONTRAK,      cols: COLUMNS.ELITE_KONTRAK },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)
@@ -432,6 +436,15 @@ app.listen(PORT, () => {
   setTimeout(() => {
     migrateHeaders().catch(e => console.warn('[Migrate] Error:', e.message));
   }, 3000);
+
+  // EQT auto-sync backfill — sinkronkan hasil quiz (Persen/Status) yang sudah ada
+  // di ELITE_QUIZ_RESULTS ke EQT_Nilai/EQT_Verified di ELITE_PROGRAM. Idempotent,
+  // aman dijalankan tiap startup/deploy (no-op kalau sudah sinkron).
+  setTimeout(() => {
+    require('./services/elite-quiz.service').backfillEQTSync()
+      .then(synced => console.log(`[EQT] Startup backfill: ${synced.length} program disinkronkan`, synced))
+      .catch(e => console.warn('[EQT] Startup backfill gagal:', e.message));
+  }, 5000);
 
   // Load push subscriptions dari Sheets ke memory cache
   require('./services/push.service').loadSubscriptions().catch(() => {});

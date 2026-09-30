@@ -40,6 +40,7 @@ router.get('/results', async (req, res) => {
     return res.status(403).json({ success: false, message: 'Akses ditolak' });
   }
   try {
+    await quizSvc.backfillEQTSync().catch(e => console.warn('[EQT] backfill gagal:', e.message));
     const results = await quizSvc.getAllResults();
     res.json({ success: true, data: results });
   } catch (e) {
@@ -53,6 +54,7 @@ router.get('/summary', async (req, res) => {
     return res.status(403).json({ success: false, message: 'Akses ditolak' });
   }
   try {
+    await quizSvc.backfillEQTSync().catch(e => console.warn('[EQT] backfill gagal:', e.message));
     const data = await quizSvc.getSummaryByAgent();
     res.json({ success: true, data });
   } catch (e) {
