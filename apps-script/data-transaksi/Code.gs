@@ -23,10 +23,15 @@ const CACHE_TTL_SEC = 300; // 5 menit
  *   'dennis / robert': 'Dennis Purwoko',
  */
 const NAME_MAP = {
-  'dennis':           'Denys Purwoko',
-  'dennis purwoko':   'Denys Purwoko',
-  'dennis / robert':  'Denys Purwoko',
-};
+    'susanto':          'Susanto Saputra',
+    'dennis':           'Denys Purwoko',
+    'dennis purwoko':   'Denys Purwoko',
+    'dennis / robert':  'Denys Purwoko',
+    'robert':           'Robert ...',     // jika robert adalah orang berbeda
+    'rahma':     'Nama Lengkap Rahma di CRM',   // cek nama aslinya di AGENTS
+    'robertus':  'Robert Sutanto',               // atau nama yang benar
+
+  };
 
 // ─── FUNGSI MENU (tidak berubah) ──────────────────────────────────────────
 function onOpen() {
@@ -315,7 +320,7 @@ function resolveAgentStatus(namaRaw, statusMap) {
   const lc = raw.toLowerCase();
 
   // Eksplisit agen luar
-  if (/agen luar|co.?broke|luar|external|propnex|\bxm\b/i.test(raw)) return 'AGEN_LUAR';
+  if (/agen luar|co.?broke|luar|external|propnex|DB|\bxm\b/i.test(raw)) return 'AGEN_LUAR';
 
   // NAME_MAP manual (admin isi)
   if (NAME_MAP[lc]) {
@@ -353,11 +358,11 @@ function backfillStatus() {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    // Lewati jika P dan Q keduanya sudah terisi (bukan TIDAK_DITEMUKAN)
-    const existingP = row[15] ? row[15].toString().trim() : '';
-    const existingQ = row[16] ? row[16].toString().trim() : '';
-    const pOk = existingP && existingP !== 'TIDAK_DITEMUKAN';
-    const qOk = existingQ && existingQ !== 'TIDAK_DITEMUKAN';
+    // BARU:
+     const existingP = row[15] ? row[15].toString().trim() : '';
+     const existingQ = row[16] ? row[16].toString().trim() : '';
+     const pOk = existingP && existingP !== 'TIDAK_DITEMUKAN';
+     const qOk = existingQ && existingQ !== 'TIDAK_DITEMUKAN';
     if (pOk && qOk) { skipped++; continue; }
     // Lewati baris kosong
     if (!row[2] && !row[4]) { skipped++; continue; }
@@ -424,3 +429,29 @@ function _toIso(val) {
   if (val instanceof Date) return val.toISOString();
   return new Date(val).toISOString();
 }
+
+function debugEliteStatus() {                             
+    const statusMap = getEliteStatusMap('');
+    Logger.log('=== SEMUA NAMA DI AGENTS (CRM) ===');
+    Object.keys(statusMap).forEach(n => Logger.log(n + ' → ' + statusMap[n]));
+
+    // Test nama spesifik
+    const tesNama = ['Dennis', 'Dennis Purwoko', 'dennis', 'dennis purwoko'];
+    Logger.log('\n=== TES RESOLVING ===');
+    tesNama.forEach(n => Logger.log('"' + n + '" → ' + resolveAgentStatus(n, statusMap)));
+  }
+
+  function debugBackfill() {                                                                                                              
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();                                                                                      const sheet = ss.getSheetByName('Data_Masuk');                                                                                        
+    const data  = sheet.getDataRange().getValues();                                                                                                                                                   
+    // Cek NAME_MAP yang aktif
+    Logger.log('=== NAME_MAP AKTIF ===');
+    Object.entries(NAME_MAP).forEach(([k,v]) => Logger.log('"' + k + '" → "' + v + '"'));
+
+    // Cek isi kolom J & M (nama agen) di 10 baris pertama
+    Logger.log('\n=== ISI KOLOM J & M (agen listing & selling) ===');
+    for (let i = 1; i < Math.min(data.length, 11); i++) {
+      const row = data[i];
+      Logger.log('Baris ' + (i+1) + ': J="' + (row[9]||'') + '" | M="' + (row[12]||'') + '" | P="' + (row[15]||'') + '"');
+    }
+  }
