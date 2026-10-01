@@ -2988,16 +2988,31 @@ async function loadKomisiPage() {
         return;
       }
       const statusColor = { Pending:'#fbbf24', YA:'#34d399', 'Co Broke':'#60a5fa' };
+      const eliteColor  = { ELITE:'#D4A853', REGULER:'#4ade80', AGEN_LUAR:'#60a5fa', TIDAK_DITEMUKAN:'#f87171' };
+      const eliteBadge  = (status) => {
+        if (!status) return '';
+        const c = eliteColor[status] || '#94a3b8';
+        return `<span style="font-size:9px;font-weight:700;color:${c};background:${c}22;border:1px solid ${c}44;padding:1px 5px;border-radius:4px">${escapeHtml(status)}</span>`;
+      };
       list.innerHTML = data.map(k => {
         const nominal = k.komisi_nominal ? 'Rp ' + Number(k.komisi_nominal).toLocaleString('id-ID') : '—';
         const harga   = k.harga ? 'Rp ' + Number(k.harga).toLocaleString('id-ID') : '—';
         const sc      = statusColor[k.status_data] || '#94a3b8';
         const label   = k.status_data === 'YA' ? 'Disetujui' : (k.status_data || 'Pending');
+        const agenL   = k.agen_listing || '';
+        const agenS   = k.agen_selling || '';
+        const agenRow = (agenL || agenS) ? `
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:3px;display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+            ${agenL ? `<span>L: ${escapeHtml(agenL)}</span>${eliteBadge(k.status_elite_listing)}` : ''}
+            ${agenL && agenS ? '<span style="color:rgba(255,255,255,0.2)">·</span>' : ''}
+            ${agenS ? `<span>S: ${escapeHtml(agenS)}</span>${eliteBadge(k.status_elite_selling)}` : ''}
+          </div>` : '';
         return `<div style="background:#131F38;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.07);margin-bottom:8px">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
             <div style="min-width:0;flex:1">
               <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(k.alamat || '—')}</div>
               <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:3px">${escapeHtml(k.nama_penjual||'')}${k.nama_pembeli?' → '+escapeHtml(k.nama_pembeli):''}</div>
+              ${agenRow}
               <div style="font-size:12px;font-weight:700;color:#D4A853">${nominal} <span style="font-weight:400;color:rgba(255,255,255,0.3);font-size:10px">(dari ${harga})</span></div>
             </div>
             <div style="flex-shrink:0;text-align:right">
@@ -11661,11 +11676,95 @@ async function loadElitePartnershipPage() {
 
   const editBtn = document.getElementById('btn-elite-content-edit');
   const manageRoles = ['superadmin','principal','kantor','admin'];
+  const isRegisterRole = ['agen','business_manager'].includes(STATE.user?.role);
   if (editBtn) editBtn.style.display = manageRoles.includes(STATE.user?.role) ? 'flex' : 'none';
 
   try {
-    const res = await API.get('/elite/content');
-    const c = res.data || {};
+    const [contentRes, e1Res, quizRes, kontrakRes] = await Promise.all([
+      API.get('/elite/content'),
+      isRegisterRole ? API.get('/form-e1/my-status').catch(() => ({ data: { submitted: false } })) : Promise.resolve({ data: { submitted: false } }),
+      isRegisterRole ? API.get('/elite-quiz/my-results').catch(() => ({ data: [] }))               : Promise.resolve({ data: [] }),
+      isRegisterRole ? API.get('/elite-kontrak/my-status').catch(() => ({ data: { submitted: false } })) : Promise.resolve({ data: { submitted: false } }),
+    ]);
+
+    const c = contentRes.data || {};
+    const step1Done = isRegisterRole && e1Res?.data?.submitted    === true;
+    const step2Done = isRegisterRole && Array.isArray(quizRes?.data) && quizRes.data.length > 0;
+    const step3Done = isRegisterRole && kontrakRes?.data?.submitted === true;
+
+    const renderCaraMendaftar = () => {
+      if (!isRegisterRole) {
+        return `<p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-line">${c.Cara_Daftar ? linkifyText(c.Cara_Daftar) : '<span style="color:rgba(255,255,255,0.3)">—</span>'}</p>`;
+      }
+
+      const allDone = step1Done && step2Done && step3Done;
+      if (allDone) {
+        return `<div style="text-align:center;padding:10px 0">
+          <i class="fa-solid fa-star" style="color:#D4A853;font-size:22px;margin-bottom:10px;display:block"></i>
+          <div style="font-size:14px;font-weight:700;color:#D4A853;margin-bottom:6px">Semua Langkah Selesai!</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.45);line-height:1.6">Pendaftaran Anda sedang diproses.<br>Tunggu konfirmasi dari admin untuk aktivasi ELITE.</div>
+        </div>`;
+      }
+
+      const steps = [
+        {
+          title : 'Isi Form Pendaftaran E-1',
+          desc  : 'Lengkapi data diri dan dokumen persyaratan ELITE',
+          href  : '/form-e1.html',
+          done  : step1Done,
+          locked: false,
+        },
+        {
+          title : 'Ikuti ELITE Qualification Test (EQT)',
+          desc  : 'Kerjakan soal ujian kualifikasi ELITE',
+          href  : '/elite-quiz.html',
+          done  : step2Done,
+          locked: !step1Done,
+        },
+        {
+          title : 'Tandatangani Kontrak ELITE',
+          desc  : 'Setujui Surat Perjanjian program ELITE',
+          href  : '/Kontrak%20Elite.html',
+          done  : step3Done,
+          locked: !step2Done,
+        },
+      ];
+
+      return steps.map((s, i) => {
+        const isLast = i === steps.length - 1;
+        const circleContent = s.done
+          ? `<i class="fa-solid fa-check" style="color:#0A1628;font-size:12px"></i>`
+          : s.locked
+          ? `<i class="fa-solid fa-lock" style="color:rgba(255,255,255,0.25);font-size:11px"></i>`
+          : `<span style="color:#D4A853;font-weight:700;font-size:13px">${i + 1}</span>`;
+        const circleBg     = s.done ? '#4ade80' : s.locked ? 'rgba(255,255,255,0.04)' : 'rgba(212,168,83,0.15)';
+        const circleBorder = s.done ? '#4ade80' : s.locked ? 'rgba(255,255,255,0.1)'  : 'rgba(212,168,83,0.5)';
+        const lineColor    = s.done ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.07)';
+        const titleColor   = s.locked ? 'rgba(255,255,255,0.3)' : '#fff';
+
+        let statusEl;
+        if (s.done) {
+          statusEl = `<span style="font-size:11px;color:#4ade80;font-weight:600"><i class="fa-solid fa-circle-check" style="margin-right:4px"></i>Selesai</span>`;
+        } else if (s.locked) {
+          statusEl = `<span style="font-size:11px;color:rgba(255,255,255,0.25)"><i class="fa-solid fa-lock" style="margin-right:4px"></i>Selesaikan langkah sebelumnya terlebih dahulu</span>`;
+        } else {
+          statusEl = `<a href="${s.href}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#D4A853;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);padding:6px 14px;border-radius:8px;text-decoration:none">Buka <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px"></i></a>`;
+        }
+
+        return `<div style="display:flex;gap:14px">
+          <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
+            <div style="width:32px;height:32px;border-radius:50%;background:${circleBg};border:2px solid ${circleBorder};display:flex;align-items:center;justify-content:center;flex-shrink:0">${circleContent}</div>
+            ${!isLast ? `<div style="width:2px;height:28px;background:${lineColor};margin:3px 0"></div>` : ''}
+          </div>
+          <div style="flex:1;padding-bottom:${!isLast ? '4px' : '0'}">
+            <div style="font-size:13px;font-weight:700;color:${titleColor};margin-bottom:3px">${s.title}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:10px;line-height:1.5">${s.desc}</div>
+            ${statusEl}
+          </div>
+        </div>`;
+      }).join('');
+    };
+
     if (contentEl) contentEl.innerHTML = `
       <div style="display:flex;flex-direction:column;gap:14px">
         <div style="background:rgba(212,168,83,0.06);border:1px solid rgba(212,168,83,0.2);border-radius:14px;padding:16px">
@@ -11683,11 +11782,11 @@ async function loadElitePartnershipPage() {
           <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-line">${c.Ketentuan_Program ? linkifyText(c.Ketentuan_Program) : '<span style="color:rgba(255,255,255,0.3)">—</span>'}</p>
         </div>
         <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
             <i class="fa-solid fa-list-check" style="color:#4ade80"></i>
             <span style="font-size:14px;font-weight:700;color:#4ade80">Cara Mendaftar</span>
           </div>
-          <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-line">${c.Cara_Daftar ? linkifyText(c.Cara_Daftar) : '<span style="color:rgba(255,255,255,0.3)">—</span>'}</p>
+          ${renderCaraMendaftar()}
         </div>
         ${c.Updated_At ? `<p style="font-size:10px;color:rgba(255,255,255,0.25);text-align:right">Terakhir diperbarui: ${c.Updated_At.slice(0,10)} oleh ${c.Updated_By || '—'}</p>` : ''}
       </div>`;

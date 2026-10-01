@@ -58,8 +58,8 @@ router.get('/gform', async (req, res) => {
   // Hardcode fallback jika env var belum ter-load
   const sheetId = GFORM_SHEET_ID || '193lcLmru7ghRSz-ChZz8sTA7sNTL35a6BYgriaomUU4';
   try {
-    // range=A:O agar kolom Status Data (O) ikut ter-export
-    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&range=A:O`;
+    // range=A:Q agar kolom Status ELITE Listing (P) dan Selling (Q) ikut ter-export
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Data_Masuk&range=A:Q`;
     const resp = await axios.get(url, {
       timeout: 12000,
       responseType: 'text',
@@ -108,11 +108,13 @@ router.get('/gform', async (req, res) => {
           status_transaksi:  col(r, 'Status Transaksi'),
           persen_komisi:     persen,
           nama_penjual:      col(r, 'Nama Penjual'),
-          agen_listing:      col(r, 'Nama Agen Listing'),
-          nama_pembeli:      col(r, 'Nama Pembeli'),
-          agen_selling:      col(r, 'Nama Agen Selling'),
-          status_data:       statusData || 'Pending',
-          komisi_nominal:    Math.round(harga * persen / 100),
+          agen_listing:          col(r, 'Nama Agen Listing'),
+          nama_pembeli:          col(r, 'Nama Pembeli'),
+          agen_selling:          col(r, 'Nama Agen Selling'),
+          status_data:           statusData || 'Pending',
+          komisi_nominal:        Math.round(harga * persen / 100),
+          status_elite_listing:  col(r, 'Status Agen Listing')  || '',
+          status_elite_selling:  col(r, 'Status Agen Selling')  || '',
         };
       })
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));

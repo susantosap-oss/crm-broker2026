@@ -151,6 +151,23 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/v1/form-e1/my-status — cek apakah user sudah submit Form E-1 (semua role)
+router.get('/my-status', authMiddleware, async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.FORM_E1);
+    const list = rowsToObjects(rows);
+    const userId = req.user.id   || '';
+    const noWa   = req.user.no_wa || '';
+    const found  = list.find(r =>
+      (userId && r.Kode_Agent === userId) ||
+      (noWa   && r.No_WA     === noWa)
+    );
+    res.json({ success: true, submitted: !!found });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // POST /api/v1/form-e1 — public, no auth
 router.post('/', formLimiter, async (req, res) => {
   try {

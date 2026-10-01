@@ -34,6 +34,19 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/v1/elite-kontrak/my-status — cek apakah user sudah tanda tangan kontrak
+router.get('/my-status', authMiddleware, async (req, res) => {
+  try {
+    const rows  = await sheetsService.getRange(SHEETS.ELITE_KONTRAK);
+    const list  = rowsToObjects(rows);
+    const noWa  = req.user.no_wa || '';
+    const found = noWa ? list.find(r => r.No_WA === noWa) : null;
+    res.json({ success: true, submitted: !!found });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // POST /api/v1/elite-kontrak — public, no auth
 router.post('/', formLimiter, async (req, res) => {
   try {
