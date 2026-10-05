@@ -43,7 +43,7 @@ router.post('/', async (req, res) => {
     const { tipe_konten, konten_id, konten_nama, platform, koordinator_id } = req.body;
 
     const VALID_PLATFORMS = ['wa', 'wa_business', 'instagram', 'tiktok', 'facebook'];
-    const VALID_TIPE      = ['listing', 'project'];
+    const VALID_TIPE      = ['listing', 'project', 'aset'];
 
     if (!VALID_TIPE.includes(tipe_konten))
       return res.status(400).json({ success: false, message: 'tipe_konten tidak valid' });
@@ -172,6 +172,28 @@ router.get('/top-projects', requireMinRole('admin'), async (req, res) => {
       .slice(0, parseInt(limit));
 
     res.json({ success: true, data: result });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ── GET /konten/:id — Share data untuk satu konten (listing/project/aset) ─
+// Menampilkan total & breakdown platform untuk konten_id tertentu, semua agen
+router.get('/konten/:id', async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.SHARE_LOG);
+    if (!rows || rows.length < 2) return res.json({ success: true, data: { total: 0, by_platform: {}, log: [] } });
+
+    const data = rows.slice(1).map(toObj).filter(r => r.Konten_ID === req.params.id);
+    const by_platform = {};
+    data.forEach(r => { by_platform[r.Platform] = (by_platform[r.Platform] || 0) + 1; });
+
+    const log = data
+      .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp))
+      .slice(0, 20)
+      .map(r => ({ timestamp: r.Timestamp, agen_nama: r.Agen_Nama, platform: r.Platform }));
+
+    res.json({ success: true, data: { total: data.length, by_platform, log } });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }

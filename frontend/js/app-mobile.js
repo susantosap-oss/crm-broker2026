@@ -1130,6 +1130,12 @@ async function openListingDetail(id) {
       ${listing.Kamar_Tidur ? `<div style="background:#1C2D52;border-radius:10px;padding:10px;text-align:center"><div style="font-size:13px;font-weight:700;color:#fff">${escapeHtml(String(listing.Kamar_Tidur))}</div><div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px">Kamar Tidur</div></div>` : ''}
     </div>
 
+    <!-- Share Stats -->
+    <div id="ld-share-stats" style="background:#131F38;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:8px">
+      <i class="fa-solid fa-circle-notch fa-spin" style="color:rgba(255,255,255,0.2);font-size:12px"></i>
+      <span style="font-size:11px;color:rgba(255,255,255,0.25)">Memuat data share…</span>
+    </div>
+
     <!-- Judul SEO Editor — principal / superadmin / admin -->
     ${['superadmin','principal','admin'].includes(STATE.user?.role) ? `
     <div style="background:#131F38;border-radius:12px;padding:14px;border:1px solid rgba(212,168,83,0.18)">
@@ -1204,6 +1210,35 @@ async function openListingDetail(id) {
 
   openModal('modal-listing-detail');
   loadSimilarListings(listing);
+  _loadListingShareStats(id);
+}
+
+async function _loadListingShareStats(listingId) {
+  const el = document.getElementById('ld-share-stats');
+  if (!el) return;
+  try {
+    const res = await API.get(`/share-log/konten/${listingId}`);
+    const d   = res.data || {};
+    if (!d.total) {
+      el.style.display = 'none';
+      return;
+    }
+    const platformIcon = { wa:'fa-whatsapp', wa_business:'fa-whatsapp', instagram:'fa-instagram', tiktok:'fa-tiktok', facebook:'fa-facebook' };
+    const platformLabel = { wa:'WA', wa_business:'WA Biz', instagram:'IG', tiktok:'TikTok', facebook:'FB' };
+    const chips = Object.entries(d.by_platform)
+      .map(([p, n]) => `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:rgba(212,168,83,0.1);color:#D4A853;font-size:10px;font-weight:600"><i class="fa-brands ${platformIcon[p]||'fa-share-nodes'}"></i>${platformLabel[p]||p} ${n}x</span>`)
+      .join('');
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+        <div style="display:flex;align-items:center;gap:8px">
+          <i class="fa-solid fa-share-nodes" style="color:#D4A853;font-size:13px"></i>
+          <span style="font-size:12px;font-weight:700;color:#D4A853">Dishare ${d.total}x</span>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${chips}</div>
+      </div>`;
+  } catch (_) {
+    el.style.display = 'none';
+  }
 }
 
 function loadSimilarListings(current) {
@@ -3364,28 +3399,31 @@ async function loadDashboard() {
 
     if (dashRes.status === 'fulfilled') {
       const s = dashRes.value?.data || {};
-      setEl('stat-listings',   s.activeListings  ?? s.totalListings ?? 0);
-      setEl('stat-leads',      s.totalLeads       ?? 0);
-      setEl('stat-hot',        s.hotLeads         ?? 0);
-      setEl('nav-listing-count', s.totalListings  ?? 0);
-      // Tampilkan Metode 2 (qualified) sebagai utama, Metode 1 sebagai sub-info
-      const qcr = s.qualified_conversion ?? 0;
-      const ocr = s.overall_conversion   ?? 0;
-      setEl('stat-conversion', qcr + '%');
-      // Sub-label konversi — tunjukkan basis perhitungan
-      const convSub = document.getElementById('stat-conversion-sub');
-      if (convSub) {
-        convSub.textContent = s.selesai_leads > 0
-          ? `${s.selesai_leads} leads selesai · raw ${ocr}%`
-          : 'Belum ada leads selesai';
+      setEl('nav-listing-count', s.totalListings ?? 0);
+
+      if (s.dual && ['business_manager','principal'].includes(STATE.user?.role)) {
+        _renderDualDashboard(s);
+      } else {
+        setEl('stat-listings',   s.activeListings  ?? s.totalListings ?? 0);
+        setEl('stat-leads',      s.totalLeads       ?? 0);
+        setEl('stat-hot',        s.hotLeads         ?? 0);
+        const qcr = s.qualified_conversion ?? 0;
+        const ocr = s.overall_conversion   ?? 0;
+        setEl('stat-conversion', qcr + '%');
+        const convSub = document.getElementById('stat-conversion-sub');
+        if (convSub) {
+          convSub.textContent = s.selesai_leads > 0
+            ? `${s.selesai_leads} leads selesai · raw ${ocr}%`
+            : 'Belum ada leads selesai';
+        }
+        if (s.funnel?.length && s.totalLeads > 0) renderFunnel(s.funnel);
+        else if (s.totalLeads === 0) {
+          const fc = document.getElementById('funnel-container');
+          if (fc) fc.innerHTML = '<p style="color:rgba(255,255,255,0.3);font-size:12px;text-align:center;padding:20px">Belum ada leads — pipeline akan muncul setelah leads masuk</p>';
+        }
       }
-      // Render funnel dari dashboard stats (sudah terfilter by role)
-      if (s.funnel?.length && s.totalLeads > 0) renderFunnel(s.funnel);
-      else if (s.totalLeads === 0) {
-        const fc = document.getElementById('funnel-container');
-        if (fc) fc.innerHTML = '<p style="color:rgba(255,255,255,0.3);font-size:12px;text-align:center;padding:20px">Belum ada leads — pipeline akan muncul setelah leads masuk</p>';
-      }
-      // Hot leads sudah ada di dashboard stats
+
+      // Hot leads
       if (s.hotLeadsList?.length) renderHotLeads(s.hotLeadsList);
       else { const el = document.getElementById('hot-leads-list'); if (el) el.innerHTML = emptyState('Tidak ada hot leads saat ini'); }
       // Buyer requests badge
@@ -3703,6 +3741,123 @@ function renderFunnel(funnel) {
   setTimeout(() => {
     container.querySelectorAll('.funnel-bar').forEach(bar => {
       const target = bar.style.width; bar.style.width='0';
+      requestAnimationFrame(() => { bar.style.width = target; });
+    });
+  }, 50);
+}
+
+// ─────────────────────────────────────────────────────────
+// DUAL DASHBOARD — BM & Principal
+// ─────────────────────────────────────────────────────────
+let _dualFunnels = null; // { team, own }
+
+function _renderDualDashboard(s) {
+  const d = s.dual;
+
+  // ── Listing Aktif ─────────────────────────────────────
+  const listEl = document.getElementById('stat-listings');
+  if (listEl) {
+    const shareInfo = (d.team.totalShareListing > 0 || d.own.totalShareListing > 0)
+      ? `<div style="font-size:9px;color:rgba(212,168,83,0.55);margin-top:3px">Share Tim ${d.team.totalShareListing}x · Saya ${d.own.totalShareListing}x</div>`
+      : '';
+    listEl.innerHTML = `
+      <div style="font-size:26px;font-weight:700;color:#fff;line-height:1">${d.team.activeListings}</div>
+      <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
+        <span style="font-size:10px;background:rgba(43,123,255,0.15);color:#60a5fa;padding:2px 7px;border-radius:5px;font-weight:600">Tim ${d.team.activeListings}</span>
+        <span style="font-size:10px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.55);padding:2px 7px;border-radius:5px;font-weight:600">Saya ${d.own.activeListings}</span>
+      </div>
+      ${shareInfo}`;
+  }
+
+  // ── Total Leads ───────────────────────────────────────
+  const leadsEl = document.getElementById('stat-leads');
+  if (leadsEl) {
+    leadsEl.innerHTML = `
+      <div style="font-size:26px;font-weight:700;color:#fff;line-height:1">${d.team.totalLeads}</div>
+      <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
+        <span style="font-size:10px;background:rgba(168,85,247,0.15);color:#a855f7;padding:2px 7px;border-radius:5px;font-weight:600">Tim ${d.team.totalLeads}</span>
+        <span style="font-size:10px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.55);padding:2px 7px;border-radius:5px;font-weight:600">Saya ${d.own.totalLeads}</span>
+      </div>`;
+  }
+
+  // ── Hot Leads ─────────────────────────────────────────
+  const hotEl = document.getElementById('stat-hot');
+  if (hotEl) {
+    hotEl.innerHTML = `
+      <div style="font-size:26px;font-weight:700;color:#ef4444;line-height:1">${d.team.hotLeads}</div>
+      <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
+        <span style="font-size:10px;background:rgba(239,68,68,0.15);color:#ef4444;padding:2px 7px;border-radius:5px;font-weight:600">Tim ${d.team.hotLeads}</span>
+        <span style="font-size:10px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.55);padding:2px 7px;border-radius:5px;font-weight:600">Saya ${d.own.hotLeads}</span>
+      </div>`;
+  }
+
+  // ── Konversi ──────────────────────────────────────────
+  const convEl = document.getElementById('stat-conversion');
+  if (convEl) {
+    convEl.innerHTML = `
+      <div style="font-size:26px;font-weight:700;color:#D4A853;line-height:1">${d.team.qualified_conversion}%</div>
+      <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
+        <span style="font-size:10px;background:rgba(212,168,83,0.15);color:#D4A853;padding:2px 7px;border-radius:5px;font-weight:600">Tim ${d.team.qualified_conversion}%</span>
+        <span style="font-size:10px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.55);padding:2px 7px;border-radius:5px;font-weight:600">Saya ${d.own.qualified_conversion}%</span>
+      </div>`;
+  }
+
+  // ── Pipeline dual ─────────────────────────────────────
+  _dualFunnels = { team: d.team.funnel, own: d.own.funnel };
+  _renderFunnelDual('team');
+}
+
+function _renderFunnelDual(mode) {
+  if (!_dualFunnels) return;
+  const container = document.getElementById('funnel-container');
+  if (!container) return;
+
+  const tabs = `
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button onclick="_renderFunnelDual('team')" id="ftab-team"
+        style="flex:1;padding:6px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;
+               background:${mode==='team'?'rgba(43,123,255,0.2)':'transparent'};
+               border:1px solid ${mode==='team'?'rgba(43,123,255,0.4)':'rgba(255,255,255,0.1)'};
+               color:${mode==='team'?'#60a5fa':'rgba(255,255,255,0.4)'}">Tim</button>
+      <button onclick="_renderFunnelDual('own')" id="ftab-own"
+        style="flex:1;padding:6px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;
+               background:${mode==='own'?'rgba(212,168,83,0.2)':'transparent'};
+               border:1px solid ${mode==='own'?'rgba(212,168,83,0.4)':'rgba(255,255,255,0.1)'};
+               color:${mode==='own'?'#D4A853':'rgba(255,255,255,0.4)'}">Saya</button>
+    </div>`;
+
+  const funnel = mode === 'team' ? _dualFunnels.team : _dualFunnels.own;
+  const stageColors = {
+    'Leads In':'#2B7BFF','Dihubungi':'#A855F7','Visit':'#F97316','Negosiasi':'#EAB308','Deal ✅':'#22C55E'
+  };
+
+  const rows = (funnel || []).map((s, i) => {
+    const color = s.color || stageColors[s.label] || '#6B7280';
+    const barW = Math.max(s.cr || 0, 4);
+    return `
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block"></span>
+            <span style="font-size:11px;color:rgba(255,255,255,${i===0?0.8:0.55})">${escapeHtml(s.label||'—')}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;font-weight:600;color:${color}">${s.count}</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.25)">${s.cr||0}%</span>
+          </div>
+        </div>
+        <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.06)">
+          <div class="funnel-bar" style="height:100%;width:${barW}%;border-radius:3px;background:${color};opacity:0.8;transition:width 0.5s ease"></div>
+        </div>
+        ${i < (funnel.length-1) && funnel[i+1] ? `<div style="font-size:10px;color:rgba(255,255,255,0.2);text-align:right;margin-top:2px">→ ${s.count>0?Math.round((funnel[i+1].count/s.count)*100):0}% lanjut</div>` : ''}
+      </div>`;
+  }).join('');
+
+  container.innerHTML = tabs + (rows || '<p style="color:rgba(255,255,255,0.3);font-size:12px;text-align:center;padding:20px">Belum ada data</p>');
+
+  setTimeout(() => {
+    container.querySelectorAll('.funnel-bar').forEach(bar => {
+      const target = bar.style.width; bar.style.width = '0';
       requestAnimationFrame(() => { bar.style.width = target; });
     });
   }, 50);
@@ -4551,7 +4706,8 @@ async function submitAddListing() {
 
 
 // ── Properti Picker for Add Lead ─────────────────────────
-let _propertiPickerTab = 'listing';
+let _propertiPickerTab    = 'listing';
+let _listingPickerSubTab  = 'all'; // 'all' | 'mine'
 let _pickerItems = [];
 let _assetsPickerData = [];
 let _pickerListings = []; // semua listing semua kantor (all=1), terpisah dari _allListings
@@ -4568,6 +4724,7 @@ async function openPropertiPicker() {
   modal.classList.remove('hidden');
   modal.style.display = 'flex';
   document.getElementById('properti-picker-search').value = '';
+  _listingPickerSubTab = 'all';
 
   // Load data paralel kalau belum ada
   const loads = [];
@@ -4607,6 +4764,26 @@ function setPropertiTab(tab) {
     btn.style.color      = active ? '#D4A853'               : 'rgba(255,255,255,0.5)';
     btn.style.border     = active ? 'none'                  : '1px solid rgba(255,255,255,0.1)';
   });
+  // Sub-tab row hanya muncul di tab Listing
+  const subRow = document.getElementById('listing-subtab-row');
+  if (subRow) subRow.style.display = tab === 'listing' ? 'flex' : 'none';
+  filterPropertiPicker(document.getElementById('properti-picker-search')?.value || '');
+}
+
+function setListingSubTab(sub) {
+  _listingPickerSubTab = sub;
+  const allBtn  = document.getElementById('lsubtab-all');
+  const mineBtn = document.getElementById('lsubtab-mine');
+  if (allBtn) {
+    allBtn.style.background = sub === 'all' ? 'rgba(212,168,83,0.18)' : 'transparent';
+    allBtn.style.color      = sub === 'all' ? '#D4A853' : 'rgba(255,255,255,0.4)';
+    allBtn.style.border     = sub === 'all' ? 'none' : '1px solid rgba(255,255,255,0.1)';
+  }
+  if (mineBtn) {
+    mineBtn.style.background = sub === 'mine' ? 'rgba(212,168,83,0.18)' : 'transparent';
+    mineBtn.style.color      = sub === 'mine' ? '#D4A853' : 'rgba(255,255,255,0.4)';
+    mineBtn.style.border     = sub === 'mine' ? 'none' : '1px solid rgba(255,255,255,0.1)';
+  }
   filterPropertiPicker(document.getElementById('properti-picker-search')?.value || '');
 }
 
@@ -4617,8 +4794,12 @@ function filterPropertiPicker(q) {
 
   let items = [];
   if (_propertiPickerTab === 'listing') {
-    items = (_pickerListings || [])
-      .filter(l => l.Status_Listing === 'Aktif')
+    let src = (_pickerListings || []).filter(l => l.Status_Listing === 'Aktif');
+    // Sub-tab: Listing Saya
+    if (_listingPickerSubTab === 'mine') {
+      src = src.filter(l => l.Agen_ID === STATE.user?.id);
+    }
+    items = src
       .filter(l => !query ||
         (l.Judul||'').toLowerCase().includes(query) ||
         (l.Kota||'').toLowerCase().includes(query) ||
@@ -4628,6 +4809,10 @@ function filterPropertiPicker(q) {
         label: l.Judul || '—',
         sub:   `${l.Kode_Listing||''} · ${l.Kecamatan||''}, ${l.Kota||''} · ${l.Harga_Format||formatRupiah(l.Harga)}`,
         value: `${l.Judul} (${l.Kode_Listing||l.ID})`,
+        foto:  l.Foto_Utama_URL || '',
+        id:    l.ID,
+        tipe:  'listing',
+        nama:  l.Judul || '',
       }));
 
   } else if (_propertiPickerTab === 'primary') {
@@ -4643,10 +4828,13 @@ function filterPropertiPicker(q) {
         label: p.Nama_Proyek || p.Nama_Developer || '—',
         sub:   `${p.Kode_Proyek||''} · ${p.Kecamatan||''}, ${p.Kota||''} · ${p.Harga_Format||'On Request'}`,
         value: `${p.Nama_Proyek} (${p.Kode_Proyek||'Primary'})`,
+        foto:  p.Foto_1_URL || '',
+        id:    p.ID,
+        tipe:  'project',
+        nama:  p.Nama_Proyek || '',
       }));
 
   } else {
-    // Tab Aset — filter by Kode_Asset (No. ID), Nama_Debitur, Bank, Kota, Label
     items = (_assetsPickerData || [])
       .filter(a => !query ||
         (a.Kode_Asset||'').toLowerCase().includes(query) ||
@@ -4659,6 +4847,10 @@ function filterPropertiPicker(q) {
         label: `${a.Kode_Asset} — ${a.Nama_Debitur || a.Bank_Kreditur || '—'}`,
         sub:   `${a.Label_Asset||a.Tipe_Properti||''} · ${a.Kota||''} · ${a.Harga_Limit_Format||''}`,
         value: `${a.Nama_Debitur || a.Bank_Kreditur} – ${a.Kota} (${a.Kode_Asset})`,
+        foto:  a.Foto_1_URL || '',
+        id:    a.ID,
+        tipe:  'aset',
+        nama:  a.Nama_Debitur || a.Bank_Kreditur || a.Kode_Asset || '',
       }));
   }
 
@@ -4667,24 +4859,44 @@ function filterPropertiPicker(q) {
     return;
   }
 
-  list.innerHTML = items.map((item, idx) => `
+  list.innerHTML = items.map((item, idx) => {
+    const thumb = item.foto
+      ? `<div style="width:52px;height:52px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#0D1526">
+           <img src="${escapeHtml(item.foto)}" style="width:100%;height:100%;object-fit:cover" loading="lazy" onerror="this.style.display='none'"/>
+         </div>`
+      : `<div style="width:52px;height:52px;border-radius:8px;background:#0D1526;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+           <i class="fa-solid fa-building" style="color:rgba(255,255,255,0.12);font-size:16px"></i>
+         </div>`;
+    return `
     <div data-picker-idx="${idx}"
-      style="background:#1C2D52;border-radius:10px;padding:12px;cursor:pointer;border:1px solid transparent"
+      style="background:#1C2D52;border-radius:10px;padding:10px;cursor:pointer;border:1px solid transparent;display:flex;align-items:center;gap:10px"
       onmouseenter="this.style.borderColor='rgba(212,168,83,0.3)'" onmouseleave="this.style.borderColor='transparent'">
-      <div style="font-size:13px;font-weight:600;color:#fff">${escapeHtml(item.label)}</div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${escapeHtml(item.sub)}</div>
-    </div>
-  `).join('');
+      ${thumb}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(item.label)}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(item.sub)}</div>
+      </div>
+    </div>`;
+  }).join('');
 
   _pickerItems = items;
   list.querySelectorAll('[data-picker-idx]').forEach(el => {
-    el.addEventListener('click', () => selectProperti(_pickerItems[parseInt(el.dataset.pickerIdx)].value));
+    el.addEventListener('click', () => {
+      const item = _pickerItems[parseInt(el.dataset.pickerIdx)];
+      selectProperti(item.value, item.id, item.tipe, item.nama);
+    });
   });
 }
 
-function selectProperti(value) {
+function selectProperti(value, id, tipe, nama) {
   const input = document.getElementById('lead-minat');
   if (input) input.value = value;
+  const idInput   = document.getElementById('lead-minat-id');
+  const tipeInput = document.getElementById('lead-minat-tipe');
+  const namaInput = document.getElementById('lead-minat-nama');
+  if (idInput)   idInput.value   = id   || '';
+  if (tipeInput) tipeInput.value = tipe || '';
+  if (namaInput) namaInput.value = nama || '';
   closePropertiPicker();
 }
 // ─────────────────────────────────────────────────────────
@@ -4710,24 +4922,31 @@ async function submitAddLead() {
   const isBuyerReq = document.getElementById('lead-buyer-request')?.checked || false;
 
   const payload = {
-    Nama:              nama,
-    No_WA:             noWa,
-    Sumber:            getVal('lead-sumber') || 'Direct',
-    Keterangan:        getVal('lead-keterangan') || 'False',
-    Score:             getVal('lead-score') || 'Warm',
-    Tipe_Properti:     getVal('lead-tipe-prop') || 'Secondary',
-    Jenis:             getVal('lead-jenis') || 'Beli',
-    Properti_Diminati: getVal('lead-minat'),
-    Budget_Min:        getVal('lead-budget-min') || '',
-    Budget_Max:        getVal('lead-budget-max') || '',
-    Catatan:           getVal('lead-notes') || '',
-    Status_Lead:       'Baru',
-    Is_Buyer_Request:  isBuyerReq ? 'TRUE' : 'FALSE',
+    Nama:                  nama,
+    No_WA:                 noWa,
+    Sumber:                getVal('lead-sumber') || 'Direct',
+    Keterangan:            getVal('lead-keterangan') || 'False',
+    Score:                 getVal('lead-score') || 'Warm',
+    Tipe_Properti:         getVal('lead-tipe-prop') || 'Secondary',
+    Jenis:                 getVal('lead-jenis') || 'Beli',
+    Properti_Diminati:     getVal('lead-minat'),
+    Budget_Min:            getVal('lead-budget-min') || '',
+    Budget_Max:            getVal('lead-budget-max') || '',
+    Catatan:               getVal('lead-notes') || '',
+    Status_Lead:           'Baru',
+    Is_Buyer_Request:      isBuyerReq ? 'TRUE' : 'FALSE',
+    _Properti_ID:          document.getElementById('lead-minat-id')?.value  || '',
+    _Properti_Tipe_Konten: document.getElementById('lead-minat-tipe')?.value || '',
+    _Properti_Nama:        document.getElementById('lead-minat-nama')?.value || '',
   };
 
   try {
     await API.post('/leads', payload);
     showToast('✅ Lead berhasil ditambahkan!', 'success');
+    // Reset hidden picker fields
+    ['lead-minat-id','lead-minat-tipe','lead-minat-nama'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
     closeModal('modal-add-lead');
     await loadDashboard();
     if (STATE.currentPage === 'leads') await loadLeads();
@@ -9994,6 +10213,9 @@ function doShareAssetWA(type) {
   } else {
     window.open(`https://wa.me/?text=${encoded}`, '_blank');
   }
+  const platform = type === 'wab' ? 'wa_business' : 'wa';
+  const nama = _currentAsset.Nama_Debitur || _currentAsset.Bank_Kreditur || _currentAsset.Kode_Asset || '';
+  _logShare('aset', _currentAsset.ID, nama, platform);
 }
 
 // ── Add / Edit Form ───────────────────────────────────────

@@ -19,6 +19,32 @@ const { v4: uuidv4 } = require('uuid');
 
 router.use(authMiddleware);
 
+// Sumber lead yang dipetakan ke platform SHARE_LOG
+const SUMBER_TO_PLATFORM = {
+  'Instagram': 'instagram',
+  'TikTok':    'tiktok',
+  'Facebook':  'facebook',
+  'WhatsApp':  'wa',
+};
+
+// Auto-log ke SHARE_LOG saat lead dibuat/diedit via sumber digital
+async function _autoLogShare(user, sumber, propertId, propertiTipe, propertiNama) {
+  const platform = SUMBER_TO_PLATFORM[sumber];
+  if (!platform || !propertId) return;
+  const row = COLUMNS.SHARE_LOG.map(col => {
+    if (col === 'ID')          return uuidv4();
+    if (col === 'Timestamp')   return new Date().toISOString();
+    if (col === 'Agen_ID')     return user.id;
+    if (col === 'Agen_Nama')   return user.nama || '';
+    if (col === 'Tipe_Konten') return propertiTipe || 'listing';
+    if (col === 'Konten_ID')   return propertId;
+    if (col === 'Konten_Nama') return propertiNama || '';
+    if (col === 'Platform')    return platform;
+    return '';
+  });
+  await sheetsService.appendRow(SHEETS.SHARE_LOG, row);
+}
+
 function rowToLead(row) {
   return COLUMNS.LEADS.reduce((obj, col, i) => { obj[col] = row[i] || ''; return obj; }, {});
 }
@@ -200,6 +226,10 @@ router.post('/', async (req, res) => {
     // Increment Leads_Count agen
     _incrementAgentLeadsCount(req.user.id).catch(() => {});
 
+    // Auto-log share jika sumber digital dan properti dipilih via picker
+    const { _Properti_ID, _Properti_Tipe_Konten, _Properti_Nama } = req.body;
+    _autoLogShare(req.user, req.body.Sumber, _Properti_ID, _Properti_Tipe_Konten, _Properti_Nama).catch(() => {});
+
     res.status(201).json({ success: true, data: { id }, message: 'Lead berhasil ditambahkan' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -260,6 +290,13 @@ router.patch('/:id', async (req, res) => {
 
     const row = COLUMNS.LEADS.map(col => merged[col] || '');
     await sheetsService.updateRow(SHEETS.LEADS, result.rowIndex, row);
+
+    // Auto-log share jika edit menyertakan ID properti dari picker
+    const { _Properti_ID, _Properti_Tipe_Konten, _Properti_Nama } = req.body;
+    if (_Properti_ID) {
+      _autoLogShare(req.user, merged.Sumber, _Properti_ID, _Properti_Tipe_Konten, _Properti_Nama).catch(() => {});
+    }
+
     res.json({ success: true, message: 'Lead berhasil diupdate' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

@@ -17,14 +17,34 @@ const { authMiddleware }  = require('../middleware/auth.middleware');
 router.use(authMiddleware);
 
 // ── GET /dashboard/stats ──────────────────────────────────
+// ── Helper: hitung satu blok stats dari subset listing+leads+shareCount ──
+function _computeBlock(listings, leads, totalShareListing) {
+  const conv = tasksService.getConversionStats(leads);
+  return {
+    activeListings:       listings.filter(l => l.Status_Listing === 'Aktif').length,
+    totalListings:        listings.length,
+    totalLeads:           leads.length,
+    hotLeads:             leads.filter(l => l.Score === 'Hot').length,
+    qualified_conversion: conv.qualified_cr,
+    overall_conversion:   conv.overall_cr,
+    selesai_leads:        conv.selesai,
+    funnel:               conv.stages,
+    totalShareListing,
+  };
+}
+
 router.get('/stats', async (req, res) => {
   try {
     const { role, id, team_id } = req.user;
+    const isDual = role === 'business_manager' || role === 'principal';
 
-    const [listRows, leadRows] = await Promise.all([
+    const fetches = [
       sheetsService.getRange(SHEETS.LISTING),
       sheetsService.getRange(SHEETS.LEADS),
-    ]);
+    ];
+    if (isDual) fetches.push(sheetsService.getRange(SHEETS.SHARE_LOG));
+
+    const [listRows, leadRows, shareLogRows] = await Promise.all(fetches);
 
     const allListings = listRows.slice(1).map(r =>
       COLUMNS.LISTING.reduce((o, c, i) => { o[c] = r[i] || ''; return o; }, {})
@@ -32,31 +52,62 @@ router.get('/stats', async (req, res) => {
     const allLeads = leadRows.slice(1).map(r =>
       COLUMNS.LEADS.reduce((o, c, i) => { o[c] = r[i] || ''; return o; }, {})
     );
+    const shareLogData = isDual && shareLogRows?.length > 1
+      ? shareLogRows.slice(1).map(r => COLUMNS.SHARE_LOG.reduce((o,c,i) => { o[c]=r[i]||''; return o; }, {}))
+      : [];
 
-    // Role-based filter
+    // Role-based filter (main stats = team scope untuk BM/Principal)
     let listings = allListings;
     let leads    = allLeads;
+    let dualStats = null;
 
     if (role === 'agen' || role === 'koordinator') {
       listings = allListings.filter(l => l.Agen_ID === id);
       leads    = allLeads.filter(l => l.Agen_ID === id);
+
     } else if (role === 'business_manager') {
-      if (team_id) {
-        listings = allListings.filter(l => l.Team_ID === team_id);
-        leads    = allLeads.filter(l => l.Team_ID === team_id);
-      }
+      const ownListings  = allListings.filter(l => l.Agen_ID === id);
+      const teamListings = team_id ? allListings.filter(l => l.Team_ID === team_id) : ownListings;
+      const ownLeads     = allLeads.filter(l => l.Agen_ID === id);
+      const teamLeads    = team_id ? allLeads.filter(l => l.Team_ID === team_id) : ownLeads;
+
+      listings = teamListings;
+      leads    = teamLeads;
+
+      const ownIds  = new Set(ownListings.map(l => l.ID));
+      const teamIds = new Set(teamListings.map(l => l.ID));
+      const ownShare  = shareLogData.filter(s => s.Tipe_Konten === 'listing' && ownIds.has(s.Konten_ID)).length;
+      const teamShare = shareLogData.filter(s => s.Tipe_Konten === 'listing' && teamIds.has(s.Konten_ID)).length;
+
+      dualStats = {
+        own:  _computeBlock(ownListings,  ownLeads,  ownShare),
+        team: _computeBlock(teamListings, teamLeads, teamShare),
+      };
+
     } else if (role === 'principal') {
-      const myTeamIds = await getMyTeamIds(id);
-      if (myTeamIds.length > 0) {
-        listings = allListings.filter(l => myTeamIds.includes(l.Team_ID));
-        leads    = allLeads.filter(l => myTeamIds.includes(l.Team_ID));
-      }
+      const myTeamIds    = await getMyTeamIds(id);
+      const ownListings  = allListings.filter(l => l.Agen_ID === id);
+      const teamListings = myTeamIds.length > 0 ? allListings.filter(l => myTeamIds.includes(l.Team_ID)) : ownListings;
+      const ownLeads     = allLeads.filter(l => l.Agen_ID === id);
+      const teamLeads    = myTeamIds.length > 0 ? allLeads.filter(l => myTeamIds.includes(l.Team_ID)) : ownLeads;
+
+      listings = teamListings;
+      leads    = teamLeads;
+
+      const ownIds  = new Set(ownListings.map(l => l.ID));
+      const teamIds = new Set(teamListings.map(l => l.ID));
+      const ownShare  = shareLogData.filter(s => s.Tipe_Konten === 'listing' && ownIds.has(s.Konten_ID)).length;
+      const teamShare = shareLogData.filter(s => s.Tipe_Konten === 'listing' && teamIds.has(s.Konten_ID)).length;
+
+      dualStats = {
+        own:  _computeBlock(ownListings,  ownLeads,  ownShare),
+        team: _computeBlock(teamListings, teamLeads, teamShare),
+      };
     }
     // admin & superadmin: semua
 
     const taskSummary = await tasksService.getSummary(['agen','koordinator'].includes(role) ? id : null);
     const conversionData = tasksService.getConversionStats(leads);
-    const funnel = conversionData;
     const thisMonth = new Date().toISOString().substring(0, 7);
 
     // Unread notifications count
@@ -85,11 +136,12 @@ router.get('/stats', async (req, res) => {
       buyerRequests:  leads.filter(l => l.Is_Buyer_Request === 'TRUE').length,
       dealsThisMonth: leads.filter(l => l.Status_Lead === 'Deal' && l.Updated_At?.startsWith(thisMonth)).length,
       tasks:          taskSummary,
-      funnel:         funnel.stages,
+      funnel:         conversionData.stages,
       overall_conversion:   conversionData.overall_cr,
       qualified_conversion: conversionData.qualified_cr,
       selesai_leads:        conversionData.selesai,
       unreadNotif,
+      dual: dualStats,
       hotLeadsList: leads
         .filter(l => l.Score === 'Hot' && !['Deal','Batal'].includes(l.Status_Lead))
         .sort((a, b) => new Date(a.Next_Follow_Up||0) - new Date(b.Next_Follow_Up||0))

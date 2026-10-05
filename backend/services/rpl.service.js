@@ -416,6 +416,22 @@ class RplService {
       myShareLog.filter(s => s.Tipe_Konten === 'listing').map(s => s.Konten_ID)
     ).size;
 
+    // Breakdown share per konten (listing / project / aset), hanya yg ≥1 share
+    const kontenMap = {};
+    myShareLog.forEach(s => {
+      if (!s.Konten_ID) return;
+      if (!kontenMap[s.Konten_ID]) kontenMap[s.Konten_ID] = {
+        konten_id:   s.Konten_ID,
+        konten_nama: s.Konten_Nama,
+        tipe_konten: s.Tipe_Konten,
+        total:       0,
+        platforms:   {},
+      };
+      kontenMap[s.Konten_ID].total++;
+      kontenMap[s.Konten_ID].platforms[s.Platform] = (kontenMap[s.Konten_ID].platforms[s.Platform] || 0) + 1;
+    });
+    const sharePerKonten = Object.values(kontenMap).sort((a, b) => b.total - a.total);
+
     const unit4 = {
       label:      'SKKNI Unit 12 & Akselerasi L.68BPR20.013.2, L.68BPR20.014.2',
       keterangan: 'Pemasaran Digital, Konten & Distribusi Portal Properti',
@@ -429,6 +445,7 @@ class RplService {
         total_pa_jobs:             myPaJobs.length,
         pa_jobs_selesai:           myPaJobs.filter(j => j.Status === 'completed').length,
       },
+      share_per_konten: sharePerKonten,
       share_log: myShareLog.map(s => ({
         timestamp:    s.Timestamp,
         tipe_konten:  s.Tipe_Konten,
