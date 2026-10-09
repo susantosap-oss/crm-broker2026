@@ -3407,6 +3407,15 @@ async function loadDashboard() {
         setEl('stat-listings',   s.activeListings  ?? s.totalListings ?? 0);
         setEl('stat-leads',      s.totalLeads       ?? 0);
         setEl('stat-hot',        s.hotLeads         ?? 0);
+        // ── NEW: stat cards (3-col dashboard) ──
+        setEl('stat-jual',  s.jualListings ?? 0);
+        setEl('stat-sewa',  s.sewaListings ?? 0);
+        setEl('stat-warm',  s.warmLeads    ?? 0);
+        setEl('stat-cold',  s.coldLeads    ?? 0);
+        const tk = s.tasks || {};
+        setEl('stat-sched-today', tk.today_pending ?? 0);
+        setEl('stat-sched-next',  Math.max(0, (tk.this_week ?? 0) - (tk.today_total ?? 0)));
+        setEl('stat-sched-done',  tk.today_done    ?? 0);
         const qcr = s.qualified_conversion ?? 0;
         const ocr = s.overall_conversion   ?? 0;
         setEl('stat-conversion', qcr + '%');
@@ -3526,6 +3535,7 @@ let _aplSelectedJudul = '';
 
 async function openAddPhotoModal() {
   _aplSelectedId = null;
+  _aplRollUrls   = { 1: null, 2: null, 3: null }; // reset roll selection
   document.getElementById('apl-step1').style.display = 'block';
   document.getElementById('apl-step2').style.display = 'none';
   // Reset foto inputs
@@ -3543,6 +3553,7 @@ async function openAddPhotoModal() {
 
   openModal('modal-add-photo-listing');
   await aplLoadListings();
+  _refreshRollCount(); // perbarui badge camera roll count
 }
 
 async function aplLoadListings() {
@@ -3607,8 +3618,11 @@ function aplPreview(input, previewId) {
 
 async function aplSave() {
   if (!_aplSelectedId) { showToast('Pilih listing dulu', 'error'); return; }
-  const foto1 = document.getElementById('apl-foto1')?.files[0];
-  if (!foto1) { showToast('Foto utama wajib diupload', 'error'); return; }
+
+  // Slot 1 bisa dari file upload ATAU dari Camera Roll
+  const foto1File = document.getElementById('apl-foto1')?.files[0];
+  const foto1Roll = _aplRollUrls[1];
+  if (!foto1File && !foto1Roll) { showToast('Foto utama wajib diisi (upload atau dari Roll)', 'error'); return; }
 
   const btn = document.getElementById('apl-save-btn');
   btn.disabled = true;
@@ -3617,21 +3631,26 @@ async function aplSave() {
   try {
     const urls = {};
     const slots = [
-      { file: foto1,                                              key: 'Foto_Utama_URL' },
-      { file: document.getElementById('apl-foto2')?.files[0],    key: 'Foto_2_URL' },
-      { file: document.getElementById('apl-foto3')?.files[0],    key: 'Foto_3_URL' },
+      { file: foto1File, rollUrl: _aplRollUrls[1], key: 'Foto_Utama_URL' },
+      { file: document.getElementById('apl-foto2')?.files[0], rollUrl: _aplRollUrls[2], key: 'Foto_2_URL' },
+      { file: document.getElementById('apl-foto3')?.files[0], rollUrl: _aplRollUrls[3], key: 'Foto_3_URL' },
     ];
 
-    for (const { file, key } of slots) {
-      if (!file) continue;
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Upload ${key.replace('_URL','').replace('Foto_','Foto ')}...`;
-      const compressed = await compressImage(file, 1280, 0.80);
-      urls[key] = await uploadToCloudinary(compressed);
+    for (const { file, rollUrl, key } of slots) {
+      if (rollUrl) {
+        // Sudah di-upload ke Cloudinary via Camera Roll — pakai URL langsung
+        urls[key] = rollUrl;
+      } else if (file) {
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Upload ${key.replace('_URL','').replace('Foto_','Foto ')}...`;
+        const compressed = await compressImage(file, 1280, 0.80);
+        urls[key] = await uploadToCloudinary(compressed);
+      }
     }
 
     await API.patch('/listings/' + _aplSelectedId, urls);
     showToast('✅ Foto berhasil ditambahkan!', 'success');
     closeModal('modal-add-photo-listing');
+    _aplRollUrls = { 1: null, 2: null, 3: null }; // reset
     if (STATE.currentPage === 'listings') await loadListings();
   } catch(e) {
     showToast('Gagal upload: ' + e.message, 'error');
@@ -3754,53 +3773,32 @@ let _dualFunnels = null; // { team, own }
 function _renderDualDashboard(s) {
   const d = s.dual;
 
-  // ── Listing Aktif ─────────────────────────────────────
-  const listEl = document.getElementById('stat-listings');
-  if (listEl) {
-    const shareInfo = (d.team.totalShareListing > 0 || d.own.totalShareListing > 0)
-      ? `<div style="font-size:9px;color:rgba(212,168,83,0.55);margin-top:3px">Share Tim ${d.team.totalShareListing}x · Saya ${d.own.totalShareListing}x</div>`
-      : '';
-    listEl.innerHTML = `
-      <div style="font-size:26px;font-weight:700;color:#fff;line-height:1">${d.team.activeListings}</div>
-      <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
-        <span style="font-size:10px;background:rgba(43,123,255,0.15);color:#60a5fa;padding:2px 7px;border-radius:5px;font-weight:600">Tim ${d.team.activeListings}</span>
-        <span style="font-size:10px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.55);padding:2px 7px;border-radius:5px;font-weight:600">Saya ${d.own.activeListings}</span>
-      </div>
-      ${shareInfo}`;
-  }
+  // ── Listing card: switch ke dual view ─────────────────
+  const normalView = document.getElementById('listing-normal-view');
+  const dualView   = document.getElementById('listing-dual-view');
+  if (normalView) normalView.style.display = 'none';
+  if (dualView)   dualView.style.display   = 'flex';
 
-  // ── Total Leads ───────────────────────────────────────
-  const leadsEl = document.getElementById('stat-leads');
-  if (leadsEl) {
-    leadsEl.innerHTML = `
-      <div style="font-size:26px;font-weight:700;color:#fff;line-height:1">${d.team.totalLeads}</div>
-      <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
-        <span style="font-size:10px;background:rgba(168,85,247,0.15);color:#a855f7;padding:2px 7px;border-radius:5px;font-weight:600">Tim ${d.team.totalLeads}</span>
-        <span style="font-size:10px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.55);padding:2px 7px;border-radius:5px;font-weight:600">Saya ${d.own.totalLeads}</span>
-      </div>`;
-  }
+  setEl('stat-jual-tim', d.team.jualListings ?? 0);
+  setEl('stat-sewa-tim', d.team.sewaListings ?? 0);
+  setEl('stat-jual-own', d.own.jualListings  ?? 0);
+  setEl('stat-sewa-own', d.own.sewaListings  ?? 0);
 
-  // ── Hot Leads ─────────────────────────────────────────
-  const hotEl = document.getElementById('stat-hot');
-  if (hotEl) {
-    hotEl.innerHTML = `
-      <div style="font-size:26px;font-weight:700;color:#ef4444;line-height:1">${d.team.hotLeads}</div>
-      <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
-        <span style="font-size:10px;background:rgba(239,68,68,0.15);color:#ef4444;padding:2px 7px;border-radius:5px;font-weight:600">Tim ${d.team.hotLeads}</span>
-        <span style="font-size:10px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.55);padding:2px 7px;border-radius:5px;font-weight:600">Saya ${d.own.hotLeads}</span>
-      </div>`;
-  }
+  // ── Leads card: hot/warm/cold (team scope) ────────────
+  setEl('stat-hot',  d.team.hotLeads  ?? 0);
+  setEl('stat-warm', d.team.warmLeads ?? 0);
+  setEl('stat-cold', d.team.coldLeads ?? 0);
 
-  // ── Konversi ──────────────────────────────────────────
-  const convEl = document.getElementById('stat-conversion');
-  if (convEl) {
-    convEl.innerHTML = `
-      <div style="font-size:26px;font-weight:700;color:#D4A853;line-height:1">${d.team.qualified_conversion}%</div>
-      <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
-        <span style="font-size:10px;background:rgba(212,168,83,0.15);color:#D4A853;padding:2px 7px;border-radius:5px;font-weight:600">Tim ${d.team.qualified_conversion}%</span>
-        <span style="font-size:10px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.55);padding:2px 7px;border-radius:5px;font-weight:600">Saya ${d.own.qualified_conversion}%</span>
-      </div>`;
-  }
+  // ── Schedule stats ────────────────────────────────────
+  const tk = s.tasks || {};
+  setEl('stat-sched-today', tk.today_pending ?? 0);
+  setEl('stat-sched-next',  Math.max(0, (tk.this_week ?? 0) - (tk.today_total ?? 0)));
+  setEl('stat-sched-done',  tk.today_done    ?? 0);
+
+  // ── Hidden compat elements (pipeline chart) ───────────
+  setEl('stat-listings',  d.team.activeListings ?? 0);
+  setEl('stat-leads',     d.team.totalLeads     ?? 0);
+  setEl('stat-conversion', d.team.qualified_conversion ?? 0);
 
   // ── Pipeline dual ─────────────────────────────────────
   _dualFunnels = { team: d.team.funnel, own: d.own.funnel };
@@ -4980,6 +4978,15 @@ async function submitAddTask() {
 // NAVIGATION (override)
 // ─────────────────────────────────────────────────────────
 async function navigateTo(page) {
+  // Push history so Android back button returns to dashboard instead of closing PWA
+  if (!_poppingNavBack) {
+    if (page === 'dashboard') {
+      history.replaceState({ navPage: 'dashboard' }, '', '/');
+    } else {
+      history.pushState({ navPage: page }, '', '#' + page);
+    }
+  }
+
   document.querySelectorAll('.page').forEach(p => { p.style.display='none'; });
   const target = document.getElementById(`page-${page}`);
   if (target) { target.style.display = 'block'; target.scrollTop = 0; window.scrollTo(0,0); document.querySelector('main')?.scrollTo(0,0); }
@@ -5463,6 +5470,7 @@ function closeSidebar() {
 let _lastModalOpenTime = 0;
 let _modalStack        = [];   // stack id modal yang sedang terbuka
 let _poppingFromBack   = false; // flag: sedang merespons popstate
+let _poppingNavBack    = false; // flag: sedang navigasi balik ke dashboard
 
 function openModal(id, displayType) {
   const el = document.getElementById(id); if (!el) return;
@@ -5495,20 +5503,25 @@ function closeModal(id) {
   }
 }
 
-// Android back button → tutup modal teratas, bukan tutup app
+// Android back button → tutup modal teratas ATAU kembali ke dashboard
 window.addEventListener('popstate', () => {
   if (_poppingFromBack) {
-    // Dipicu oleh closeModal → abaikan
     _poppingFromBack = false;
     return;
   }
   if (_modalStack.length > 0) {
     const topId = _modalStack[_modalStack.length - 1];
-    _poppingFromBack = true;   // cegah closeModal panggil history.back() lagi
+    _poppingFromBack = true;
     closeModal(topId);
     _poppingFromBack = false;
+    return;
   }
-  // Kalau tidak ada modal terbuka: biarkan behavior default (tutup app / navigasi normal)
+  // Tidak ada modal terbuka: kembali ke dashboard alih-alih tutup app
+  const curPage = STATE.currentPage;
+  if (curPage && curPage !== 'dashboard') {
+    _poppingNavBack = true;
+    navigateTo('dashboard').finally(() => { _poppingNavBack = false; });
+  }
 });
 
 // Close modal on overlay click — guard 350ms agar ghost-tap tidak langsung menutup modal
@@ -12518,4 +12531,767 @@ async function deleteEliteTrx(id) {
     showToast('Transaksi dihapus', 'success');
     await loadEliteTrxPage();
   } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+}
+
+// ─────────────────────────────────────────────────────────
+// CAMERAX — Live Camera + Camera Roll (Option A)
+// ─────────────────────────────────────────────────────────
+let _camStream      = null;
+let _camFacing      = 'environment'; // 'environment' = belakang, 'user' = depan
+let _camFlashOn     = false;
+let _camCaptureBlob = null;          // blob hasil capture, menunggu disimpan
+let _rollFilter     = 'all';
+let _rollPickerSlot = 1;             // slot yang sedang dipilih (1/2/3)
+// URL dari roll yang dipilih untuk tiap slot foto listing
+let _aplRollUrls    = { 1: null, 2: null, 3: null };
+
+// ── Buka modal camera ─────────────────────────────────────
+async function openCameraModal() {
+  const modal = document.getElementById('modal-camera');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  _camCaptureBlob = null;
+  _resetCameraUI();
+  await _startCameraStream();
+}
+
+function closeCameraModal() {
+  _stopCameraStream();
+  const modal = document.getElementById('modal-camera');
+  if (modal) modal.style.display = 'none';
+  _camCaptureBlob = null;
+}
+
+// ── Start / stop stream ───────────────────────────────────
+async function _startCameraStream() {
+  _stopCameraStream();
+  const video = document.getElementById('cam-video');
+  const noSupport = document.getElementById('cam-no-support');
+  if (!navigator.mediaDevices?.getUserMedia) {
+    if (noSupport) noSupport.style.display = 'flex';
+    return;
+  }
+  try {
+    _camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: _camFacing, width: { ideal: 1920 }, height: { ideal: 1440 } },
+      audio: false,
+    });
+    if (video) {
+      video.srcObject = _camStream;
+      await video.play();
+    }
+    if (noSupport) noSupport.style.display = 'none';
+    _updateFlashBtn();
+  } catch (e) {
+    console.warn('[CameraX]', e.message);
+    if (noSupport) { noSupport.style.display = 'flex'; }
+  }
+}
+
+function _stopCameraStream() {
+  if (_camStream) {
+    _camStream.getTracks().forEach(t => t.stop());
+    _camStream = null;
+  }
+  _camFlashOn = false;
+}
+
+// ── Flip kamera ───────────────────────────────────────────
+async function flipCamera() {
+  _camFacing = _camFacing === 'environment' ? 'user' : 'environment';
+  await _startCameraStream();
+}
+
+// ── Flash / torch ─────────────────────────────────────────
+async function toggleCameraFlash() {
+  const track = _camStream?.getVideoTracks?.()?.[0];
+  if (!track) return;
+  const caps = track.getCapabilities?.() || {};
+  if (!caps.torch) { showToast('Flash tidak tersedia di perangkat ini', 'error'); return; }
+  _camFlashOn = !_camFlashOn;
+  try {
+    await track.applyConstraints({ advanced: [{ torch: _camFlashOn }] });
+    _updateFlashBtn();
+  } catch (e) { showToast('Gagal toggle flash', 'error'); }
+}
+
+function _updateFlashBtn() {
+  const icon = document.getElementById('cam-flash-icon');
+  if (!icon) return;
+  const track = _camStream?.getVideoTracks?.()?.[0];
+  const hasTorch = track?.getCapabilities?.()?.torch;
+  const btn = document.getElementById('cam-flash-btn');
+  if (btn) btn.style.opacity = hasTorch ? '1' : '0.3';
+  icon.className = _camFlashOn ? 'fa-solid fa-bolt' : 'fa-solid fa-bolt-slash';
+  icon.style.color = _camFlashOn ? '#FACC15' : 'rgba(255,255,255,0.5)';
+}
+
+// ── Capture foto dari video ────────────────────────────────
+function captureFromCamera() {
+  const video = document.getElementById('cam-video');
+  if (!video || !video.videoWidth) { showToast('Kamera belum siap', 'error'); return; }
+  const canvas = document.createElement('canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  // Mirror jika kamera depan
+  if (_camFacing === 'user') {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0);
+  canvas.toBlob(blob => {
+    _camCaptureBlob = blob;
+    const url = URL.createObjectURL(blob);
+    const img = document.getElementById('cam-preview-img');
+    if (img) img.src = url;
+    _showCameraPreview();
+  }, 'image/jpeg', 0.92);
+}
+
+function retakePhoto() {
+  _camCaptureBlob = null;
+  _resetCameraUI();
+}
+
+function _showCameraPreview() {
+  document.getElementById('cam-preview-overlay').style.display = 'block';
+  document.getElementById('cam-controls-live').style.display    = 'none';
+  document.getElementById('cam-controls-preview').style.display = 'flex';
+  setEl('cam-save-status', '');
+}
+
+function _resetCameraUI() {
+  const overlay = document.getElementById('cam-preview-overlay');
+  if (overlay) overlay.style.display = 'none';
+  document.getElementById('cam-controls-live').style.display    = 'flex';
+  document.getElementById('cam-controls-preview').style.display = 'none';
+  const lbl = document.getElementById('cam-label');
+  if (lbl && !lbl.value) lbl.value = '';
+}
+
+// ── Simpan ke Camera Roll (upload Cloudinary + POST API) ──
+async function saveToCameraRoll() {
+  if (!_camCaptureBlob) { showToast('Belum ada foto', 'error'); return; }
+  const btn    = document.getElementById('cam-save-btn');
+  const status = document.getElementById('cam-save-status');
+  const label  = document.getElementById('cam-label')?.value?.trim() || '';
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
+  if (status) status.textContent = 'Mengupload ke Cloudinary…';
+
+  try {
+    // 1. Compress + upload ke Cloudinary folder camera_roll
+    const fileName = `cam_${Date.now()}.jpg`;
+    const file = new File([_camCaptureBlob], fileName, { type: 'image/jpeg' });
+    const agentId = STATE.user?.id || 'agent';
+    const fotoUrl = await uploadToCloudinary(file, `camera_roll/${agentId}`);
+
+    if (status) status.textContent = 'Menyimpan metadata…';
+
+    // 2. Simpan metadata ke CAMERA_ROLL sheet via API
+    const res = await API.post('/camera-roll', {
+      foto_url:      fotoUrl,
+      cloudinary_id: '',
+      sesi_label:    label,
+    });
+
+    if (status) status.textContent = '✓ Tersimpan di Camera Roll!';
+
+    // Update badge jumlah
+    _refreshRollCount();
+
+    setTimeout(() => {
+      showToast('Foto disimpan ke Camera Roll', 'success');
+      // Reset ke mode live camera untuk foto berikutnya
+      retakePhoto();
+      if (label) { const lbl = document.getElementById('cam-label'); if (lbl) lbl.value = ''; }
+    }, 900);
+  } catch (e) {
+    if (status) status.textContent = '';
+    showToast('Gagal simpan: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk" style="margin-right:6px"></i>Simpan ke Roll'; }
+  }
+}
+
+// ── Hitung total foto di roll (untuk badge) ───────────────
+async function _refreshRollCount() {
+  try {
+    const res = await API.get('/camera-roll');
+    const count = res?.data?.length || 0;
+    const badge = document.getElementById('cam-roll-count');
+    if (badge) {
+      if (count > 0) { badge.textContent = count; badge.style.display = 'flex'; }
+      else badge.style.display = 'none';
+    }
+  } catch (_) {}
+}
+
+// ── Buka Camera Roll viewer ───────────────────────────────
+async function openCameraRoll() {
+  openModal('modal-camera-roll');
+  await loadCameraRoll();
+}
+
+let _rollAllPhotos = [];
+
+async function loadCameraRoll() {
+  const grid = document.getElementById('roll-grid');
+  if (!grid) return;
+  grid.innerHTML = `<div class="skeleton" style="aspect-ratio:1;border-radius:10px"></div>`.repeat(6);
+  try {
+    const res = await API.get('/camera-roll');
+    _rollAllPhotos = res?.data || [];
+    _renderRollGrid(_rollAllPhotos);
+  } catch (e) {
+    grid.innerHTML = `<p style="grid-column:1/-1;color:rgba(255,255,255,0.3);font-size:12px;text-align:center;padding:20px">Gagal memuat roll</p>`;
+  }
+}
+
+function setRollFilter(filter, btn) {
+  _rollFilter = filter;
+  document.querySelectorAll('#roll-filter-bar .chip').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  let photos = _rollAllPhotos;
+  if (filter === 'unassigned') photos = photos.filter(p => !p.Listing_ID);
+  if (filter === 'assigned')   photos = photos.filter(p =>  p.Listing_ID);
+  _renderRollGrid(photos);
+}
+
+function _renderRollGrid(photos) {
+  const grid = document.getElementById('roll-grid');
+  if (!grid) return;
+  if (!photos.length) {
+    grid.innerHTML = `<p style="grid-column:1/-1;color:rgba(255,255,255,0.3);font-size:12px;text-align:center;padding:24px">Belum ada foto di Camera Roll</p>`;
+    return;
+  }
+  grid.innerHTML = photos.map(p => {
+    const tgl = p.Tanggal ? new Date(p.Tanggal).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) : '';
+    const badge = p.Listing_ID
+      ? `<div style="position:absolute;bottom:4px;left:4px;right:4px;background:rgba(34,197,94,0.85);border-radius:5px;padding:2px 4px;font-size:8px;font-weight:600;color:#000;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">✓ ${p.Listing_Judul || 'Assigned'}</div>`
+      : `<div style="position:absolute;bottom:4px;left:4px;right:4px;background:rgba(0,0,0,0.6);border-radius:5px;padding:2px 4px;font-size:8px;color:rgba(255,255,255,0.7);text-align:center">${tgl}</div>`;
+    return `
+      <div style="position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;background:#131F38;cursor:pointer" onclick="openRollPhotoAction('${p.ID}','${p.Foto_URL}','${(p.Listing_ID||'')}','${encodeURIComponent(p.Sesi_Label||'')}')">
+        <img src="${p.Foto_URL}" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>
+        ${badge}
+      </div>`;
+  }).join('');
+}
+
+// ── Aksi pada foto roll (assign / delete) ─────────────────
+function openRollPhotoAction(id, url, listingId, labelEnc) {
+  const label = decodeURIComponent(labelEnc);
+  const assigned = listingId ? `<p style="font-size:11px;color:#4ade80;margin-bottom:8px">✓ Sudah di-assign ke listing</p>` : '';
+  const options = listingId ? '' : `<button onclick="closeModal('__rollaction');_rollAssignListing('${id}')" style="width:100%;padding:12px;border-radius:12px;background:rgba(43,123,255,0.12);border:1px solid rgba(43,123,255,0.25);color:#60a5fa;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px"><i class="fa-solid fa-link" style="margin-right:6px"></i>Assign ke Listing</button>`;
+
+  // Pakai toast confirm inline — buat mini modal sementara
+  if (document.getElementById('__rollaction')) document.getElementById('__rollaction').remove();
+  const el = document.createElement('div');
+  el.id = '__rollaction';
+  el.style.cssText = 'position:fixed;inset:0;z-index:70;background:rgba(0,0,0,0.7);display:flex;align-items:flex-end';
+  el.innerHTML = `
+    <div style="background:#0D1526;border-radius:24px 24px 0 0;width:100%;padding:20px 16px 32px">
+      <div style="width:36px;height:4px;background:rgba(255,255,255,0.12);border-radius:2px;margin:0 auto 16px"></div>
+      <img src="${url}" style="width:100%;height:160px;object-fit:cover;border-radius:12px;margin-bottom:12px"/>
+      ${label ? `<p style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:8px"><i class="fa-solid fa-location-dot" style="margin-right:4px"></i>${label}</p>` : ''}
+      ${assigned}${options}
+      <button onclick="this.closest('#__rollaction').remove();_deleteRollPhoto('${id}')" style="width:100%;padding:12px;border-radius:12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px"><i class="fa-solid fa-trash" style="margin-right:6px"></i>Hapus Foto</button>
+      <button onclick="this.closest('#__rollaction').remove()" style="width:100%;padding:12px;border-radius:12px;background:rgba(255,255,255,0.06);border:none;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer">Tutup</button>
+    </div>`;
+  el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+  document.body.appendChild(el);
+}
+
+// helper untuk closeModal dari inline action
+function closeModal(id) {
+  const el = id === '__rollaction' ? document.getElementById('__rollaction') : document.getElementById(id);
+  if (!el) return;
+  if (id === '__rollaction') { el.remove(); return; }
+  el.classList.remove('open');
+}
+
+async function _rollAssignListing(rollId) {
+  // Buka listing picker — filter aktif saja
+  try {
+    const res = await API.get('/listings');
+    const listings = (res?.data || []).filter(l => l.Status_Listing === 'Aktif');
+    if (!listings.length) { showToast('Tidak ada listing aktif', 'error'); return; }
+
+    const el = document.createElement('div');
+    el.id = '__assignpicker';
+    el.style.cssText = 'position:fixed;inset:0;z-index:75;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end';
+    el.innerHTML = `
+      <div style="background:#0D1526;border-radius:24px 24px 0 0;width:100%;padding:20px 16px;max-height:70vh;display:flex;flex-direction:column">
+        <div style="width:36px;height:4px;background:rgba(255,255,255,0.12);border-radius:2px;margin:0 auto 14px"></div>
+        <p style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:12px">Pilih listing untuk foto ini:</p>
+        <div style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px">
+          ${listings.map(l => `
+            <button onclick="_doAssignToListing('${rollId}','${l.ID}','${encodeURIComponent(l.Judul||l.Kode_Listing||l.ID)}')" style="text-align:left;padding:12px;border-radius:12px;background:#131F38;border:1px solid rgba(255,255,255,0.07);cursor:pointer;color:#fff;font-size:12px">
+              <span style="color:#D4A853;font-size:10px;display:block;margin-bottom:2px">${l.Kode_Listing||''}</span>
+              ${l.Judul || l.Alamat || l.ID}
+            </button>`).join('')}
+        </div>
+        <button onclick="this.closest('#__assignpicker').remove()" style="margin-top:12px;width:100%;padding:12px;border-radius:12px;background:rgba(255,255,255,0.06);border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer">Batal</button>
+      </div>`;
+    el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+    document.body.appendChild(el);
+  } catch (e) { showToast('Gagal load listings', 'error'); }
+}
+
+async function _doAssignToListing(rollId, listingId, titleEnc) {
+  document.getElementById('__assignpicker')?.remove();
+  try {
+    const title = decodeURIComponent(titleEnc);
+    await API.patch(`/camera-roll/${rollId}`, { listing_id: listingId, listing_judul: title });
+    showToast('Foto berhasil di-assign ke listing', 'success');
+    await loadCameraRoll();
+  } catch (e) { showToast('Gagal assign: ' + e.message, 'error'); }
+}
+
+async function _deleteRollPhoto(rollId) {
+  if (!confirm('Hapus foto dari Camera Roll?')) return;
+  try {
+    await API.delete(`/camera-roll/${rollId}`);
+    showToast('Foto dihapus', 'success');
+    await loadCameraRoll();
+    _refreshRollCount();
+  } catch (e) { showToast('Gagal hapus: ' + e.message, 'error'); }
+}
+
+// ── Roll Picker untuk slot foto listing ───────────────────
+async function openRollPicker(slot) {
+  _rollPickerSlot = slot;
+  const labels = { 1: 'Foto Utama', 2: 'Foto 2', 3: 'Foto 3' };
+  setEl('roll-picker-slot-label', labels[slot] || 'Foto');
+
+  openModal('modal-roll-picker');
+
+  const grid  = document.getElementById('roll-picker-grid');
+  const empty = document.getElementById('roll-picker-empty');
+  if (grid)  grid.innerHTML = `<div class="skeleton" style="aspect-ratio:1;border-radius:10px"></div>`.repeat(6);
+  if (empty) empty.style.display = 'none';
+
+  try {
+    const res    = await API.get('/camera-roll?unassigned=true');
+    const photos = res?.data || [];
+    if (!photos.length) {
+      if (grid)  grid.innerHTML = '';
+      if (empty) empty.style.display = 'block';
+      return;
+    }
+    if (grid) grid.innerHTML = photos.map(p => `
+      <div style="position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;background:#131F38;cursor:pointer;border:2px solid transparent" onclick="pickRollPhoto('${p.ID}','${p.Foto_URL}',this)">
+        <img src="${p.Foto_URL}" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>
+        <div style="position:absolute;bottom:3px;left:3px;right:3px;background:rgba(0,0,0,0.6);border-radius:4px;padding:2px 4px;font-size:8px;color:rgba(255,255,255,0.65);text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${p.Sesi_Label||p.Tanggal||''}</div>
+      </div>`).join('');
+  } catch (e) {
+    if (grid) grid.innerHTML = `<p style="grid-column:1/-1;color:rgba(255,255,255,0.3);font-size:12px;text-align:center;padding:20px">Gagal memuat roll</p>`;
+  }
+}
+
+function pickRollPhoto(rollId, url, el) {
+  // Highlight pilihan
+  document.querySelectorAll('#roll-picker-grid > div').forEach(d => d.style.borderColor = 'transparent');
+  el.style.borderColor = '#fb923c';
+
+  // Simpan URL ke state
+  _aplRollUrls[_rollPickerSlot] = url;
+
+  // Update preview di modal-add-photo-listing
+  const prevId = `apl-prev${_rollPickerSlot}`;
+  const prevEl = document.getElementById(prevId);
+  if (prevEl) {
+    prevEl.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover"/>`;
+  }
+  // Kosongkan input file agar tidak bentrok saat save
+  const fileInput = document.getElementById(`apl-foto${_rollPickerSlot}`);
+  if (fileInput) fileInput.value = '';
+
+  // Tutup picker setelah 300ms
+  setTimeout(() => closeModal('modal-roll-picker'), 300);
+}
+
+// ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// SHARED: Listing Picker (Compass + Ukur)
+// ─────────────────────────────────────────────────────────
+
+async function _loadPickerListings(listElId, clickFnName) {
+  const el = document.getElementById(listElId);
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);font-size:12px;padding:14px">Memuat...</div>';
+  try {
+    const data = await API.get('/listings');
+    const rows = (data.data || data.listings || []).filter(l => l.Status_Listing === 'Aktif');
+    if (!rows.length) {
+      el.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);font-size:12px;padding:14px">Tidak ada listing aktif</div>';
+      return;
+    }
+    el.innerHTML = rows.map(l => {
+      const judul = (l.Judul || l.Kode_Listing || l.ID).replace(/'/g, '&#39;');
+      const kode  = (l.Kode_Listing || '').replace(/'/g, '&#39;');
+      return `<div onclick="${clickFnName}('${l.ID}','${judul}','${kode}')"
+        data-listing-id="${l.ID}"
+        style="padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);cursor:pointer;margin-bottom:6px;transition:all 0.15s">
+        <div style="font-size:12px;font-weight:600;color:#fff;margin-bottom:2px">${l.Judul || l.Kode_Listing || l.ID}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.35)">${l.Kode_Listing || ''} · ${l.Kota || ''}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="color:#ef4444;font-size:12px;padding:10px">${e.message}</div>`;
+  }
+}
+
+function _filterPickerListings(listElId, q) {
+  q = (q || '').toLowerCase();
+  document.querySelectorAll(`#${listElId} > div[data-listing-id]`).forEach(el => {
+    el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function _highlightPickerItem(listElId, selectedId) {
+  document.querySelectorAll(`#${listElId} > div[data-listing-id]`).forEach(el => {
+    const sel = el.dataset.listingId === selectedId;
+    el.style.borderColor = sel ? '#D4A853' : 'rgba(255,255,255,0.08)';
+    el.style.background  = sel ? 'rgba(212,168,83,0.08)' : '';
+  });
+}
+
+// ─────────────────────────────────────────────────────────
+// KOMPAS PROPERTI (My Menu → Compass)
+// ─────────────────────────────────────────────────────────
+
+let _compassActive  = false;
+let _compassLat     = null;
+let _compassLng     = null;
+let _compassTarget  = null; // { id, judul, kode }
+let _compassMode    = 'listing'; // 'listing' | 'aset'
+
+function openCompassModal() {
+  openModal('modal-compass');
+  _compassActive = true;
+  _compassLat    = null;
+  _compassLng    = null;
+  _compassTarget = null;
+  _compassMode   = 'listing';
+  const savBtn = document.getElementById('compass-save-btn');
+  if (savBtn) { savBtn.disabled = true; savBtn.style.opacity = '0.5'; savBtn.innerHTML = '<i class="fa-solid fa-floppy-disk" style="margin-right:6px"></i>Simpan ke Listing'; }
+  const si = document.getElementById('compass-selected-info');
+  if (si) si.style.display = 'none';
+  document.getElementById('compass-mode-listing')?.classList.add('on');
+  document.getElementById('compass-mode-aset')?.classList.remove('on');
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      _compassLat = pos.coords.latitude;
+      _compassLng = pos.coords.longitude;
+      setEl('compass-lat', _compassLat.toFixed(6));
+      setEl('compass-lng', _compassLng.toFixed(6));
+      _updateCompassSaveBtn();
+    }, () => {});
+  }
+  _loadPickerListings('compass-picker-list', 'compassSelectTarget');
+}
+
+function closeCompassModal() {
+  _compassActive = false;
+  closeModal('modal-compass');
+  if (window._compassHandler) {
+    window.removeEventListener('deviceorientationabsolute', window._compassHandler);
+    window.removeEventListener('deviceorientation', window._compassHandler);
+    delete window._compassHandler;
+  }
+}
+
+function setCompassMode(mode) {
+  _compassMode   = mode;
+  _compassTarget = null;
+  document.getElementById('compass-mode-listing')?.classList.toggle('on', mode === 'listing');
+  document.getElementById('compass-mode-aset')?.classList.toggle('on', mode === 'aset');
+  const si = document.getElementById('compass-selected-info');
+  if (si) si.style.display = 'none';
+  const search = document.getElementById('compass-picker-search');
+  if (search) search.value = '';
+  const savBtn = document.getElementById('compass-save-btn');
+  if (savBtn) { savBtn.innerHTML = `<i class="fa-solid fa-floppy-disk" style="margin-right:6px"></i>Simpan ke ${mode === 'listing' ? 'Listing' : 'Aset'}`; }
+  _updateCompassSaveBtn();
+  if (mode === 'listing') {
+    _loadPickerListings('compass-picker-list', 'compassSelectTarget');
+  } else {
+    _loadPickerAssets('compass-picker-list', 'compassSelectTarget');
+  }
+}
+
+async function _loadPickerAssets(listElId, clickFnName) {
+  const el = document.getElementById(listElId);
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);font-size:12px;padding:14px">Memuat...</div>';
+  try {
+    const data = await API.get('/assets');
+    const rows = (data.data || data.assets || []);
+    if (!rows.length) { el.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);font-size:12px;padding:14px">Tidak ada aset</div>'; return; }
+    el.innerHTML = rows.map(a => {
+      const nama = (a.Nama_Asset || a.Kode_Asset || a.ID).replace(/'/g, '&#39;');
+      const kode = (a.Kode_Asset || '').replace(/'/g, '&#39;');
+      return `<div onclick="${clickFnName}('${a.ID}','${nama}','${kode}')"
+        data-listing-id="${a.ID}"
+        style="padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);cursor:pointer;margin-bottom:6px;transition:all 0.15s">
+        <div style="font-size:12px;font-weight:600;color:#fff;margin-bottom:2px">${a.Nama_Asset || a.Kode_Asset || a.ID}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.35)">${a.Kode_Asset || ''} · ${a.Kota || ''}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="color:#ef4444;font-size:12px;padding:10px">${e.message}</div>`;
+  }
+}
+
+function compassSelectTarget(id, judul, kode) {
+  _compassTarget = { id, judul, kode };
+  _highlightPickerItem('compass-picker-list', id);
+  setEl('compass-selected-name', judul || kode || id);
+  document.getElementById('compass-selected-info').style.display = 'block';
+  _updateCompassSaveBtn();
+}
+
+function _updateCompassSaveBtn() {
+  const btn = document.getElementById('compass-save-btn');
+  if (!btn) return;
+  const ready = _compassLat !== null && _compassTarget !== null;
+  btn.disabled      = !ready;
+  btn.style.opacity = ready ? '1' : '0.5';
+}
+
+async function requestCompassPermission() {
+  const DIRS = ['U (N)','TL','T (E)','TG','S','BD','B (W)','BL'];
+  const handler = (e) => {
+    if (!_compassActive) return;
+    let heading = e.webkitCompassHeading != null
+      ? e.webkitCompassHeading
+      : (360 - (e.alpha ?? 0)) % 360;
+    heading = ((heading % 360) + 360) % 360;
+    const rose = document.getElementById('compass-rose');
+    if (rose) rose.style.transform = `rotate(${-heading}deg)`;
+    setEl('compass-heading', Math.round(heading) + '°');
+    setEl('compass-direction', DIRS[Math.round(heading / 45) % 8]);
+  };
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const perm = await DeviceOrientationEvent.requestPermission();
+      if (perm !== 'granted') { showToast('Izin sensor ditolak', 'error'); return; }
+    } catch(e) { showToast('Gagal minta izin sensor', 'error'); return; }
+  }
+  window._compassHandler = handler;
+  const hasAbsolute = 'ondeviceorientationabsolute' in window;
+  window.addEventListener(hasAbsolute ? 'deviceorientationabsolute' : 'deviceorientation', handler);
+  const btn = document.getElementById('compass-activate-btn');
+  if (btn) btn.style.display = 'none';
+}
+
+async function saveCompassCoords() {
+  if (!_compassTarget?.id || _compassLat === null) { showToast('GPS atau target belum siap', 'error'); return; }
+  const btn = document.getElementById('compass-save-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+  try {
+    const mapsUrl = `https://maps.google.com/?q=${_compassLat},${_compassLng}`;
+    if (_compassMode === 'listing') {
+      await API.patch(`/listings/${_compassTarget.id}`, {
+        Koordinat_Lat: String(_compassLat),
+        Koordinat_Lng: String(_compassLng),
+        Maps_URL: mapsUrl,
+      });
+    } else {
+      await API.put(`/assets/${_compassTarget.id}`, { Gmaps_Link: mapsUrl });
+    }
+    showToast(`Koordinat disimpan ke "${_compassTarget.judul}"`, 'success');
+    closeCompassModal();
+  } catch(e) {
+    showToast('Gagal: ' + e.message, 'error');
+    if (btn) {
+      btn.disabled = false; btn.style.opacity = '1';
+      btn.innerHTML = `<i class="fa-solid fa-floppy-disk" style="margin-right:6px"></i>Simpan ke ${_compassMode === 'listing' ? 'Listing' : 'Aset'}`;
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// KALKULATOR APPRAISAL (My Menu → Appraisal)
+// ─────────────────────────────────────────────────────────
+
+function openAppraisalModal() {
+  openModal('modal-appraisal');
+  const inputs = ['mapr-nama-pemilik','mapr-alamat','mapr-luas-tanah','mapr-harga-tanah',
+    'mapr-luas-bangunan','mapr-harga-bangunan','mapr-harga-pasar','mapr-tahun'];
+  inputs.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const feeEl = document.getElementById('mapr-fee'); if (feeEl) feeEl.value = '2.5';
+  const resEl = document.getElementById('mapr-result');
+  if (resEl) { resEl.style.display = 'none'; resEl.innerHTML = ''; }
+  setMaprLokasiScore(3);
+  updateMaprFormVisibility();
+}
+
+function updateMaprFormVisibility() {
+  const tipe = (document.getElementById('mapr-tipe')?.value || '').toLowerCase();
+  const isApartemen = tipe === 'apartemen';
+  const isTanah = tipe === 'tanah';
+  document.getElementById('mapr-section-tanah').style.display   = !isApartemen ? 'block' : 'none';
+  document.getElementById('mapr-section-bangunan').style.display = !isTanah     ? 'block' : 'none';
+  document.getElementById('mapr-section-pasar').style.display    = isApartemen  ? 'block' : 'none';
+}
+
+function setMaprLokasiScore(score) {
+  const hiddenEl = document.getElementById('mapr-lokasi');
+  if (hiddenEl) hiddenEl.value = score;
+  for (let i = 1; i <= 5; i++) {
+    const btn = document.getElementById('mapr-lokasi-btn-' + i);
+    if (!btn) continue;
+    if (i === score) { btn.style.background='#D4A853'; btn.style.color='#0D1526'; btn.style.border='none'; }
+    else { btn.style.background='#131F38'; btn.style.color='rgba(255,255,255,0.55)'; btn.style.border='1px solid rgba(255,255,255,0.12)'; }
+  }
+}
+
+function hitungAppraisalModal() {
+  const tipe       = (document.getElementById('mapr-tipe')?.value || '').toLowerCase();
+  const transaksi  = (document.getElementById('mapr-transaksi')?.value || 'jual').toLowerCase();
+  const luasTanah   = parseFloat(document.getElementById('mapr-luas-tanah')?.value)    || 0;
+  const luasBangunan= parseFloat(document.getElementById('mapr-luas-bangunan')?.value)  || 0;
+  const hargaTanah  = parseFloat(document.getElementById('mapr-harga-tanah')?.value)    || 0;
+  const hargaBangunan=parseFloat(document.getElementById('mapr-harga-bangunan')?.value) || 0;
+  const hargaPasarM2= parseFloat(document.getElementById('mapr-harga-pasar')?.value)    || 0;
+  const lokasiScore = parseInt(document.getElementById('mapr-lokasi')?.value)           || 3;
+  const feeAgen     = parseFloat(document.getElementById('mapr-fee')?.value)            || 0;
+  const tahunBangun = document.getElementById('mapr-tahun')?.value || '';
+  const namaPemilik = (document.getElementById('mapr-nama-pemilik')?.value || '').trim();
+  const alamat      = (document.getElementById('mapr-alamat')?.value || '').trim();
+
+  const koefMap = {1:1.0, 2:1.1, 3:1.2, 4:1.35, 5:1.5};
+  const koef = koefMap[lokasiScore] || 1.2;
+
+  let hargaWajarDasar = 0;
+  if (tipe === 'tanah') hargaWajarDasar = luasTanah * hargaTanah;
+  else if (tipe === 'apartemen') hargaWajarDasar = luasBangunan * (hargaPasarM2 > 0 ? hargaPasarM2 : hargaBangunan);
+  else hargaWajarDasar = (luasTanah * hargaTanah) + (luasBangunan * hargaBangunan);
+
+  if (hargaWajarDasar <= 0) { showToast('Isi data luas dan harga properti terlebih dahulu', 'error'); return; }
+
+  const fmtRp = n => 'Rp ' + Math.round(n).toLocaleString('id-ID');
+  const usiaB = tahunBangun ? (new Date().getFullYear() - Number(tahunBangun)) : null;
+  const hargaWajarMax = (tipe === 'apartemen') ? hargaWajarDasar : Math.round(hargaWajarDasar * koef);
+
+  const infoBlock = (namaPemilik || alamat) ? `
+    <div style="background:#131F38;border-radius:14px;padding:12px 16px;margin-bottom:12px;border:1px solid rgba(212,168,83,0.2)">
+      <p style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Data Properti</p>
+      ${namaPemilik ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:${alamat?'6px':'0'}"><i class="fa-solid fa-user" style="color:#D4A853;font-size:11px;width:14px"></i><span style="font-size:13px;font-weight:600;color:#fff">${namaPemilik}</span></div>` : ''}
+      ${alamat ? `<div style="display:flex;align-items:flex-start;gap:8px"><i class="fa-solid fa-location-dot" style="color:rgba(212,168,83,0.6);font-size:11px;width:14px;margin-top:2px"></i><span style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.4">${alamat}</span></div>` : ''}
+    </div>` : '';
+
+  let html = '';
+  if (transaksi === 'jual') {
+    const biayaAgen = Math.round((feeAgen/100) * hargaWajarMax);
+    const biayaPph  = Math.round(0.025 * hargaWajarMax);
+    const biayaLain = Math.round(0.01  * hargaWajarMax);
+    const totalBiaya = biayaAgen + biayaPph + biayaLain;
+    const estimasiJual = Math.round(hargaWajarMax + totalBiaya);
+    const nettPenjual  = Math.round(hargaWajarMax - totalBiaya);
+    html = `
+      <div style="background:linear-gradient(135deg,#1C2D52,#131F38);border-radius:18px;padding:20px;border:1px solid rgba(212,168,83,0.2);margin-bottom:12px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Estimasi Harga Jual</p>
+        <p style="font-size:28px;font-weight:700;color:#D4A853;margin-bottom:8px">${fmtRp(estimasiJual)}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📍 Lokasi ${lokasiScore}/5 (×${koef})</span>
+          ${usiaB!==null?`<span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">🏗️ Usia ${usiaB} tahun</span>`:''}
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Rincian Penilaian</p>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)"><span style="font-size:13px;color:rgba(255,255,255,0.55)">Harga Wajar Dasar</span><span style="font-weight:600;color:#fff">${fmtRp(hargaWajarDasar)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0"><span style="font-size:13px;color:rgba(255,255,255,0.55)">Harga Wajar Max (×${koef})</span><span style="font-weight:600;color:#fff">${fmtRp(hargaWajarMax)}</span></div>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Rincian Biaya</p>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:rgba(255,255,255,0.5)">Fee Agen (${feeAgen}%)</span><span style="font-size:12px;font-weight:600;color:#D4A853">${fmtRp(biayaAgen)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:rgba(255,255,255,0.5)">PPh (2.5%)</span><span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.7)">${fmtRp(biayaPph)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:rgba(255,255,255,0.5)">Biaya Lain-lain (1%)</span><span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.7)">${fmtRp(biayaLain)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:4px;border-top:1px solid rgba(255,255,255,0.07)"><span style="font-weight:700;color:#fff">Total Biaya</span><span style="font-weight:700;color:#f87171;font-size:15px">${fmtRp(totalBiaya)}</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:14px;text-align:center">
+          <p style="font-size:11px;color:rgba(74,222,128,0.7);margin:0 0 6px">Nett Penjual</p>
+          <p style="font-size:14px;font-weight:700;color:#4ade80;margin:0">${fmtRp(nettPenjual)}</p>
+        </div>
+        <div style="background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.2);border-radius:14px;padding:14px;text-align:center">
+          <p style="font-size:11px;color:rgba(212,168,83,0.7);margin:0 0 6px">Estimasi Jual</p>
+          <p style="font-size:14px;font-weight:700;color:#D4A853;margin:0">${fmtRp(estimasiJual)}</p>
+        </div>
+      </div>`;
+    window._aprLastResult = { tipe, transaksi, namaPemilik, alamat,
+      sertifikat: document.getElementById('mapr-sertifikat')?.value || '',
+      luasTanah, luasBangunan, hargaTanah, hargaBangunan, hargaPasarM2,
+      lokasiScore, koef, feeAgen, usiaB, hargaWajarDasar, hargaWajarMax,
+      biayaAgen, biayaPph, biayaLain, totalBiaya,
+      estimasi: estimasiJual, nett: nettPenjual,
+      tanggal: new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}), fmtRp };
+  } else {
+    const sewaPctMap = {rumah:0.03, ruko:0.035, apartemen:0.07, gudang:0.05, tanah:0.02};
+    const sewaPct = sewaPctMap[tipe] || 0.03;
+    const nilaiSewa  = Math.round(hargaWajarMax * sewaPct);
+    const biayaAgen  = Math.round((feeAgen/100) * nilaiSewa);
+    const biayaPph   = Math.round(0.10 * nilaiSewa);
+    const totalBiaya = biayaAgen + biayaPph;
+    const estimasiSewa = Math.round(nilaiSewa + totalBiaya);
+    const nettPenjual  = Math.round(nilaiSewa - totalBiaya);
+    html = `
+      <div style="background:linear-gradient(135deg,#1C2D52,#131F38);border-radius:18px;padding:20px;border:1px solid rgba(212,168,83,0.2);margin-bottom:12px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Estimasi Harga Sewa / Tahun</p>
+        <p style="font-size:28px;font-weight:700;color:#D4A853;margin-bottom:8px">${fmtRp(estimasiSewa)}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📍 Lokasi ${lokasiScore}/5 (×${koef})</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);padding:3px 10px;border-radius:20px">📊 Yield ${(sewaPct*100)}%/thn</span>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Rincian Penilaian</p>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)"><span style="font-size:13px;color:rgba(255,255,255,0.55)">Harga Wajar Dasar</span><span style="font-weight:600;color:#fff">${fmtRp(hargaWajarDasar)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)"><span style="font-size:13px;color:rgba(255,255,255,0.55)">Harga Wajar Max (×${koef})</span><span style="font-weight:600;color:#fff">${fmtRp(hargaWajarMax)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0"><span style="font-size:13px;color:rgba(255,255,255,0.55)">Nilai Sewa (${(sewaPct*100)}%/thn)</span><span style="font-weight:600;color:#fff">${fmtRp(nilaiSewa)}</span></div>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Rincian Biaya</p>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:rgba(255,255,255,0.5)">Fee Agen (${feeAgen}%)</span><span style="font-size:12px;font-weight:600;color:#D4A853">${fmtRp(biayaAgen)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:rgba(255,255,255,0.5)">PPh (10% dari nilai sewa)</span><span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.7)">${fmtRp(biayaPph)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:4px;border-top:1px solid rgba(255,255,255,0.07)"><span style="font-weight:700;color:#fff">Total Biaya</span><span style="font-weight:700;color:#f87171;font-size:15px">${fmtRp(totalBiaya)}</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:14px;text-align:center">
+          <p style="font-size:11px;color:rgba(74,222,128,0.7);margin:0 0 6px">Nett Pemilik</p>
+          <p style="font-size:14px;font-weight:700;color:#4ade80;margin:0">${fmtRp(nettPenjual)}</p>
+        </div>
+        <div style="background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.2);border-radius:14px;padding:14px;text-align:center">
+          <p style="font-size:11px;color:rgba(212,168,83,0.7);margin:0 0 6px">Estimasi Sewa/Thn</p>
+          <p style="font-size:14px;font-weight:700;color:#D4A853;margin:0">${fmtRp(estimasiSewa)}</p>
+        </div>
+      </div>`;
+    window._aprLastResult = { tipe, transaksi, namaPemilik, alamat,
+      sertifikat: document.getElementById('mapr-sertifikat')?.value || '',
+      luasTanah, luasBangunan, hargaTanah, hargaBangunan, hargaPasarM2,
+      lokasiScore, koef, feeAgen, usiaB, hargaWajarDasar, hargaWajarMax,
+      sewaPct, nilaiSewa, biayaAgen, biayaPph, totalBiaya,
+      estimasi: estimasiSewa, nett: nettPenjual,
+      tanggal: new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}), fmtRp };
+  }
+
+  const saveBar = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+      <button onclick="saveApraisalResult('pdf')" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;background:#D4A853;color:#0D1526;font-size:13px;font-weight:700;border:none;cursor:pointer">
+        <i class="fa-solid fa-file-pdf"></i> Simpan PDF
+      </button>
+      <button onclick="saveApraisalResult('png')" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;background:#131F38;color:#fff;font-size:13px;font-weight:700;border:1px solid rgba(255,255,255,0.15);cursor:pointer">
+        <i class="fa-solid fa-image"></i> Simpan PNG
+      </button>
+    </div>`;
+
+  const resultEl = document.getElementById('mapr-result');
+  resultEl.innerHTML = infoBlock + html + saveBar;
+  resultEl.style.display = 'block';
+  setTimeout(() => resultEl.scrollIntoView({behavior:'smooth', block:'start'}), 50);
 }

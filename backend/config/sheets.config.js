@@ -76,6 +76,8 @@ const SHEETS = {
   ELITE_QUIZ_RESULTS: 'ELITE_QUIZ_RESULTS',
   // ★ Kontrak ELITE — Surat Perjanjian ELITE Program (public form submission)
   ELITE_KONTRAK: 'ELITE_KONTRAK',
+  // ★ CameraX — Camera Roll per-agen (foto belum/sudah di-assign ke listing)
+  CAMERA_ROLL:  'CAMERA_ROLL',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -816,6 +818,20 @@ const COLUMNS = {
     'Setuju',            // H  TRUE|FALSE — centang [v] Setuju dengan Perjanjian
     'Program_Synced',    // I  TRUE|FALSE — berhasil auto-update ELITE_PROGRAM
     'IP_Address',        // J  jejak submission
+  ],
+
+  // ★ CAMERA_ROLL — Foto yang diambil via CameraX, bisa di-assign ke listing kapan saja
+  CAMERA_ROLL: [
+    'ID',            // A  UUID
+    'Agent_ID',      // B  FK ke AGENTS
+    'Agent_Nama',    // C
+    'Sesi_Label',    // D  Label lokasi (nama jalan/area, diisi agen, opsional)
+    'Foto_URL',      // E  Cloudinary secure_url
+    'Cloudinary_ID', // F  public_id untuk delete
+    'Listing_ID',    // G  FK ke LISTING — kosong = belum di-assign
+    'Listing_Judul', // H  cache judul listing (diisi saat assign)
+    'Tanggal',       // I  YYYY-MM-DD
+    'Created_At',    // J  ISO datetime
   ],
 
 };

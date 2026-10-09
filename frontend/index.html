@@ -227,27 +227,204 @@
           <span id="hero-status" style="font-size:10px;color:rgba(255,255,255,0.4)">● Aktif</span>
         </div>
       </div>
+      <!-- hidden compat elements (dipakai JS dual-dashboard) -->
+      <div style="display:none"><span id="stat-listings">0</span><span id="stat-leads">0</span><span id="stat-conversion">0</span></div>
+
+      <!-- ── STATS BAR: 3 kolom ── -->
+      <div style="padding:0 16px 16px">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+
+          <!-- Listing -->
+          <div class="card animate-fade-up" style="animation-delay:0.05s;padding:12px 10px;cursor:pointer" onclick="navigateTo('listings')">
+            <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:9px;text-align:center">Listing</div>
+            <!-- normal view: agen/admin -->
+            <div id="listing-normal-view" style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;color:rgba(255,255,255,0.5)">Jual</span>
+                <span id="stat-jual" style="font-size:20px;font-weight:700;color:#2B7BFF;line-height:1">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;color:rgba(255,255,255,0.5)">Sewa</span>
+                <span id="stat-sewa" style="font-size:20px;font-weight:700;color:#22C55E;line-height:1">—</span>
+              </div>
+            </div>
+            <!-- dual view: BM / Principal (Tim · Saya) -->
+            <div id="listing-dual-view" style="display:none;flex-direction:column;gap:4px">
+              <div style="font-size:8px;color:rgba(255,255,255,0.25);text-align:right;margin-bottom:1px">Tim · Sy</div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;color:#2B7BFF">Jual</span>
+                <div style="display:flex;gap:3px;align-items:baseline">
+                  <span id="stat-jual-tim" style="font-size:16px;font-weight:700;color:#2B7BFF;line-height:1">—</span>
+                  <span style="font-size:9px;color:rgba(255,255,255,0.2)">·</span>
+                  <span id="stat-jual-own" style="font-size:13px;font-weight:600;color:rgba(43,123,255,0.55);line-height:1">—</span>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;color:#22C55E">Sewa</span>
+                <div style="display:flex;gap:3px;align-items:baseline">
+                  <span id="stat-sewa-tim" style="font-size:16px;font-weight:700;color:#22C55E;line-height:1">—</span>
+                  <span style="font-size:9px;color:rgba(255,255,255,0.2)">·</span>
+                  <span id="stat-sewa-own" style="font-size:13px;font-weight:600;color:rgba(34,197,94,0.55);line-height:1">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leads -->
+          <div class="card animate-fade-up" style="animation-delay:0.1s;padding:12px 10px;cursor:pointer" onclick="navigateTo('leads')">
+            <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:9px;text-align:center">Leads</div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;color:#ef4444">Hot</span>
+                <span id="stat-hot" style="font-size:16px;font-weight:700;color:#ef4444;line-height:1">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;color:#f59e0b">Warm</span>
+                <span id="stat-warm" style="font-size:16px;font-weight:700;color:#f59e0b;line-height:1">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;color:#60a5fa">Cold</span>
+                <span id="stat-cold" style="font-size:16px;font-weight:700;color:#60a5fa;line-height:1">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Schedule -->
+          <div class="card animate-fade-up" style="animation-delay:0.15s;padding:12px 10px;cursor:pointer" onclick="navigateTo('tasks')">
+            <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:9px;text-align:center">Schedule</div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;color:rgba(255,255,255,0.5)">Today</span>
+                <span id="stat-sched-today" style="font-size:16px;font-weight:700;color:#D4A853;line-height:1">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;color:rgba(255,255,255,0.5)">Next</span>
+                <span id="stat-sched-next" style="font-size:16px;font-weight:700;color:#a78bfa;line-height:1">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;color:rgba(255,255,255,0.5)">Done</span>
+                <span id="stat-sched-done" style="font-size:16px;font-weight:700;color:#4ade80;line-height:1">—</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── MY MENU 4×3 ── -->
       <div style="padding:0 16px 20px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div class="card animate-fade-up" style="animation-delay:0.05s">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:32px;height:32px;border-radius:10px;background:rgba(43,123,255,0.15);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-house" style="color:#2B7BFF;font-size:11px"></i></div><span style="color:rgba(255,255,255,0.55);font-size:11px">Listing Aktif</span></div>
-            <div id="stat-listings" style="font-size:32px;font-weight:700;color:#fff">—</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px">properti tersedia</div>
-          </div>
-          <div class="card animate-fade-up" style="animation-delay:0.1s">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:32px;height:32px;border-radius:10px;background:rgba(168,85,247,0.15);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-users" style="color:#a855f7;font-size:11px"></i></div><span style="color:rgba(255,255,255,0.55);font-size:11px">Total Leads</span></div>
-            <div id="stat-leads" style="font-size:32px;font-weight:700;color:#fff">—</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px">calon pembeli</div>
-          </div>
-          <div class="card animate-fade-up" style="animation-delay:0.15s;border-color:rgba(239,68,68,0.2)">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:32px;height:32px;border-radius:10px;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-fire" style="color:#ef4444;font-size:11px"></i></div><span style="color:rgba(255,255,255,0.55);font-size:11px">Hot Leads</span></div>
-            <div id="stat-hot" style="font-size:32px;font-weight:700;color:#ef4444">—</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px">perlu follow up</div>
-          </div>
-          <div class="animate-fade-up" style="animation-delay:0.2s;background:linear-gradient(135deg,rgba(212,168,83,0.2),rgba(212,168,83,0.05));border-radius:18px;padding:16px;border:1px solid rgba(212,168,83,0.2)">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:32px;height:32px;border-radius:10px;background:rgba(212,168,83,0.2);display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-chart-line" style="color:#D4A853;font-size:11px"></i></div><span style="color:rgba(212,168,83,0.7);font-size:11px">Konversi</span></div>
-            <div id="stat-conversion" style="font-size:32px;font-weight:700;color:#D4A853">—</div>
-            <div style="font-size:11px;color:rgba(212,168,83,0.45);margin-top:2px">leads → closing</div>
+        <h3 style="color:rgba(255,255,255,0.55);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:10px">My Menu</h3>
+        <div style="background:#131F38;border-radius:20px;padding:20px 10px 16px;border:1px solid rgba(255,255,255,0.06)">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px 4px;text-align:center">
+
+            <!-- R1: Listing -->
+            <button onclick="navigateTo('listings')" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(43,123,255,0.12);border:1.5px solid rgba(43,123,255,0.25);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-building" style="color:#2B7BFF;font-size:17px"></i>
+              </div>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85);line-height:1.2">Listing</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">Properti</span>
+            </button>
+
+            <!-- R1: Primary -->
+            <button onclick="navigateTo('primary')" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(212,168,83,0.1);border:1.5px solid rgba(212,168,83,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-city" style="color:#D4A853;font-size:17px"></i>
+              </div>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">Primary</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">Proyek</span>
+            </button>
+
+            <!-- R1: Aset -->
+            <button onclick="navigateTo('asset')" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(245,158,11,0.1);border:1.5px solid rgba(245,158,11,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-gavel" style="color:#f59e0b;font-size:17px"></i>
+              </div>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">Aset</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">Lelang</span>
+            </button>
+
+            <!-- R1: Kalkulator -->
+            <button onclick="navigateTo('calculator')" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(212,168,83,0.1);border:1.5px solid rgba(212,168,83,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-calculator" style="color:#D4A853;font-size:17px"></i>
+              </div>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">Kalkulator</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">KPR/APR</span>
+            </button>
+
+            <!-- R2: Leads -->
+            <button onclick="navigateTo('leads')" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.22);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-users" style="color:#a855f7;font-size:17px"></i>
+              </div>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">Leads</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">Kontak</span>
+            </button>
+
+            <!-- R2: Jadwal -->
+            <button onclick="navigateTo('tasks')" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(34,197,94,0.1);border:1.5px solid rgba(34,197,94,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-calendar-check" style="color:#22C55E;font-size:17px"></i>
+              </div>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">Jadwal</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">Aktivitas</span>
+            </button>
+
+            <!-- R2: Materi Training -->
+            <button onclick="navigateTo('training')" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(212,168,83,0.1);border:1.5px solid rgba(212,168,83,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-graduation-cap" style="color:#D4A853;font-size:15px"></i>
+              </div>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85);line-height:1.2">Materi<br>Training</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">Edukasi</span>
+            </button>
+
+            <!-- R2: Komisi -->
+            <button onclick="navigateTo('komisi')" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(212,168,83,0.12);border:1.5px solid rgba(212,168,83,0.25);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-money-bill-wave" style="color:#D4A853;font-size:15px"></i>
+              </div>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">Komisi</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">Request</span>
+            </button>
+
+            <!-- R3: CameraX -->
+            <button onclick="openCameraModal()" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(251,146,60,0.1);border:1.5px solid rgba(251,146,60,0.22);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-camera" style="color:#fb923c;font-size:17px"></i>
+              </div>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">CameraX</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">Foto</span>
+            </button>
+
+            <!-- R3: Compass Geotag -->
+            <button onclick="openCompassModal()" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(129,140,248,0.1);border:1.5px solid rgba(129,140,248,0.22);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-compass" style="color:#818cf8;font-size:17px"></i>
+              </div>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">Compass</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">Geotag</span>
+            </button>
+
+            <!-- R3: Appraisal -->
+            <button onclick="openAppraisalModal()" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(212,168,83,0.1);border:1.5px solid rgba(212,168,83,0.22);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-chart-line" style="color:#D4A853;font-size:16px"></i>
+              </div>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">Appraisal</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">Valuasi</span>
+            </button>
+
+            <!-- R3: Profil -->
+            <button onclick="openSettings()" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-circle-user" style="color:rgba(255,255,255,0.55);font-size:19px"></i>
+              </div>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">Profil</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">Pengaturan</span>
+            </button>
+
           </div>
         </div>
       </div>
@@ -3105,7 +3282,10 @@
         <div id="apl-selected-info" style="font-size:12px;color:#D4A853;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);border-radius:10px;padding:10px 12px;margin-bottom:14px"></div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <div>
-            <label class="form-label">Foto Utama *</label>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+              <label class="form-label" style="margin:0">Foto Utama *</label>
+              <button onclick="openRollPicker(1)" style="font-size:10px;padding:4px 10px;border-radius:8px;background:rgba(251,146,60,0.12);border:1px solid rgba(251,146,60,0.3);color:#fb923c;cursor:pointer;font-weight:600"><i class="fa-solid fa-camera" style="margin-right:4px"></i>Dari Roll</button>
+            </div>
             <div style="position:relative">
               <div id="apl-prev1" style="width:100%;height:120px;background:#131F38;border:2px dashed rgba(212,168,83,0.3);border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden">
                 <i class="fa-solid fa-image" style="color:rgba(255,255,255,0.15);font-size:28px"></i>
@@ -3115,7 +3295,10 @@
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div>
-              <label class="form-label">Foto 2 (opsional)</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+                <label class="form-label" style="margin:0;font-size:11px">Foto 2</label>
+                <button onclick="openRollPicker(2)" style="font-size:9px;padding:3px 8px;border-radius:7px;background:rgba(251,146,60,0.1);border:1px solid rgba(251,146,60,0.25);color:#fb923c;cursor:pointer"><i class="fa-solid fa-camera"></i></button>
+              </div>
               <div style="position:relative">
                 <div id="apl-prev2" style="height:90px;background:#131F38;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden">
                   <i class="fa-solid fa-plus" style="color:rgba(255,255,255,0.15);font-size:18px"></i>
@@ -3124,7 +3307,10 @@
               </div>
             </div>
             <div>
-              <label class="form-label">Foto 3 (opsional)</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+                <label class="form-label" style="margin:0;font-size:11px">Foto 3</label>
+                <button onclick="openRollPicker(3)" style="font-size:9px;padding:3px 8px;border-radius:7px;background:rgba(251,146,60,0.1);border:1px solid rgba(251,146,60,0.25);color:#fb923c;cursor:pointer"><i class="fa-solid fa-camera"></i></button>
+              </div>
               <div style="position:relative">
                 <div id="apl-prev3" style="height:90px;background:#131F38;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden">
                   <i class="fa-solid fa-plus" style="color:rgba(255,255,255,0.15);font-size:18px"></i>
@@ -3139,6 +3325,339 @@
           <button id="apl-save-btn" onclick="aplSave()" class="btn-gold" style="flex:1"><i class="fa-solid fa-cloud-upload-alt" style="margin-right:6px"></i>Simpan Foto</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MODAL: CameraX — Live Camera + Capture              -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="modal-camera" style="display:none;position:fixed;inset:0;z-index:60;background:#000;flex-direction:column">
+  <!-- Top bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top,0px));background:rgba(0,0,0,0.6);backdrop-filter:blur(8px)">
+    <button onclick="closeCameraModal()" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.12);border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <span style="color:#fff;font-size:14px;font-weight:600;letter-spacing:0.04em">CameraX</span>
+    <button onclick="openCameraRoll()" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.12);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative">
+      <i class="fa-solid fa-images" style="font-size:14px"></i>
+      <span id="cam-roll-count" style="display:none;position:absolute;top:-3px;right:-3px;background:#fb923c;color:#000;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;align-items:center;justify-content:center"></span>
+    </button>
+  </div>
+
+  <!-- Video area -->
+  <div id="cam-viewfinder" style="flex:1;position:relative;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center">
+    <video id="cam-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+    <!-- Grid overlay — rule of thirds -->
+    <div style="position:absolute;inset:0;pointer-events:none">
+      <div style="position:absolute;left:33.33%;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.18)"></div>
+      <div style="position:absolute;left:66.66%;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.18)"></div>
+      <div style="position:absolute;top:33.33%;left:0;right:0;height:1px;background:rgba(255,255,255,0.18)"></div>
+      <div style="position:absolute;top:66.66%;left:0;right:0;height:1px;background:rgba(255,255,255,0.18)"></div>
+    </div>
+    <!-- Preview overlay (setelah capture) -->
+    <div id="cam-preview-overlay" style="display:none;position:absolute;inset:0;background:#000">
+      <img id="cam-preview-img" src="" alt="" style="width:100%;height:100%;object-fit:contain"/>
+    </div>
+    <!-- No camera message -->
+    <div id="cam-no-support" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#0D1526">
+      <i class="fa-solid fa-camera-slash" style="color:rgba(255,255,255,0.3);font-size:48px"></i>
+      <p style="color:rgba(255,255,255,0.5);font-size:13px;text-align:center;padding:0 32px">Kamera tidak tersedia atau izin ditolak. Pastikan browser sudah diberi izin kamera.</p>
+    </div>
+  </div>
+
+  <!-- Bottom controls: LIVE mode -->
+  <div id="cam-controls-live" style="padding:20px 24px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));background:rgba(0,0,0,0.7);backdrop-filter:blur(8px)">
+    <!-- Label input -->
+    <div style="margin-bottom:16px">
+      <input id="cam-label" type="text" placeholder="Label lokasi (opsional — cth: Jl. Raya Darmo)" maxlength="60"
+        style="width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px 14px;font-size:13px;color:#fff;outline:none"/>
+    </div>
+    <!-- Capture row -->
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <!-- Flash toggle -->
+      <button id="cam-flash-btn" onclick="toggleCameraFlash()" style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.12);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+        <i id="cam-flash-icon" class="fa-solid fa-bolt-slash" style="font-size:16px;color:rgba(255,255,255,0.5)"></i>
+      </button>
+      <!-- Capture button -->
+      <button onclick="captureFromCamera()" style="width:70px;height:70px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px rgba(255,255,255,0.15)">
+        <div style="width:56px;height:56px;border-radius:50%;background:#fff"></div>
+      </button>
+      <!-- Flip camera -->
+      <button onclick="flipCamera()" style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.12);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+        <i class="fa-solid fa-camera-rotate" style="font-size:16px"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom controls: PREVIEW mode (setelah capture) -->
+  <div id="cam-controls-preview" style="display:none;padding:20px 16px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);gap:12px;flex-direction:column">
+    <div id="cam-save-status" style="text-align:center;font-size:12px;color:rgba(255,255,255,0.5);min-height:18px"></div>
+    <div style="display:flex;gap:12px">
+      <button onclick="retakePhoto()" style="flex:1;padding:14px;border-radius:12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:13px;font-weight:600;cursor:pointer">
+        <i class="fa-solid fa-rotate-left" style="margin-right:6px"></i>Foto Lagi
+      </button>
+      <button onclick="saveToCameraRoll()" id="cam-save-btn" style="flex:2;padding:14px;border-radius:12px;background:#fb923c;border:none;color:#000;font-size:13px;font-weight:700;cursor:pointer">
+        <i class="fa-solid fa-floppy-disk" style="margin-right:6px"></i>Simpan ke Roll
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MODAL: Camera Roll — Galeri foto yang sudah diambil  -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="modal-camera-roll" class="modal-overlay">
+  <div class="modal-sheet" style="max-height:88vh">
+    <div class="mheader">
+      <div class="drag-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff"><i class="fa-solid fa-images" style="color:#fb923c;margin-right:8px"></i>Camera Roll</h3>
+        <button onclick="closeModal('modal-camera-roll')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="mbody" style="padding-bottom:20px">
+      <button onclick="openCameraModal()" style="width:100%;padding:12px;border-radius:12px;background:rgba(251,146,60,0.12);border:1px dashed rgba(251,146,60,0.4);color:#fb923c;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">
+        <i class="fa-solid fa-camera"></i>Ambil Foto Baru
+      </button>
+      <div id="roll-filter-bar" style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="chip on" onclick="setRollFilter('all',this)">Semua</button>
+        <button class="chip" onclick="setRollFilter('unassigned',this)">Belum Assign</button>
+        <button class="chip" onclick="setRollFilter('assigned',this)">Sudah Assign</button>
+      </div>
+      <div id="roll-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        <div class="skeleton" style="aspect-ratio:1;border-radius:10px"></div>
+        <div class="skeleton" style="aspect-ratio:1;border-radius:10px"></div>
+        <div class="skeleton" style="aspect-ratio:1;border-radius:10px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Roll Picker — pilih foto dari roll untuk slot listing -->
+<div id="modal-roll-picker" class="modal-overlay">
+  <div class="modal-sheet" style="max-height:80vh">
+    <div class="mheader">
+      <div class="drag-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-size:16px;color:#fff"><i class="fa-solid fa-camera" style="color:#fb923c;margin-right:8px"></i>Pilih dari Camera Roll</h3>
+        <button onclick="closeModal('modal-roll-picker')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="mbody">
+      <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:12px">Pilih foto untuk slot <span id="roll-picker-slot-label" style="color:#fb923c;font-weight:600">Foto Utama</span>:</p>
+      <div id="roll-picker-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:55vh;overflow-y:auto">
+        <div class="skeleton" style="aspect-ratio:1;border-radius:10px"></div>
+        <div class="skeleton" style="aspect-ratio:1;border-radius:10px"></div>
+      </div>
+      <p id="roll-picker-empty" style="display:none;text-align:center;color:rgba(255,255,255,0.3);font-size:12px;padding:24px 0">
+        Belum ada foto di Camera Roll.<br>
+        <button onclick="closeModal('modal-roll-picker');openCameraModal()" style="margin-top:10px;padding:8px 16px;border-radius:10px;background:rgba(251,146,60,0.12);border:1px solid rgba(251,146,60,0.3);color:#fb923c;font-size:12px;cursor:pointer">Ambil Foto Sekarang</button>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Compass Geotag -->
+<div id="modal-compass" class="modal-overlay">
+  <div class="modal-sheet" style="max-height:85vh">
+    <div class="mheader">
+      <div class="drag-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff"><i class="fa-solid fa-compass" style="color:#818cf8;margin-right:8px"></i>Kompas Properti</h3>
+        <button onclick="closeCompassModal()" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="mbody" style="text-align:center;padding-bottom:24px">
+      <!-- Compass rose -->
+      <div style="position:relative;width:180px;height:180px;margin:16px auto 12px">
+        <div id="compass-rose" style="width:180px;height:180px;border-radius:50%;border:2px solid rgba(129,140,248,0.25);background:radial-gradient(circle,#1e2d4a 0%,#0D1526 100%);position:relative;display:flex;align-items:center;justify-content:center;transition:transform 0.25s ease">
+          <span style="position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:12px;font-weight:700;color:#ef4444">U</span>
+          <span style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;color:rgba(255,255,255,0.35)">S</span>
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:600;color:rgba(255,255,255,0.35)">T</span>
+          <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:600;color:rgba(255,255,255,0.35)">B</span>
+          <!-- Tick marks -->
+          <div style="position:absolute;inset:4px;border-radius:50%;border:1px dashed rgba(255,255,255,0.06)"></div>
+          <!-- Needle -->
+          <div style="display:flex;flex-direction:column;align-items:center;height:120px">
+            <div style="width:3px;height:60px;background:linear-gradient(to bottom,#ef4444,rgba(239,68,68,0.4));border-radius:3px 3px 0 0"></div>
+            <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #ef4444;margin-top:-2px"></div>
+            <div style="width:3px;height:55px;background:rgba(255,255,255,0.2);border-radius:0 0 3px 3px;margin-top:4px"></div>
+          </div>
+          <!-- Center dot -->
+          <div style="position:absolute;width:10px;height:10px;border-radius:50%;background:#131F38;border:2px solid rgba(255,255,255,0.3)"></div>
+        </div>
+      </div>
+      <div id="compass-heading" style="font-size:40px;font-weight:700;color:#fff;letter-spacing:-0.02em;line-height:1">—°</div>
+      <div id="compass-direction" style="font-size:16px;color:#818cf8;margin:4px 0 16px;letter-spacing:0.06em">—</div>
+
+      <!-- GPS info -->
+      <div style="background:#131F38;border-radius:14px;padding:12px 16px;margin:0 16px 14px;text-align:left">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4)"><i class="fa-solid fa-location-dot" style="margin-right:5px;color:#818cf8"></i>Latitude</span>
+          <span id="compass-lat" style="font-size:12px;font-weight:600;color:#fff">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4)"><i class="fa-solid fa-location-dot" style="margin-right:5px;color:#818cf8"></i>Longitude</span>
+          <span id="compass-lng" style="font-size:12px;font-weight:600;color:#fff">—</span>
+        </div>
+      </div>
+
+      <div id="compass-activate-btn" style="padding:0 16px">
+        <button onclick="requestCompassPermission()" style="width:100%;padding:13px;border-radius:12px;background:rgba(129,140,248,0.12);border:1px solid rgba(129,140,248,0.3);color:#818cf8;font-size:13px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-crosshairs" style="margin-right:7px"></i>Aktifkan Sensor Kompas
+        </button>
+      </div>
+
+      <!-- Simpan Koordinat ke Listing / Aset -->
+      <div style="padding:0 16px;margin-top:16px">
+        <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:14px">
+          <div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">
+            <i class="fa-solid fa-floppy-disk" style="margin-right:5px;color:#818cf8"></i>Simpan Koordinat ke
+          </div>
+          <!-- Toggle Listing / Aset -->
+          <div style="display:flex;gap:6px;background:#131F38;border-radius:10px;padding:3px;margin-bottom:12px">
+            <button id="compass-mode-listing" onclick="setCompassMode('listing')" class="chip on" style="flex:1;padding:8px;border-radius:8px;font-size:11px"><i class="fa-solid fa-building" style="margin-right:4px"></i>Listing</button>
+            <button id="compass-mode-aset" onclick="setCompassMode('aset')" class="chip" style="flex:1;padding:8px;border-radius:8px;font-size:11px"><i class="fa-solid fa-landmark" style="margin-right:4px"></i>Aset</button>
+          </div>
+          <div id="compass-selected-info" style="display:none;font-size:12px;color:#D4A853;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.2);border-radius:10px;padding:8px 12px;margin-bottom:10px">
+            <i class="fa-solid fa-circle-check" style="margin-right:5px"></i><span id="compass-selected-name"></span>
+          </div>
+          <input type="search" id="compass-picker-search" placeholder="Cari..." oninput="_filterPickerListings('compass-picker-list',this.value)" class="form-input" style="margin-bottom:8px;font-size:13px"/>
+          <div id="compass-picker-list" style="max-height:160px;overflow-y:auto"></div>
+          <button id="compass-save-btn" onclick="saveCompassCoords()" disabled style="width:100%;margin-top:12px;padding:12px;border-radius:12px;background:rgba(129,140,248,0.12);border:1px solid rgba(129,140,248,0.3);color:#818cf8;font-size:13px;font-weight:600;cursor:pointer;opacity:0.5">
+            <i class="fa-solid fa-floppy-disk" style="margin-right:6px"></i>Simpan ke Listing
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Kalkulator Appraisal -->
+<div id="modal-appraisal" class="modal-overlay">
+  <div class="modal-sheet" style="max-height:92vh">
+    <div class="mheader">
+      <div class="drag-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:18px;color:#fff"><i class="fa-solid fa-scale-balanced" style="color:#D4A853;margin-right:8px"></i>Kalkulator Appraisal</h3>
+        <button onclick="closeModal('modal-appraisal')" style="width:30px;height:30px;border-radius:50%;background:#131F38;border:none;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="mbody" style="padding-bottom:24px">
+      <div class="card" style="margin-bottom:14px;display:flex;flex-direction:column;gap:14px">
+
+        <div>
+          <label class="form-label">Nama Pemilik Properti</label>
+          <input id="mapr-nama-pemilik" type="text" class="form-input" placeholder="Contoh: Budi Santoso"/>
+        </div>
+
+        <div>
+          <label class="form-label">Alamat Properti</label>
+          <textarea id="mapr-alamat" class="form-input" rows="2" placeholder="Contoh: Jl. Raya Darmo No. 10, Surabaya" style="resize:none;line-height:1.5"></textarea>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label class="form-label">Tipe Properti</label>
+            <select id="mapr-tipe" class="form-input" onchange="updateMaprFormVisibility()">
+              <option value="rumah">Rumah</option>
+              <option value="tanah">Tanah</option>
+              <option value="ruko">Ruko</option>
+              <option value="apartemen">Apartemen</option>
+              <option value="gudang">Gudang</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Transaksi</label>
+            <select id="mapr-transaksi" class="form-input">
+              <option value="jual">Jual</option>
+              <option value="sewa">Sewa</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="mapr-section-tanah">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label class="form-label">Luas Tanah (m²)</label>
+              <input id="mapr-luas-tanah" type="number" inputmode="numeric" class="form-input" placeholder="100" min="0"/>
+            </div>
+            <div>
+              <label class="form-label">Harga Tanah/m²</label>
+              <input id="mapr-harga-tanah" type="number" inputmode="numeric" class="form-input" placeholder="5000000" min="0"/>
+            </div>
+          </div>
+        </div>
+
+        <div id="mapr-section-bangunan">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label class="form-label">Luas Bangunan (m²)</label>
+              <input id="mapr-luas-bangunan" type="number" inputmode="numeric" class="form-input" placeholder="80" min="0"/>
+            </div>
+            <div>
+              <label class="form-label">Harga Bangunan/m²</label>
+              <input id="mapr-harga-bangunan" type="number" inputmode="numeric" class="form-input" placeholder="3000000" min="0"/>
+            </div>
+          </div>
+        </div>
+
+        <div id="mapr-section-pasar" style="display:none">
+          <label class="form-label">Harga Pasar/m² (Apartemen)</label>
+          <input id="mapr-harga-pasar" type="number" inputmode="numeric" class="form-input" placeholder="15000000" min="0"/>
+        </div>
+
+        <div>
+          <label class="form-label">Skor Lokasi (1–5)</label>
+          <div style="display:flex;gap:6px">
+            <button id="mapr-lokasi-btn-1" onclick="setMaprLokasiScore(1)" style="flex:1;padding:8px 0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:#131F38;color:rgba(255,255,255,0.55)">1</button>
+            <button id="mapr-lokasi-btn-2" onclick="setMaprLokasiScore(2)" style="flex:1;padding:8px 0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:#131F38;color:rgba(255,255,255,0.55)">2</button>
+            <button id="mapr-lokasi-btn-3" onclick="setMaprLokasiScore(3)" style="flex:1;padding:8px 0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:#D4A853;color:#0D1526">3</button>
+            <button id="mapr-lokasi-btn-4" onclick="setMaprLokasiScore(4)" style="flex:1;padding:8px 0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:#131F38;color:rgba(255,255,255,0.55)">4</button>
+            <button id="mapr-lokasi-btn-5" onclick="setMaprLokasiScore(5)" style="flex:1;padding:8px 0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:#131F38;color:rgba(255,255,255,0.55)">5</button>
+          </div>
+          <input type="hidden" id="mapr-lokasi" value="3"/>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">Terpencil</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.3)">Sangat Strategis</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label class="form-label">Fee Agen (%)</label>
+            <input id="mapr-fee" type="number" class="form-input" placeholder="2.5" min="0" max="10" step="0.5" value="2.5"/>
+          </div>
+          <div>
+            <label class="form-label">Tahun Bangun</label>
+            <input id="mapr-tahun" type="number" inputmode="numeric" class="form-input" placeholder="2010" min="1900" max="2030"/>
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">Jenis Sertifikat</label>
+          <select id="mapr-sertifikat" class="form-input">
+            <option value="SHM">SHM</option>
+            <option value="SHGB">SHGB</option>
+            <option value="AJB">AJB</option>
+            <option value="SHSRS">SHSRS</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+        </div>
+      </div>
+
+      <button onclick="hitungAppraisalModal()" class="btn-gold" style="width:100%;font-size:14px;padding:15px;border-radius:14px;margin-bottom:14px">
+        <i class="fa-solid fa-scale-balanced" style="margin-right:8px"></i>Hitung Appraisal
+      </button>
+
+      <div id="mapr-result" style="display:none"></div>
+
+      <div style="margin-top:14px;display:flex;gap:10px;background:#131F38;border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.06)">
+        <span style="font-size:15px;flex-shrink:0">💡</span>
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.5;margin:0">Hasil appraisal bersifat estimasi internal. Nilai final harus dikonfirmasi oleh appraisal resmi bersertifikat.</p>
+      </div>
+
     </div>
   </div>
 </div>

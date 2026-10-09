@@ -161,6 +161,7 @@ app.use('/api/v1/form-e1',            require('./routes/form-e1.routes'));
 app.use('/api/v1/elite-quiz',         require('./routes/elite-quiz.routes'));
 // ★ Kontrak ELITE — Surat Perjanjian ELITE Program (public, no auth)
 app.use('/api/v1/elite-kontrak',      require('./routes/elite-kontrak.routes'));
+app.use('/api/v1/camera-roll',        require('./routes/camera-roll.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)
 app.post('/api/v1/admin/trigger-rental-reminder', require('./middleware/auth.middleware').authMiddleware, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: 'Forbidden' });
@@ -314,6 +315,7 @@ async function migrateHeaders() {
     { sheet: SHEETS.AGENTS,         cols: COLUMNS.AGENTS },
     { sheet: SHEETS.RENTAL_STATUS,  cols: COLUMNS.RENTAL_STATUS },
     { sheet: SHEETS.VIGEN_JOBS,     cols: COLUMNS.VIGEN_JOBS },
+    { sheet: SHEETS.CAMERA_ROLL,    cols: COLUMNS.CAMERA_ROLL },
   ];
 
   // PROJECTS: enforce exact header (bukan append-only) agar tidak ada kolom duplikat

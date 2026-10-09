@@ -19,12 +19,17 @@ router.use(authMiddleware);
 // ── GET /dashboard/stats ──────────────────────────────────
 // ── Helper: hitung satu blok stats dari subset listing+leads+shareCount ──
 function _computeBlock(listings, leads, totalShareListing) {
-  const conv = tasksService.getConversionStats(leads);
+  const conv  = tasksService.getConversionStats(leads);
+  const aktif = listings.filter(l => l.Status_Listing === 'Aktif');
   return {
-    activeListings:       listings.filter(l => l.Status_Listing === 'Aktif').length,
+    activeListings:       aktif.length,
     totalListings:        listings.length,
+    jualListings:         aktif.filter(l => ['Jual','Dijual'].includes(l.Status_Transaksi)).length,
+    sewaListings:         aktif.filter(l => ['Sewa','Disewa','Disewakan'].includes(l.Status_Transaksi)).length,
     totalLeads:           leads.length,
     hotLeads:             leads.filter(l => l.Score === 'Hot').length,
+    warmLeads:            leads.filter(l => l.Score === 'Warm').length,
+    coldLeads:            leads.filter(l => l.Score === 'Cold').length,
     qualified_conversion: conv.qualified_cr,
     overall_conversion:   conv.overall_cr,
     selesai_leads:        conv.selesai,
@@ -125,13 +130,17 @@ router.get('/stats', async (req, res) => {
       }
     } catch (_) {}
 
+    const aktifListings = listings.filter(l => l.Status_Listing === 'Aktif');
     const stats = {
       totalListings:  listings.length,
-      activeListings: listings.filter(l => l.Status_Listing === 'Aktif').length,
+      activeListings: aktifListings.length,
       listingsOnWeb:  listings.filter(l => l.Tampilkan_di_Web === 'TRUE').length,
+      jualListings:   aktifListings.filter(l => ['Jual','Dijual'].includes(l.Status_Transaksi)).length,
+      sewaListings:   aktifListings.filter(l => ['Sewa','Disewa','Disewakan'].includes(l.Status_Transaksi)).length,
       totalLeads:     leads.length,
       hotLeads:       leads.filter(l => l.Score === 'Hot').length,
       warmLeads:      leads.filter(l => l.Score === 'Warm').length,
+      coldLeads:      leads.filter(l => l.Score === 'Cold').length,
       newLeads:       leads.filter(l => l.Status_Lead === 'Baru').length,
       buyerRequests:  leads.filter(l => l.Is_Buyer_Request === 'TRUE').length,
       dealsThisMonth: leads.filter(l => l.Status_Lead === 'Deal' && l.Updated_At?.startsWith(thisMonth)).length,
