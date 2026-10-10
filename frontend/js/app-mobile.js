@@ -12632,7 +12632,7 @@ function _updateFlashBtn() {
   const hasTorch = track?.getCapabilities?.()?.torch;
   const btn = document.getElementById('cam-flash-btn');
   if (btn) btn.style.opacity = hasTorch ? '1' : '0.3';
-  icon.className = _camFlashOn ? 'fa-solid fa-bolt' : 'fa-solid fa-bolt-slash';
+  icon.className = 'fa-solid fa-bolt'; // fa-bolt-slash hanya ada di FA Pro — status on/off lewat warna
   icon.style.color = _camFlashOn ? '#FACC15' : 'rgba(255,255,255,0.5)';
 }
 

@@ -3370,7 +3370,7 @@
   </div>
 
   <!-- Bottom controls: LIVE mode -->
-  <div id="cam-controls-live" style="padding:20px 24px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));background:rgba(0,0,0,0.7);backdrop-filter:blur(8px)">
+  <div id="cam-controls-live" style="flex-direction:column;padding:20px 24px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));background:rgba(0,0,0,0.7);backdrop-filter:blur(8px)">
     <!-- Label input -->
     <div style="margin-bottom:16px">
       <input id="cam-label" type="text" placeholder="Label lokasi (opsional — cth: Jl. Raya Darmo)" maxlength="60"
@@ -3380,7 +3380,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between">
       <!-- Flash toggle -->
       <button id="cam-flash-btn" onclick="toggleCameraFlash()" style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.12);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center">
-        <i id="cam-flash-icon" class="fa-solid fa-bolt-slash" style="font-size:16px;color:rgba(255,255,255,0.5)"></i>
+        <i id="cam-flash-icon" class="fa-solid fa-bolt" style="font-size:16px;color:rgba(255,255,255,0.5)"></i>
       </button>
       <!-- Capture button -->
       <button onclick="captureFromCamera()" style="width:70px;height:70px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px rgba(255,255,255,0.15)">
