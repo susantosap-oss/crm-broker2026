@@ -411,6 +411,8 @@ async function migrateHeaders() {
     { sheet: SHEETS.ELITE_QUIZ_RESULTS, cols: COLUMNS.ELITE_QUIZ_RESULTS },
     // ★ Kontrak ELITE — Surat Perjanjian ELITE Program
     { sheet: SHEETS.ELITE_KONTRAK,      cols: COLUMNS.ELITE_KONTRAK },
+    // ★ CameraX — Camera Roll per-agen
+    { sheet: SHEETS.CAMERA_ROLL,        cols: COLUMNS.CAMERA_ROLL },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)

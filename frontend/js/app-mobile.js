@@ -4676,11 +4676,13 @@ async function submitAddListing() {
   try {
     if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
 
+    let savedListingId = _editListingId;
     if (isEdit) {
       await API.put(`/listings/${_editListingId}`, formData, true);
       showToast('✅ Listing berhasil diupdate!', 'success');
     } else {
       const newListing = await API.post('/listings', formData, true);
+      savedListingId = newListing?.data?.ID || newListing?.ID || '';
       showToast('✅ Listing berhasil ditambahkan!', 'success');
       // Jika dari konversi canvasing → mark converted
       if (_convertingCanvasingId) {
@@ -4689,6 +4691,13 @@ async function submitAddListing() {
         _convertingCanvasingId = null;
         if (STATE.currentPage === 'canvasing') loadCanvasing();
       }
+    }
+
+    // Foto dari Camera Roll → tandai sudah di-assign ke listing ini
+    if (savedListingId) {
+      _listingPhotos.filter(p => p?._rollId).forEach(p => {
+        API.patch(`/camera-roll/${p._rollId}`, { listing_id: savedListingId, listing_judul: judul }).catch(() => {});
+      });
     }
 
     resetListingModal();
@@ -12542,6 +12551,7 @@ let _camFlashOn     = false;
 let _camCaptureBlob = null;          // blob hasil capture, menunggu disimpan
 let _rollFilter     = 'all';
 let _rollPickerSlot = 1;             // slot yang sedang dipilih (1/2/3)
+let _rollPickerTarget = 'apl';       // 'apl' = Tambah Foto Listing, 'lp' = form + Listing Baru
 // URL dari roll yang dipilih untuk tiap slot foto listing
 let _aplRollUrls    = { 1: null, 2: null, 3: null };
 
@@ -12860,9 +12870,16 @@ async function _deleteRollPhoto(rollId) {
 }
 
 // ── Roll Picker untuk slot foto listing ───────────────────
-async function openRollPicker(slot) {
-  _rollPickerSlot = slot;
+async function openRollPicker(slot, target = 'apl') {
+  _rollPickerTarget = target;
   const labels = { 1: 'Foto Utama', 2: 'Foto 2', 3: 'Foto 3' };
+  if (target === 'lp') {
+    // Form + Listing Baru: isi slot kosong pertama
+    const emptyIdx = _listingPhotos.findIndex(p => !p);
+    if (emptyIdx === -1) { showToast('Slot foto sudah penuh (maks. 3). Hapus salah satu dulu.', 'error'); return; }
+    slot = emptyIdx + 1;
+  }
+  _rollPickerSlot = slot;
   setEl('roll-picker-slot-label', labels[slot] || 'Foto');
 
   openModal('modal-roll-picker');
@@ -12894,6 +12911,14 @@ function pickRollPhoto(rollId, url, el) {
   // Highlight pilihan
   document.querySelectorAll('#roll-picker-grid > div').forEach(d => d.style.borderColor = 'transparent');
   el.style.borderColor = '#fb923c';
+
+  if (_rollPickerTarget === 'lp') {
+    // Form + Listing Baru — foto sudah di Cloudinary, pakai URL langsung (tanpa upload ulang)
+    _listingPhotos[_rollPickerSlot - 1] = { _file: null, _preview: url, existingUrl: url, _rollId: rollId };
+    renderListingPhotoSlots();
+    setTimeout(() => closeModal('modal-roll-picker'), 300);
+    return;
+  }
 
   // Simpan URL ke state
   _aplRollUrls[_rollPickerSlot] = url;

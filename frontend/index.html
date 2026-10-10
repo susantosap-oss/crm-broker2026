@@ -2758,7 +2758,10 @@
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <label class="form-label" style="margin-bottom:0">Foto Properti <span style="color:rgba(255,255,255,0.3);font-size:9px">maks. 3 foto</span></label>
-          <button type="button" onclick="triggerListingPhotoInput(0)" style="background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);border-radius:8px;color:#D4A853;font-size:10px;font-weight:600;padding:4px 10px;cursor:pointer"><i class="fa-solid fa-images" style="margin-right:4px"></i>Pilih Semua</button>
+          <div style="display:flex;gap:6px">
+            <button type="button" onclick="openRollPicker(null,'lp')" style="background:rgba(251,146,60,0.12);border:1px solid rgba(251,146,60,0.3);border-radius:8px;color:#fb923c;font-size:10px;font-weight:600;padding:4px 10px;cursor:pointer"><i class="fa-solid fa-camera" style="margin-right:4px"></i>Dari Roll</button>
+            <button type="button" onclick="triggerListingPhotoInput(0)" style="background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);border-radius:8px;color:#D4A853;font-size:10px;font-weight:600;padding:4px 10px;cursor:pointer"><i class="fa-solid fa-images" style="margin-right:4px"></i>Pilih Semua</button>
+          </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
           <div id="lp-slot-0" onclick="triggerListingPhotoInput(0)" style="aspect-ratio:1;border:1.5px dashed rgba(212,168,83,0.4);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:rgba(212,168,83,0.05);overflow:hidden;position:relative">
