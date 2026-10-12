@@ -162,6 +162,8 @@ app.use('/api/v1/elite-quiz',         require('./routes/elite-quiz.routes'));
 // ★ Kontrak ELITE — Surat Perjanjian ELITE Program (public, no auth)
 app.use('/api/v1/elite-kontrak',      require('./routes/elite-kontrak.routes'));
 app.use('/api/v1/camera-roll',        require('./routes/camera-roll.routes'));
+app.use('/api/v1/email-targets',      require('./routes/email-targets.routes'));
+app.use('/api/v1/email-penawaran',    require('./routes/email-penawaran.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)
 app.post('/api/v1/admin/trigger-rental-reminder', require('./middleware/auth.middleware').authMiddleware, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: 'Forbidden' });
@@ -413,6 +415,9 @@ async function migrateHeaders() {
     { sheet: SHEETS.ELITE_KONTRAK,      cols: COLUMNS.ELITE_KONTRAK },
     // ★ CameraX — Camera Roll per-agen
     { sheet: SHEETS.CAMERA_ROLL,        cols: COLUMNS.CAMERA_ROLL },
+    // ★ Email Target Manager
+    { sheet: SHEETS.EMAIL_TARGETS,      cols: COLUMNS.EMAIL_TARGETS },
+    { sheet: SHEETS.EMAIL_LOG,          cols: COLUMNS.EMAIL_LOG },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)

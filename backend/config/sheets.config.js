@@ -78,6 +78,10 @@ const SHEETS = {
   ELITE_KONTRAK: 'ELITE_KONTRAK',
   // ★ CameraX — Camera Roll per-agen (foto belum/sudah di-assign ke listing)
   CAMERA_ROLL:  'CAMERA_ROLL',
+  // ★ Email Target Manager — database prospek email untuk Surat Penawaran
+  EMAIL_TARGETS: 'EMAIL_TARGETS',
+  // ★ Email Log — history pengiriman Surat Penawaran
+  EMAIL_LOG:     'EMAIL_LOG',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -198,8 +202,9 @@ const COLUMNS = {
     'Tampilkan_di_Web',  // V  ★ FALSE = sembunyikan dari daftar agen website publik
     'Konversi_Rate',    // W  ★ Konversi Deal/Listing atau Deal/Leads (%), ditulis CRM saat closing
     'Leads_Count',      // X  ★ Total leads diterima agen (denominator konversi Selling)
-    'Split_Komisi',     // Y  ★ Split komisi e.g. "60:40", "70:30"
-    'Status_Elite',     // Z  ★ "ELITE" atau ""
+    'Split_Komisi',        // Y  ★ Split komisi e.g. "60:40", "70:30"
+    'Status_Elite',        // Z  ★ "ELITE" atau ""
+    'Email_App_Pass_Enc',  // AA ★ Gmail App Password (AES-256-GCM encrypted)
   ],
 
   // ★ NEW SHEET
@@ -832,6 +837,33 @@ const COLUMNS = {
     'Listing_Judul', // H  cache judul listing (diisi saat assign)
     'Tanggal',       // I  YYYY-MM-DD
     'Created_At',    // J  ISO datetime
+  ],
+
+  // ★ EMAIL_TARGETS — Database email target untuk Surat Penawaran
+  EMAIL_TARGETS: [
+    'ID',           // A  UUID
+    'Email',        // B  alamat email target
+    'Nama_Kontak',  // C  nama PIC / perusahaan (opsional)
+    'Kategori',     // D  Hotel | Kos | Investor | Developer | Lainnya
+    'Kota',         // E  kota/area target
+    'Catatan',      // F  catatan bebas
+    'Ditambah_Oleh',// G  Agent_ID yang input
+    'Created_At',   // H  ISO datetime
+  ],
+
+  // ★ EMAIL_LOG — History pengiriman Surat Penawaran
+  EMAIL_LOG: [
+    'ID',           // A  UUID
+    'Timestamp',    // B  ISO datetime kirim
+    'Agent_ID',     // C  siapa yang kirim
+    'Agent_Nama',   // D
+    'Ref_Type',     // E  listing | aset | primary
+    'Ref_ID',       // F  ID listing/aset/primary
+    'Ref_Judul',    // G  judul properti (cache)
+    'Email_To',     // H  email tujuan (bisa multi, pisah koma)
+    'Subject',      // I
+    'Status',       // J  Terkirim | Gagal
+    'Error_Msg',    // K  pesan error jika gagal
   ],
 
 };

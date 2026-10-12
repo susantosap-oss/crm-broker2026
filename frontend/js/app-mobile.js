@@ -6029,6 +6029,10 @@ function checkAdminMenu() {
     const isElite = STATE.user?.statusElite === 'ELITE';
     sbEliteTrx.style.display = isElite ? 'flex' : 'none';
   }
+
+  // ★ Email Target Manager — semua role
+  const sbEmailTargets = document.getElementById('sidebar-email-targets');
+  if (sbEmailTargets) sbEmailTargets.style.display = 'flex';
 }
 
 // ─────────────────────────────────────────────────────────

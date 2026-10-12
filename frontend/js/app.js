@@ -276,7 +276,8 @@ async function navigateTo(page) {
     pipeline:  'Pipeline Kanban',
     komisi:    'Request Komisi',
     search:    'Property Search',
-    rpl:       'RPL Portfolio KKNI VI',
+    rpl:            'RPL Portfolio KKNI VI',
+    'email-targets': 'Email Target Manager',
   };
   setText('page-title', titles[page] || page);
   STATE.currentPage = page;
@@ -293,6 +294,7 @@ async function navigateTo(page) {
   if (page === 'komisi' && typeof loadKomisiPage === 'function') await loadKomisiPage();
   if (page === 'search') await loadSearchPage();
   if (page === 'rpl' && typeof loadRplPage === 'function') await loadRplPage();
+  if (page === 'email-targets') await loadEmailTargets();
 
   // Scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2368,6 +2370,563 @@ async function seRunAiSearch() {
   } finally {
     btn.disabled = false;
     btn.textContent = 'Cari';
+  }
+}
+
+// ── EMAIL TARGET MANAGER ───────────────────────────────────────
+
+let _emailTargetsAll = [];
+let _emailTargetsFilter = 'all';
+
+async function loadEmailTargets() {
+  try {
+    const res = await API.get('/email-targets');
+    _emailTargetsAll = res.data || [];
+    renderEmailTargets();
+  } catch (e) {
+    document.getElementById('email-target-list').innerHTML =
+      `<div style="text-align:center;padding:30px;color:#f87171">${e.message}</div>`;
+  }
+}
+
+function renderEmailTargets() {
+  const list = document.getElementById('email-target-list');
+  const stats = document.getElementById('email-target-stats');
+
+  let items = _emailTargetsAll;
+  if (_emailTargetsFilter !== 'all') items = items.filter(t => t.Kategori === _emailTargetsFilter);
+
+  stats.textContent = `${items.length} email target${_emailTargetsFilter !== 'all' ? ` · kategori: ${_emailTargetsFilter}` : ''} (total: ${_emailTargetsAll.length})`;
+
+  if (items.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3)"><i class="fa-solid fa-inbox" style="font-size:28px;margin-bottom:10px;display:block"></i>Belum ada email target${_emailTargetsFilter !== 'all' ? ' untuk kategori ini' : ''}.</div>`;
+    return;
+  }
+
+  const BADGE = { Hotel:'#60a5fa', Kos:'#4ade80', Investor:'#D4A853', Developer:'#c084fc', Lainnya:'#94a3b8' };
+  list.innerHTML = items.map(t => `
+    <div style="background:#0D1526;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(96,165,250,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fa-solid fa-envelope" style="color:#60a5fa;font-size:13px"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.Email}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px">
+          ${t.Nama_Kontak ? `<span>${t.Nama_Kontak}</span> · ` : ''}
+          ${t.Kota ? `<span>${t.Kota}</span> · ` : ''}
+          <span>${t.Catatan || '-'}</span>
+        </div>
+      </div>
+      <span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(255,255,255,0.05);color:${BADGE[t.Kategori]||'#94a3b8'};flex-shrink:0">${t.Kategori}</span>
+      <button onclick="deleteEmailTarget('${t.ID}','${t.Email.replace(/'/g,"&#39;")}')" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2);color:#f87171;border-radius:8px;padding:5px 8px;cursor:pointer;font-size:11px;flex-shrink:0">
+        <i class="fa-solid fa-trash"></i>
+      </button>
+    </div>`).join('');
+}
+
+function filterEmailTargets(kategori) {
+  _emailTargetsFilter = kategori;
+  document.querySelectorAll('.et-filter-btn').forEach(btn => {
+    const active = (kategori === 'all' && btn.textContent.trim() === 'Semua') ||
+                   btn.textContent.trim() === kategori;
+    btn.classList.toggle('active', active);
+    btn.style.background = active ? 'rgba(255,255,255,0.08)' : 'transparent';
+    btn.style.color = active ? '#fff' : 'rgba(255,255,255,0.5)';
+    btn.style.borderColor = active ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.1)';
+  });
+  renderEmailTargets();
+}
+
+async function submitAddEmailTarget() {
+  const Email    = document.getElementById('et-email').value.trim();
+  const Nama     = document.getElementById('et-nama').value.trim();
+  const Kategori = document.getElementById('et-kategori').value;
+  const Kota     = document.getElementById('et-kota').value.trim();
+  const Catatan  = document.getElementById('et-catatan').value.trim();
+
+  if (!Email) return showToast('Email wajib diisi', 'error');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(Email)) return showToast('Format email tidak valid', 'error');
+
+  try {
+    await API.post('/email-targets', { Email, Nama_Kontak: Nama, Kategori, Kota, Catatan });
+    showToast('Email target berhasil disimpan', 'success');
+    closeModal('modal-add-email-target');
+    ['et-email','et-nama','et-kota','et-catatan'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+    await loadEmailTargets();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function deleteEmailTarget(id, email) {
+  if (!confirm(`Hapus email target:\n${email}?`)) return;
+  try {
+    await API.delete(`/email-targets/${id}`);
+    showToast('Email target dihapus', 'success');
+    _emailTargetsAll = _emailTargetsAll.filter(t => t.ID !== id);
+    renderEmailTargets();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function exportEmailTargetsCsv() {
+  const qs = _emailTargetsFilter !== 'all' ? `?kategori=${encodeURIComponent(_emailTargetsFilter)}` : '';
+  const token = STATE.token;
+  const a = document.createElement('a');
+  a.href = `/api/v1/email-targets/export${qs}`;
+  // inject token via fetch + blob karena endpoint butuh auth header
+  try {
+    const res = await fetch(a.href, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Export gagal');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = _emailTargetsFilter !== 'all' ? `email-target-${_emailTargetsFilter}.csv` : 'email-targets-all.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast('CSV berhasil didownload', 'success');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// CSV Import
+let _csvParsed = [];
+
+function previewCsvImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const lines = e.target.result.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) { showToast('CSV kosong atau hanya header', 'error'); return; }
+
+    const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim());
+    const emailIdx   = headers.findIndex(h => h.toLowerCase() === 'email');
+    const namaIdx    = headers.findIndex(h => h.toLowerCase() === 'nama_kontak');
+    const kategoriIdx= headers.findIndex(h => h.toLowerCase() === 'kategori');
+    const kotaIdx    = headers.findIndex(h => h.toLowerCase() === 'kota');
+    const catatanIdx = headers.findIndex(h => h.toLowerCase() === 'catatan');
+
+    if (emailIdx === -1) { showToast('Kolom Email tidak ditemukan di CSV', 'error'); return; }
+
+    _csvParsed = lines.slice(1).map(line => {
+      const cols = line.split(',').map(c => c.replace(/^"|"$/g,'').trim());
+      return {
+        Email:       cols[emailIdx] || '',
+        Nama_Kontak: namaIdx > -1    ? cols[namaIdx]    : '',
+        Kategori:    kategoriIdx > -1? cols[kategoriIdx] : 'Lainnya',
+        Kota:        kotaIdx > -1    ? cols[kotaIdx]     : '',
+        Catatan:     catatanIdx > -1 ? cols[catatanIdx]  : '',
+      };
+    }).filter(r => r.Email);
+
+    const preview = document.getElementById('et-csv-preview');
+    preview.style.display = 'block';
+    preview.innerHTML = `<b style="color:#fff">${_csvParsed.length} baris valid</b><br>` +
+      _csvParsed.slice(0, 5).map(r => `• ${r.Email} [${r.Kategori}]`).join('<br>') +
+      (_csvParsed.length > 5 ? `<br>… dan ${_csvParsed.length - 5} lainnya` : '');
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function submitImportEmailCsv() {
+  if (!_csvParsed || _csvParsed.length === 0) {
+    return showToast('Pilih file CSV valid terlebih dahulu', 'error');
+  }
+  try {
+    const res = await API.post('/email-targets/bulk', { items: _csvParsed });
+    showToast(`Import selesai: ${res.added} ditambah, ${res.skipped} dilewati (duplikat)`, 'success');
+    closeModal('modal-import-email-csv');
+    _csvParsed = [];
+    document.getElementById('et-csv-file').value = '';
+    document.getElementById('et-csv-preview').style.display = 'none';
+    await loadEmailTargets();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// Email Finder — deep-link launcher
+function updateFinderQuery() {
+  const industri = document.getElementById('ef-industri')?.value || '';
+  const kota     = document.getElementById('ef-kota')?.value.trim() || '';
+  const kw       = document.getElementById('ef-keyword');
+  if (kw) kw.value = [industri, kota].filter(Boolean).join(' ');
+}
+
+function openFinderPlatform(platform) {
+  const keyword = encodeURIComponent(document.getElementById('ef-keyword')?.value.trim() || 'properti Indonesia');
+  const urls = {
+    apollo:   `https://app.apollo.io/#/people?q_keywords=${keyword}`,
+    hunter:   `https://hunter.io/companies?q=${keyword}`,
+    linkedin: `https://www.linkedin.com/search/results/companies/?keywords=${keyword}`,
+  };
+  if (urls[platform]) window.open(urls[platform], '_blank');
+}
+
+// ── TAB SWITCHER ──────────────────────────────────────────────
+function switchEmailTab(tab) {
+  const isDb = tab === 'database';
+  document.getElementById('et-panel-database').style.display = isDb ? 'block' : 'none';
+  document.getElementById('et-panel-log').style.display      = isDb ? 'none'  : 'block';
+
+  const tabDb  = document.getElementById('et-tab-database');
+  const tabLog = document.getElementById('et-tab-log');
+  if (tabDb)  { tabDb.style.background  = isDb ? 'rgba(59,130,246,0.2)' : 'transparent'; tabDb.style.color  = isDb ? '#60a5fa' : 'rgba(255,255,255,0.4)'; }
+  if (tabLog) { tabLog.style.background = isDb ? 'transparent' : 'rgba(212,168,83,0.15)'; tabLog.style.color = isDb ? 'rgba(255,255,255,0.4)' : '#D4A853'; }
+
+  if (!isDb) loadEmailLog();
+}
+
+// ── EMAIL LOG ─────────────────────────────────────────────────
+async function loadEmailLog() {
+  const list  = document.getElementById('email-log-list');
+  const stats = document.getElementById('email-log-stats');
+  try {
+    const res  = await API.get('/email-penawaran/log?limit=200');
+    const logs = res.data || [];
+    stats.textContent = `${logs.length} email terkirim`;
+
+    if (logs.length === 0) {
+      list.innerHTML = `<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3)"><i class="fa-solid fa-inbox" style="font-size:28px;margin-bottom:10px;display:block"></i>Belum ada history pengiriman.</div>`;
+      return;
+    }
+
+    list.innerHTML = logs.map(l => {
+      const isOk = l.Status === 'Terkirim';
+      const dt   = l.Timestamp ? new Date(l.Timestamp).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'}) : '-';
+      return `
+        <div style="background:#0D1526;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:11px 14px;display:flex;gap:10px;align-items:flex-start">
+          <div style="margin-top:2px"><i class="fa-solid fa-${isOk ? 'circle-check' : 'circle-xmark'}" style="color:${isOk ? '#4ade80' : '#f87171'};font-size:14px"></i></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.Email_To}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${l.Subject || '-'}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px">
+              ${l.Ref_Judul ? `<span style="color:rgba(212,168,83,0.6)">${l.Ref_Judul}</span> · ` : ''}
+              ${l.Agent_Nama} · ${dt}
+            </div>
+            ${!isOk ? `<div style="font-size:10px;color:#f87171;margin-top:2px">${l.Error_Msg}</div>` : ''}
+          </div>
+          <span style="padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;background:${isOk ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)'};color:${isOk ? '#4ade80' : '#f87171'};flex-shrink:0">${l.Status}</span>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = `<div style="text-align:center;padding:30px;color:#f87171">${e.message}</div>`;
+  }
+}
+
+// ── KIRIM PENAWARAN MODAL ─────────────────────────────────────
+let _kpRefData   = null; // properti terpilih
+let _kpExtraEmails = [];
+
+async function _checkEmailConfig() {
+  const el = document.getElementById('kp-smtp-status');
+  if (!el) return;
+  try {
+    const cfg = await API.get('/email-penawaran/check-config');
+    if (cfg.configured) {
+      el.style.background = 'rgba(74,222,128,0.08)'; el.style.color = '#4ade80';
+      el.innerHTML = `<i class="fa-solid fa-circle-check" style="margin-right:4px"></i>Kirim dari: <b>${cfg.email}</b>`;
+    } else {
+      el.style.background = 'rgba(248,113,113,0.08)'; el.style.color = '#f87171';
+      el.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="margin-right:4px"></i>App Password belum diatur. Klik <b>Atur</b> untuk konfigurasi.`;
+    }
+  } catch(e) {
+    el.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="margin-right:4px"></i>Gagal cek konfigurasi';
+  }
+}
+
+async function openKirimPenawaranModal() {
+  openModal('modal-kirim-penawaran');
+  _kpRefData = null;
+  _kpExtraEmails = [];
+
+  _checkEmailConfig();
+
+  // Load targets
+  await loadKpTargetList();
+
+  // Reset form
+  document.getElementById('kp-subject').value  = '';
+  document.getElementById('kp-body').value     = '';
+  document.getElementById('kp-ref-search').value = '';
+  document.getElementById('kp-ref-selected').style.display = 'none';
+  document.getElementById('kp-preview').style.display = 'none';
+  document.getElementById('kp-extra-emails').innerHTML = '';
+  updateKpSelectedCount();
+}
+
+async function loadKpTargetList() {
+  const container = document.getElementById('kp-target-list');
+  const kategori  = document.getElementById('kp-filter-kategori')?.value || '';
+  const qs        = kategori ? `?kategori=${encodeURIComponent(kategori)}` : '';
+  try {
+    const res   = await API.get(`/email-targets${qs}`);
+    const items = res.data || [];
+    if (items.length === 0) {
+      container.innerHTML = `<div style="text-align:center;padding:16px;color:rgba(255,255,255,0.3);font-size:12px">Tidak ada email target${kategori ? ` untuk kategori ${kategori}` : ''}.</div>`;
+      return;
+    }
+    const BADGE = { Hotel:'#60a5fa', Kos:'#4ade80', Investor:'#D4A853', Developer:'#c084fc', Lainnya:'#94a3b8' };
+    container.innerHTML = items.map(t => `
+      <label style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer" onmouseenter="this.style.background='rgba(255,255,255,0.04)'" onmouseleave="this.style.background='transparent'">
+        <input type="checkbox" class="kp-email-cb" value="${t.Email}" onchange="updateKpSelectedCount()" style="width:14px;height:14px;accent-color:#60a5fa;flex-shrink:0">
+        <span style="flex:1;min-width:0;font-size:12px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.Email}</span>
+        <span style="font-size:10px;color:${BADGE[t.Kategori]||'#94a3b8'};flex-shrink:0">${t.Kategori}</span>
+        ${t.Kota ? `<span style="font-size:10px;color:rgba(255,255,255,0.3);flex-shrink:0">${t.Kota}</span>` : ''}
+      </label>`).join('');
+    updateKpSelectedCount();
+  } catch (e) {
+    container.innerHTML = `<div style="text-align:center;padding:16px;color:#f87171;font-size:12px">${e.message}</div>`;
+  }
+}
+
+function filterKpTargets() { loadKpTargetList(); }
+
+function selectAllKpTargets(check) {
+  document.querySelectorAll('.kp-email-cb').forEach(cb => cb.checked = check);
+  updateKpSelectedCount();
+}
+
+function updateKpSelectedCount() {
+  const checked = document.querySelectorAll('.kp-email-cb:checked').length + _kpExtraEmails.length;
+  const el = document.getElementById('kp-selected-count');
+  if (el) el.textContent = `${checked} email dipilih`;
+}
+
+function addKpExtraEmail() {
+  const input = document.getElementById('kp-extra-email');
+  const email = input.value.trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showToast('Format email tidak valid', 'error');
+  if (_kpExtraEmails.includes(email)) return showToast('Email sudah ada', 'error');
+  _kpExtraEmails.push(email);
+  input.value = '';
+  renderKpExtraEmails();
+  updateKpSelectedCount();
+}
+
+function removeKpExtraEmail(email) {
+  _kpExtraEmails = _kpExtraEmails.filter(e => e !== email);
+  renderKpExtraEmails();
+  updateKpSelectedCount();
+}
+
+function renderKpExtraEmails() {
+  const el = document.getElementById('kp-extra-emails');
+  el.innerHTML = _kpExtraEmails.map(e =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.2);font-size:11px;color:#60a5fa">
+      ${e} <button onclick="removeKpExtraEmail('${e}')" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:11px;padding:0;margin-left:2px">×</button>
+    </span>`
+  ).join('');
+}
+
+// Properti reference search
+let _kpRefAll = [];
+async function onKpRefTypeChange() {
+  _kpRefData = null;
+  document.getElementById('kp-ref-selected').style.display = 'none';
+  document.getElementById('kp-ref-results').style.display  = 'none';
+  document.getElementById('kp-ref-search').value = '';
+  _kpRefAll = [];
+}
+
+async function searchKpRef(q) {
+  const type = document.getElementById('kp-ref-type').value;
+  if (type === 'manual') {
+    document.getElementById('kp-ref-results').style.display = 'none';
+    return;
+  }
+  if (!_kpRefAll.length) {
+    try {
+      const ep = type === 'listing' ? '/listings' : type === 'aset' ? '/assets' : '/projects';
+      const res = await API.get(ep);
+      _kpRefAll = res.data || res.listings || res.projects || [];
+    } catch(e) { return; }
+  }
+  const results = _kpRefAll.filter(r => {
+    const judul = r.Judul || r.Nama || r.Judul_Properti || '';
+    const id    = r.ID || r.Kode || '';
+    return judul.toLowerCase().includes(q.toLowerCase()) || id.toLowerCase().includes(q.toLowerCase());
+  }).slice(0, 6);
+
+  const container = document.getElementById('kp-ref-results');
+  if (!q || results.length === 0) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  container.innerHTML = results.map(r => {
+    const judul = r.Judul || r.Nama || r.Judul_Properti || r.ID;
+    const harga = r.Harga_Jual || r.Harga || '';
+    return `<div onclick="selectKpRef(${JSON.stringify({id: r.ID||r.Kode, judul, harga, type}).replace(/"/g,'&quot;')})"
+      style="padding:8px 12px;cursor:pointer;font-size:12px;color:#fff;border-bottom:1px solid rgba(255,255,255,0.05)"
+      onmouseenter="this.style.background='rgba(255,255,255,0.06)'" onmouseleave="this.style.background='transparent'">
+      <div style="font-weight:600">${judul}</div>
+      ${harga ? `<div style="font-size:10px;color:rgba(212,168,83,0.7)">${harga}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function selectKpRef(ref) {
+  _kpRefData = ref;
+  document.getElementById('kp-ref-search').value = ref.judul;
+  document.getElementById('kp-ref-results').style.display = 'none';
+  const selEl = document.getElementById('kp-ref-selected');
+  selEl.style.display = 'block';
+  selEl.innerHTML = `<i class="fa-solid fa-check-circle" style="margin-right:4px"></i><b>${ref.judul}</b>${ref.harga ? ` · ${ref.harga}` : ''}`;
+  // Auto-generate subject
+  const subEl = document.getElementById('kp-subject');
+  if (!subEl.value) subEl.value = `Penawaran Properti: ${ref.judul} — Mansion Properti`;
+}
+
+function generateKpTemplate() {
+  const type  = document.getElementById('kp-ref-type').value;
+  const judul = _kpRefData?.judul || '[Nama Properti]';
+  const harga = _kpRefData?.harga || '[Harga]';
+  const agent = STATE.user?.nama || 'Tim Mansion Properti';
+  const phone = STATE.user?.no_wa || '';
+
+  const tpl = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#222">
+  <div style="background:#0D1526;padding:20px;text-align:center;border-radius:8px 8px 0 0">
+    <h2 style="color:#D4A853;margin:0;font-size:20px">Mansion Properti</h2>
+    <p style="color:rgba(255,255,255,0.6);font-size:12px;margin:4px 0 0">Solusi Properti Terpercaya</p>
+  </div>
+  <div style="background:#f9f9f9;padding:24px;border-radius:0 0 8px 8px">
+    <p>Kepada Yth.,<br>Bapak/Ibu,</p>
+    <p>Dengan hormat,</p>
+    <p>Kami dari <strong>Mansion Properti</strong> ingin menyampaikan penawaran properti eksklusif berikut:</p>
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:16px 0">
+      <h3 style="margin:0 0 8px;color:#1a1a2e">${judul}</h3>
+      <p style="margin:4px 0;color:#555"><strong>Harga:</strong> ${harga}</p>
+      <p style="margin:4px 0;color:#555"><strong>Tipe:</strong> ${type === 'listing' ? 'Listing Properti' : type === 'aset' ? 'Aset / Lelang' : 'Proyek Primary'}</p>
+    </div>
+    <p>Properti ini sangat cocok untuk investasi jangka panjang maupun kebutuhan komersial Anda. Kami siap memberikan informasi lebih detail, melakukan survei lokasi, dan mendampingi proses transaksi hingga selesai.</p>
+    <p>Untuk informasi lebih lanjut, silakan hubungi kami:</p>
+    <ul>
+      <li><strong>Agent:</strong> ${agent}</li>
+      ${phone ? `<li><strong>WhatsApp:</strong> ${phone}</li>` : ''}
+      <li><strong>Email:</strong> ${process?.env?.EMAIL_SMTP_USER || '[email]'}</li>
+    </ul>
+    <p>Kami berharap dapat bekerja sama dengan Bapak/Ibu. Terima kasih atas kepercayaan Anda.</p>
+    <p>Hormat kami,<br><strong>${agent}</strong><br>Mansion Properti</p>
+  </div>
+</div>`;
+
+  document.getElementById('kp-body').value = tpl;
+  showToast('Template berhasil di-generate', 'success');
+}
+
+function toggleKpPreview() {
+  const preview = document.getElementById('kp-preview');
+  const body    = document.getElementById('kp-body').value;
+  if (preview.style.display === 'none') {
+    preview.style.display = 'block';
+    preview.innerHTML = body;
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+async function submitKirimPenawaran() {
+  const checked = [...document.querySelectorAll('.kp-email-cb:checked')].map(cb => cb.value);
+  const toList  = [...new Set([...checked, ..._kpExtraEmails])];
+  const subject = document.getElementById('kp-subject').value.trim();
+  const html    = document.getElementById('kp-body').value.trim();
+
+  if (toList.length === 0) return showToast('Pilih minimal 1 email penerima', 'error');
+  if (!subject) return showToast('Subject wajib diisi', 'error');
+  if (!html)    return showToast('Isi email tidak boleh kosong', 'error');
+
+  const btn = document.getElementById('kp-send-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Mengirim...';
+
+  try {
+    const res = await API.post('/email-penawaran/send', {
+      to:        toList,
+      subject,
+      html,
+      ref_type:  _kpRefData?.type  || document.getElementById('kp-ref-type').value,
+      ref_id:    _kpRefData?.id    || '',
+      ref_judul: _kpRefData?.judul || subject,
+    });
+
+    showToast(`Selesai: ${res.sent} terkirim${res.failed > 0 ? `, ${res.failed} gagal` : ''}`, res.failed > 0 ? 'warning' : 'success');
+    closeModal('modal-kirim-penawaran');
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-paper-plane" style="margin-right:6px"></i>Kirim Sekarang';
+  }
+}
+
+// ── KONFIGURASI GMAIL APP PASSWORD ────────────────────────────
+async function openEmailCredentialModal() {
+  openModal('modal-email-credential');
+  document.getElementById('ec-app-pass').value = '';
+
+  // Cek status
+  const statusEl  = document.getElementById('ec-status-row');
+  const deleteBtn = document.getElementById('ec-delete-btn');
+  try {
+    const res = await API.get('/agents/email-credential/status');
+    if (res.configured) {
+      statusEl.style.background = 'rgba(74,222,128,0.08)'; statusEl.style.color = '#4ade80';
+      statusEl.innerHTML = `<i class="fa-solid fa-circle-check" style="margin-right:4px"></i>App Password sudah diatur untuk: <b>${res.email}</b>`;
+      if (deleteBtn) deleteBtn.style.display = 'inline-flex';
+    } else {
+      statusEl.style.background = 'rgba(255,255,255,0.04)'; statusEl.style.color = 'rgba(255,255,255,0.4)';
+      statusEl.innerHTML = `<i class="fa-solid fa-circle-xmark" style="margin-right:4px"></i>Belum dikonfigurasi`;
+      if (deleteBtn) deleteBtn.style.display = 'none';
+    }
+  } catch(e) {
+    statusEl.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="margin-right:4px"></i>Gagal cek status';
+  }
+}
+
+function toggleEcGuide() {
+  const body    = document.getElementById('ec-guide-body');
+  const chevron = document.getElementById('ec-guide-chevron');
+  const open    = body.style.display === 'none';
+  body.style.display    = open ? 'block' : 'none';
+  chevron.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+function toggleEcPassVis() {
+  const input = document.getElementById('ec-app-pass');
+  const btn   = document.getElementById('ec-eye-btn');
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
+  } else {
+    input.type = 'password';
+    btn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+  }
+}
+
+async function submitEmailCredential() {
+  const pass = document.getElementById('ec-app-pass').value.trim().replace(/\s+/g, '');
+  if (!pass || pass.length < 16) return showToast('App Password harus 16 karakter', 'error');
+  try {
+    await API.post('/agents/email-credential', { app_password: pass });
+    showToast('App Password berhasil disimpan', 'success');
+    closeModal('modal-email-credential');
+    _checkEmailConfig(); // refresh status di compose modal jika terbuka
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function deleteEmailCredential() {
+  if (!confirm('Hapus App Password Gmail? Anda tidak bisa kirim email sebelum mengaturnya kembali.')) return;
+  try {
+    await API.delete('/agents/email-credential');
+    showToast('App Password dihapus', 'success');
+    openEmailCredentialModal(); // refresh modal
+    _checkEmailConfig();
+  } catch (e) {
+    showToast(e.message, 'error');
   }
 }
 

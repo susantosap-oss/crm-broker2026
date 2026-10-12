@@ -1928,6 +1928,77 @@
   </div>
   <!-- ── END page-elite-trx ───────────────────────────────── -->
 
+  <!-- ── Email Target Manager ──────────────────────────────── -->
+  <div id="page-email-targets" class="page" style="display:none;padding:16px;padding-bottom:100px;max-width:720px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fa-solid fa-envelope-open-text" style="color:#60a5fa;font-size:15px"></i>
+      </div>
+      <div>
+        <h2 style="font-size:17px;font-weight:700;color:#fff;margin:0">Email Target Manager</h2>
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:0">Database prospek email untuk Surat Penawaran</p>
+      </div>
+    </div>
+
+    <!-- Tab Nav -->
+    <div style="display:flex;gap:4px;margin:14px 0 10px;background:rgba(255,255,255,0.04);border-radius:10px;padding:4px">
+      <button id="et-tab-database" onclick="switchEmailTab('database')" style="flex:1;padding:8px;border-radius:8px;border:none;background:rgba(59,130,246,0.2);color:#60a5fa;font-size:12px;font-weight:600;cursor:pointer">
+        <i class="fa-solid fa-database" style="margin-right:4px"></i>Database Target
+      </button>
+      <button id="et-tab-log" onclick="switchEmailTab('log')" style="flex:1;padding:8px;border-radius:8px;border:none;background:transparent;color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;cursor:pointer">
+        <i class="fa-solid fa-clock-rotate-left" style="margin-right:4px"></i>History Kirim
+      </button>
+    </div>
+
+    <!-- ── TAB: Database Target ── -->
+    <div id="et-panel-database">
+      <!-- Action Bar -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button onclick="openModal('modal-add-email-target')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#60a5fa;font-size:12px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-plus"></i> Tambah Email
+        </button>
+        <button onclick="openModal('modal-import-email-csv')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:12px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-file-import"></i> Import CSV
+        </button>
+        <button onclick="exportEmailTargetsCsv()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:12px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-file-export"></i> Export CSV
+        </button>
+        <button onclick="openModal('modal-email-finder')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.3);color:#c084fc;font-size:12px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-magnifying-glass"></i> Cari Target
+        </button>
+        <button onclick="openKirimPenawaranModal()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;background:rgba(212,168,83,0.15);border:1px solid rgba(212,168,83,0.35);color:#D4A853;font-size:12px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-paper-plane"></i> Kirim Penawaran
+        </button>
+      </div>
+
+      <!-- Filter Kategori -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="email-target-filter-row">
+        <button class="et-filter-btn active" onclick="filterEmailTargets('all')" style="padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:#fff;font-size:11px;cursor:pointer">Semua</button>
+        <button class="et-filter-btn" onclick="filterEmailTargets('Hotel')" style="padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer">Hotel</button>
+        <button class="et-filter-btn" onclick="filterEmailTargets('Kos')" style="padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer">Kos</button>
+        <button class="et-filter-btn" onclick="filterEmailTargets('Investor')" style="padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer">Investor</button>
+        <button class="et-filter-btn" onclick="filterEmailTargets('Developer')" style="padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer">Developer</button>
+        <button class="et-filter-btn" onclick="filterEmailTargets('Lainnya')" style="padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer">Lainnya</button>
+      </div>
+
+      <div id="email-target-stats" style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:10px">Memuat...</div>
+      <div id="email-target-list" style="display:flex;flex-direction:column;gap:8px">
+        <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.3)"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</div>
+      </div>
+    </div>
+
+    <!-- ── TAB: History Kirim ── -->
+    <div id="et-panel-log" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div id="email-log-stats" style="font-size:11px;color:rgba(255,255,255,0.35)">Memuat...</div>
+      </div>
+      <div id="email-log-list" style="display:flex;flex-direction:column;gap:8px">
+        <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.3)"><i class="fa-solid fa-spinner fa-spin"></i> Memuat log...</div>
+      </div>
+    </div>
+  </div>
+  <!-- ── END page-email-targets ─────────────────────────────── -->
+
   <div id="page-search" class="page" style="display:none;padding:16px;padding-bottom:100px">
 
     <!-- AI mode toggle -->
@@ -2200,6 +2271,7 @@
       <div style="margin:6px 0;border-top:1px solid rgba(255,255,255,0.06)"></div>
       <button id="sidebar-rpl" onclick="navigateTo('rpl');closeSidebar();setTimeout(function(){if(typeof loadRplPage==='function')loadRplPage();},200);" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-id-card-clip" style="color:#a78bfa;width:16px;text-align:center"></i><span>RPL Portfolio</span><span style="margin-left:auto;font-size:9px;background:rgba(167,139,250,0.2);color:#a78bfa;padding:1px 6px;border-radius:20px;font-weight:700">KKNI</span></button>
       <button id="sidebar-legal" onclick="navigateTo('legal');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-file-contract" style="color:#34d399;width:16px;text-align:center"></i><span>Legal Perjanjian</span></button>
+      <button id="sidebar-email-targets" onclick="navigateTo('email-targets');closeSidebar()" style="display:none;width:100%;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-envelope-open-text" style="color:#60a5fa;width:16px;text-align:center"></i><span>Email Target</span><span style="margin-left:auto;font-size:9px;background:rgba(96,165,250,0.15);color:#60a5fa;padding:1px 6px;border-radius:20px;font-weight:700">NEW</span></button>
       <button onclick="navigateTo('rental');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-key" style="color:#fb923c;width:16px;text-align:center"></i><span>Status Sewa</span></button>
       <button onclick="navigateTo('wa-contacts');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-brands fa-whatsapp" style="color:#25d366;width:16px;text-align:center"></i><span>Buku Kontak WA</span></button>
       <button id="sb-elite-partnership" onclick="navigateTo('elite-partnership');closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-star" style="color:#D4A853;width:16px;text-align:center"></i><span>ELITE Partnership</span><span style="margin-left:auto;font-size:9px;background:rgba(212,168,83,0.2);color:#D4A853;padding:1px 6px;border-radius:20px;font-weight:700">ELITE</span></button>
@@ -6541,4 +6613,314 @@ async function saveApraisalResult(type) {
     }
   })();
   </script>
+
+  <!-- ── Modal: Tambah Email Target ───────────────────────── -->
+  <div id="modal-add-email-target" class="modal-overlay" style="display:none">
+    <div class="modal-box" style="max-width:420px">
+      <div class="modal-header">
+        <span style="font-weight:700;font-size:15px">Tambah Email Target</span>
+        <button onclick="closeModal('modal-add-email-target')" class="modal-close-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:4px">Email <span style="color:#f87171">*</span></label>
+          <input id="et-email" type="email" placeholder="contoh@perusahaan.com" style="width:100%;padding:9px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:13px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:4px">Nama Kontak / Perusahaan</label>
+          <input id="et-nama" type="text" placeholder="PT. Maju Jaya / Pak Budi" style="width:100%;padding:9px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:13px;box-sizing:border-box">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:4px">Kategori</label>
+            <select id="et-kategori" style="width:100%;padding:9px 10px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:13px">
+              <option value="Hotel">Hotel</option>
+              <option value="Kos">Kos</option>
+              <option value="Investor">Investor</option>
+              <option value="Developer">Developer</option>
+              <option value="Lainnya" selected>Lainnya</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:4px">Kota</label>
+            <input id="et-kota" type="text" placeholder="Surabaya" style="width:100%;padding:9px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:4px">Catatan</label>
+          <input id="et-catatan" type="text" placeholder="Investor properti komersial Surabaya Barat" style="width:100%;padding:9px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:13px;box-sizing:border-box">
+        </div>
+        <button onclick="submitAddEmailTarget()" style="width:100%;padding:11px;border-radius:10px;background:rgba(59,130,246,0.8);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;margin-top:4px">
+          <i class="fa-solid fa-plus" style="margin-right:6px"></i>Simpan Email Target
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Import CSV ──────────────────────────────────── -->
+  <div id="modal-import-email-csv" class="modal-overlay" style="display:none">
+    <div class="modal-box" style="max-width:460px">
+      <div class="modal-header">
+        <span style="font-weight:700;font-size:15px">Import Email Target dari CSV</span>
+        <button onclick="closeModal('modal-import-email-csv')" class="modal-close-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;font-size:12px;color:rgba(255,255,255,0.55);line-height:1.6">
+          Format CSV yang diperlukan:<br>
+          <code style="color:#93c5fd">Email,Nama_Kontak,Kategori,Kota,Catatan</code><br><br>
+          Kolom wajib: <b style="color:#fff">Email</b> saja. Kategori valid: Hotel, Kos, Investor, Developer, Lainnya
+        </div>
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px">Pilih file CSV</label>
+          <input id="et-csv-file" type="file" accept=".csv" style="width:100%;padding:8px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);font-size:12px;box-sizing:border-box" onchange="previewCsvImport(this)">
+        </div>
+        <div id="et-csv-preview" style="display:none;max-height:160px;overflow-y:auto;background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;font-size:11px;color:rgba(255,255,255,0.6)"></div>
+        <button onclick="submitImportEmailCsv()" style="width:100%;padding:11px;border-radius:10px;background:rgba(34,197,94,0.7);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer">
+          <i class="fa-solid fa-file-import" style="margin-right:6px"></i>Import Sekarang
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Cari Email Target (Deep-link Launcher) ─────── -->
+  <div id="modal-email-finder" class="modal-overlay" style="display:none">
+    <div class="modal-box" style="max-width:460px">
+      <div class="modal-header">
+        <span style="font-weight:700;font-size:15px">Cari Email Target</span>
+        <button onclick="closeModal('modal-email-finder')" class="modal-close-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:4px">Industri / Tipe Target</label>
+            <select id="ef-industri" style="width:100%;padding:9px 10px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:13px" onchange="updateFinderQuery()">
+              <option value="Hotel">Hotel</option>
+              <option value="Kos-kosan">Kos-kosan</option>
+              <option value="Investor Properti">Investor Properti</option>
+              <option value="Developer Properti">Developer Properti</option>
+              <option value="Perusahaan Properti">Perusahaan Properti</option>
+              <option value="Korporat">Korporat / Perusahaan</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:4px">Kota / Area</label>
+            <input id="ef-kota" type="text" placeholder="Surabaya" value="Surabaya" oninput="updateFinderQuery()" style="width:100%;padding:9px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:4px">Kata Kunci Pencarian</label>
+          <input id="ef-keyword" type="text" placeholder="Hotel Surabaya" oninput="updateFinderQuery()" style="width:100%;padding:9px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:13px;box-sizing:border-box">
+        </div>
+
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:2px">Buka di platform:</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button onclick="openFinderPlatform('apollo')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);cursor:pointer;text-align:left" onmouseenter="this.style.borderColor='rgba(96,165,250,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.1)'">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(96,165,250,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-solid fa-satellite-dish" style="color:#60a5fa;font-size:14px"></i></div>
+            <div><div style="font-size:13px;font-weight:600;color:#fff">Apollo.io</div><div style="font-size:10px;color:rgba(255,255,255,0.4)">Database B2B global — filter industri & lokasi</div></div>
+            <i class="fa-solid fa-arrow-up-right-from-square" style="color:rgba(255,255,255,0.3);margin-left:auto;font-size:11px"></i>
+          </button>
+          <button onclick="openFinderPlatform('hunter')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);cursor:pointer;text-align:left" onmouseenter="this.style.borderColor='rgba(251,146,60,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.1)'">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(251,146,60,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-solid fa-crosshairs" style="color:#fb923c;font-size:14px"></i></div>
+            <div><div style="font-size:13px;font-weight:600;color:#fff">Hunter.io</div><div style="font-size:10px;color:rgba(255,255,255,0.4)">Cari email dari domain perusahaan</div></div>
+            <i class="fa-solid fa-arrow-up-right-from-square" style="color:rgba(255,255,255,0.3);margin-left:auto;font-size:11px"></i>
+          </button>
+          <button onclick="openFinderPlatform('linkedin')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);cursor:pointer;text-align:left" onmouseenter="this.style.borderColor='rgba(96,165,250,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.1)'">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(10,102,194,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-brands fa-linkedin" style="color:#60a5fa;font-size:15px"></i></div>
+            <div><div style="font-size:13px;font-weight:600;color:#fff">LinkedIn</div><div style="font-size:10px;color:rgba(255,255,255,0.4)">Cari perusahaan & decision maker</div></div>
+            <i class="fa-solid fa-arrow-up-right-from-square" style="color:rgba(255,255,255,0.3);margin-left:auto;font-size:11px"></i>
+          </button>
+        </div>
+
+        <div style="background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:10px;font-size:11px;color:rgba(212,168,83,0.8);line-height:1.5">
+          <i class="fa-solid fa-lightbulb" style="margin-right:4px"></i>
+          Setelah dapat email dari platform, kembali ke CRM dan gunakan <b>Import CSV</b> untuk simpan ke database.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Konfigurasi Gmail App Password ────────────── -->
+  <div id="modal-email-credential" class="modal-overlay" style="display:none">
+    <div class="modal-box" style="max-width:420px">
+      <div class="modal-header">
+        <span style="font-weight:700;font-size:15px"><i class="fa-solid fa-key" style="color:#D4A853;margin-right:8px"></i>Konfigurasi Email Pengirim</span>
+        <button onclick="closeModal('modal-email-credential')" class="modal-close-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div id="ec-status-row" style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px 12px;font-size:12px;color:rgba(255,255,255,0.5)">
+          <i class="fa-solid fa-circle-notch fa-spin" style="margin-right:4px"></i>Memeriksa status...
+        </div>
+        <!-- Panduan App Password -->
+        <div style="border:1px solid rgba(212,168,83,0.2);border-radius:10px;overflow:hidden">
+          <button onclick="toggleEcGuide()" id="ec-guide-toggle" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(212,168,83,0.07);border:none;cursor:pointer;color:#D4A853;font-size:12px;font-weight:600;text-align:left">
+            <span><i class="fa-solid fa-circle-question" style="margin-right:6px"></i>Cara mendapatkan App Password Gmail</span>
+            <i class="fa-solid fa-chevron-down" id="ec-guide-chevron" style="font-size:10px;transition:transform .2s"></i>
+          </button>
+          <div id="ec-guide-body" style="display:none;padding:14px;background:rgba(255,255,255,0.02)">
+            <p style="font-size:11px;color:rgba(255,255,255,0.45);margin:0 0 12px">
+              Email pengirim = akun Gmail Anda yang terdaftar di CRM.<br>
+              App Password adalah password <b style="color:#fff">khusus untuk aplikasi</b>, berbeda dari password Gmail biasa.
+            </p>
+            <!-- Steps -->
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="width:22px;height:22px;border-radius:50%;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#60a5fa">1</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.6);padding-top:3px">
+                  Buka halaman keamanan Google:<br>
+                  <button onclick="window.open('https://myaccount.google.com/security','_blank')" style="margin-top:4px;padding:4px 10px;border-radius:6px;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60a5fa;font-size:10px;cursor:pointer">
+                    <i class="fa-solid fa-arrow-up-right-from-square" style="margin-right:4px"></i>myaccount.google.com/security
+                  </button>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="width:22px;height:22px;border-radius:50%;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#60a5fa">2</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.6);padding-top:3px">
+                  Pastikan <b style="color:#fff">2-Step Verification</b> sudah aktif.<br>
+                  <span style="color:rgba(255,255,255,0.35)">(Jika belum, aktifkan dulu — wajib untuk App Password)</span>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="width:22px;height:22px;border-radius:50%;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#60a5fa">3</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.6);padding-top:3px">
+                  Di kolom pencarian ketik <b style="color:#fff">"App passwords"</b> → klik hasil yang muncul.
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="width:22px;height:22px;border-radius:50%;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#60a5fa">4</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.6);padding-top:3px">
+                  Isi nama app (contoh: <b style="color:#fff">Mansion CRM</b>) → klik <b style="color:#fff">Create</b>.
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="width:22px;height:22px;border-radius:50%;background:rgba(212,168,83,0.2);border:1px solid rgba(212,168,83,0.4);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#D4A853">5</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.6);padding-top:3px">
+                  Google menampilkan <b style="color:#D4A853">16 karakter</b> (misal: <code style="color:#D4A853;background:rgba(212,168,83,0.08);padding:1px 5px;border-radius:4px">abcd efgh ijkl mnop</code>).<br>
+                  Copy dan paste di kolom di bawah — spasi otomatis dihapus.
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:10px;padding:8px 10px;background:rgba(248,113,113,0.07);border-radius:8px;font-size:10px;color:rgba(248,113,113,0.8)">
+              <i class="fa-solid fa-shield-halved" style="margin-right:4px"></i>
+              App Password disimpan <b>terenkripsi</b> di server. Tim lain tidak bisa melihat nilainya.
+            </div>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:4px">Gmail App Password <span style="color:#f87171">*</span></label>
+          <div style="position:relative">
+            <input id="ec-app-pass" type="password" placeholder="xxxxxxxxxxxxxxxxxxxx" maxlength="19"
+              style="width:100%;padding:9px 40px 9px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:14px;letter-spacing:0.1em;box-sizing:border-box;font-family:monospace">
+            <button onclick="toggleEcPassVis()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;font-size:13px" id="ec-eye-btn">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px">Disimpan terenkripsi. Tidak pernah ditampilkan kembali.</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="submitEmailCredential()" style="flex:1;padding:10px;border-radius:10px;background:rgba(212,168,83,0.8);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer">
+            <i class="fa-solid fa-key" style="margin-right:4px"></i>Simpan
+          </button>
+          <button id="ec-delete-btn" onclick="deleteEmailCredential()" style="display:none;padding:10px 14px;border-radius:10px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);color:#f87171;font-size:13px;cursor:pointer">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Kirim Surat Penawaran ──────────────────────── -->
+  <div id="modal-kirim-penawaran" class="modal-overlay" style="display:none">
+    <div class="modal-box" style="max-width:580px;max-height:90vh;overflow-y:auto">
+      <div class="modal-header" style="position:sticky;top:0;background:#0D1526;z-index:2;border-bottom:1px solid rgba(255,255,255,0.07)">
+        <span style="font-weight:700;font-size:15px"><i class="fa-solid fa-paper-plane" style="color:#D4A853;margin-right:8px"></i>Kirim Surat Penawaran</span>
+        <button onclick="closeModal('modal-kirim-penawaran')" class="modal-close-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+
+        <!-- SMTP Status -->
+        <div style="display:flex;align-items:center;gap:8px">
+          <div id="kp-smtp-status" style="flex:1;background:rgba(255,255,255,0.04);border-radius:8px;padding:9px 12px;font-size:11px;color:rgba(255,255,255,0.4)">
+            <i class="fa-solid fa-circle-notch fa-spin" style="margin-right:4px"></i>Memeriksa konfigurasi email...
+          </div>
+          <button onclick="openEmailCredentialModal()" style="padding:8px 12px;border-radius:8px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0">
+            <i class="fa-solid fa-key" style="margin-right:4px"></i>Atur
+          </button>
+        </div>
+
+        <!-- Referensi Properti -->
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px">Properti yang Ditawarkan</label>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center">
+            <select id="kp-ref-type" onchange="onKpRefTypeChange()" style="padding:9px 10px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:12px">
+              <option value="listing">Listing</option>
+              <option value="aset">Aset</option>
+              <option value="primary">Primary</option>
+              <option value="manual">Manual (isi sendiri)</option>
+            </select>
+            <input id="kp-ref-search" type="text" placeholder="Ketik judul atau ID properti..." oninput="searchKpRef(this.value)" style="width:100%;padding:9px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:12px;box-sizing:border-box">
+          </div>
+          <div id="kp-ref-results" style="display:none;margin-top:4px;background:#060E1F;border:1px solid rgba(255,255,255,0.1);border-radius:8px;max-height:140px;overflow-y:auto"></div>
+          <div id="kp-ref-selected" style="display:none;margin-top:6px;background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:8px 12px;font-size:12px;color:#D4A853"></div>
+        </div>
+
+        <!-- Pilih Penerima -->
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px">Penerima <span style="color:#f87171">*</span></label>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <select id="kp-filter-kategori" onchange="filterKpTargets()" style="padding:7px 10px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:11px">
+              <option value="">-- Semua kategori --</option>
+              <option value="Hotel">Hotel</option>
+              <option value="Kos">Kos</option>
+              <option value="Investor">Investor</option>
+              <option value="Developer">Developer</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+            <button onclick="selectAllKpTargets(true)" style="padding:7px 10px;border-radius:8px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.2);color:#60a5fa;font-size:11px;cursor:pointer">Pilih Semua</button>
+            <button onclick="selectAllKpTargets(false)" style="padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer">Reset</button>
+          </div>
+          <div id="kp-target-list" style="max-height:160px;overflow-y:auto;background:#060E1F;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:6px">
+            <div style="text-align:center;padding:20px;color:rgba(255,255,255,0.3);font-size:12px">Memuat daftar email...</div>
+          </div>
+          <div id="kp-selected-count" style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:6px">0 email dipilih</div>
+          <!-- Input email manual tambahan -->
+          <div style="margin-top:8px;display:flex;gap:6px">
+            <input id="kp-extra-email" type="email" placeholder="Tambah email manual (opsional)" style="flex:1;padding:8px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:12px;box-sizing:border-box">
+            <button onclick="addKpExtraEmail()" style="padding:8px 12px;border-radius:8px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.2);color:#60a5fa;font-size:12px;cursor:pointer"><i class="fa-solid fa-plus"></i></button>
+          </div>
+          <div id="kp-extra-emails" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
+        </div>
+
+        <!-- Subject -->
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:4px">Subject Email <span style="color:#f87171">*</span></label>
+          <input id="kp-subject" type="text" placeholder="Penawaran Properti Komersial — Mansion Properti" style="width:100%;padding:9px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:13px;box-sizing:border-box">
+        </div>
+
+        <!-- Body Email -->
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <label style="font-size:11px;color:rgba(255,255,255,0.5)">Isi Email (HTML diperbolehkan) <span style="color:#f87171">*</span></label>
+            <button onclick="generateKpTemplate()" style="padding:4px 10px;border-radius:6px;background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.25);color:#c084fc;font-size:10px;cursor:pointer">
+              <i class="fa-solid fa-wand-magic-sparkles" style="margin-right:3px"></i>Generate Template
+            </button>
+          </div>
+          <textarea id="kp-body" rows="10" placeholder="Tuliskan isi email penawaran di sini..." style="width:100%;padding:10px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:12px;line-height:1.6;box-sizing:border-box;resize:vertical;font-family:monospace"></textarea>
+        </div>
+
+        <!-- Preview toggle -->
+        <div>
+          <button onclick="toggleKpPreview()" style="width:100%;padding:9px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);font-size:12px;cursor:pointer">
+            <i class="fa-solid fa-eye" style="margin-right:4px"></i>Preview Email
+          </button>
+          <div id="kp-preview" style="display:none;margin-top:8px;background:#fff;border-radius:8px;padding:16px;color:#111;font-size:13px;line-height:1.6;max-height:260px;overflow-y:auto"></div>
+        </div>
+
+        <!-- Send Button -->
+        <button id="kp-send-btn" onclick="submitKirimPenawaran()" style="width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,rgba(212,168,83,0.8),rgba(180,140,60,0.9));border:none;color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.03em">
+          <i class="fa-solid fa-paper-plane" style="margin-right:6px"></i>Kirim Sekarang
+        </button>
+      </div>
+    </div>
+  </div>
+
 </body></html>
