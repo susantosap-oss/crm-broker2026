@@ -2554,8 +2554,18 @@ function updateFinderQuery() {
   const industri = document.getElementById('ef-industri')?.value || '';
   const kota     = document.getElementById('ef-kota')?.value.trim() || '';
   const kw       = document.getElementById('ef-keyword');
-  if (kw) kw.value = [industri, kota].filter(Boolean).join(' ');
+  if (kw && !kw._manualEdit) kw.value = [industri, kota].filter(Boolean).join(' ');
 }
+document.addEventListener('input', e => {
+  if (e.target && e.target.id === 'ef-keyword') e.target._manualEdit = true;
+});
+document.addEventListener('click', e => {
+  const modal = document.getElementById('modal-email-finder');
+  if (modal && !modal.contains(e.target)) {
+    const kw = document.getElementById('ef-keyword');
+    if (kw) kw._manualEdit = false;
+  }
+});
 
 function openFinderPlatform(platform) {
   const keyword = encodeURIComponent(document.getElementById('ef-keyword')?.value.trim() || 'properti Indonesia');
