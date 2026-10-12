@@ -737,9 +737,9 @@ router.post('/email-credential', async (req, res) => {
     const colIdx = COLUMNS.AGENTS.indexOf('Email_App_Pass_Enc');
     if (colIdx === -1) return res.status(500).json({ success: false, message: 'Kolom Email_App_Pass_Enc belum ada di sheet' });
 
-    const row = [...result.row];
+    const row = [...result.data];
     while (row.length <= colIdx) row.push('');
-    row[colIdx] = _encryptPass(app_password.replace(/\s+/g, '')); // hapus spasi dari App Password
+    row[colIdx] = _encryptPass(app_password.replace(/\s+/g, ''));
 
     await sheetsService.updateRow(SHEETS.AGENTS, result.rowIndex, row);
     res.json({ success: true, message: 'App Password berhasil disimpan' });
@@ -758,7 +758,7 @@ router.delete('/email-credential', async (req, res) => {
     const colIdx = COLUMNS.AGENTS.indexOf('Email_App_Pass_Enc');
     if (colIdx === -1) return res.json({ success: true });
 
-    const row = [...result.row];
+    const row = [...result.data];
     while (row.length <= colIdx) row.push('');
     row[colIdx] = '';
 
@@ -776,8 +776,8 @@ router.get('/email-credential/status', async (req, res) => {
     if (!result) return res.json({ configured: false });
 
     const colIdx = COLUMNS.AGENTS.indexOf('Email_App_Pass_Enc');
-    const enc    = colIdx > -1 ? (result.row[colIdx] || '') : '';
-    const email  = result.row[COLUMNS.AGENTS.indexOf('Email')] || '';
+    const enc    = colIdx > -1 ? (result.data[colIdx] || '') : '';
+    const email  = result.data[COLUMNS.AGENTS.indexOf('Email')] || '';
     res.json({ configured: !!enc, email: email || null });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
@@ -793,8 +793,8 @@ module.exports._getEmailCredential = async function(agentId) {
   if (!result) return null;
   const emailIdx = COLUMNS.AGENTS.indexOf('Email');
   const passIdx  = COLUMNS.AGENTS.indexOf('Email_App_Pass_Enc');
-  const email    = result.row[emailIdx] || '';
-  const enc      = passIdx > -1 ? (result.row[passIdx] || '') : '';
+  const email    = result.data[emailIdx] || '';
+  const enc      = passIdx > -1 ? (result.data[passIdx] || '') : '';
   if (!email || !enc) return null;
   return { email, password: _decryptPass(enc) };
 };
