@@ -1183,11 +1183,14 @@ async function openListingDetail(id) {
 
     <!-- Action Buttons -->
     <div style="display:flex;gap:10px;padding-top:4px;flex-wrap:wrap">
-      <button onclick="shareListingWA('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:13px;font-weight:600;cursor:pointer">
-        <i class="fa-solid fa-share-nodes" style="margin-right:6px"></i>Share
+      <button onclick="shareListingWA('${escapeHtml(id)}')" style="flex:1;min-width:100px;padding:13px;border-radius:12px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:13px;font-weight:600;cursor:pointer">
+        <i class="fa-brands fa-whatsapp" style="margin-right:6px"></i>WA
       </button>
-      <button onclick="shareListingWACatalog('${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
-        <i class="fa-regular fa-copy" style="margin-right:6px"></i>WA Catalog
+      <button onclick="shareEmailFromProperty('listing','${escapeHtml(id)}','${escapeHtml(listing.Judul||id)}','${escapeHtml(harga)}')" style="flex:1;min-width:100px;padding:13px;border-radius:12px;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60a5fa;font-size:13px;font-weight:600;cursor:pointer">
+        <i class="fa-solid fa-envelope" style="margin-right:6px"></i>Email
+      </button>
+      <button onclick="shareListingWACatalog('${escapeHtml(id)}')" style="flex:1;min-width:100px;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
+        <i class="fa-regular fa-copy" style="margin-right:6px"></i>Catalog
       </button>
       <button onclick="openFlyerModal('listing','${escapeHtml(id)}')" style="flex:1;min-width:120px;padding:13px;border-radius:12px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;font-size:13px;font-weight:600;cursor:pointer">
         <i class="fa-solid fa-image" style="margin-right:6px"></i>Buat Flyer
@@ -5004,7 +5007,7 @@ async function navigateTo(page) {
     b.className = b.id === `nav-${page}` ? 'nav-btn active' : 'nav-btn';
   });
 
-  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Aktivitas', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti', komisi:'Request Komisi', 'asset-komersial':'Komersial Luar Jatim', training:'Materi Training', 'elite-partnership':'ELITE Partnership', 'elite-partner':'ELITE Partner Mgmt', 'elite-trx':'ELITE Transaksi' };
+  const titles = { dashboard:'Dashboard', listings:'Listing Properti', leads:'Manajemen Leads', tasks:'Aktivitas', member:'Member Kantor', primary:'Primary', calculator:'Kalkulator Properti', komisi:'Request Komisi', 'asset-komersial':'Komersial Luar Jatim', training:'Materi Training', 'elite-partnership':'ELITE Partnership', 'elite-partner':'ELITE Partner Mgmt', 'elite-trx':'ELITE Transaksi', 'email-targets':'Email Target Manager' };
   setEl('page-title', titles[page] || page);
   STATE.currentPage = page;
 
@@ -5055,6 +5058,7 @@ async function navigateTo(page) {
   if (page === 'elite-partnership') await loadElitePartnershipPage();
   if (page === 'elite-partner')     await loadElitePartnerPage();
   if (page === 'elite-trx')         await loadEliteTrxPage();
+  if (page === 'email-targets')     await loadEmailTargets();
 }
 
 // ─────────────────────────────────────────────────────────

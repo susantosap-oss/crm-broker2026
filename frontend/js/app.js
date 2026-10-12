@@ -2639,12 +2639,21 @@ async function _checkEmailConfig() {
   }
 }
 
-async function openKirimPenawaranModal() {
+// prefill: { id, judul, harga, type } — opsional, dari tombol Share Email di card
+async function openKirimPenawaranModal(prefill) {
   openModal('modal-kirim-penawaran');
-  _kpRefData = null;
+  _kpRefData    = prefill || null;
   _kpExtraEmails = [];
 
   _checkEmailConfig();
+
+  // Reset picker UI
+  clearKpRef();
+
+  // Jika ada pre-fill dari card, langsung tampilkan selected
+  if (prefill) {
+    selectKpRefItem(prefill);
+  }
 
   // Load targets
   await loadKpTargetList();
@@ -2723,64 +2732,108 @@ function renderKpExtraEmails() {
   ).join('');
 }
 
-// Properti reference search
-let _kpRefAll = [];
-async function onKpRefTypeChange() {
-  _kpRefData = null;
-  document.getElementById('kp-ref-selected').style.display = 'none';
-  document.getElementById('kp-ref-results').style.display  = 'none';
+// Properti reference picker (tab-based)
+let _kpRefAllRaw  = [];   // raw data dari API
+let _kpRefActiveTab = ''; // tab aktif saat ini
+
+async function loadKpRefList(tab) {
+  _kpRefActiveTab = tab;
+  // Highlight tab aktif
+  document.querySelectorAll('.kp-ref-tab').forEach(b => {
+    const active = b.id === `kp-tab-${tab}`;
+    b.style.background   = active ? 'rgba(212,168,83,0.15)' : 'transparent';
+    b.style.color        = active ? '#D4A853' : 'rgba(255,255,255,0.5)';
+    b.style.borderColor  = active ? 'rgba(212,168,83,0.35)' : 'rgba(255,255,255,0.12)';
+  });
+
+  const listEl   = document.getElementById('kp-ref-list');
+  const searchWr = document.getElementById('kp-ref-search-wrap');
+  listEl.style.display   = 'block';
+  searchWr.style.display = 'block';
   document.getElementById('kp-ref-search').value = '';
-  _kpRefAll = [];
+  listEl.innerHTML = '<div style="padding:16px;text-align:center;color:rgba(255,255,255,0.3);font-size:12px"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</div>';
+
+  try {
+    let items = [];
+    if (tab === 'listing-mine' || tab === 'listing-all') {
+      const res = await API.get('/listings');
+      const all = res.data || res.listings || [];
+      items = tab === 'listing-mine'
+        ? all.filter(l => l.Agen_ID === STATE.user?.id || l.Agen_Nama === STATE.user?.nama)
+        : all;
+      items = items.map(l => ({ id: l.ID, judul: l.Judul || l.Kode_Listing || l.ID, harga: l.Harga_Jual || l.Harga || '', type: 'listing' }));
+    } else if (tab === 'primary') {
+      const res = await API.get('/projects');
+      const all = res.data || res.projects || [];
+      items = all.map(p => ({ id: p.ID, judul: p.Nama_Proyek || p.ID, harga: p.Harga_Mulai || p.Harga_Format || '', type: 'primary' }));
+    } else if (tab === 'aset') {
+      const res = await API.get('/assets');
+      const all = res.data || [];
+      items = all.map(a => ({ id: a.ID, judul: a.Judul || a.Nama || a.ID, harga: a.Harga_Jual || a.Harga || '', type: 'aset' }));
+    }
+    _kpRefAllRaw = items;
+    _renderKpRefList(items);
+  } catch(e) {
+    listEl.innerHTML = `<div style="padding:14px;text-align:center;color:#f87171;font-size:12px">${e.message}</div>`;
+  }
 }
 
-async function searchKpRef(q) {
-  const type = document.getElementById('kp-ref-type').value;
-  if (type === 'manual') {
-    document.getElementById('kp-ref-results').style.display = 'none';
+function filterKpRefList(q) {
+  const filtered = q
+    ? _kpRefAllRaw.filter(r => r.judul.toLowerCase().includes(q.toLowerCase()) || r.id.toLowerCase().includes(q.toLowerCase()))
+    : _kpRefAllRaw;
+  _renderKpRefList(filtered);
+}
+
+function _renderKpRefList(items) {
+  const listEl = document.getElementById('kp-ref-list');
+  if (!items.length) {
+    listEl.innerHTML = '<div style="padding:14px;text-align:center;color:rgba(255,255,255,0.3);font-size:12px">Tidak ada properti ditemukan.</div>';
     return;
   }
-  if (!_kpRefAll.length) {
-    try {
-      const ep = type === 'listing' ? '/listings' : type === 'aset' ? '/assets' : '/projects';
-      const res = await API.get(ep);
-      _kpRefAll = res.data || res.listings || res.projects || [];
-    } catch(e) { return; }
-  }
-  const results = _kpRefAll.filter(r => {
-    const judul = r.Judul || r.Nama || r.Judul_Properti || '';
-    const id    = r.ID || r.Kode || '';
-    return judul.toLowerCase().includes(q.toLowerCase()) || id.toLowerCase().includes(q.toLowerCase());
-  }).slice(0, 6);
-
-  const container = document.getElementById('kp-ref-results');
-  if (!q || results.length === 0) { container.style.display = 'none'; return; }
-  container.style.display = 'block';
-  container.innerHTML = results.map(r => {
-    const judul = r.Judul || r.Nama || r.Judul_Properti || r.ID;
-    const harga = r.Harga_Jual || r.Harga || '';
-    return `<div onclick="selectKpRef(${JSON.stringify({id: r.ID||r.Kode, judul, harga, type}).replace(/"/g,'&quot;')})"
-      style="padding:8px 12px;cursor:pointer;font-size:12px;color:#fff;border-bottom:1px solid rgba(255,255,255,0.05)"
-      onmouseenter="this.style.background='rgba(255,255,255,0.06)'" onmouseleave="this.style.background='transparent'">
-      <div style="font-weight:600">${judul}</div>
-      ${harga ? `<div style="font-size:10px;color:rgba(212,168,83,0.7)">${harga}</div>` : ''}
-    </div>`;
-  }).join('');
+  const TYPE_ICON = { listing:'fa-building', primary:'fa-star', aset:'fa-gavel' };
+  listEl.innerHTML = items.map(r =>
+    `<div onclick='selectKpRefItem(${JSON.stringify(r).replace(/'/g,"&#39;")})'
+      style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04)"
+      onmouseenter="this.style.background='rgba(255,255,255,0.05)'" onmouseleave="this.style.background='transparent'">
+      <i class="fa-solid ${TYPE_ICON[r.type]||'fa-home'}" style="color:rgba(212,168,83,0.6);font-size:12px;width:14px;flex-shrink:0"></i>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.judul}</div>
+        ${r.harga ? `<div style="font-size:10px;color:rgba(212,168,83,0.6)">${r.harga}</div>` : ''}
+      </div>
+      <i class="fa-solid fa-chevron-right" style="color:rgba(255,255,255,0.2);font-size:10px;flex-shrink:0"></i>
+    </div>`
+  ).join('');
 }
 
-function selectKpRef(ref) {
+function selectKpRefItem(ref) {
   _kpRefData = ref;
-  document.getElementById('kp-ref-search').value = ref.judul;
-  document.getElementById('kp-ref-results').style.display = 'none';
-  const selEl = document.getElementById('kp-ref-selected');
-  selEl.style.display = 'block';
-  selEl.innerHTML = `<i class="fa-solid fa-check-circle" style="margin-right:4px"></i><b>${ref.judul}</b>${ref.harga ? ` · ${ref.harga}` : ''}`;
-  // Auto-generate subject
+  // Sembunyikan list, tampilkan selected badge
+  document.getElementById('kp-ref-list').style.display      = 'none';
+  document.getElementById('kp-ref-search-wrap').style.display = 'none';
+  const selEl  = document.getElementById('kp-ref-selected');
+  const textEl = document.getElementById('kp-ref-selected-text');
+  selEl.style.display  = 'flex';
+  textEl.textContent   = ref.judul + (ref.harga ? ' · ' + ref.harga : '');
+  // Auto-set subject
   const subEl = document.getElementById('kp-subject');
   if (!subEl.value) subEl.value = `Penawaran Properti: ${ref.judul} — Mansion Properti`;
 }
 
+function clearKpRef() {
+  _kpRefData = null;
+  document.getElementById('kp-ref-selected').style.display    = 'none';
+  document.getElementById('kp-ref-list').style.display        = 'none';
+  document.getElementById('kp-ref-search-wrap').style.display = 'none';
+  document.querySelectorAll('.kp-ref-tab').forEach(b => {
+    b.style.background = 'transparent'; b.style.color = 'rgba(255,255,255,0.5)'; b.style.borderColor = 'rgba(255,255,255,0.12)';
+  });
+  _kpRefActiveTab = '';
+  _kpRefAllRaw = [];
+}
+
 function generateKpTemplate() {
-  const type  = document.getElementById('kp-ref-type').value;
+  const type  = _kpRefData?.type || _kpRefActiveTab?.replace('listing-mine','listing').replace('listing-all','listing') || 'listing';
   const judul = _kpRefData?.judul || '[Nama Properti]';
   const harga = _kpRefData?.harga || '[Harga]';
   const agent = STATE.user?.nama || 'Tim Mansion Properti';
@@ -2846,7 +2899,7 @@ async function submitKirimPenawaran() {
       to:        toList,
       subject,
       html,
-      ref_type:  _kpRefData?.type  || document.getElementById('kp-ref-type').value,
+      ref_type:  _kpRefData?.type  || '',
       ref_id:    _kpRefData?.id    || '',
       ref_judul: _kpRefData?.judul || subject,
     });
@@ -2923,10 +2976,17 @@ async function deleteEmailCredential() {
   try {
     await API.delete('/agents/email-credential');
     showToast('App Password dihapus', 'success');
-    openEmailCredentialModal(); // refresh modal
+    openEmailCredentialModal();
     _checkEmailConfig();
   } catch (e) {
     showToast(e.message, 'error');
   }
+}
+
+// ── Share Email dari card Listing / Primary / Aset ────────────
+// Dipanggil dari tombol "Email" di masing-masing modal properti
+function shareEmailFromProperty(type, id, judul, harga) {
+  const prefill = { type, id, judul, harga };
+  openKirimPenawaranModal(prefill);
 }
 

@@ -4121,18 +4121,24 @@
         </div>
 
         <!-- Action Buttons -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
 
           <!-- Share WA -->
           <button onclick="shareProjectWA()"
-            style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-            <i class="fa-solid fa-share-nodes"></i> Share
+            style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;padding:12px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+            <i class="fa-brands fa-whatsapp"></i> WA
+          </button>
+
+          <!-- Share Email -->
+          <button onclick="shareEmailFromProperty('primary', window._currentProjectId||'', document.getElementById('pd-nama-proyek')?.textContent||'', document.getElementById('pd-harga')?.textContent||'')"
+            style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.25);color:#60a5fa;padding:12px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+            <i class="fa-solid fa-envelope"></i> Email
           </button>
 
           <!-- Siapkan Konten -->
           <button onclick="openProjectContent()"
-            style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);color:#a78bfa;padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-            <i class="fa-solid fa-wand-magic-sparkles"></i> Siapkan Konten
+            style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);color:#a78bfa;padding:12px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Konten
           </button>
 
         </div>
@@ -6425,14 +6431,18 @@ async function saveApraisalResult(type) {
         </div>
 
         <!-- Action buttons -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
           <button onclick="shareAssetWA()"
-            style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-            <i class="fa-solid fa-share-nodes"></i> Share
+            style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;padding:12px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+            <i class="fa-brands fa-whatsapp"></i> WA
+          </button>
+          <button onclick="shareEmailFromProperty('aset', _currentAsset?.ID||'', document.getElementById('ad-nama')?.textContent||'', document.getElementById('ad-harga-limit')?.textContent||'')"
+            style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.25);color:#60a5fa;padding:12px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+            <i class="fa-solid fa-envelope"></i> Email
           </button>
           <button onclick="openAssetContent()"
-            style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);color:#a78bfa;padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-            <i class="fa-solid fa-wand-magic-sparkles"></i> Buat Caption
+            style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);color:#a78bfa;padding:12px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Konten
           </button>
         </div>
         <button onclick="openFlyerModal('asset')"
@@ -6849,18 +6859,39 @@ async function saveApraisalResult(type) {
 
         <!-- Referensi Properti -->
         <div>
-          <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px">Properti yang Ditawarkan</label>
-          <div style="display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center">
-            <select id="kp-ref-type" onchange="onKpRefTypeChange()" style="padding:9px 10px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:12px">
-              <option value="listing">Listing</option>
-              <option value="aset">Aset</option>
-              <option value="primary">Primary</option>
-              <option value="manual">Manual (isi sendiri)</option>
-            </select>
-            <input id="kp-ref-search" type="text" placeholder="Ketik judul atau ID properti..." oninput="searchKpRef(this.value)" style="width:100%;padding:9px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:12px;box-sizing:border-box">
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-bottom:8px">Properti yang Ditawarkan</label>
+          <!-- Tab picker -->
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+            <button class="kp-ref-tab" onclick="loadKpRefList('listing-mine')" id="kp-tab-listing-mine"
+              style="padding:6px 11px;border-radius:20px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer">
+              <i class="fa-solid fa-building" style="margin-right:3px"></i>Listing: Saya
+            </button>
+            <button class="kp-ref-tab" onclick="loadKpRefList('listing-all')" id="kp-tab-listing-all"
+              style="padding:6px 11px;border-radius:20px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer">
+              <i class="fa-solid fa-buildings" style="margin-right:3px"></i>Listing: Semua
+            </button>
+            <button class="kp-ref-tab" onclick="loadKpRefList('primary')" id="kp-tab-primary"
+              style="padding:6px 11px;border-radius:20px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer">
+              <i class="fa-solid fa-star" style="margin-right:3px"></i>Primary
+            </button>
+            <button class="kp-ref-tab" onclick="loadKpRefList('aset')" id="kp-tab-aset"
+              style="padding:6px 11px;border-radius:20px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer">
+              <i class="fa-solid fa-gavel" style="margin-right:3px"></i>Aset
+            </button>
           </div>
-          <div id="kp-ref-results" style="display:none;margin-top:4px;background:#060E1F;border:1px solid rgba(255,255,255,0.1);border-radius:8px;max-height:140px;overflow-y:auto"></div>
-          <div id="kp-ref-selected" style="display:none;margin-top:6px;background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:8px 12px;font-size:12px;color:#D4A853"></div>
+          <!-- Search filter (muncul setelah tab dipilih) -->
+          <div id="kp-ref-search-wrap" style="display:none;margin-bottom:6px">
+            <input id="kp-ref-search" type="text" placeholder="Filter judul..." oninput="filterKpRefList(this.value)"
+              style="width:100%;padding:8px 12px;border-radius:8px;background:#0D1526;border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:12px;box-sizing:border-box">
+          </div>
+          <!-- List properti -->
+          <div id="kp-ref-list" style="display:none;max-height:180px;overflow-y:auto;background:#060E1F;border:1px solid rgba(255,255,255,0.08);border-radius:8px"></div>
+          <!-- Properti terpilih -->
+          <div id="kp-ref-selected" style="display:none;margin-top:8px;background:rgba(212,168,83,0.08);border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:9px 12px;font-size:12px;color:#D4A853;display:flex;align-items:center;gap:8px">
+            <i class="fa-solid fa-circle-check"></i>
+            <span id="kp-ref-selected-text"></span>
+            <button onclick="clearKpRef()" style="margin-left:auto;background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-size:11px">× Ganti</button>
+          </div>
         </div>
 
         <!-- Pilih Penerima -->
