@@ -2769,7 +2769,7 @@ async function loadKpRefList(tab) {
     } else if (tab === 'aset') {
       const res = await API.get('/assets');
       const all = res.data || [];
-      items = all.map(a => ({ id: a.ID, judul: a.Judul || a.Nama || a.ID, harga: a.Harga_Jual || a.Harga || '', type: 'aset' }));
+      items = all.map(a => ({ id: a.ID, judul: a.Nama_Asset || a.Kode_Asset || a.ID, harga: a.Harga_Limit_Format || a.Est_Harga_Pasar_Format || '', type: 'aset' }));
     }
     _kpRefAllRaw = items;
     _renderKpRefList(items);
