@@ -151,18 +151,22 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/v1/form-e1/my-status — cek apakah user sudah submit Form E-1 (semua role)
+// GET /api/v1/form-e1/my-status — status Form E-1 milik user (semua role)
+// Response: { submitted, status } — status = Pending | Diproses | Disetujui | Ditolak (submission terbaru)
 router.get('/my-status', authMiddleware, async (req, res) => {
   try {
     const rows = await sheetsService.getRange(SHEETS.FORM_E1);
     const list = rowsToObjects(rows);
-    const userId = req.user.id   || '';
-    const noWa   = req.user.no_wa || '';
-    const found  = list.find(r =>
-      (userId && r.Kode_Agent === userId) ||
-      (noWa   && r.No_WA     === noWa)
+    const userId = String(req.user.id || '').toUpperCase();
+    const waTail = eliteSvc.normalizePhoneTail(req.user.no_wa);
+    const mine = list.filter(r =>
+      (userId && String(r.Kode_Agent || '').toUpperCase() === userId) ||
+      (waTail && eliteSvc.normalizePhoneTail(r.No_WA) === waTail)
     );
-    res.json({ success: true, submitted: !!found });
+    // Kalau ada yg Disetujui pakai itu; selain itu ambil submission terbaru
+    const found = mine.find(r => r.Status === 'Disetujui') ||
+      mine.sort((a, b) => String(b.Tanggal_Submit).localeCompare(String(a.Tanggal_Submit)))[0];
+    res.json({ success: true, submitted: !!found, status: found ? (found.Status || 'Pending') : null });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }

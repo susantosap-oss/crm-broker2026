@@ -39,8 +39,8 @@ router.get('/my-status', authMiddleware, async (req, res) => {
   try {
     const rows  = await sheetsService.getRange(SHEETS.ELITE_KONTRAK);
     const list  = rowsToObjects(rows);
-    const noWa  = req.user.no_wa || '';
-    const found = noWa ? list.find(r => r.No_WA === noWa) : null;
+    const waTail = eliteSvc.normalizePhoneTail(req.user.no_wa);
+    const found  = waTail ? list.find(r => eliteSvc.normalizePhoneTail(r.No_WA) === waTail) : null;
     res.json({ success: true, submitted: !!found });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });

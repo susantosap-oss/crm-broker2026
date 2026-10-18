@@ -236,7 +236,10 @@ app.post('/api/v1/scheduler/elite-check', schedulerAuth, async (req, res) => {
   try {
     const eliteSvc = require('./services/elite.service');
     const results = await eliteSvc.runEliteCheck();
-    res.json({ success: true, message: 'Elite check selesai', results });
+    // EQT: notif WA "Q Test aktif kembali" untuk agen yang masa tunggu 14 harinya selesai
+    const retake = await require('./services/elite-quiz.service').runRetakeNotif()
+      .catch(e => [{ action: 'retake_notif_error', error: e.message }]);
+    res.json({ success: true, message: 'Elite check selesai', results, retake });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -318,6 +321,7 @@ async function migrateHeaders() {
     { sheet: SHEETS.RENTAL_STATUS,  cols: COLUMNS.RENTAL_STATUS },
     { sheet: SHEETS.VIGEN_JOBS,     cols: COLUMNS.VIGEN_JOBS },
     { sheet: SHEETS.CAMERA_ROLL,    cols: COLUMNS.CAMERA_ROLL },
+    { sheet: SHEETS.ELITE_QUIZ_RESULTS, cols: COLUMNS.ELITE_QUIZ_RESULTS },
   ];
 
   // PROJECTS: enforce exact header (bukan append-only) agar tidak ada kolom duplikat

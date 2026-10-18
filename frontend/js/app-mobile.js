@@ -11934,15 +11934,23 @@ async function loadElitePartnershipPage() {
   try {
     const [contentRes, e1Res, quizRes, kontrakRes] = await Promise.all([
       API.get('/elite/content'),
-      isRegisterRole ? API.get('/form-e1/my-status').catch(() => ({ data: { submitted: false } })) : Promise.resolve({ data: { submitted: false } }),
-      isRegisterRole ? API.get('/elite-quiz/my-results').catch(() => ({ data: [] }))               : Promise.resolve({ data: [] }),
-      isRegisterRole ? API.get('/elite-kontrak/my-status').catch(() => ({ data: { submitted: false } })) : Promise.resolve({ data: { submitted: false } }),
+      isRegisterRole ? API.get('/form-e1/my-status').catch(() => ({ submitted: false }))        : Promise.resolve({ submitted: false }),
+      isRegisterRole ? API.get('/elite-quiz/my-results').catch(() => ({ data: [] }))           : Promise.resolve({ data: [] }),
+      isRegisterRole ? API.get('/elite-kontrak/my-status').catch(() => ({ submitted: false }))  : Promise.resolve({ submitted: false }),
     ]);
 
+    // NB: API.get mengembalikan body JSON apa adanya — my-status = { success, submitted, status }
     const c = contentRes.data || {};
-    const step1Done = isRegisterRole && e1Res?.data?.submitted    === true;
-    const step2Done = isRegisterRole && Array.isArray(quizRes?.data) && quizRes.data.length > 0;
-    const step3Done = isRegisterRole && kontrakRes?.data?.submitted === true;
+    const e1Submitted = isRegisterRole && e1Res?.submitted === true;
+    const e1Status    = e1Res?.status || '';
+    const quizList    = Array.isArray(quizRes?.data) ? quizRes.data : [];
+    const retake      = quizRes?.retake || {};
+    const quizPassed  = retake.passed === true || quizList.some(r => r.Status === 'Lulus');
+    const quizLocked  = !quizPassed && retake.locked === true;
+    const step1Done = e1Submitted && e1Status === 'Disetujui';
+    const step2Done = isRegisterRole && quizPassed;
+    const step3Done = isRegisterRole && kontrakRes?.submitted === true;
+    const fmtTgl = iso => iso ? new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
     const renderCaraMendaftar = () => {
       if (!isRegisterRole) {
@@ -11965,6 +11973,10 @@ async function loadElitePartnershipPage() {
           href  : '/form-e1.html',
           done  : step1Done,
           locked: false,
+          // Sudah submit tapi belum Disetujui → tampilkan status, jangan tawarkan isi ulang
+          note  : !e1Submitted ? '' :
+                  e1Status === 'Ditolak' ? { color: '#f87171', icon: 'fa-circle-xmark', text: 'Form E-1 ditolak admin — hubungi admin, lalu isi ulang', reopen: true } :
+                  e1Status !== 'Disetujui' ? { color: '#fbbf24', icon: 'fa-hourglass-half', text: 'Menunggu verifikasi admin' } : '',
         },
         {
           title : 'Ikuti ELITE Qualification Test (EQT)',
@@ -11972,6 +11984,9 @@ async function loadElitePartnershipPage() {
           href  : '/elite-quiz.html',
           done  : step2Done,
           locked: !step1Done,
+          note  : quizLocked
+                  ? { color: '#f87171', icon: 'fa-lock', text: `Belum lulus — Q Test terkunci ${retake.lockDays || 14} hari, aktif kembali ${fmtTgl(retake.unlockAt)}` }
+                  : (!quizPassed && quizList.length ? { color: '#fbbf24', icon: 'fa-rotate-right', text: 'Belum lulus — Q Test sudah aktif, silakan ikuti kembali', reopen: true } : ''),
         },
         {
           title : 'Tandatangani Kontrak ELITE',
@@ -11999,8 +12014,11 @@ async function loadElitePartnershipPage() {
           statusEl = `<span style="font-size:11px;color:#4ade80;font-weight:600"><i class="fa-solid fa-circle-check" style="margin-right:4px"></i>Selesai</span>`;
         } else if (s.locked) {
           statusEl = `<span style="font-size:11px;color:rgba(255,255,255,0.25)"><i class="fa-solid fa-lock" style="margin-right:4px"></i>Selesaikan langkah sebelumnya terlebih dahulu</span>`;
+        } else if (s.note && !s.note.reopen) {
+          statusEl = `<span style="font-size:11px;color:${s.note.color};font-weight:600"><i class="fa-solid ${s.note.icon}" style="margin-right:4px"></i>${s.note.text}</span>`;
         } else {
-          statusEl = `<a href="${s.href}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#D4A853;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);padding:6px 14px;border-radius:8px;text-decoration:none">Buka <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px"></i></a>`;
+          statusEl = (s.note ? `<div style="font-size:11px;color:${s.note.color};font-weight:600;margin-bottom:8px"><i class="fa-solid ${s.note.icon}" style="margin-right:4px"></i>${s.note.text}</div>` : '') +
+            `<a href="${s.href}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#D4A853;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.3);padding:6px 14px;border-radius:8px;text-decoration:none">Buka <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px"></i></a>`;
         }
 
         return `<div style="display:flex;gap:14px">

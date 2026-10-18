@@ -809,6 +809,7 @@ const COLUMNS = {
     'Waktu_Detik',      // I  detik pengerjaan
     'Attempt_Ke',       // J  urutan attempt ke-N agen ini
     'Jawaban_JSON',     // K  JSON string jawaban per soal
+    'Notif_Retake_Terkirim', // L  TRUE jika WA "Q Test aktif kembali" sudah dikirim (khusus Tidak_Lulus)
   ],
 
   // ★ ELITE_KONTRAK — Surat Perjanjian ELITE Program (public form submission)

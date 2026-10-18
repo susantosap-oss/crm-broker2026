@@ -785,7 +785,45 @@ function esc(s) {
   return div.innerHTML;
 }
 
+// Gate akses EQT: (1) Form E-1 harus Disetujui (khusus agen/BM),
+// (2) Tidak Lulus → terkunci 14 hari sejak attempt terakhir
+function lockQuiz(title, msg) {
+  submitted = true;
+  clearInterval(timer);
+  timerEl.textContent = '--:--';
+  document.getElementById('quiz').style.display = 'none';
+  document.querySelector('.actions').style.display = 'none';
+  const el = document.getElementById('result');
+  el.innerHTML = `<div class="save-banner saved-err" style="font-size:15px">🔒 ${esc(title)}</div>
+    <p style="margin-top:12px;line-height:1.6">${esc(msg)}</p><div id="historySection"></div>`;
+  el.style.display = 'block';
+}
+
+async function checkAccess() {
+  if (!_token) return;
+  const auth = { headers: { Authorization: `Bearer ${_token}` } };
+  try {
+    if (['agen', 'business_manager'].includes(_user.role)) {
+      const e1 = await fetch('/api/v1/form-e1/my-status', auth).then(r => r.json());
+      if (e1.success && e1.status !== 'Disetujui') {
+        lockQuiz('Q Test belum tersedia',
+          !e1.submitted ? 'Silakan isi Form Pendaftaran E-1 terlebih dahulu.'
+          : `Form E-1 Anda berstatus "${e1.status}". Q Test terbuka setelah Form E-1 diverifikasi admin.`);
+        return;
+      }
+    }
+    const q = await fetch('/api/v1/elite-quiz/my-results', auth).then(r => r.json());
+    if (q.success && q.retake && q.retake.locked) {
+      const tgl = new Date(q.retake.unlockAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      lockQuiz('Q Test terkunci sementara',
+        `Anda belum lulus pada attempt terakhir. Q Test terkunci ${q.retake.lockDays || 14} hari dan aktif kembali pada ${tgl}. Anda akan menerima notifikasi WhatsApp saat Q Test sudah aktif.`);
+      loadHistory();
+    }
+  } catch { /* gagal cek → biarkan; backend tetap menolak submit saat terkunci */ }
+}
+
 initAuth();
+checkAccess();
 </script>
 </body>
 </html>

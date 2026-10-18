@@ -20,15 +20,17 @@ router.post('/submit', async (req, res) => {
     );
     res.json({ success: true, data: result, message: 'Hasil quiz tersimpan' });
   } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
+    res.status(e.statusCode || 500).json({ success: false, message: e.message });
   }
 });
 
-// GET /my-results — hasil quiz milik sendiri
+// GET /my-results — hasil quiz milik sendiri + status kunci retake
+// retake: { passed, locked, unlockAt, lockDays }
 router.get('/my-results', async (req, res) => {
   try {
     const results = await quizSvc.getMyResults(req.user.id);
-    res.json({ success: true, data: results });
+    const retake  = await quizSvc.getRetakeStatus(req.user.id);
+    res.json({ success: true, data: results, retake: { ...retake, lockDays: quizSvc.RETAKE_LOCK_DAYS } });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }

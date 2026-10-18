@@ -8,6 +8,10 @@ const { v4: uuidv4 } = require('uuid');
 const sheetsService = require('./sheets.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 
+// Agen yang Tidak_Lulus terkunci dari EQT selama N hari sejak attempt terakhir
+const RETAKE_LOCK_DAYS = 14;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 function rowsToObjects(rows) {
   if (!rows || rows.length < 2) return [];
   const [headers, ...dataRows] = rows;
@@ -20,11 +24,33 @@ function rowsToObjects(rows) {
 
 // ── Submit ──────────────────────────────────────────────────
 
+// Status kunci EQT untuk satu agen, dari daftar hasil quiz miliknya.
+// locked = belum pernah Lulus, attempt terakhir Tidak_Lulus, dan belum lewat RETAKE_LOCK_DAYS.
+function computeRetakeStatus(results) {
+  const passed = results.some(r => r.Status === 'Lulus');
+  const last = [...results].sort((a, b) => new Date(b.Tanggal) - new Date(a.Tanggal))[0] || null;
+  if (passed || !last || last.Status !== 'Tidak_Lulus') {
+    return { passed, locked: false, unlockAt: null };
+  }
+  const unlockAt = new Date(new Date(last.Tanggal).getTime() + RETAKE_LOCK_DAYS * DAY_MS);
+  return { passed, locked: Date.now() < unlockAt.getTime(), unlockAt: unlockAt.toISOString() };
+}
+
+async function getRetakeStatus(agentId) {
+  return computeRetakeStatus(await getMyResults(agentId));
+}
+
 async function submitQuiz({ nilai, persen, status, waktuDetik, jawabanJson }, user) {
   const now = new Date().toISOString();
 
   // Hitung attempt ke-N untuk agen ini
   const existing = rowsToObjects(await sheetsService.getRange(SHEETS.ELITE_QUIZ_RESULTS));
+  const retake = computeRetakeStatus(existing.filter(r => r.Agent_ID === user.id));
+  if (retake.locked) {
+    const err = new Error(`EQT terkunci sampai ${new Date(retake.unlockAt).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'long', year: 'numeric' })} (${RETAKE_LOCK_DAYS} hari setelah Tidak Lulus).`);
+    err.statusCode = 423;
+    throw err;
+  }
   const attempt = existing.filter(r => r.Agent_ID === user.id).length + 1;
 
   const row = {
@@ -146,4 +172,77 @@ async function getSummaryByAgent() {
   return Object.values(map);
 }
 
-module.exports = { submitQuiz, getMyResults, getAllResults, getSummaryByAgent, backfillEQTSync };
+// ── Scheduler: notif WA saat kunci retake EQT berakhir ──────
+// Dipanggil harian oleh cron-elite-check. Untuk tiap agen yang belum pernah Lulus
+// dan attempt terakhirnya Tidak_Lulus >= RETAKE_LOCK_DAYS lalu → WA ke agen + principal,
+// lalu tandai Notif_Retake_Terkirim=TRUE di baris attempt tsb. Idempotent.
+async function runRetakeNotif() {
+  const eliteSvc = require('./elite.service');
+  const rows = await sheetsService.getRange(SHEETS.ELITE_QUIZ_RESULTS);
+  const headers = rows?.[0] || [];
+  const idxFlag = headers.indexOf('Notif_Retake_Terkirim');
+  if (idxFlag < 0) return [{ action: 'skip', reason: 'kolom Notif_Retake_Terkirim belum ada' }];
+
+  const byAgent = {};
+  for (const r of rowsToObjects(rows)) {
+    if (r.Agent_ID) (byAgent[r.Agent_ID] = byAgent[r.Agent_ID] || []).push(r);
+  }
+
+  const results = [];
+  let principalWAs = null;
+  for (const [agentId, list] of Object.entries(byAgent)) {
+    const st = computeRetakeStatus(list);
+    if (st.passed || st.locked || !st.unlockAt) continue;
+    const last = [...list].sort((a, b) => new Date(b.Tanggal) - new Date(a.Tanggal))[0];
+    if (last.Notif_Retake_Terkirim === 'TRUE') continue;
+
+    try {
+      const agent = await eliteSvc.getAgentById(agentId);
+      const nama = agent?.Nama || last.Agen_Nama || agentId;
+      const link = 'https://crm.mansionpro.id/elite-quiz.html';
+      if (agent?.No_WA) {
+        await eliteSvc.sendWA(agent.No_WA,
+          `🔓 *ELITE Qualification Test (EQT)*
+
+` +
+          `Halo ${nama},
+` +
+          `Q Test sudah aktif, silakan untuk mengikuti kembali.
+
+` +
+          `Link: ${link}
+` +
+          `(Atau buka CRM → ELITE PARTNERSHIP → Cara Mendaftar)`);
+      }
+      principalWAs = principalWAs || await eliteSvc.getPrincipalsWA();
+      const adminMsg =
+        `🔓 *EQT Aktif Kembali*
+
+` +
+        `Nama: ${nama}
+` +
+        `Kantor: ${last.Nama_Kantor || agent?.Nama_Kantor || '-'}
+` +
+        `Attempt terakhir: ${last.Attempt_Ke || '-'} — Tidak Lulus (${last.Persen || 0}%)
+
+` +
+        `Masa tunggu ${RETAKE_LOCK_DAYS} hari selesai, Q Test sudah aktif kembali untuk agen ini.`;
+      for (const wa of principalWAs) await eliteSvc.sendWA(wa, adminMsg);
+
+      const rowArr = [...(rows[last._rowIdx - 1] || [])];
+      while (rowArr.length <= idxFlag) rowArr.push('');
+      rowArr[idxFlag] = 'TRUE';
+      await sheetsService.updateRow(SHEETS.ELITE_QUIZ_RESULTS, last._rowIdx, rowArr);
+      results.push({ action: 'retake_notif', agentId, agent: nama, waAgen: !!agent?.No_WA });
+    } catch (e) {
+      console.warn('[EQT] retake notif gagal untuk', agentId, e.message);
+      results.push({ action: 'retake_notif_error', agentId, error: e.message });
+    }
+  }
+  return results;
+}
+
+module.exports = {
+  RETAKE_LOCK_DAYS, submitQuiz, getMyResults, getRetakeStatus, getAllResults,
+  getSummaryByAgent, backfillEQTSync, runRetakeNotif,
+};
