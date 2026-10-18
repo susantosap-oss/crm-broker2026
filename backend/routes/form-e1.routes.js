@@ -166,7 +166,14 @@ router.get('/my-status', authMiddleware, async (req, res) => {
     // Kalau ada yg Disetujui pakai itu; selain itu ambil submission terbaru
     const found = mine.find(r => r.Status === 'Disetujui') ||
       mine.sort((a, b) => String(b.Tanggal_Submit).localeCompare(String(a.Tanggal_Submit)))[0];
-    res.json({ success: true, submitted: !!found, status: found ? (found.Status || 'Pending') : null });
+    let status = found ? (found.Status || 'Pending') : null;
+    // Fallback: admin bisa verify lewat checklist ELITE (Form_E1_Verified di ELITE_PROGRAM)
+    // tanpa mengubah Status di FORM_E1 — anggap Disetujui juga
+    if (status !== 'Disetujui' && req.user.id) {
+      const program = await eliteSvc.getProgramByAgent(req.user.id);
+      if (program && program.Form_E1_Verified === 'TRUE') status = 'Disetujui';
+    }
+    res.json({ success: true, submitted: !!found || status === 'Disetujui', status });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
