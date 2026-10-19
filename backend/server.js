@@ -254,6 +254,17 @@ app.post('/api/v1/scheduler/elite-kinerja', schedulerAuth, async (req, res) => {
     res.status(500).json({ success: false, message: e.message });
   }
 });
+
+app.post('/api/v1/scheduler/sync-zkomisi-elite', schedulerAuth, async (req, res) => {
+  try {
+    const eliteSvc = require('./services/elite.service');
+    const results = await eliteSvc.syncZKomisiElite();
+    res.json({ success: true, message: 'Sync ZKomisi → ELITE_TRANSACTIONS selesai', results });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // ★ Fitur 2 — Meta/Zapier Webhook + Config API
 // Semua rute webhook (meta, zapier, config) dihandle satu router
 const webhookRouter = require('./routes/meta-webhook.routes');

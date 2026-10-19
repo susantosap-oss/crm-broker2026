@@ -10,12 +10,12 @@ router.use(authMiddleware);
 // POST /submit — simpan hasil quiz (semua role)
 router.post('/submit', async (req, res) => {
   try {
-    const { nilai, persen, status, waktuDetik, jawabanJson } = req.body;
+    const { nilai, persen, status, waktuDetik, jawabanJson, attemptId } = req.body;
     if (nilai === undefined || !status) {
       return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
     }
     const result = await quizSvc.submitQuiz(
-      { nilai: parseInt(nilai), persen: parseInt(persen), status, waktuDetik, jawabanJson },
+      { nilai: parseInt(nilai), persen: parseInt(persen), status, waktuDetik, jawabanJson, attemptId },
       req.user
     );
     res.json({ success: true, data: result, message: 'Hasil quiz tersimpan' });

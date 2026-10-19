@@ -718,7 +718,7 @@ const COLUMNS = {
     'Nama_Kantor',            // D  denormalized
     'Tanggal_Mulai',          // E  YYYY-MM-DD
     'Tanggal_Berakhir',       // F  YYYY-MM-DD (Mulai + 365 hari)
-    'Status',                 // G  Draft|Aktif|Non_Aktif|Gugur_Expired|Gugur_Kinerja|Gugur_Manual
+    'Status',                 // G  Draft|Aktif|Non_Aktif|Evaluasi|Gugur_Expired|Gugur_Kinerja|Gugur_Manual
     'Form_E1_Verified',       // H  TRUE|FALSE
     'Form_E1_Catatan',        // I  Catatan Form E-1
     'Form_E1_Tgl',            // J  Tanggal verifikasi
@@ -736,6 +736,8 @@ const COLUMNS = {
     'Dibuat_Oleh',            // V  agent_id yang membuat
     'Dibuat_Pada',            // W  ISO datetime
     'Diperbarui_Pada',        // X  ISO datetime
+    'Evaluasi_Sejak',         // Y  ISO date — tanggal status berubah ke Evaluasi
+    'Notif_Eval_Terkirim',    // Z  TRUE|FALSE — pre-eval H-7 warning sent (di-reset tiap kuartal)
   ],
 
   // ★ ELITE_TRANSACTIONS — Transaksi per agen ELITE
@@ -755,6 +757,8 @@ const COLUMNS = {
     'Nilai_Efektif',     // M  Co_Broke=TRUE → ×50%, else full
     'Dibuat_Pada',       // N  ISO datetime
     'Diperbarui_Pada',   // O  ISO datetime
+    'Ref_No_Transaksi',  // P  Nomer Transaksi dari ZKomisi (dedup key auto-sync)
+    'Sumber',            // Q  manual|zkomisi_auto
   ],
 
   // ★ ELITE_CONTENT — Konten program ELITE (single row data)
@@ -810,6 +814,7 @@ const COLUMNS = {
     'Attempt_Ke',       // J  urutan attempt ke-N agen ini
     'Jawaban_JSON',     // K  JSON string jawaban per soal
     'Notif_Retake_Terkirim', // L  TRUE jika WA "Q Test aktif kembali" sudah dikirim (khusus Tidak_Lulus)
+    'Attempt_ID',       // M  UUID dibuat client saat quiz dimulai (idempotency key)
   ],
 
   // ★ ELITE_KONTRAK — Surat Perjanjian ELITE Program (public form submission)

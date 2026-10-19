@@ -40,11 +40,18 @@ async function getRetakeStatus(agentId) {
   return computeRetakeStatus(await getMyResults(agentId));
 }
 
-async function submitQuiz({ nilai, persen, status, waktuDetik, jawabanJson }, user) {
+async function submitQuiz({ nilai, persen, status, waktuDetik, jawabanJson, attemptId }, user) {
   const now = new Date().toISOString();
 
   // Hitung attempt ke-N untuk agen ini
   const existing = rowsToObjects(await sheetsService.getRange(SHEETS.ELITE_QUIZ_RESULTS));
+
+  // Idempotency: jika attemptId sudah tersimpan, kembalikan record yang ada
+  if (attemptId) {
+    const dup = existing.find(r => r.Attempt_ID === attemptId);
+    if (dup) return { ...dup, attempt: parseInt(dup.Attempt_Ke) || 1 };
+  }
+
   const retake = computeRetakeStatus(existing.filter(r => r.Agent_ID === user.id));
   if (retake.locked) {
     const err = new Error(`EQT terkunci sampai ${new Date(retake.unlockAt).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'long', year: 'numeric' })} (${RETAKE_LOCK_DAYS} hari setelah Tidak Lulus).`);
@@ -65,6 +72,7 @@ async function submitQuiz({ nilai, persen, status, waktuDetik, jawabanJson }, us
     Waktu_Detik: String(waktuDetik || 0),
     Attempt_Ke:  String(attempt),
     Jawaban_JSON: typeof jawabanJson === 'string' ? jawabanJson : JSON.stringify(jawabanJson || {}),
+    Attempt_ID:  attemptId || '',
   };
 
   await sheetsService.appendRow(SHEETS.ELITE_QUIZ_RESULTS, COLUMNS.ELITE_QUIZ_RESULTS.map(c => row[c] || ''));

@@ -580,6 +580,10 @@ const QUESTIONS = 20;
 let remaining = 20 * 60;
 let startTime = Date.now();
 let submitted = false;
+// Dibuat saat halaman dimuat — dipakai sebagai idempotency key agar retake akibat
+// kegagalan simpan tidak dihitung sebagai attempt baru di server.
+const _attemptId = Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
+let _pendingSave = null; // {score, percent, status, jawabanJson, review} — untuk retry
 
 // ── Auth ─────────────────────────────────────────────────────
 let _token = null;
@@ -650,6 +654,7 @@ async function submitQuiz(auto = false) {
   submitted = true;
   clearInterval(timer);
 
+  // 1. Hitung skor — JANGAN update DOM dulu (review hanya tampil setelah save berhasil)
   let score = 0;
   const review = [];
   const jawabanJson = {};
@@ -657,60 +662,85 @@ async function submitQuiz(auto = false) {
   Object.entries(ANSWERS).forEach(([q, correct]) => {
     const qNum = q.replace('q', '');
     const selected = document.querySelector(`input[name="${q}"]:checked`);
-    const card  = document.getElementById(`qcard-${qNum}`);
-    const note  = document.getElementById(`review-${qNum}`);
     const chosen = selected ? selected.value : '-';
     jawabanJson[q] = chosen;
-
     document.querySelectorAll(`.option[data-q="${qNum}"]`).forEach(x => x.classList.remove('selected'));
-
-    if (chosen === correct) {
-      score++;
-      card.classList.add('correct-card');
-      note.textContent = '✓ Jawaban benar';
-      review.push({ q: qNum, chosen, correct, ok: true });
-    } else {
-      card.classList.add('incorrect-card');
-      const correctEl = document.querySelector(`.option[data-q="${qNum}"][data-letter="${correct}"] .opt-text`);
-      note.textContent = `✗ Salah. Jawaban benar: ${correct}. ${correctEl ? correctEl.textContent : ''}`;
-      review.push({ q: qNum, chosen, correct, ok: false, correctText: correctEl ? correctEl.textContent : '' });
-    }
+    const ok = chosen === correct;
+    if (ok) score++;
+    const correctEl = document.querySelector(`.option[data-q="${qNum}"][data-letter="${correct}"] .opt-text`);
+    review.push({ q: qNum, chosen, correct, ok, correctText: ok ? '' : (correctEl ? correctEl.textContent : '') });
   });
 
   document.querySelectorAll('input[type="radio"]').forEach(i => i.disabled = true);
   document.getElementById('submitBtn').disabled = true;
 
-  const percent  = Math.round(score / QUESTIONS * 100);
-  const passed   = score >= 16;
-  const status   = passed ? 'Lulus' : 'Tidak_Lulus';
-  const name     = (document.getElementById('nameInput').value || 'Peserta').trim();
+  const percent    = Math.round(score / QUESTIONS * 100);
+  const passed     = score >= 16;
+  const status     = passed ? 'Lulus' : 'Tidak_Lulus';
+  const name       = (document.getElementById('nameInput').value || 'Peserta').trim();
   const unanswered = review.filter(x => x.chosen === '-').length;
 
-  const reviewHtml = review.filter(x => !x.ok).map(x => `
-    <div class="review-item">
-      <div><b>Soal ${x.q}</b> — <span class="incorrect">Salah</span></div>
-      <div class="review-answer">Jawaban Anda: <b>${x.chosen}</b></div>
-      <div class="review-answer">Jawaban Benar: <b>${x.correct}</b> — ${esc(x.correctText || '')}</div>
-    </div>`).join('');
-
-  document.getElementById('result').innerHTML = `
+  // 2. Tampil skor dasar + banner "Menyimpan…" — belum ada review detail
+  const el = document.getElementById('result');
+  el.innerHTML = `
     <div style="font-weight:800;color:#667085">${esc(name)}</div>
     <div class="score">${score}/${QUESTIONS}</div>
     <div class="status ${passed ? 'pass' : 'fail'}">${passed ? 'LULUS ✅' : 'TIDAK LULUS ❌'}</div>
     <div class="summary">Nilai: <b>${percent}%</b> · Benar: <b>${score}</b> · Salah: <b>${QUESTIONS - score}</b> · Tidak dijawab: <b>${unanswered}</b></div>
     ${auto ? '<div style="margin-top:8px;color:#b91c1c;font-weight:700">Waktu habis — jawaban dikumpulkan otomatis.</div>' : ''}
     <div id="saveBanner"></div>
+    <div id="reviewSection"></div>
+    <div id="historySection"></div>`;
+  el.style.display = 'block';
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // 3. Simpan dulu, baru tampil review (save-first agar jawaban tidak bocor jika gagal)
+  if (_token) {
+    _pendingSave = { score, percent, status, jawabanJson, review };
+    const saved = await saveToBackend(_pendingSave);
+    if (saved) {
+      showReview(review);
+      await loadHistory();
+    }
+    // Jika gagal: banner tampil error + tombol "Coba Lagi" — review TIDAK muncul
+  } else {
+    // Tidak login — review tampil langsung (tidak ada data tersimpan, tidak ada fairness issue)
+    showReview(review);
+  }
+}
+
+function showReview(review) {
+  review.forEach(x => {
+    const card = document.getElementById(`qcard-${x.q}`);
+    const note = document.getElementById(`review-${x.q}`);
+    if (!card || !note) return;
+    if (x.ok) {
+      card.classList.add('correct-card');
+      note.textContent = '✓ Jawaban benar';
+    } else {
+      card.classList.add('incorrect-card');
+      note.textContent = `✗ Salah. Jawaban benar: ${x.correct}. ${esc(x.correctText || '')}`;
+    }
+  });
+  const reviewHtml = review.filter(x => !x.ok).map(x => `
+    <div class="review-item">
+      <div><b>Soal ${x.q}</b> — <span class="incorrect">Salah</span></div>
+      <div class="review-answer">Jawaban Anda: <b>${x.chosen}</b></div>
+      <div class="review-answer">Jawaban Benar: <b>${x.correct}</b> — ${esc(x.correctText || '')}</div>
+    </div>`).join('');
+  const sec = document.getElementById('reviewSection');
+  if (sec) sec.innerHTML = `
     <div class="review">
       <h3>Review Jawaban Salah</h3>
       ${reviewHtml || '<div class="correct">Semua jawaban benar. Mantap!</div>'}
-    </div>
-    <div id="historySection"></div>`;
-  document.getElementById('result').style.display = 'block';
-  document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    </div>`;
+}
 
-  // Simpan ke CRM jika login
-  if (_token) {
-    await saveToBackend({ score, percent, status, jawabanJson });
+async function retrySubmit() {
+  if (!_pendingSave) return;
+  const saved = await saveToBackend(_pendingSave);
+  if (saved) {
+    showReview(_pendingSave.review);
     await loadHistory();
   }
 }
@@ -726,19 +756,21 @@ async function saveToBackend({ score, percent, status, jawabanJson }) {
     const res = await fetch('/api/v1/elite-quiz/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${_token}` },
-      body: JSON.stringify({ nilai: score, persen: percent, status, waktuDetik, jawabanJson }),
+      body: JSON.stringify({ nilai: score, persen: percent, status, waktuDetik, jawabanJson, attemptId: _attemptId }),
     });
     const data = await res.json();
     if (data.success) {
       banner.className = 'save-banner saved-ok';
       const eqtNote = status === 'Lulus' ? ' EQT terverifikasi di program ELITE Anda.' : '';
       banner.textContent = `✓ Hasil tersimpan ke CRM (Attempt ke-${data.data.attempt}).${eqtNote}`;
+      return true;
     } else {
       throw new Error(data.message || 'Gagal simpan');
     }
   } catch (e) {
     banner.className = 'save-banner saved-err';
-    banner.textContent = `Gagal simpan ke CRM: ${e.message}`;
+    banner.innerHTML = `Gagal simpan ke CRM: ${esc(e.message)}&ensp;<button onclick="retrySubmit()" style="padding:6px 14px;background:var(--navy);color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px">Coba Lagi</button>`;
+    return false;
   }
 }
 
