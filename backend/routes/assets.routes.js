@@ -182,6 +182,28 @@ router.post('/publish-all', async (req, res) => {
   }
 });
 
+// ── GET /support-team — Kontak Tim Support Asset (semua role) ──
+// Nama hardcode, No WA diambil dari sheet AGENTS
+const SUPPORT_TEAM_NAMES = ['Robert Sutanto', 'Susanto Saputro', 'Jonathan Gerwyn'];
+router.get('/support-team', async (req, res) => {
+  try {
+    const sheetsService = require('../services/sheets.service');
+    const { SHEETS, COLUMNS } = require('../config/sheets.config');
+    const rows = await sheetsService.getRange(SHEETS.AGENTS);
+    const [, ...data] = rows || [];
+    const iNama = COLUMNS.AGENTS.indexOf('Nama');
+    const iWa   = COLUMNS.AGENTS.indexOf('No_WA');
+    const norm  = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const team = SUPPORT_TEAM_NAMES.map(nama => {
+      const row = data.find(r => norm(r[iNama]) === norm(nama));
+      return { nama, no_wa: row ? String(row[iWa] || '').trim() : '' };
+    });
+    res.json({ success: true, data: team });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // ── GET /:id — Detail aset ─────────────────────────────────
 router.get('/:id', async (req, res) => {
   try {

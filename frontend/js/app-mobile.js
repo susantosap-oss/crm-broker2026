@@ -10058,6 +10058,16 @@ async function openAssetDetail(id) {
       pubBtn.style.display = PUBLISH_ROLES_ASSET.includes(role) ? '' : 'none';
     }
 
+    // Cessie/Cassie — selain superadmin/principal/admin hanya read-only:
+    // sembunyikan WA/Email/Konten + Buat Flyer, ganti dengan Kontak Tim Support Asset
+    const _cessieLocked = _isCessieReadOnly(a);
+    const shareActs = document.getElementById('ad-share-actions');
+    if (shareActs) shareActs.style.display = _cessieLocked ? 'none' : 'grid';
+    const flyerBtn = document.getElementById('ad-flyer-btn');
+    if (flyerBtn) flyerBtn.style.display = _cessieLocked ? 'none' : 'flex';
+    const supportBtn = document.getElementById('ad-support-btn');
+    if (supportBtn) supportBtn.style.display = _cessieLocked ? 'flex' : 'none';
+
     // Delete button — editor + publish roles
     const delBtn = document.getElementById('ad-delete-btn');
     if (delBtn) delBtn.style.display = _assetCanEdit ? '' : 'none';
@@ -10073,6 +10083,57 @@ async function openAssetDetail(id) {
     showToast('Gagal load detail aset: ' + e.message, 'error');
     closeModal('modal-asset-detail');
   }
+}
+
+// ── Cessie read-only gating ───────────────────────────────
+const CESSIE_FULL_ROLES = ['superadmin', 'principal', 'admin'];
+function _isCessieReadOnly(a) {
+  const lbl = String(a?.Label_Asset || '').trim().toLowerCase();
+  if (lbl !== 'cessie' && lbl !== 'cassie') return false;
+  return !CESSIE_FULL_ROLES.includes(STATE.user?.role);
+}
+
+async function openAssetSupportModal() {
+  document.getElementById('asset-support-popup')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'asset-support-popup';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div style="background:#141E35;border:1px solid rgba(167,139,250,0.35);border-radius:16px;padding:20px;width:100%;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p style="color:#a78bfa;font-size:15px;font-weight:700;margin:0"><i class="fa-solid fa-headset" style="margin-right:6px"></i>Tim Support Asset</p>
+        <button onclick="document.getElementById('asset-support-popup')?.remove()" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div id="asset-support-list" style="color:rgba(255,255,255,0.5);font-size:13px">Memuat…</div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const SUPPORT_NAMES = ['Robert Sutanto', 'Susanto Saputro', 'Jonathan Gerwyn'];
+  let team = SUPPORT_NAMES.map(nama => ({ nama, no_wa: '' }));
+  try {
+    const res = await API.get('/assets/support-team');
+    if (Array.isArray(res.data) && res.data.length) team = res.data;
+  } catch (_) {}
+
+  const list = document.getElementById('asset-support-list');
+  if (!list) return;
+  const kode = _currentAsset?.Kode_Asset || '';
+  list.innerHTML = team.map(t => {
+    let wa = String(t.no_wa || '').replace(/\D/g, '');
+    if (wa.startsWith('0')) wa = '62' + wa.slice(1);
+    const msg = encodeURIComponent(`Halo ${t.nama}, saya ingin menanyakan aset Cessie${kode ? ' ' + kode : ''}.`);
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+        <div style="min-width:0">
+          <p style="color:#fff;font-size:13px;font-weight:600;margin:0">- ${escapeHtml(t.nama)}</p>
+          <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:2px 0 0">${escapeHtml(t.no_wa || 'No WA belum tersedia')}</p>
+        </div>
+        ${wa ? `<a href="https://wa.me/${wa}?text=${msg}" target="_blank" rel="noopener"
+          style="flex-shrink:0;padding:7px 12px;border-radius:10px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#4ade80;font-size:12px;font-weight:600;text-decoration:none">
+          <i class="fa-brands fa-whatsapp"></i> Chat</a>` : ''}
+      </div>`;
+  }).join('');
 }
 
 function toggleAssetDetailPhoto(slot) {
