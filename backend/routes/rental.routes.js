@@ -40,16 +40,62 @@ router.post('/', async (req, res) => {
       agen_listing_id = '', agen_listing_nama = '',
       agen_selling_id = '', agen_selling_nama = '',
       cobroke = 'FALSE',
+      periode_sewa = 'Tahunan',
+      durasi_total_bulan,
     } = req.body;
 
-    if (!nama_penyewa || !alamat_sewa || !tanggal_mulai || !durasi_bulan) {
-      return res.status(400).json({ success: false, message: 'Field wajib: nama_penyewa, alamat_sewa, tanggal_mulai, durasi_bulan' });
+    if (!nama_penyewa || !alamat_sewa || !tanggal_mulai) {
+      return res.status(400).json({ success: false, message: 'Field wajib: nama_penyewa, alamat_sewa, tanggal_mulai' });
     }
 
-    // Agen hanya bisa input untuk dirinya sendiri
     const targetAgentId = ADMIN_ROLES.includes(role) && agent_id ? agent_id : myId;
-    const tanggalSelesai = hitungTanggalSelesai(tanggal_mulai, durasi_bulan);
     const now = new Date().toISOString();
+
+    // ── Bulanan: buat N record, masing-masing 1 bulan, chain via Ref_ID ──
+    if (periode_sewa === 'Bulanan') {
+      const totalBulan = parseInt(durasi_total_bulan);
+      if (!totalBulan || ![3, 6, 12].includes(totalBulan)) {
+        return res.status(400).json({ success: false, message: 'durasi_total_bulan wajib: 3, 6, atau 12' });
+      }
+
+      let prevId    = '';
+      let curStart  = tanggal_mulai;
+      let firstData = null;
+
+      for (let i = 1; i <= totalBulan; i++) {
+        const periodId  = uuidv4();
+        const periodEnd = hitungTanggalSelesai(curStart, 1);
+        await sheetsService.appendRow(SHEETS.RENTAL_STATUS, [
+          periodId, targetAgentId, nama_penyewa, alamat_sewa,
+          curStart, 1, periodEnd,
+          'aktif', 'FALSE', 'FALSE', catatan, now, now,
+          agen_listing_id, agen_listing_nama,
+          agen_selling_id, agen_selling_nama,
+          cobroke, '',            // Hasil_FU_Reminder (S)
+          prevId,                 // Ref_ID (T)
+          'Bulanan', totalBulan, i, 'FALSE',  // U, V, W, X
+        ]);
+        if (i === 1) firstData = { ID: periodId, Tanggal_Mulai: curStart, Tanggal_Selesai: periodEnd };
+        prevId   = periodId;
+        curStart = periodEnd;
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          ID: firstData.ID, Agen_ID: targetAgentId, Nama_Penyewa: nama_penyewa,
+          Alamat_Sewa: alamat_sewa, Tanggal_Mulai: firstData.Tanggal_Mulai,
+          Durasi_Bulan: 1, Tanggal_Selesai: firstData.Tanggal_Selesai,
+          Status: 'aktif', Periode_Sewa: 'Bulanan', Durasi_Total_Bulan: totalBulan,
+        },
+      });
+    }
+
+    // ── Tahunan (default) ─────────────────────────────────────
+    if (!durasi_bulan) {
+      return res.status(400).json({ success: false, message: 'durasi_bulan wajib untuk sewa Tahunan' });
+    }
+    const tanggalSelesai = hitungTanggalSelesai(tanggal_mulai, durasi_bulan);
     const rentalId = uuidv4();
 
     await sheetsService.appendRow(SHEETS.RENTAL_STATUS, [
@@ -58,7 +104,9 @@ router.post('/', async (req, res) => {
       'aktif', 'FALSE', 'FALSE', catatan, now, now,
       agen_listing_id, agen_listing_nama,
       agen_selling_id, agen_selling_nama,
-      cobroke, '',
+      cobroke, '',        // Hasil_FU_Reminder (S)
+      '',                 // Ref_ID (T)
+      'Tahunan', '', '', '',  // U, V, W, X
     ]);
 
     return res.json({
@@ -67,7 +115,7 @@ router.post('/', async (req, res) => {
         ID: rentalId, Agen_ID: targetAgentId, Nama_Penyewa: nama_penyewa,
         Alamat_Sewa: alamat_sewa, Tanggal_Mulai: tanggal_mulai,
         Durasi_Bulan: durasi_bulan, Tanggal_Selesai: tanggalSelesai,
-        Status: 'aktif',
+        Status: 'aktif', Periode_Sewa: 'Tahunan',
       },
     });
   } catch (err) {
@@ -175,6 +223,7 @@ router.patch('/:id', async (req, res) => {
         updated.CoBroke || 'FALSE',
         '',         // Hasil_FU_Reminder
         rental.ID,  // Ref_ID → link ke record sebelumnya (diperpanjang)
+        'Tahunan', '', '', 'FALSE',  // U, V, W, X — perpanjang selalu Tahunan
       ]);
 
       const sisaHari = Math.round((new Date(newEnd) - new Date()) / (1000 * 60 * 60 * 24));

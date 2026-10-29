@@ -222,6 +222,23 @@ async function deleteLegalDoc(id, nama) {
 
 let _allRentals    = [];
 let _rentalFilter  = '';
+let _periodeSewa   = 'Tahunan';
+
+function setPeriodeSewa(type) {
+  _periodeSewa = type;
+  const tahunanSec = document.getElementById('sewa-tahunan-section');
+  const bulananSec = document.getElementById('sewa-bulanan-section');
+  const btnT       = document.getElementById('btn-periode-tahunan');
+  const btnB       = document.getElementById('btn-periode-bulanan');
+  const hiddenEl   = document.getElementById('rental-periode-hidden');
+  if (hiddenEl) hiddenEl.value = type;
+  const isBulanan = type === 'Bulanan';
+  if (tahunanSec) tahunanSec.style.display = isBulanan ? 'none' : 'grid';
+  if (bulananSec) bulananSec.style.display = isBulanan ? 'grid' : 'none';
+  if (btnT) { btnT.style.background = isBulanan ? '#131F38' : '#D4A853'; btnT.style.color = isBulanan ? 'rgba(255,255,255,0.6)' : '#0D1526'; btnT.style.border = isBulanan ? '1px solid rgba(255,255,255,0.1)' : 'none'; }
+  if (btnB) { btnB.style.background = isBulanan ? '#D4A853' : '#131F38'; btnB.style.color = isBulanan ? '#0D1526' : 'rgba(255,255,255,0.6)'; btnB.style.border = isBulanan ? 'none' : '1px solid rgba(255,255,255,0.1)'; }
+  hitungPeriodeBulananUI();
+}
 
 function hitungTanggalSelesaiUI() {
   const mulai  = document.getElementById('rental-start')?.value;
@@ -229,10 +246,32 @@ function hitungTanggalSelesaiUI() {
   const display = document.getElementById('rental-end-display');
   if (!display) return;
   if (!mulai || !durasi || durasi < 1) { display.textContent = '—'; return; }
-
   const d = new Date(mulai);
   d.setMonth(d.getMonth() + durasi);
   display.textContent = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function hitungPeriodeBulananUI() {
+  const preview = document.getElementById('rental-bulanan-preview');
+  if (!preview) return;
+  const mulai  = document.getElementById('rental-start-bulanan')?.value;
+  const durasi = parseInt(document.getElementById('rental-durasi-total')?.value || '0');
+  if (!mulai || !durasi) { preview.style.display = 'none'; return; }
+  preview.style.display = 'block';
+  let html = `<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:8px;font-weight:600;letter-spacing:0.5px">PREVIEW ${durasi} PERIODE · Notif 15 hari sebelum tiap selesai</div>`;
+  let curStart = new Date(mulai);
+  for (let i = 1; i <= durasi; i++) {
+    const nextStart  = new Date(curStart);
+    nextStart.setMonth(nextStart.getMonth() + 1);
+    const mulaiStr   = curStart.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const selesaiStr = nextStart.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    html += `<div style="display:flex;align-items:center;gap:10px;padding:5px 0${i < durasi ? ';border-bottom:1px solid rgba(255,255,255,0.05)' : ''}">
+      <span style="background:rgba(212,168,83,0.15);color:#D4A853;border-radius:20px;padding:1px 8px;font-size:9px;font-weight:700;flex-shrink:0">Periode ${i}</span>
+      <span style="font-size:11px;color:rgba(255,255,255,0.65)">${mulaiStr} → ${selesaiStr}</span>
+    </div>`;
+    curStart = nextStart;
+  }
+  preview.innerHTML = html;
 }
 
 async function triggerRentalReminder() {
@@ -302,11 +341,9 @@ function renderRentals() {
     dibatalkan:   { bg: 'rgba(239,68,68,0.1)',   text: '#f87171', label: 'Dibatalkan' },
   };
 
-  // Buat map ID → record untuk lookup chain Ref_ID
   const byId = {};
   _allRentals.forEach(r => { byId[r.ID] = r; });
 
-  // Urutkan: aktif dulu, lalu sisa hari terkecil
   const sorted = [..._allRentals].sort((a, b) => {
     if (a.Status === 'aktif' && b.Status !== 'aktif') return -1;
     if (a.Status !== 'aktif' && b.Status === 'aktif') return 1;
@@ -316,12 +353,86 @@ function renderRentals() {
   const rendered = new Set();
   let html = '';
 
-  // ── Render aktif records (beserta chain history-nya) ──
+  // ── Pre-process: bangun Bulanan chains (forward: period1 → period2 → ... → periodN) ──
+  const bulananFwd = {}; // parentId → childRecord
+  _allRentals.forEach(r => {
+    if (r.Periode_Sewa === 'Bulanan' && r.Ref_ID) bulananFwd[r.Ref_ID] = r;
+  });
+  const bulananRoots = _allRentals.filter(r =>
+    r.Periode_Sewa === 'Bulanan' && (!r.Ref_ID || r.Ref_ID === '')
+  );
+
+  // ── Render Bulanan chains ──
+  for (const root of bulananRoots) {
+    if (rendered.has(root.ID)) continue;
+    const chain = [root];
+    let cur = root;
+    while (bulananFwd[cur.ID]) { cur = bulananFwd[cur.ID]; chain.push(cur); }
+    chain.forEach(r => rendered.add(r.ID));
+
+    const totalBulan = root.Durasi_Total_Bulan || chain.length;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    // Periode aktif = yang rentang tanggalnya mencakup hari ini (atau terdekat)
+    const activePeriod = chain.find(r => {
+      const s = new Date(r.Tanggal_Mulai); s.setHours(0,0,0,0);
+      const e = new Date(r.Tanggal_Selesai); e.setHours(0,0,0,0);
+      return today >= s && today <= e;
+    }) || chain.find(r => r.Status === 'aktif' && r.Sisa_Hari > 0) || chain[0];
+
+    const sisaHari   = activePeriod.Sisa_Hari ?? '—';
+    let sisaColor = '#34d399';
+    let sisaBadge = '';
+    if (typeof sisaHari === 'number' && sisaHari <= 15)  { sisaColor = '#f87171'; sisaBadge = '<span style="margin-left:3px">⚠️</span>'; }
+    else if (typeof sisaHari === 'number' && sisaHari <= 30) { sisaColor = '#f59e0b'; sisaBadge = '<span style="margin-left:3px">📋</span>'; }
+
+    // List semua periode
+    const periodeRows = chain.map((p, i) => {
+      const isActive = p.ID === activePeriod.ID;
+      const isPast   = typeof p.Sisa_Hari === 'number' && p.Sisa_Hari < 0;
+      const sisa     = p.Sisa_Hari;
+      let sisaTxt = '';
+      if (typeof sisa === 'number' && sisa > 0) sisaTxt = `<span style="font-size:9px;color:${sisa<=15?'#f87171':sisa<=30?'#f59e0b':'#94a3b8'};margin-left:4px">${sisa}h lagi</span>`;
+      else if (typeof sisa === 'number' && sisa <= 0) sisaTxt = `<span style="font-size:9px;color:rgba(255,255,255,0.2);margin-left:4px">Selesai</span>`;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0${i < chain.length-1?';border-bottom:1px solid rgba(255,255,255,0.04)':''}">
+        <span style="background:${isActive?'rgba(212,168,83,0.2)':isPast?'rgba(148,163,184,0.08)':'rgba(52,211,153,0.08)'};color:${isActive?'#D4A853':isPast?'#94a3b8':'#34d399'};border-radius:20px;padding:1px 8px;font-size:9px;font-weight:700;flex-shrink:0">${p.Periode_Ke||i+1}</span>
+        <span style="font-size:11px;color:rgba(255,255,255,${isActive?'0.75':'0.4'})">${formatTanggal(p.Tanggal_Mulai)} → ${formatTanggal(p.Tanggal_Selesai)}</span>
+        ${sisaTxt}
+        ${isAdmin?`<button onclick="deleteRental('${p.ID}')" style="margin-left:auto;background:rgba(239,68,68,0.06);color:#f87171;border:1px solid rgba(239,68,68,0.12);border-radius:6px;padding:2px 7px;font-size:9px;cursor:pointer;flex-shrink:0">Hapus</button>`:''}
+      </div>`;
+    }).join('');
+
+    html += `
+      <div style="background:#131F38;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:3px">${root.Nama_Penyewa}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${root.Alamat_Sewa}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <span style="background:${SC.aktif.bg};color:${SC.aktif.text};border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700">Aktif</span>
+              <span style="background:rgba(212,168,83,0.1);color:#D4A853;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700">Bulanan ${totalBulan}×</span>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:20px;font-weight:800;color:${sisaColor};line-height:1">${sisaHari}${sisaBadge}</div>
+            <div style="font-size:9px;color:rgba(255,255,255,0.35);margin-top:2px">hari lagi</div>
+          </div>
+        </div>
+        ${root.Catatan ? `<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,0.35);border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">${root.Catatan}</div>` : ''}
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06)">${periodeRows}</div>
+        <div style="display:flex;gap:8px;margin-top:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px">
+          <button onclick="openRentalModal('${activePeriod.ID}')" style="flex:1;background:rgba(212,168,83,0.1);color:#D4A853;border:1px solid rgba(212,168,83,0.2);border-radius:8px;padding:7px;font-size:11px;cursor:pointer;font-weight:600">Edit</button>
+          <button onclick="selesaikanSewa('${activePeriod.ID}')" style="background:rgba(148,163,184,0.08);color:#94a3b8;border:1px solid rgba(148,163,184,0.15);border-radius:8px;padding:7px 12px;font-size:11px;cursor:pointer">Selesai</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Render Tahunan aktif (beserta chain history diperpanjang) ──
   for (const r of sorted) {
-    if (r.Status !== 'aktif' || rendered.has(r.ID)) continue;
+    if (r.Periode_Sewa === 'Bulanan' || r.Status !== 'aktif' || rendered.has(r.ID)) continue;
     rendered.add(r.ID);
 
-    // Telusuri chain Ref_ID → kumpulkan record history (diperpanjang)
     const history = [];
     let cur = r;
     while (cur.Ref_ID) {
@@ -332,14 +443,12 @@ function renderRentals() {
       cur = parent;
     }
 
-    const masaNum = history.length + 1; // Masa Sewa ke-X untuk record aktif
+    const masaNum  = history.length + 1;
     const sisaHari = r.Sisa_Hari ?? '—';
-    let sisaColor = '#34d399';
-    let sisaBadge = '';
-    if (sisaHari <= 30)      { sisaColor = '#f87171'; sisaBadge = '<span style="margin-left:3px">⚠️</span>'; }
-    else if (sisaHari <= 90) { sisaColor = '#f59e0b'; sisaBadge = '<span style="margin-left:3px">📋</span>'; }
+    let sisaColor = '#34d399', sisaBadge = '';
+    if (typeof sisaHari === 'number' && sisaHari <= 30)      { sisaColor = '#f87171'; sisaBadge = '<span style="margin-left:3px">⚠️</span>'; }
+    else if (typeof sisaHari === 'number' && sisaHari <= 90) { sisaColor = '#f59e0b'; sisaBadge = '<span style="margin-left:3px">📋</span>'; }
 
-    // History section: Masa Sewa sebelumnya (diperpanjang)
     let historyHTML = '';
     if (history.length > 0) {
       const items = history.map((h, i) => {
@@ -387,7 +496,7 @@ function renderRentals() {
     `;
   }
 
-  // ── Render sisa records (selesai, dibatalkan, orphan diperpanjang) ──
+  // ── Render sisa records (selesai, dibatalkan, dll) ──
   for (const r of sorted) {
     if (rendered.has(r.ID)) continue;
     rendered.add(r.ID);
@@ -400,6 +509,7 @@ function renderRentals() {
             <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.Alamat_Sewa}</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
               <span style="background:${sc.bg};color:${sc.text};border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700">${sc.label}</span>
+              ${r.Periode_Sewa === 'Bulanan' ? `<span style="background:rgba(212,168,83,0.08);color:#D4A853;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700">Bulanan ${r.Durasi_Total_Bulan||''}×</span>` : ''}
               <span style="font-size:11px;color:rgba(255,255,255,0.4)">${r.Durasi_Bulan} bulan</span>
               <span style="font-size:11px;color:rgba(255,255,255,0.35)">${formatTanggal(r.Tanggal_Mulai)} → ${formatTanggal(r.Tanggal_Selesai)}</span>
             </div>
@@ -449,18 +559,19 @@ function openRentalModal(editId = null) {
   const title = document.getElementById('rental-modal-title');
   const editIdEl = document.getElementById('rental-edit-id');
   const perpanjangSec = document.getElementById('rental-perpanjang-section');
+  const toggleEl = document.getElementById('sewa-periode-toggle');
   if (!modal) return;
 
-  // Load agents untuk dropdown
   _loadRentalAgents();
 
   // Reset form
   ['rental-nama-penyewa','rental-alamat','rental-start','rental-duration',
-   'rental-catatan-modal','rental-perpanjang-bulan','rental-hasil-fu'].forEach(id => {
+   'rental-catatan-modal','rental-perpanjang-bulan','rental-hasil-fu',
+   'rental-start-bulanan'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  ['rental-agen-listing','rental-agen-selling','rental-perpanjang-aksi'].forEach(id => {
+  ['rental-agen-listing','rental-agen-selling','rental-perpanjang-aksi','rental-durasi-total'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.selectedIndex = 0;
   });
@@ -468,34 +579,49 @@ function openRentalModal(editId = null) {
   if (cb) cb.checked = false;
   const bulanWrap = document.getElementById('rental-bulan-wrap');
   if (bulanWrap) bulanWrap.style.display = 'none';
-  document.getElementById('rental-end-display').textContent = '—';
+  const preview = document.getElementById('rental-bulanan-preview');
+  if (preview) preview.style.display = 'none';
+  const endDisplay = document.getElementById('rental-end-display');
+  if (endDisplay) endDisplay.textContent = '—';
 
   if (editId) {
     const r = _allRentals.find(x => x.ID === editId);
     if (!r) return;
     title.textContent = 'Perpanjang / Edit Sewa';
     editIdEl.value = editId;
+
+    // Dalam edit mode: sembunyikan toggle, tampilkan section Tahunan sebagai referensi
+    if (toggleEl) toggleEl.style.display = 'none';
+    const tahunanSec = document.getElementById('sewa-tahunan-section');
+    const bulananSec = document.getElementById('sewa-bulanan-section');
+    if (tahunanSec) tahunanSec.style.display = 'grid';
+    if (bulananSec) bulananSec.style.display = 'none';
+
     document.getElementById('rental-nama-penyewa').value  = r.Nama_Penyewa;
     document.getElementById('rental-alamat').value        = r.Alamat_Sewa;
     document.getElementById('rental-start').value         = r.Tanggal_Mulai;
     document.getElementById('rental-duration').value      = r.Durasi_Bulan;
     document.getElementById('rental-catatan-modal').value = r.Catatan || '';
-    document.getElementById('rental-end-display').textContent = formatTanggal(r.Tanggal_Selesai);
-    // Populate agen listing/selling
-    const setSelect = (selId, id, nama) => {
+    if (endDisplay) endDisplay.textContent = formatTanggal(r.Tanggal_Selesai);
+
+    const setSelect = (selId, id) => {
       const sel = document.getElementById(selId);
       if (!sel || !id) return;
       const opt = [...sel.options].find(o => o.value.startsWith(id + '|'));
       if (opt) sel.value = opt.value;
     };
-    setSelect('rental-agen-listing', r.Agen_Listing_ID, r.Agen_Listing_Nama);
-    setSelect('rental-agen-selling', r.Agen_Selling_ID, r.Agen_Selling_Nama);
+    setSelect('rental-agen-listing', r.Agen_Listing_ID);
+    setSelect('rental-agen-selling', r.Agen_Selling_ID);
     if (cb) cb.checked = r.CoBroke === 'TRUE';
     if (perpanjangSec) perpanjangSec.style.display = 'block';
   } else {
     title.textContent = 'Tambah Data Sewa';
     editIdEl.value = '';
+    if (toggleEl) toggleEl.style.display = 'block';
     if (perpanjangSec) perpanjangSec.style.display = 'none';
+    // Reset ke Tahunan
+    _periodeSewa = 'Tahunan';
+    setPeriodeSewa('Tahunan');
   }
 
   modal.style.display = 'block';
@@ -510,24 +636,56 @@ async function saveRental() {
   const editId  = document.getElementById('rental-edit-id')?.value;
   const nama    = document.getElementById('rental-nama-penyewa')?.value?.trim();
   const alamat  = document.getElementById('rental-alamat')?.value?.trim();
-  const mulai   = document.getElementById('rental-start')?.value;
-  const durasi  = document.getElementById('rental-duration')?.value;
   const catatan = document.getElementById('rental-catatan-modal')?.value || '';
   const hasilFU = document.getElementById('rental-hasil-fu')?.value?.trim() || '';
   const cobroke = document.getElementById('rental-cobroke')?.checked ? 'TRUE' : 'FALSE';
 
-  // Agen listing
   const listingVal = document.getElementById('rental-agen-listing')?.value || '';
   const [agen_listing_id, agen_listing_nama] = listingVal.includes('|') ? listingVal.split('|') : ['', listingVal];
-  // Agen selling
   const sellingVal = document.getElementById('rental-agen-selling')?.value || '';
   const [agen_selling_id, agen_selling_nama] = sellingVal.includes('|') ? sellingVal.split('|') : ['', sellingVal];
 
-  if (!nama || !alamat || !mulai || !durasi) return showToast('Semua field wajib diisi', 'warning');
+  const periode    = document.getElementById('rental-periode-hidden')?.value || 'Tahunan';
+  const isBulanan  = periode === 'Bulanan' && !editId;
+
+  if (!nama || !alamat) return showToast('Nama dan alamat wajib diisi', 'warning');
+
+  if (isBulanan) {
+    const mulaiBulanan = document.getElementById('rental-start-bulanan')?.value;
+    const durasiTotal  = document.getElementById('rental-durasi-total')?.value;
+    if (!mulaiBulanan) return showToast('Tanggal Mulai Pertama wajib diisi', 'warning');
+    if (!durasiTotal)  return showToast('Durasi Total wajib dipilih (3/6/12 bulan)', 'warning');
+
+    const btn = document.getElementById('rental-save-btn');
+    btn.disabled = true; btn.textContent = 'Menyimpan...';
+    try {
+      await API.post('/rental', {
+        nama_penyewa: nama, alamat_sewa: alamat,
+        tanggal_mulai: mulaiBulanan, durasi_bulan: 1,
+        catatan, cobroke,
+        agen_listing_id, agen_listing_nama,
+        agen_selling_id, agen_selling_nama,
+        periode_sewa: 'Bulanan',
+        durasi_total_bulan: parseInt(durasiTotal),
+      });
+      showToast(`Sewa Bulanan ${durasiTotal} periode berhasil ditambahkan`, 'success');
+      closeRentalModal();
+      await loadRentals();
+    } catch (e) {
+      showToast(e.message || 'Gagal menyimpan data sewa', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Simpan';
+    }
+    return;
+  }
+
+  // Tahunan (baru atau edit)
+  const mulai  = document.getElementById('rental-start')?.value;
+  const durasi = document.getElementById('rental-duration')?.value;
+  if (!editId && (!mulai || !durasi)) return showToast('Tanggal Mulai dan Durasi wajib diisi', 'warning');
 
   const btn = document.getElementById('rental-save-btn');
-  btn.disabled = true;
-  btn.textContent = 'Menyimpan...';
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
 
   try {
     if (editId) {
@@ -551,6 +709,7 @@ async function saveRental() {
         tanggal_mulai: mulai, durasi_bulan: parseInt(durasi), catatan,
         cobroke, agen_listing_id, agen_listing_nama,
         agen_selling_id, agen_selling_nama,
+        periode_sewa: 'Tahunan',
       });
       showToast('Data sewa berhasil ditambahkan', 'success');
     }
@@ -559,8 +718,7 @@ async function saveRental() {
   } catch (e) {
     showToast(e.message || 'Gagal menyimpan data sewa', 'error');
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Simpan';
+    btn.disabled = false; btn.textContent = 'Simpan';
   }
 }
 

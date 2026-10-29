@@ -1655,19 +1655,47 @@
           <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Alamat Sewa *</label>
           <input type="text" id="rental-alamat" placeholder="Jl. Mawar No.5, Surabaya" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div>
-            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Tanggal Mulai *</label>
-            <input type="date" id="rental-start" oninput="hitungTanggalSelesaiUI()" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
-          </div>
-          <div>
-            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Durasi (Bulan) *</label>
-            <input type="number" id="rental-duration" min="1" max="120" placeholder="12" oninput="hitungTanggalSelesaiUI()" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+        <input type="hidden" id="rental-periode-hidden" value="Tahunan">
+        <div id="sewa-periode-toggle">
+          <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:6px;display:block">Periode Sewa *</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button type="button" id="btn-periode-tahunan" onclick="setPeriodeSewa('Tahunan')" style="padding:9px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:#D4A853;color:#0D1526;border:none">Tahunan</button>
+            <button type="button" id="btn-periode-bulanan" onclick="setPeriodeSewa('Bulanan')" style="padding:9px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:#131F38;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1)">Bulanan</button>
           </div>
         </div>
-        <div style="background:#131F38;border-radius:10px;padding:10px 12px;border:1px solid rgba(212,168,83,0.2)">
-          <span style="font-size:11px;color:rgba(255,255,255,0.4)">Tanggal Selesai: </span>
-          <span id="rental-end-display" style="font-size:13px;color:#D4A853;font-weight:600">—</span>
+        <div id="sewa-tahunan-section" style="display:grid;gap:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Tanggal Mulai *</label>
+              <input type="date" id="rental-start" oninput="hitungTanggalSelesaiUI()" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Durasi (Bulan) *</label>
+              <input type="number" id="rental-duration" min="1" max="120" placeholder="12" oninput="hitungTanggalSelesaiUI()" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="background:#131F38;border-radius:10px;padding:10px 12px;border:1px solid rgba(212,168,83,0.2)">
+            <span style="font-size:11px;color:rgba(255,255,255,0.4)">Tanggal Selesai: </span>
+            <span id="rental-end-display" style="font-size:13px;color:#D4A853;font-weight:600">—</span>
+          </div>
+        </div>
+        <div id="sewa-bulanan-section" style="display:none;gap:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Tanggal Mulai Pertama *</label>
+              <input type="date" id="rental-start-bulanan" oninput="hitungPeriodeBulananUI()" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Durasi Total *</label>
+              <select id="rental-durasi-total" onchange="hitungPeriodeBulananUI()" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+                <option value="">— Pilih —</option>
+                <option value="3">3 Bulan</option>
+                <option value="6">6 Bulan</option>
+                <option value="12">12 Bulan</option>
+              </select>
+            </div>
+          </div>
+          <div id="rental-bulanan-preview" style="display:none;margin-top:8px;background:#0D1526;border-radius:10px;padding:10px 12px;border:1px solid rgba(212,168,83,0.2)"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>

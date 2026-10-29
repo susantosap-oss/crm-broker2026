@@ -568,6 +568,10 @@ const COLUMNS = {
     'CoBroke',            // R ★ TRUE jika cobroke dengan agen lain
     'Hasil_FU_Reminder',  // S ★ Catatan hasil follow-up reminder perpanjang
     'Ref_ID',             // T ★ ID record sebelumnya jika ini hasil perpanjang
+    'Periode_Sewa',       // U  Bulanan | Tahunan
+    'Durasi_Total_Bulan', // V  3 | 6 | 12 (hanya Bulanan)
+    'Periode_Ke',         // W  1, 2, 3 ... (urutan periode Bulanan)
+    'Reminder_15_Sent',   // X  TRUE/FALSE (reminder 15 hari Bulanan)
   ],
 
   // ★ CANVASING — Data canvasing lapangan agen
