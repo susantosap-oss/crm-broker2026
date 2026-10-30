@@ -127,26 +127,25 @@ async function checkRentalReminders() {
       const endDate = new Date(rental.Tanggal_Selesai);
       endDate.setHours(0, 0, 0, 0);
       const diffDays = Math.round((endDate - today) / (1000 * 60 * 60 * 24));
-      const agent    = agentMap[rental.Agen_ID] || {};
 
       if (rental.Periode_Sewa === 'Bulanan') {
-        // Bulanan: reminder 15 hari sebelum tiap periode selesai
-        if (diffDays <= 15 && diffDays > 0 && rental.Reminder_15_Sent !== 'TRUE') {
-          await kirimReminderSewa(agent, rental, diffDays, 'bulanan_15');
-          const newRow = COLUMNS.RENTAL_STATUS.map(c => c === 'Reminder_15_Sent' ? 'TRUE' : (rental[c] || ''));
+        // Bulanan: reminder 10 hari sebelum tiap periode selesai
+        if (diffDays <= 10 && diffDays > 0 && rental.Reminder_10_Sent !== 'TRUE') {
+          await kirimReminderSewa(agentMap, rental, diffDays, 'bulanan_10');
+          const newRow = COLUMNS.RENTAL_STATUS.map(c => c === 'Reminder_10_Sent' ? 'TRUE' : (rental[c] || ''));
           await sheetsService.updateRow(SHEETS.RENTAL_STATUS, rental._rowIdx, newRow);
-          console.log(`[CRON] Reminder 15 hari (Bulanan Periode ${rental.Periode_Ke}) dikirim untuk rental ${rental.ID}`);
+          console.log(`[CRON] Reminder 10 hari (Bulanan Periode ${rental.Periode_Ke}) dikirim untuk rental ${rental.ID}`);
         }
       } else {
-        // Tahunan: reminder 90 hari dan 30 hari
+        // Tahunan: reminder 90 hari (agen CRM saja) dan 30 hari (semua pihak)
         if (diffDays <= 90 && diffDays > 30 && rental.Reminder_90_Sent !== 'TRUE') {
-          await kirimReminderSewa(agent, rental, diffDays, 'normal');
+          await kirimReminderSewa(agentMap, rental, diffDays, 'normal', true);
           const newRow = COLUMNS.RENTAL_STATUS.map(c => c === 'Reminder_90_Sent' ? 'TRUE' : (rental[c] || ''));
           await sheetsService.updateRow(SHEETS.RENTAL_STATUS, rental._rowIdx, newRow);
           console.log(`[CRON] Reminder 90 hari dikirim untuk rental ${rental.ID} (sisa ${diffDays} hari)`);
         }
         if (diffDays <= 30 && diffDays > 0 && rental.Reminder_30_Sent !== 'TRUE') {
-          await kirimReminderSewa(agent, rental, diffDays, 'urgent');
+          await kirimReminderSewa(agentMap, rental, diffDays, 'urgent');
           const newRow = COLUMNS.RENTAL_STATUS.map(c => c === 'Reminder_30_Sent' ? 'TRUE' : (rental[c] || ''));
           await sheetsService.updateRow(SHEETS.RENTAL_STATUS, rental._rowIdx, newRow);
           console.log(`[CRON] Reminder 30 hari dikirim untuk rental ${rental.ID} (sisa ${diffDays} hari)`);
@@ -160,40 +159,78 @@ async function checkRentalReminders() {
   }
 }
 
-async function kirimReminderSewa(agent, rental, hariLagi, tone) {
+// agenOnly=true → WA hanya ke Agen_ID; false → semua pihak (Listing, Selling, CoBroke, Customer)
+async function kirimReminderSewa(agentMap, rental, hariLagi, tone, agenOnly = false) {
   const tglSelesai  = new Date(rental.Tanggal_Selesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  const namaAgen    = agent.Nama  || rental.Agen_ID;
-  const waAgen      = agent.No_WA || '';
-  const fonnteToken = agent.Fonnte_Token || '';
+  const fonnteToken = process.env.FONNTE_TOKEN || '';
 
   const periodInfo = rental.Periode_Ke && rental.Durasi_Total_Bulan
     ? ` (Periode ${rental.Periode_Ke}/${rental.Durasi_Total_Bulan})`
     : '';
-  const pesan = tone === 'urgent'
-    ? `⚠️ *SEGERA* Halo ${namaAgen}, masa sewa *${rental.Nama_Penyewa}* di ${rental.Alamat_Sewa} akan berakhir dalam *${hariLagi} hari* (${tglSelesai}). Segera hubungi penyewa untuk perpanjangan!`
-    : tone === 'bulanan_15'
-      ? `🗓️ Halo ${namaAgen}, periode sewa bulanan *${rental.Nama_Penyewa}* di ${rental.Alamat_Sewa}${periodInfo} akan berakhir dalam *${hariLagi} hari* (${tglSelesai}). Harap konfirmasi kelanjutan sewa.`
-      : `📋 Halo ${namaAgen}, masa sewa *${rental.Nama_Penyewa}* di ${rental.Alamat_Sewa} akan berakhir dalam ${hariLagi} hari (${tglSelesai}). Silakan hubungi penyewa untuk proses perpanjangan.`;
 
-  // Kirim WA via Fonnte
-  if (fonnteToken && waAgen) {
+  // Helper kirim satu nomor WA via Fonnte global token
+  async function sendWA(noWa, pesan) {
+    if (!fonnteToken || !noWa) return;
+    const target = String(noWa).replace(/^0/, '62');
     try {
-      await axios.post('https://api.fonnte.com/send', {
-        target: waAgen.replace(/^0/, '62'),
-        message: pesan,
-      }, { headers: { Authorization: fonnteToken }, timeout: 10000 });
+      await axios.post('https://api.fonnte.com/send', { target, message: pesan },
+        { headers: { Authorization: fonnteToken }, timeout: 10000 });
     } catch (e) {
-      console.error('[CRON] Fonnte error:', e.message);
+      console.error(`[CRON] Fonnte error ke ${target}:`, e.message);
     }
   }
 
-  // In-app notification (bell icon di CRM)
+  // Pesan untuk agen (nama dinamis)
+  const buildPesanAgen = (namaAgen) => tone === 'urgent'
+    ? `⚠️ *SEGERA* Halo ${namaAgen}, masa sewa *${rental.Nama_Penyewa}* di ${rental.Alamat_Sewa} akan berakhir dalam *${hariLagi} hari* (${tglSelesai}). Segera hubungi penyewa untuk perpanjangan!`
+    : tone === 'bulanan_10'
+      ? `🗓️ Halo ${namaAgen}, periode sewa bulanan *${rental.Nama_Penyewa}* di ${rental.Alamat_Sewa}${periodInfo} akan berakhir dalam *${hariLagi} hari* (${tglSelesai}). Harap konfirmasi kelanjutan sewa.`
+      : `📋 Halo ${namaAgen}, masa sewa *${rental.Nama_Penyewa}* di ${rental.Alamat_Sewa} akan berakhir dalam ${hariLagi} hari (${tglSelesai}). Silakan hubungi penyewa untuk proses perpanjangan.`;
+
+  // Pesan khusus untuk customer/penyewa
+  const pesanCustomer = tone === 'urgent'
+    ? `⚠️ Halo *${rental.Nama_Penyewa}*, masa sewa Anda di ${rental.Alamat_Sewa}${periodInfo} akan berakhir dalam *${hariLagi} hari* (${tglSelesai}). Untuk informasi perpanjangan, silakan hubungi agen kami segera.`
+    : tone === 'bulanan_10'
+      ? `🗓️ Halo *${rental.Nama_Penyewa}*, periode sewa bulanan Anda di ${rental.Alamat_Sewa}${periodInfo} akan berakhir dalam *${hariLagi} hari* (${tglSelesai}). Untuk konfirmasi kelanjutan sewa, silakan hubungi agen kami.`
+      : `📋 Halo *${rental.Nama_Penyewa}*, masa sewa Anda di ${rental.Alamat_Sewa} akan berakhir dalam ${hariLagi} hari (${tglSelesai}). Silakan hubungi agen kami untuk proses perpanjangan.`;
+
+  // Kirim WA ke semua pihak — dedup berdasarkan nomor agar tidak double
+  const sentNomor = new Set();
+
+  async function kirimKeAgen(agenId) {
+    if (!agenId) return;
+    const a = agentMap[agenId] || {};
+    const noWa = a.No_WA || '';
+    if (!noWa || sentNomor.has(noWa)) return;
+    sentNomor.add(noWa);
+    await sendWA(noWa, buildPesanAgen(a.Nama || agenId));
+  }
+
+  await kirimKeAgen(rental.Agen_ID);
+
+  if (!agenOnly) {
+    await kirimKeAgen(rental.Agen_Listing_ID);
+    await kirimKeAgen(rental.Agen_Selling_ID);
+
+    // CoBroke agent — nomor langsung (bukan CRM agent)
+    if (rental.Agen_CoBroke_WA && !sentNomor.has(rental.Agen_CoBroke_WA)) {
+      sentNomor.add(rental.Agen_CoBroke_WA);
+      await sendWA(rental.Agen_CoBroke_WA, buildPesanAgen(rental.Agen_CoBroke_Nama || 'Agen CoBroke'));
+    }
+
+    // Customer/penyewa — pesan berbeda
+    if (rental.No_WA_Penyewa) {
+      await sendWA(rental.No_WA_Penyewa, pesanCustomer);
+    }
+  }
+
+  // In-app notification — hanya ke Agen_ID (pemegang record)
   if (rental.Agen_ID) {
     try {
       const createNotification = getCreateNotification();
       const judulNotif = tone === 'urgent'
         ? `⚠️ Sewa berakhir ${hariLagi} hari lagi`
-        : tone === 'bulanan_15'
+        : tone === 'bulanan_10'
           ? `🗓️ Periode Bulanan berakhir ${hariLagi} hari lagi`
           : `📋 Reminder Sewa — ${hariLagi} hari lagi`;
       await createNotification({
@@ -212,12 +249,12 @@ async function kirimReminderSewa(agent, rental, hariLagi, tone) {
     }
   }
 
-  // Web push notification (Android/browser)
+  // Web push — hanya ke Agen_ID (pemegang record)
   if (rental.Agen_ID) {
     try {
       const pushTitle = tone === 'urgent'
         ? '⚠️ Reminder Sewa Mendesak'
-        : tone === 'bulanan_15'
+        : tone === 'bulanan_10'
           ? '🗓️ Reminder Sewa Bulanan'
           : '📋 Reminder Sewa';
       await pushService.sendToUser(rental.Agen_ID, {

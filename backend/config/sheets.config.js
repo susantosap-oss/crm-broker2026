@@ -571,7 +571,10 @@ const COLUMNS = {
     'Periode_Sewa',       // U  Bulanan | Tahunan
     'Durasi_Total_Bulan', // V  3 | 6 | 12 (hanya Bulanan)
     'Periode_Ke',         // W  1, 2, 3 ... (urutan periode Bulanan)
-    'Reminder_15_Sent',   // X  TRUE/FALSE (reminder 15 hari Bulanan)
+    'Reminder_10_Sent',   // X  TRUE/FALSE (reminder 10 hari Bulanan)
+    'No_WA_Penyewa',      // Y  Nomor WA customer/renter
+    'Agen_CoBroke_Nama',  // Z  Nama agen cobroke (jika CoBroke=TRUE)
+    'Agen_CoBroke_WA',    // AA Nomor WA agen cobroke
   ],
 
   // ★ CANVASING — Data canvasing lapangan agen

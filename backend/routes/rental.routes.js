@@ -40,12 +40,17 @@ router.post('/', async (req, res) => {
       agen_listing_id = '', agen_listing_nama = '',
       agen_selling_id = '', agen_selling_nama = '',
       cobroke = 'FALSE',
+      agen_cobroke_nama = '', agen_cobroke_wa = '',
+      no_wa_penyewa = '',
       periode_sewa = 'Tahunan',
       durasi_total_bulan,
     } = req.body;
 
-    if (!nama_penyewa || !alamat_sewa || !tanggal_mulai) {
-      return res.status(400).json({ success: false, message: 'Field wajib: nama_penyewa, alamat_sewa, tanggal_mulai' });
+    if (!nama_penyewa || !alamat_sewa || !tanggal_mulai || !no_wa_penyewa) {
+      return res.status(400).json({ success: false, message: 'Field wajib: nama_penyewa, alamat_sewa, tanggal_mulai, no_wa_penyewa' });
+    }
+    if (cobroke === 'TRUE' && !agen_cobroke_wa) {
+      return res.status(400).json({ success: false, message: 'Nomor WA Agen CoBroke wajib diisi jika CoBroke dipilih' });
     }
 
     const targetAgentId = ADMIN_ROLES.includes(role) && agent_id ? agent_id : myId;
@@ -74,6 +79,7 @@ router.post('/', async (req, res) => {
           cobroke, '',            // Hasil_FU_Reminder (S)
           prevId,                 // Ref_ID (T)
           'Bulanan', totalBulan, i, 'FALSE',  // U, V, W, X
+          no_wa_penyewa, agen_cobroke_nama, agen_cobroke_wa,  // Y, Z, AA
         ]);
         if (i === 1) firstData = { ID: periodId, Tanggal_Mulai: curStart, Tanggal_Selesai: periodEnd };
         prevId   = periodId;
@@ -107,6 +113,7 @@ router.post('/', async (req, res) => {
       cobroke, '',        // Hasil_FU_Reminder (S)
       '',                 // Ref_ID (T)
       'Tahunan', '', '', '',  // U, V, W, X
+      no_wa_penyewa, agen_cobroke_nama, agen_cobroke_wa,  // Y, Z, AA
     ]);
 
     return res.json({
@@ -173,7 +180,8 @@ router.patch('/:id', async (req, res) => {
     const { role, id: myId } = req.user;
     const { status, catatan, perpanjang_bulan, hasil_fu_reminder,
             agen_listing_id, agen_listing_nama,
-            agen_selling_id, agen_selling_nama, cobroke } = req.body;
+            agen_selling_id, agen_selling_nama, cobroke,
+            no_wa_penyewa, agen_cobroke_nama, agen_cobroke_wa } = req.body;
 
     const rows = await sheetsService.getRange(SHEETS.RENTAL_STATUS);
     if (!rows || rows.length < 2) return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
@@ -197,6 +205,9 @@ router.patch('/:id', async (req, res) => {
     if (agen_selling_id !== undefined)  updated.Agen_Selling_ID   = agen_selling_id;
     if (agen_selling_nama !== undefined) updated.Agen_Selling_Nama = agen_selling_nama;
     if (cobroke !== undefined)          updated.CoBroke            = cobroke;
+    if (no_wa_penyewa !== undefined)    updated.No_WA_Penyewa      = no_wa_penyewa;
+    if (agen_cobroke_nama !== undefined) updated.Agen_CoBroke_Nama  = agen_cobroke_nama;
+    if (agen_cobroke_wa !== undefined)  updated.Agen_CoBroke_WA    = agen_cobroke_wa;
 
     // Perpanjang: freeze record lama → buat record baru dengan tanggal baru
     if (perpanjang_bulan && parseInt(perpanjang_bulan) > 0) {
@@ -223,7 +234,8 @@ router.patch('/:id', async (req, res) => {
         updated.CoBroke || 'FALSE',
         '',         // Hasil_FU_Reminder
         rental.ID,  // Ref_ID → link ke record sebelumnya (diperpanjang)
-        'Tahunan', '', '', 'FALSE',  // U, V, W, X — perpanjang selalu Tahunan
+        'Tahunan', '', '', 'FALSE',  // U, V, W, X
+        updated.No_WA_Penyewa || '', updated.Agen_CoBroke_Nama || '', updated.Agen_CoBroke_WA || '',  // Y, Z, AA
       ]);
 
       const sisaHari = Math.round((new Date(newEnd) - new Date()) / (1000 * 60 * 60 * 24));

@@ -258,7 +258,7 @@ function hitungPeriodeBulananUI() {
   const durasi = parseInt(document.getElementById('rental-durasi-total')?.value || '0');
   if (!mulai || !durasi) { preview.style.display = 'none'; return; }
   preview.style.display = 'block';
-  let html = `<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:8px;font-weight:600;letter-spacing:0.5px">PREVIEW ${durasi} PERIODE · Notif 15 hari sebelum tiap selesai</div>`;
+  let html = `<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:8px;font-weight:600;letter-spacing:0.5px">PREVIEW ${durasi} PERIODE · Notif 10 hari sebelum tiap selesai</div>`;
   let curStart = new Date(mulai);
   for (let i = 1; i <= durasi; i++) {
     const nextStart  = new Date(curStart);
@@ -565,9 +565,9 @@ function openRentalModal(editId = null) {
   _loadRentalAgents();
 
   // Reset form
-  ['rental-nama-penyewa','rental-alamat','rental-start','rental-duration',
+  ['rental-nama-penyewa','rental-wa-penyewa','rental-alamat','rental-start','rental-duration',
    'rental-catatan-modal','rental-perpanjang-bulan','rental-hasil-fu',
-   'rental-start-bulanan'].forEach(id => {
+   'rental-start-bulanan','rental-cobroke-nama','rental-cobroke-wa'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -577,6 +577,8 @@ function openRentalModal(editId = null) {
   });
   const cb = document.getElementById('rental-cobroke');
   if (cb) cb.checked = false;
+  const cobrokeFields = document.getElementById('rental-cobroke-fields');
+  if (cobrokeFields) cobrokeFields.style.display = 'none';
   const bulanWrap = document.getElementById('rental-bulan-wrap');
   if (bulanWrap) bulanWrap.style.display = 'none';
   const preview = document.getElementById('rental-bulanan-preview');
@@ -612,7 +614,15 @@ function openRentalModal(editId = null) {
     };
     setSelect('rental-agen-listing', r.Agen_Listing_ID);
     setSelect('rental-agen-selling', r.Agen_Selling_ID);
+    const waEl = document.getElementById('rental-wa-penyewa');
+    if (waEl) waEl.value = r.No_WA_Penyewa || '';
     if (cb) cb.checked = r.CoBroke === 'TRUE';
+    const cof = document.getElementById('rental-cobroke-fields');
+    if (cof) cof.style.display = r.CoBroke === 'TRUE' ? 'grid' : 'none';
+    const cobNamaEl = document.getElementById('rental-cobroke-nama');
+    if (cobNamaEl) cobNamaEl.value = r.Agen_CoBroke_Nama || '';
+    const cobWaEl = document.getElementById('rental-cobroke-wa');
+    if (cobWaEl) cobWaEl.value = r.Agen_CoBroke_WA || '';
     if (perpanjangSec) perpanjangSec.style.display = 'block';
   } else {
     title.textContent = 'Tambah Data Sewa';
@@ -632,23 +642,41 @@ function closeRentalModal() {
   if (modal) modal.style.display = 'none';
 }
 
+function toggleCobrokeFields() {
+  const cb     = document.getElementById('rental-cobroke');
+  const fields = document.getElementById('rental-cobroke-fields');
+  if (!fields) return;
+  fields.style.display = cb?.checked ? 'grid' : 'none';
+  if (!cb?.checked) {
+    const n = document.getElementById('rental-cobroke-nama');
+    const w = document.getElementById('rental-cobroke-wa');
+    if (n) n.value = '';
+    if (w) w.value = '';
+  }
+}
+
 async function saveRental() {
-  const editId  = document.getElementById('rental-edit-id')?.value;
-  const nama    = document.getElementById('rental-nama-penyewa')?.value?.trim();
-  const alamat  = document.getElementById('rental-alamat')?.value?.trim();
-  const catatan = document.getElementById('rental-catatan-modal')?.value || '';
-  const hasilFU = document.getElementById('rental-hasil-fu')?.value?.trim() || '';
-  const cobroke = document.getElementById('rental-cobroke')?.checked ? 'TRUE' : 'FALSE';
+  const editId      = document.getElementById('rental-edit-id')?.value;
+  const nama        = document.getElementById('rental-nama-penyewa')?.value?.trim();
+  const noWaPenyewa = document.getElementById('rental-wa-penyewa')?.value?.trim() || '';
+  const alamat      = document.getElementById('rental-alamat')?.value?.trim();
+  const catatan     = document.getElementById('rental-catatan-modal')?.value || '';
+  const hasilFU     = document.getElementById('rental-hasil-fu')?.value?.trim() || '';
+  const cobroke     = document.getElementById('rental-cobroke')?.checked ? 'TRUE' : 'FALSE';
+  const cobrokeNama = document.getElementById('rental-cobroke-nama')?.value?.trim() || '';
+  const cobrokeWA   = document.getElementById('rental-cobroke-wa')?.value?.trim() || '';
 
   const listingVal = document.getElementById('rental-agen-listing')?.value || '';
   const [agen_listing_id, agen_listing_nama] = listingVal.includes('|') ? listingVal.split('|') : ['', listingVal];
   const sellingVal = document.getElementById('rental-agen-selling')?.value || '';
   const [agen_selling_id, agen_selling_nama] = sellingVal.includes('|') ? sellingVal.split('|') : ['', sellingVal];
 
-  const periode    = document.getElementById('rental-periode-hidden')?.value || 'Tahunan';
-  const isBulanan  = periode === 'Bulanan' && !editId;
+  const periode   = document.getElementById('rental-periode-hidden')?.value || 'Tahunan';
+  const isBulanan = periode === 'Bulanan' && !editId;
 
   if (!nama || !alamat) return showToast('Nama dan alamat wajib diisi', 'warning');
+  if (!noWaPenyewa) return showToast('No WA Penyewa wajib diisi', 'warning');
+  if (cobroke === 'TRUE' && !cobrokeWA) return showToast('No WA Agen CoBroke wajib diisi', 'warning');
 
   if (isBulanan) {
     const mulaiBulanan = document.getElementById('rental-start-bulanan')?.value;
@@ -665,6 +693,9 @@ async function saveRental() {
         catatan, cobroke,
         agen_listing_id, agen_listing_nama,
         agen_selling_id, agen_selling_nama,
+        agen_cobroke_nama: cobrokeNama,
+        agen_cobroke_wa: cobrokeWA,
+        no_wa_penyewa: noWaPenyewa,
         periode_sewa: 'Bulanan',
         durasi_total_bulan: parseInt(durasiTotal),
       });
@@ -695,6 +726,9 @@ async function saveRental() {
         catatan, cobroke, hasil_fu_reminder: hasilFU,
         agen_listing_id, agen_listing_nama,
         agen_selling_id, agen_selling_nama,
+        no_wa_penyewa: noWaPenyewa,
+        agen_cobroke_nama: cobrokeNama,
+        agen_cobroke_wa: cobrokeWA,
       };
       if (perpanjangAksi === 'perpanjang' && parseInt(perpanjangBulan) > 0) {
         body.perpanjang_bulan = perpanjangBulan;
@@ -709,6 +743,9 @@ async function saveRental() {
         tanggal_mulai: mulai, durasi_bulan: parseInt(durasi), catatan,
         cobroke, agen_listing_id, agen_listing_nama,
         agen_selling_id, agen_selling_nama,
+        agen_cobroke_nama: cobrokeNama,
+        agen_cobroke_wa: cobrokeWA,
+        no_wa_penyewa: noWaPenyewa,
         periode_sewa: 'Tahunan',
       });
       showToast('Data sewa berhasil ditambahkan', 'success');

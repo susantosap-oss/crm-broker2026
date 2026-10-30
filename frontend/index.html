@@ -1647,9 +1647,15 @@
       </div>
       <input type="hidden" id="rental-edit-id">
       <div style="display:grid;gap:12px">
-        <div>
-          <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Nama Penyewa *</label>
-          <input type="text" id="rental-nama-penyewa" placeholder="Budi Santoso" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Nama Penyewa *</label>
+            <input type="text" id="rental-nama-penyewa" placeholder="Budi Santoso" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">No WA Penyewa *</label>
+            <input type="tel" id="rental-wa-penyewa" placeholder="08123456789" style="width:100%;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
         </div>
         <div>
           <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Alamat Sewa *</label>
@@ -1712,8 +1718,18 @@
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#131F38;border:1px solid rgba(255,255,255,0.1);border-radius:10px">
-          <input type="checkbox" id="rental-cobroke" style="width:16px;height:16px;cursor:pointer;accent-color:#D4A853">
+          <input type="checkbox" id="rental-cobroke" onchange="toggleCobrokeFields()" style="width:16px;height:16px;cursor:pointer;accent-color:#D4A853">
           <label for="rental-cobroke" style="font-size:13px;color:rgba(255,255,255,0.7);cursor:pointer">CoBroke (kerjasama agen lain)</label>
+        </div>
+        <div id="rental-cobroke-fields" style="display:none;background:#131F38;border:1px solid rgba(212,168,83,0.3);border-radius:10px;padding:12px;gap:10px">
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Nama Agen CoBroke *</label>
+            <input type="text" id="rental-cobroke-nama" placeholder="Nama agen dari kantor lain" style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">No WA Agen CoBroke *</label>
+            <input type="tel" id="rental-cobroke-wa" placeholder="08123456789" style="width:100%;background:#0D1526;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">
+          </div>
         </div>
         <div>
           <label style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px;display:block">Catatan (opsional)</label>
