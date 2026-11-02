@@ -531,8 +531,8 @@ let _rentalAgents = [];
 async function _loadRentalAgents() {
   if (_rentalAgents.length > 0) return;
   try {
-    const res = await API.get('/agents');
-    _rentalAgents = (res.data || []).filter(a => a.Status === 'Aktif');
+    const res = await API.get('/agents/picker');
+    _rentalAgents = res.data || [];
     ['rental-agen-listing','rental-agen-selling'].forEach(selId => {
       const sel = document.getElementById(selId);
       if (!sel) return;
@@ -554,7 +554,7 @@ function togglePerpanjangBulan(val) {
   if (wrap) wrap.style.display = val === 'perpanjang' ? 'block' : 'none';
 }
 
-function openRentalModal(editId = null) {
+async function openRentalModal(editId = null) {
   const modal = document.getElementById('rental-modal');
   const title = document.getElementById('rental-modal-title');
   const editIdEl = document.getElementById('rental-edit-id');
@@ -562,7 +562,7 @@ function openRentalModal(editId = null) {
   const toggleEl = document.getElementById('sewa-periode-toggle');
   if (!modal) return;
 
-  _loadRentalAgents();
+  await _loadRentalAgents();
 
   // Reset form
   ['rental-nama-penyewa','rental-wa-penyewa','rental-alamat','rental-start','rental-duration',

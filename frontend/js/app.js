@@ -486,7 +486,7 @@ function renderHotLeads(leads) {
   }
 
   el.innerHTML = leads.map(l => {
-    const sourceBadge = { IG: '📷', TikTok: '🎵', FB: '📘', Web: '🌐', Referral: '🤝', WA: '💬', Direct: '🚶' };
+    const sourceBadge = { IG: '📷', Threads: '🧵', TikTok: '🎵', FB: '📘', Web: '🌐', Referral: '🤝', WA: '💬', Direct: '🚶' };
     const src = sourceBadge[l.Sumber] || '📋';
     const initials = (l.Nama || 'L').charAt(0).toUpperCase();
     const since = l.Last_Contact ? timeAgo(l.Last_Contact) : 'belum dihubungi';

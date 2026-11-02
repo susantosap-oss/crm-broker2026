@@ -135,6 +135,22 @@ router.post('/force-logout-all', requireRole('superadmin'), async (req, res) => 
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// GET /agents/picker — lightweight {ID, Nama} list for dropdowns, semua role authenticated
+router.get('/picker', async (req, res) => {
+  try {
+    const rows = await sheetsService.getRange(SHEETS.AGENTS);
+    if (!rows || rows.length < 2) return res.json({ success: true, data: [] });
+    const [, ...data] = rows;
+    const agents = data
+      .map(row => rowToAgent(row))
+      .filter(a => a.ID && a.Status === 'Aktif')
+      .map(a => ({ ID: a.ID, Nama: a.Nama }));
+    res.json({ success: true, data: agents });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // GET /agents
 router.get('/', requireMinRole('admin'), async (req, res) => {
   try {
