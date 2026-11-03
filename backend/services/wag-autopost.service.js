@@ -294,19 +294,22 @@ class WagAutopostService {
       }
     }
 
-    // Pilih tipe: forceType jika ada, else random 50/50
+    // Pilih tipe: forceType jika ada, else random 50/50 (listing/aset, bukan news)
     const pick = forceType || (Math.random() < 0.5 ? 'listing' : 'aset');
     console.log(`[WAG] pick=${pick} forceType=${forceType || 'null'}`);
 
-    // Kategori efektif: explicit filterKategori > default (listing→internal, aset→tanpa filter)
-    const effKategori = filterKategori ?? (pick === 'listing' ? 'internal' : null);
+    // Untuk news: grup target hanya yang ber-tipe 'news' (bukan 'all')
+    // Untuk listing/aset: grup dengan tipe matching atau 'all'
+    const isNews = pick === 'news';
+    const effKategori = isNews ? null : (filterKategori ?? (pick === 'listing' ? 'internal' : null));
     console.log(`[WAG] filterKategori=${filterKategori ?? 'null'} effKategori=${effKategori ?? 'null'}`);
 
     // Filter grup berdasarkan tipe konten DAN kategori
     const targetGroups = activeGroups.filter(g => {
       const t = g.tipe || 'all';
       const k = g.kategori || 'internal';
-      const tipeMatch = t === 'all' || t === pick;
+      if (isNews)  return t === 'news' || t === 'listing_news';
+      const tipeMatch = t === 'all' || t === pick || (pick === 'listing' && t === 'listing_news');
       const katMatch  = effKategori ? k === effKategori : true;
       return tipeMatch && katMatch;
     });
@@ -315,14 +318,16 @@ class WagAutopostService {
 
     let item, caption, imageUrl;
 
-    if (pick === 'listing') {
+    if (pick === 'news') {
+      ({ item, caption, imageUrl } = await this._pickNews());
+    } else if (pick === 'listing') {
       ({ item, caption, imageUrl } = await this._pickListing());
     } else {
       ({ item, caption, imageUrl } = await this._pickAset());
     }
 
     if (!item) {
-      // Fallback ke tipe lain (hanya jika bukan forceType)
+      // Fallback ke tipe lain (hanya jika bukan forceType, dan bukan news)
       if (!forceType) {
         if (pick === 'listing') {
           ({ item, caption, imageUrl } = await this._pickAset());
@@ -400,6 +405,40 @@ class WagAutopostService {
 
     const caption = this._captionAset(item);
     return { item, caption, imageUrl: item.Foto_1_URL || null };
+  }
+
+  async _pickNews() {
+    const rows = await sheetsService.getRows(SHEETS.NEWS);
+    const cols = COLUMNS.NEWS;
+    const idx  = name => cols.indexOf(name);
+
+    // Kriteria: Judul tidak kosong. Prioritaskan yang ada Foto_URL.
+    const all = (rows || []).filter(r => r[idx('Judul')]);
+    if (!all.length) return { item: null };
+
+    const withPhoto = all.filter(r => r[idx('Foto_URL')]);
+    const pool = withPhoto.length ? withPhoto : all;
+    const r    = pool[Math.floor(Math.random() * pool.length)];
+    const item = {};
+    cols.forEach((c, i) => { item[c] = r[i] || ''; });
+
+    const caption  = this._captionNews(item);
+    const imageUrl = item.Foto_URL || null;
+    return { item, caption, imageUrl };
+  }
+
+  _captionNews(n) {
+    const kat  = n.Kategori ? `📌 *${n.Kategori}*` : '';
+    const ring = (n.Ringkasan || '').trim();
+    const tagsRaw = (n.Tags || '').split(',').map(t => t.trim()).filter(Boolean);
+    const tagsLine = tagsRaw.length ? `\n🏷 ${tagsRaw.map(t => '#' + t).join(' ')}` : '';
+
+    return `📰 *INFO & TIPS PROPERTI*\n${kat ? kat + '\n' : ''}
+✨ *${(n.Judul || '').trim()}*
+${ring ? '\n' + ring : ''}${tagsLine}
+
+🌐 www.mansionpro.id
+*MANSION Realty* — _Tim Profesional Properti Surabaya_`;
   }
 
   _captionListing(l, agenWA) {
@@ -503,11 +542,15 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
   }
 
   async _logPost(tipe, item, results) {
+    let kodeKonten;
+    if (tipe === 'listing') kodeKonten = item.Kode_Listing || item.ID;
+    else if (tipe === 'aset') kodeKonten = item.Kode_Asset || item.ID;
+    else kodeKonten = (item.Judul || '').slice(0, 60) || item.Timestamp || '-';
     const row = [
       uuidv4(),
       new Date().toISOString(),
       tipe,
-      tipe === 'listing' ? (item.Kode_Listing || item.ID) : (item.Kode_Asset || item.ID),
+      kodeKonten,
       results.filter(r => r.status === 'sent' || r.status === 'sent_fonnte').length,
       results.filter(r => r.status === 'failed' || r.status === 'failed_fonnte').length,
       JSON.stringify(results),

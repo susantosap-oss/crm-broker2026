@@ -82,6 +82,8 @@ const SHEETS = {
   EMAIL_TARGETS: 'EMAIL_TARGETS',
   // ★ Email Log — history pengiriman Surat Penawaran
   EMAIL_LOG:     'EMAIL_LOG',
+  // ★ News — Konten berita/artikel untuk WA Blast & web
+  NEWS:          'NEWS',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -877,6 +879,18 @@ const COLUMNS = {
     'Subject',      // I
     'Status',       // J  Terkirim | Gagal
     'Error_Msg',    // K  pesan error jika gagal
+  ],
+
+  // ★ NEWS — Konten berita/artikel untuk WA Blast & website (tab sudah ada di GSheet)
+  NEWS: [
+    'Timestamp',    // A  waktu input (ISO atau dari GForm)
+    'Judul',        // B  headline berita
+    'Kategori',     // C  Tips Properti | Regulasi | Market Update | Info Kantor
+    'Ringkasan',    // D  teks pendek untuk WA caption (~200 karakter)
+    'Konten',       // E  isi artikel lengkap
+    'Foto_URL',     // F  URL cover image (Cloudinary / link langsung)
+    'Updated_At',   // G  ISO datetime terakhir update
+    'Tags',         // H  tag pisah koma, mis. "properti,surabaya"
   ],
 
 };

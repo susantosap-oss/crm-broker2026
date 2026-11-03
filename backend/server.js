@@ -164,6 +164,7 @@ app.use('/api/v1/elite-kontrak',      require('./routes/elite-kontrak.routes'));
 app.use('/api/v1/camera-roll',        require('./routes/camera-roll.routes'));
 app.use('/api/v1/email-targets',      require('./routes/email-targets.routes'));
 app.use('/api/v1/email-penawaran',    require('./routes/email-penawaran.routes'));
+app.use('/api/v1/berita',            require('./routes/berita.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)
 app.post('/api/v1/admin/trigger-rental-reminder', require('./middleware/auth.middleware').authMiddleware, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: 'Forbidden' });
@@ -227,6 +228,18 @@ app.post('/api/v1/scheduler/wag-autopost-external', schedulerAuth, async (req, r
     // Khusus listing external — jam 12:00 + 19:00 WIB
     const result = await wagService.autoPost('listing', 25_000, false, 'external');
     res.json({ success: true, message: 'WAG autopost external selesai', result });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// WA Blast Berita/News — Senin & Sabtu 10:00 WIB (03:00 UTC)
+// Cron GCP: 0 3 * * 1,6
+app.post('/api/v1/scheduler/wag-berita', schedulerAuth, async (req, res) => {
+  try {
+    const wagService = require('./services/wag-autopost.service');
+    const result = await wagService.autoPost('news', 25_000, false, null);
+    res.json({ success: true, message: 'WAG blast berita selesai', result });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -433,6 +446,8 @@ async function migrateHeaders() {
     // ★ Email Target Manager
     { sheet: SHEETS.EMAIL_TARGETS,      cols: COLUMNS.EMAIL_TARGETS },
     { sheet: SHEETS.EMAIL_LOG,          cols: COLUMNS.EMAIL_LOG },
+    // ★ News — tab sudah ada di GSheet, ensureSheet hanya tambah kolom baru jika perlu
+    { sheet: SHEETS.NEWS,               cols: COLUMNS.NEWS },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)

@@ -11378,7 +11378,7 @@ async function shareFlyer() {
 // WAG BOT SETTINGS
 // ─────────────────────────────────────────────────────────
 
-const _wagState = { groups: [], config: [] };
+const _wagState = { groups: [], config: [], fonnte: false };
 
 async function openWagSettings() {
   openModal('modal-wag-settings');
@@ -11422,10 +11422,11 @@ async function wagRefreshStatus() {
   try {
     const r = await _wagFetch('/api/v1/wag/status');
     const s = r.status;
+    _wagState.fonnte = !!r.fonnte;
     const colors = { connected:'#25D366', pairing:'#f59e0b', qr_pending:'#f59e0b', initializing:'#60a5fa', disconnected:'#6b7280', reconnecting:'#f59e0b' };
     const labels = { connected:'Terhubung ✓', pairing:'Menunggu kode...', qr_pending:'Scan QR di WA...', initializing:'Menghubungkan...', disconnected:'Tidak terhubung', reconnecting:'Mencoba ulang...' };
     if (dot) dot.style.background = colors[s] || '#6b7280';
-    if (txt) txt.textContent = labels[s] || s;
+    if (txt) txt.textContent = r.fonnte && s === 'connected' ? 'Aktif via Fonnte ✓' : (labels[s] || s);
     if (pairBox) pairBox.style.display = s === 'pairing' ? '' : 'none';
 
     // Tombol QR: tampil saat belum connected untuk semua role
@@ -11448,13 +11449,15 @@ async function wagRefreshStatus() {
     }
     if (s === 'connected') {
       if (qrBox) qrBox.style.display = 'none';
-      // Tampilkan grup section untuk semua role
       if (sec) sec.style.display = '';
-      // Tombol simpan config: hanya manager
       if (btnSave) btnSave.style.display = isManager ? '' : 'none';
-      // Grup checkboxes: disable untuk non-manager (read-only)
       await wagLoadConfig();
-      await wagLoadGroups(!isManager);
+      if (r.fonnte) {
+        // Fonnte mode: tidak butuh Baileys — render dari config yang tersimpan
+        wagRenderFromConfig(!isManager);
+      } else {
+        await wagLoadGroups(!isManager);
+      }
     } else {
       if (sec) sec.style.display = 'none';
     }
@@ -11536,6 +11539,12 @@ async function wagDisconnect() {
 async function wagLoadGroups(readOnly = false) {
   const list = document.getElementById('wag-groups-list');
   if (!list) return;
+  // Fonnte mode: tidak butuh Baileys, render dari config
+  if (_wagState.fonnte) {
+    await wagLoadConfig();
+    wagRenderFromConfig(readOnly);
+    return;
+  }
   list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px">Memuat daftar grup...</div>';
   try {
     const r = await _wagFetch('/api/v1/wag/groups');
@@ -11564,14 +11573,14 @@ function wagRenderGroupList() {
     list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px">Tidak ada grup ditemukan</div>';
     return;
   }
-  const tipeLabel = { listing: 'Listing', aset: 'Aset', all: 'All' };
+  const tipeLabel = { listing: 'Listing', aset: 'Aset', all: 'All', news: 'Berita', listing_news: 'Listing+Berita' };
   const katLabel  = { internal: 'Internal', external: 'External' };
   list.innerHTML = _wagState.groups.map(g => {
     const cfg      = configMap[g.jid];
     const active   = !!cfg?.aktif;
     const tipe     = cfg?.tipe     || 'all';
     const kategori = cfg?.kategori || 'internal';
-    const showKat  = tipe === 'listing' || tipe === 'all';
+    const showKat  = tipe === 'listing' || tipe === 'all'; // kategori tidak relevan untuk news/aset
     if (readOnly) {
       const katChip = active && showKat
         ? ` · <span style="color:${kategori==='external'?'#f59e0b':'#60a5fa'}">${katLabel[kategori]||kategori}</span>`
@@ -11593,9 +11602,11 @@ function wagRenderGroupList() {
       </div>
       <select data-jid-tipe="${g.jid}" onchange="wagToggleKatSelect(this)"
         style="background:#1a2744;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#e2e8f0;font-size:11px;padding:3px 6px;flex-shrink:0">
-        <option value="all"     ${tipe==='all'?'selected':''}>All</option>
-        <option value="listing" ${tipe==='listing'?'selected':''}>Listing</option>
-        <option value="aset"    ${tipe==='aset'?'selected':''}>Aset</option>
+        <option value="all"          ${tipe==='all'?'selected':''}>All (Listing+Aset)</option>
+        <option value="listing"      ${tipe==='listing'?'selected':''}>Listing</option>
+        <option value="aset"         ${tipe==='aset'?'selected':''}>Aset</option>
+        <option value="news"         ${tipe==='news'?'selected':''}>Berita</option>
+        <option value="listing_news" ${tipe==='listing_news'?'selected':''}>Listing+Berita</option>
       </select>
       <select data-jid-kat="${g.jid}"
         style="background:#1a2744;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#e2e8f0;font-size:11px;padding:3px 6px;flex-shrink:0;${showKat ? '' : 'display:none'}">
@@ -11606,12 +11617,63 @@ function wagRenderGroupList() {
   }).join('');
 }
 
+function wagRenderFromConfig(readOnly = false) {
+  const list = document.getElementById('wag-groups-list');
+  if (!list) return;
+  const cfg = _wagState.config;
+  if (!cfg.length) {
+    list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px">Belum ada grup terkonfigurasi. Hubungkan via QR/Pairing untuk tambah grup baru.</div>';
+    return;
+  }
+  const tipeLabel = { listing: 'Listing', aset: 'Aset', all: 'All (Listing+Aset)', news: 'Berita', listing_news: 'Listing+Berita' };
+  const katLabel  = { internal: 'Internal', external: 'External' };
+  list.innerHTML = cfg.map(g => {
+    const tipe     = g.tipe     || 'all';
+    const kategori = g.kategori || 'internal';
+    const showKat  = tipe === 'listing' || tipe === 'all' || tipe === 'listing_news';
+    if (readOnly) {
+      const katChip = g.aktif && showKat
+        ? ` · <span style="color:${kategori==='external'?'#f59e0b':'#60a5fa'}">${katLabel[kategori]||kategori}</span>`
+        : '';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0d1829;border:1px solid ${g.aktif?'rgba(37,211,102,0.25)':'rgba(255,255,255,0.08)'};border-radius:10px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${g.aktif?'#25D366':'#374151'};flex-shrink:0"></span>
+        <div style="flex:1">
+          <div style="color:#fff;font-size:13px;font-weight:600">${escapeHtml(g.nama||g.jid)}</div>
+          <div style="color:rgba(255,255,255,0.35);font-size:11px">${g.aktif?`<span style="color:#25D366">Aktif</span> · <span style="color:#94a3b8">${tipeLabel[tipe]||tipe}</span>${katChip}`:''}</div>
+        </div>
+      </div>`;
+    }
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0d1829;border:1px solid rgba(255,255,255,0.08);border-radius:10px">
+      <input type="checkbox" data-jid="${g.jid}" data-nama="${escapeHtml(g.nama||g.jid)}" ${g.aktif?'checked':''}
+        style="width:16px;height:16px;accent-color:#25D366;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="color:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(g.nama||g.jid)}</div>
+        <div style="color:rgba(255,255,255,0.35);font-size:11px">${g.jid}</div>
+      </div>
+      <select data-jid-tipe="${g.jid}" onchange="wagToggleKatSelect(this)"
+        style="background:#1a2744;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#e2e8f0;font-size:11px;padding:3px 6px;flex-shrink:0">
+        <option value="all"          ${tipe==='all'?'selected':''}>All (Listing+Aset)</option>
+        <option value="listing"      ${tipe==='listing'?'selected':''}>Listing</option>
+        <option value="aset"         ${tipe==='aset'?'selected':''}>Aset</option>
+        <option value="news"         ${tipe==='news'?'selected':''}>Berita</option>
+        <option value="listing_news" ${tipe==='listing_news'?'selected':''}>Listing+Berita</option>
+      </select>
+      <select data-jid-kat="${g.jid}"
+        style="background:#1a2744;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#e2e8f0;font-size:11px;padding:3px 6px;flex-shrink:0;${showKat?'':'display:none'}">
+        <option value="internal" ${kategori==='internal'?'selected':''}>Internal</option>
+        <option value="external" ${kategori==='external'?'selected':''}>External</option>
+      </select>
+    </div>`;
+  }).join('') +
+  '<div style="color:rgba(255,255,255,0.3);font-size:10px;margin-top:8px;padding:0 4px">💡 Untuk tambah grup baru, hubungkan via QR/Pairing terlebih dahulu.</div>';
+}
+
 function wagToggleKatSelect(tipeEl) {
   const jid   = tipeEl.dataset.jidTipe;
   const katEl = document.querySelector(`[data-jid-kat="${jid}"]`);
   if (!katEl) return;
-  const show  = tipeEl.value === 'listing' || tipeEl.value === 'all';
-  katEl.style.display = show ? '' : 'none';
+  const show  = ['listing', 'all', 'listing_news'].includes(tipeEl.value);
+  katEl.style.display = show ? '' : 'none'; // disembunyikan untuk aset & news
 }
 
 async function wagTestPost(type) {
@@ -11647,7 +11709,7 @@ async function wagSaveConfig() {
       nama:     cb.dataset.nama,
       aktif:    cb.checked,
       tipe,
-      kategori: (tipe === 'listing' || tipe === 'all') ? (katEl?.value || 'internal') : 'internal',
+      kategori: ['listing', 'all', 'listing_news'].includes(tipe) ? (katEl?.value || 'internal') : 'internal',
     });
   });
   const aktifCount = selected.filter(g => g.aktif).length;

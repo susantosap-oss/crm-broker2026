@@ -71,7 +71,14 @@ router.post('/pair', authMiddleware, requireRole, async (req, res) => {
 // ── Status ────────────────────────────────────────────────────
 
 router.get('/status', authMiddleware, requireRole, (req, res) => {
-  res.json({ success: true, ...wagService.getStatus() });
+  const s = wagService.getStatus();
+  const fonnte = !!process.env.FONNTE_TOKEN;
+  // Jika Fonnte aktif, override status ke 'connected' agar UI grup section tampil
+  if (fonnte && s.status !== 'connected') {
+    s.status = 'connected';
+    s.fonnte = true;
+  }
+  res.json({ success: true, ...s, fonnte });
 });
 
 // ── List Groups (butuh connected) ─────────────────────────────

@@ -436,6 +436,51 @@ router.get('/assets', async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// ── GET /news ─────────────────────────────────────────────
+// Berita/artikel untuk website publik (mansionpro.id/berita)
+router.get('/news', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, kategori } = req.query;
+    const rows = await sheetsService.getRange(SHEETS.NEWS);
+    if (!rows || rows.length < 2) return res.json({ success: true, data: [], pagination: { total: 0, page: 1, limit: parseInt(limit), total_pages: 0 } });
+
+    const [, ...data] = rows;
+    let news = data
+      .map((r, i) => {
+        const obj = {};
+        COLUMNS.NEWS.forEach((c, j) => { obj[c] = r[j] || ''; });
+        obj._rowIndex = i + 2;
+        return obj;
+      })
+      .filter(n => n.Judul);
+
+    if (kategori) news = news.filter(n => n.Kategori?.toLowerCase() === kategori.toLowerCase());
+
+    const startIndex = (parseInt(page) - 1) * parseInt(limit);
+    const paginated  = news.slice(startIndex, startIndex + parseInt(limit));
+
+    res.json({
+      success: true,
+      data: paginated.map(n => ({
+        judul:     n.Judul,
+        kategori:  n.Kategori,
+        ringkasan: n.Ringkasan,
+        foto_url:  n.Foto_URL,
+        tags:      n.Tags ? n.Tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        timestamp: n.Timestamp,
+        updated_at: n.Updated_At,
+        row_index: n._rowIndex,
+      })),
+      pagination: {
+        total:       news.length,
+        page:        parseInt(page),
+        limit:       parseInt(limit),
+        total_pages: Math.ceil(news.length / parseInt(limit)),
+      },
+    });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // ── GET /agents ───────────────────────────────────────────
 // Daftar agen aktif untuk website publik (mansionpro.id/agents)
 // Filter: Status Aktif, Tampilkan_di_Web !== 'FALSE', bukan role internal
