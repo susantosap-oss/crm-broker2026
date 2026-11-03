@@ -215,7 +215,7 @@ class WagAutopostService {
   // ── WAG Config (Google Sheets) ───────────────────────────────
 
   async getConfig() {
-    const VALID_TIPES = new Set(['listing', 'aset', 'all']);
+    const VALID_TIPES = new Set(['listing', 'aset', 'all', 'all_news', 'news', 'listing_news']);
     const VALID_KATS  = new Set(['internal', 'external']);
     try {
       const rows = await sheetsService.getRows(SHEETS.WAG_CONFIG);
@@ -308,8 +308,8 @@ class WagAutopostService {
     const targetGroups = activeGroups.filter(g => {
       const t = g.tipe || 'all';
       const k = g.kategori || 'internal';
-      if (isNews)  return t === 'news' || t === 'listing_news';
-      const tipeMatch = t === 'all' || t === pick || (pick === 'listing' && t === 'listing_news');
+      if (isNews)  return t === 'news' || t === 'listing_news' || t === 'all_news';
+      const tipeMatch = t === 'all' || t === 'all_news' || t === pick || (pick === 'listing' && t === 'listing_news');
       const katMatch  = effKategori ? k === effKategori : true;
       return tipeMatch && katMatch;
     });

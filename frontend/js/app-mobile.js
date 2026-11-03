@@ -11573,14 +11573,14 @@ function wagRenderGroupList() {
     list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px">Tidak ada grup ditemukan</div>';
     return;
   }
-  const tipeLabel = { listing: 'Listing', aset: 'Aset', all: 'All', news: 'Berita', listing_news: 'Listing+Berita' };
+  const tipeLabel = { listing: 'Listing', aset: 'Aset', all: 'All (Listing+Aset)', all_news: 'All (Listing+Aset+Berita)', news: 'Berita', listing_news: 'Listing+Berita' };
   const katLabel  = { internal: 'Internal', external: 'External' };
   list.innerHTML = _wagState.groups.map(g => {
     const cfg      = configMap[g.jid];
     const active   = !!cfg?.aktif;
     const tipe     = cfg?.tipe     || 'all';
     const kategori = cfg?.kategori || 'internal';
-    const showKat  = tipe === 'listing' || tipe === 'all'; // kategori tidak relevan untuk news/aset
+    const showKat  = tipe === 'listing' || tipe === 'all' || tipe === 'all_news' || tipe === 'listing_news';
     if (readOnly) {
       const katChip = active && showKat
         ? ` · <span style="color:${kategori==='external'?'#f59e0b':'#60a5fa'}">${katLabel[kategori]||kategori}</span>`
@@ -11603,6 +11603,7 @@ function wagRenderGroupList() {
       <select data-jid-tipe="${g.jid}" onchange="wagToggleKatSelect(this)"
         style="background:#1a2744;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#e2e8f0;font-size:11px;padding:3px 6px;flex-shrink:0">
         <option value="all"          ${tipe==='all'?'selected':''}>All (Listing+Aset)</option>
+        <option value="all_news"     ${tipe==='all_news'?'selected':''}>All (Listing+Aset+Berita)</option>
         <option value="listing"      ${tipe==='listing'?'selected':''}>Listing</option>
         <option value="aset"         ${tipe==='aset'?'selected':''}>Aset</option>
         <option value="news"         ${tipe==='news'?'selected':''}>Berita</option>
@@ -11625,12 +11626,12 @@ function wagRenderFromConfig(readOnly = false) {
     list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px">Belum ada grup terkonfigurasi. Hubungkan via QR/Pairing untuk tambah grup baru.</div>';
     return;
   }
-  const tipeLabel = { listing: 'Listing', aset: 'Aset', all: 'All (Listing+Aset)', news: 'Berita', listing_news: 'Listing+Berita' };
+  const tipeLabel = { listing: 'Listing', aset: 'Aset', all: 'All (Listing+Aset)', all_news: 'All (Listing+Aset+Berita)', news: 'Berita', listing_news: 'Listing+Berita' };
   const katLabel  = { internal: 'Internal', external: 'External' };
   list.innerHTML = cfg.map(g => {
     const tipe     = g.tipe     || 'all';
     const kategori = g.kategori || 'internal';
-    const showKat  = tipe === 'listing' || tipe === 'all' || tipe === 'listing_news';
+    const showKat  = tipe === 'listing' || tipe === 'all' || tipe === 'all_news' || tipe === 'listing_news';
     if (readOnly) {
       const katChip = g.aktif && showKat
         ? ` · <span style="color:${kategori==='external'?'#f59e0b':'#60a5fa'}">${katLabel[kategori]||kategori}</span>`
@@ -11653,6 +11654,7 @@ function wagRenderFromConfig(readOnly = false) {
       <select data-jid-tipe="${g.jid}" onchange="wagToggleKatSelect(this)"
         style="background:#1a2744;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#e2e8f0;font-size:11px;padding:3px 6px;flex-shrink:0">
         <option value="all"          ${tipe==='all'?'selected':''}>All (Listing+Aset)</option>
+        <option value="all_news"     ${tipe==='all_news'?'selected':''}>All (Listing+Aset+Berita)</option>
         <option value="listing"      ${tipe==='listing'?'selected':''}>Listing</option>
         <option value="aset"         ${tipe==='aset'?'selected':''}>Aset</option>
         <option value="news"         ${tipe==='news'?'selected':''}>Berita</option>
@@ -11672,7 +11674,7 @@ function wagToggleKatSelect(tipeEl) {
   const jid   = tipeEl.dataset.jidTipe;
   const katEl = document.querySelector(`[data-jid-kat="${jid}"]`);
   if (!katEl) return;
-  const show  = ['listing', 'all', 'listing_news'].includes(tipeEl.value);
+  const show  = ['listing', 'all', 'all_news', 'listing_news'].includes(tipeEl.value);
   katEl.style.display = show ? '' : 'none'; // disembunyikan untuk aset & news
 }
 
@@ -11707,7 +11709,7 @@ async function wagSaveConfig() {
       nama:     cb.dataset.nama,
       aktif:    cb.checked,
       tipe,
-      kategori: ['listing', 'all', 'listing_news'].includes(tipe) ? (katEl?.value || 'internal') : 'internal',
+      kategori: ['listing', 'all', 'all_news', 'listing_news'].includes(tipe) ? (katEl?.value || 'internal') : 'internal',
     });
   });
   const aktifCount = selected.filter(g => g.aktif).length;
