@@ -11681,13 +11681,11 @@ async function wagTestPost(type) {
   const origText = btn?.innerHTML;
   if (btn) { btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim...'; btn.disabled = true; }
   try {
-    // Fire-and-forget: server return segera, proses kirim berjalan di background
-    // Sender-key distribution ke grup besar bisa makan 3-5 menit pertama kali
-    const r = await _wagFetch('/api/v1/wag/test', { method: 'POST', body: JSON.stringify({ type }) }, 10000);
+    const r = await _wagFetch('/api/v1/wag/test', { method: 'POST', body: JSON.stringify({ type }) }, 35000);
     if (r.success) {
-      showToast('Pesan sedang dikirim ke WAG — cek grup dalam 1-5 menit ⏳', 'info');
+      showToast(r.message || 'Terkirim ✓', 'success');
     } else {
-      showToast(r.message || 'Gagal memulai test', 'error');
+      showToast(r.message || 'Gagal kirim', 'error');
     }
   } catch (e) {
     showToast('Gagal test: ' + e.message, 'error');

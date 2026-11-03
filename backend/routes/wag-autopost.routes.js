@@ -116,12 +116,29 @@ router.post('/config', authMiddleware, requireManager, async (req, res) => {
   }
 });
 
-// ── Manual Test Post (fire-and-forget) ───────────────────────
-// Return segera — sender-key distribution ke grup besar bisa >5 menit
-// Hasil bisa dilihat di WAG grup langsung atau di sheet WAG_POST_LOG
+// ── Manual Test Post ──────────────────────────────────────────
+// Fonnte mode: await result (cepat, ~1-3 detik per grup)
+// Baileys mode: fire-and-forget (sender-key distribution bisa >5 menit)
 
-router.post('/test', authMiddleware, requireRole, (req, res) => {
+router.post('/test', authMiddleware, requireRole, async (req, res) => {
   const { type } = req.body;
+  const useFonnte = !!process.env.FONNTE_TOKEN;
+  if (useFonnte) {
+    // Tunggu hasil nyata — Fonnte cepat, timeout 30s cukup
+    try {
+      const result = await wagService.autoPost(type);
+      if (result.skipped) {
+        return res.json({ success: false, message: result.reason || 'Tidak ada konten/grup yang sesuai' });
+      }
+      const sent    = (result.groups || []).filter(g => g.status.startsWith('sent')).length;
+      const failed  = (result.groups || []).filter(g => g.status.startsWith('failed')).length;
+      const summary = `Terkirim ke ${sent} grup${failed ? `, gagal ${failed}` : ''}`;
+      return res.json({ success: true, message: summary, result });
+    } catch (e) {
+      return res.status(500).json({ success: false, message: e.message });
+    }
+  }
+  // Baileys: fire-and-forget seperti sebelumnya
   res.json({ success: true, message: 'autoPost dimulai — periksa grup WAG dalam beberapa menit' });
   wagService.autoPost(type)
     .then(r  => console.log('[WAG] Test autoPost selesai:', JSON.stringify(r)))
