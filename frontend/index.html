@@ -347,13 +347,13 @@
               <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">Lelang</span>
             </button>
 
-            <!-- R1: Kalkulator -->
-            <button onclick="navigateTo('calculator')" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
-              <div style="width:50px;height:50px;border-radius:50%;background:rgba(212,168,83,0.1);border:1.5px solid rgba(212,168,83,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto">
-                <i class="fa-solid fa-calculator" style="color:#D4A853;font-size:17px"></i>
+            <!-- R1: Floor Load Calculator -->
+            <button onclick="openFloorLoad()" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0">
+              <div style="width:50px;height:50px;border-radius:50%;background:rgba(34,197,94,0.1);border:1.5px solid rgba(34,197,94,0.22);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <i class="fa-solid fa-weight-hanging" style="color:#22c55e;font-size:17px"></i>
               </div>
-              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">Kalkulator</span>
-              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">KPR/APR</span>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">Beban Lantai</span>
+              <span style="font-size:8.5px;color:rgba(255,255,255,0.3)">SNI 1727</span>
             </button>
 
             <!-- R2: Leads -->
@@ -1018,8 +1018,8 @@
   <div id="page-calculator" class="page">
     <div style="padding:20px 16px 12px">
       <h2 style="font-family:'DM Serif Display',serif;font-size:22px;color:#fff;margin-bottom:4px">Kalkulator Properti</h2>
-      <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:16px">Simulasi KPR, Appraisal &amp; Investasi Properti</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:16px">Simulasi KPR, Appraisal, Investasi &amp; Kapasitas Beban Lantai</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <button id="calc-tab-kpr" onclick="switchCalcTab('kpr')" style="padding:11px;border-radius:12px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#D4A853;color:#0D1526">
           <i class="fa-solid fa-house-chimney" style="margin-right:4px"></i>KPR
         </button>
@@ -1028,6 +1028,9 @@
         </button>
         <button id="calc-tab-investasi" onclick="switchCalcTab('investasi')" style="padding:11px;border-radius:12px;cursor:pointer;font-size:12px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1)">
           <i class="fa-solid fa-chart-line" style="margin-right:4px"></i>Investasi
+        </button>
+        <button id="calc-tab-floorload" onclick="switchCalcTab('floorload')" style="padding:11px;border-radius:12px;cursor:pointer;font-size:12px;font-weight:600;background:#131F38;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1)">
+          <i class="fa-solid fa-weight-hanging" style="margin-right:4px"></i>Beban Lantai
         </button>
       </div>
     </div>
@@ -1500,6 +1503,17 @@
     <div id="inv-result" style="display:none"></div>
 
   </div>
+
+  <!-- FLOOR LOAD CALCULATOR TAB -->
+  <div id="calc-floorload" style="display:none;padding:0 16px 100px">
+    <div id="fl-ui">
+      <div style="text-align:center;padding:48px 20px;color:rgba(255,255,255,0.3)">
+        <i class="fa-solid fa-spinner fa-spin" style="font-size:24px;margin-bottom:12px;display:block"></i>
+        <div style="font-size:13px">Memuat Kalkulator Beban Lantai...</div>
+      </div>
+    </div>
+  </div>
+
   <!-- PAGE: Legal Perjanjian -->
   <div id="page-legal" class="page" style="display:none;padding:16px;max-width:600px;margin:0 auto">
     <div id="legal-admin-upload" style="display:none;margin-bottom:20px">
@@ -2301,7 +2315,7 @@
         <span>Kalkulator</span>
         <span style="margin-left:auto;display:flex;gap:4px">
           <span style="font-size:9px;background:rgba(43,123,255,0.2);color:#60a5fa;padding:1px 6px;border-radius:20px;font-weight:700">KPR</span>
-          <span style="font-size:9px;background:rgba(212,168,83,0.15);color:#D4A853;padding:1px 6px;border-radius:20px;font-weight:700">APR</span>
+          <span style="font-size:9px;background:rgba(34,197,94,0.15);color:#22c55e;padding:1px 6px;border-radius:20px;font-weight:700">Beban</span>
         </span>
       </button>
       <button onclick="openSettings();closeSidebar()" style="width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;text-align:left" onmouseenter="this.style.background='#131F38';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='rgba(255,255,255,0.65)'"><i class="fa-solid fa-gear" style="color:rgba(255,255,255,0.4);width:16px;text-align:center"></i><span>Pengaturan Profil</span></button>
@@ -3795,6 +3809,7 @@
 <script src="/js/pa-dashboard.js?v=__APP_VERSION__"></script>
 <script src="/js/legal-rental.js?v=__APP_VERSION__"></script>
 <script src="/js/knowledge-center.js?v=__APP_VERSION__"></script>
+<script src="/js/floor-load.js?v=__APP_VERSION__"></script>
 <script>
   // Init PA Dashboard setelah app siap
   document.addEventListener('DOMContentLoaded', () => {
@@ -4720,22 +4735,22 @@ function initCalcPage() {
 }
 
 function switchCalcTab(tab) {
-  document.getElementById('calc-kpr').style.display = tab === 'kpr' ? 'block' : 'none';
+  document.getElementById('calc-kpr').style.display       = tab === 'kpr'       ? 'block' : 'none';
   document.getElementById('calc-appraisal').style.display = tab === 'appraisal' ? 'block' : 'none';
   document.getElementById('calc-investasi').style.display = tab === 'investasi' ? 'block' : 'none';
+  document.getElementById('calc-floorload').style.display = tab === 'floorload' ? 'block' : 'none';
   const tabs = {
-    kpr: document.getElementById('calc-tab-kpr'),
+    kpr:       document.getElementById('calc-tab-kpr'),
     appraisal: document.getElementById('calc-tab-appraisal'),
     investasi: document.getElementById('calc-tab-investasi'),
+    floorload: document.getElementById('calc-tab-floorload'),
   };
-  const activeColors = { kpr:'#D4A853', appraisal:'#D4A853', investasi:'#D4A853' };
   Object.entries(tabs).forEach(([t, btn]) => {
-    if (t === tab) {
-      btn.style.background = activeColors[t]; btn.style.color = '#0D1526'; btn.style.border = 'none';
-    } else {
-      btn.style.background = '#131F38'; btn.style.color = 'rgba(255,255,255,0.6)'; btn.style.border = '1px solid rgba(255,255,255,0.1)';
-    }
+    if (!btn) return;
+    if (t === tab) { btn.style.background='#D4A853'; btn.style.color='#0D1526'; btn.style.border='none'; }
+    else           { btn.style.background='#131F38'; btn.style.color='rgba(255,255,255,0.6)'; btn.style.border='1px solid rgba(255,255,255,0.1)'; }
   });
+  if (tab === 'floorload') flInitUI();
 }
 
 // ── KPR ─────────────────────────────────────────────────
