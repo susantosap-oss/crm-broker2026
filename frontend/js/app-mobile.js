@@ -6038,12 +6038,9 @@ function checkAdminMenu() {
   const sbEmailTargets = document.getElementById('sidebar-email-targets');
   if (sbEmailTargets) sbEmailTargets.style.display = 'flex';
 
-  // ★ Data Leads Mansion — superadmin, principal, kantor, business_manager, admin
+  // ★ Data Leads Mansion — semua role
   const sbBuyerReqs = document.getElementById('sb-buyer-requests');
-  if (sbBuyerReqs) {
-    const brRoles = ['superadmin', 'principal', 'kantor', 'business_manager', 'admin'];
-    sbBuyerReqs.style.display = brRoles.includes(role) ? 'flex' : 'none';
-  }
+  if (sbBuyerReqs) sbBuyerReqs.style.display = 'flex';
 }
 
 // ─────────────────────────────────────────────────────────

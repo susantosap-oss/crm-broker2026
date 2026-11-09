@@ -255,13 +255,9 @@ async function _sendMatchNotifications(reqId, params, matchedListings) {
 
 // ── API ROUTES ────────────────────────────────────────────────
 
-// GET /buyer-requests — list database (superadmin, principal, kantor, business_manager, admin)
+// GET /buyer-requests — list database (semua role)
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const allowedRoles = ['superadmin', 'principal', 'kantor', 'business_manager', 'admin'];
-    if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak' });
-    }
 
     const rows = await sheetsService.getRange(SHEETS.BUYER_REQUESTS);
     if (!rows || rows.length < 2) return res.json({ success: true, data: [], count: 0 });
