@@ -211,6 +211,15 @@ async function _sendMatchNotifications(reqId, params, matchedListings) {
     ).join('\n');
     const extra = listings.length > 3 ? `\n_...dan ${listings.length - 3} listing lainnya_` : '';
 
+    // Agen pemilik leads (hanya jika bukan dari Web Mansion)
+    let agenLeadLine = '';
+    if (params.sumber_leads !== 'Web_Mansion' && params.agen_input_nama) {
+      const agenLead  = agentMap[params.agen_input_id];
+      const waLead    = agenLead ? (agenLead.No_WA || '').replace(/\D/g, '').replace(/^0/, '62') : '';
+      agenLeadLine    = `\n📋 *Agen Pemilik Lead:*\n• ${params.agen_input_nama}` +
+                        (waLead.length >= 10 ? `\n• WA: wa.me/${waLead}` : '') + '\n';
+    }
+
     const message =
       `🔔 *ADA BUYER REQUEST MASUK!*\n\n` +
       `Halo ${agen.Nama}, ada calon *${jenisLabel}* yang mencari properti seperti milik kamu!\n\n` +
@@ -219,7 +228,8 @@ async function _sendMatchNotifications(reqId, params, matchedListings) {
       (params.tipe_properti  ? `• Tipe Properti: ${params.tipe_properti}\n`  : '') +
       (params.area_minat     ? `• Area Diminati: ${params.area_minat}\n`      : '') +
       `• Budget: ${fmtBudget}\n` +
-      `• Sumber: ${params.sumber_leads}\n\n` +
+      `• Sumber: ${params.sumber_leads}\n` +
+      agenLeadLine + '\n' +
       `🏠 *Listing kamu yang cocok:*\n${listingsText}${extra}\n\n` +
       `Segera follow up di CRM Mansion! 💪\n_crm.mansionpro.id_`;
 

@@ -3099,6 +3099,9 @@ function _brCard(r) {
       '<div><div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em">Area Minat</div><div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px">' + (r.Area_Minat || '—') + '</div></div>' +
       '<div><div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em">Budget</div><div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px">' + fmtBudget + '</div></div>' +
       '<div><div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em">Sumber</div><div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px">' + (r.Sumber_Leads || '—') + '</div></div>' +
+      (r.Sumber_Leads !== 'Web_Mansion' && r.Agen_Input_Nama
+        ? '<div><div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em">Agen Input</div><div style="font-size:12px;color:#D4A853;margin-top:2px;font-weight:600">' + r.Agen_Input_Nama + '</div></div>'
+        : '') +
       matchInfo +
     '</div>' +
     waIcon +
