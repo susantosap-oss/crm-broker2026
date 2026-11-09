@@ -450,8 +450,8 @@ ${ring ? '\n' + ring : ''}${tagsLine}
     const px  = (re) => { const m = raw.match(re); return m ? m[1].trim() : ''; };
     const lt  = l.Luas_Tanah    || px(/LT\s*[:/]?\s*(\d+)/i);
     const lb  = l.Luas_Bangunan || px(/LB\s*[:/]?\s*(\d+)/i);
-    const kt  = l.Kamar_Tidur   || px(/(\d+(?:[+\-]\d+)?)\s*KT/i) || px(/KT\s*[:/]?\s*(\d+)/i);
-    const km  = l.Kamar_Mandi   || px(/(\d+(?:[+\-]\d+)?)\s*KM/i) || px(/KM\s*[:/]?\s*(\d+)/i);
+    const kt  = l.Kamar_Tidur   || px(/KT\s*[:/]?\s*(\d+)/i) || px(/(\d+(?:[+\-]\d+)?)\s*KT/i);
+    const km  = l.Kamar_Mandi   || px(/KM\s*[:/]?\s*(\d+)/i) || px(/(\d+(?:[+\-]\d+)?)\s*KM/i);
     const srt = l.Sertifikat    || px(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i);
 
     const spek   = [];

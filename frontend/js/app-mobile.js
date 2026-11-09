@@ -2284,8 +2284,8 @@ function _buildShareText(listing, isOwnerOrCoOwner = false) {
   const _px     = (re) => { const m = _desc.match(re); return m ? m[1] : ''; };
   const _lt     = listing.Luas_Tanah    || _px(/LT[:\s]*(\d+)/i);
   const _lb     = listing.Luas_Bangunan || _px(/LB[:\s]*(\d+)/i);
-  const _kt     = listing.Kamar_Tidur   || _px(/(\d+(?:[+\-]\d+)?)\s*KT/i);
-  const _km     = listing.Kamar_Mandi   || _px(/(\d+(?:[+\-]\d+)?)\s*KM/i);
+  const _kt     = listing.Kamar_Tidur   || _px(/KT[:\s]+(\d+)/i) || _px(/(\d+(?:[+\-]\d+)?)\s*KT/i);
+  const _km     = listing.Kamar_Mandi   || _px(/KM[:\s]+(\d+)/i) || _px(/(\d+(?:[+\-]\d+)?)\s*KM/i);
   const _srt    = listing.Sertifikat    || _px(/(SHM|HGB|SHGB|AJB|Girik|Strata Title)/i);
 
   const spek    = [
@@ -2469,8 +2469,8 @@ function _buildStatusText(listing, isOwner = false, waNum = '') {
   const _px    = (re) => { const m = _desc.match(re); return m ? m[1] : ''; };
   const lt = listing.Luas_Tanah    || _px(/LT[:\s]*(\d+)/i);
   const lb = listing.Luas_Bangunan || _px(/LB[:\s]*(\d+)/i);
-  const kt = listing.Kamar_Tidur   || _px(/(\d+(?:[+\-]\d+)?)\s*KT/i);
-  const km = listing.Kamar_Mandi   || _px(/(\d+(?:[+\-]\d+)?)\s*KM/i);
+  const kt = listing.Kamar_Tidur   || _px(/KT[:\s]+(\d+)/i) || _px(/(\d+(?:[+\-]\d+)?)\s*KT/i);
+  const km = listing.Kamar_Mandi   || _px(/KM[:\s]+(\d+)/i) || _px(/(\d+(?:[+\-]\d+)?)\s*KM/i);
   const spek = [lt?`LT${lt}`:'' , lb?`LB${lb}`:'' , kt?`${kt}KT`:'' , km?`${km}KM`:''].filter(Boolean).join(' ');
 
   const lines = [
@@ -10992,8 +10992,8 @@ function _parseSpekFromDeskripsi(text) {
     const line = raw.trim();
     const lt = line.match(/\bLT\s*[:：]?\s*(\d[\d.,]*)/i);       if (lt && !spek.lt) spek.lt = lt[1].replace(',','.') + ' m²';
     const lb = line.match(/\bLB\s*[:：]?\s*(\d[\d.,]*)/i);       if (lb && !spek.lb) spek.lb = lb[1].replace(',','.') + ' m²';
-    const kt = line.match(/(\d+)\s*KT\b|\bKT\s*[:：]?\s*(\d+)/i); if (kt && !spek.kt) spek.kt = kt[1] || kt[2];
-    const km = line.match(/(\d+)\s*KM\b|\bKM\s*[:：]?\s*(\d+)/i); if (km && !spek.km) spek.km = km[1] || km[2];
+    const kt = line.match(/\bKT\s*[:：]?\s*(\d+)|(\d+)\s*KT\b/i); if (kt && !spek.kt) spek.kt = kt[1] || kt[2];
+    const km = line.match(/\bKM\s*[:：]?\s*(\d+)|(\d+)\s*KM\b/i); if (km && !spek.km) spek.km = km[1] || km[2];
     const kmar = line.match(/Kamar\s+Tidur\s*[:：]?\s*(\d+)/i);   if (kmar && !spek.kt) spek.kt = kmar[1];
     const kmnd = line.match(/Kamar\s+Mandi\s*[:：]?\s*(\d+)/i);   if (kmnd && !spek.km) spek.km = kmnd[1];
     const ltx  = line.match(/Luas\s+Tanah\s*[:：]?\s*(\d[\d.,]*)/i);     if (ltx && !spek.lt) spek.lt = ltx[1].replace(',','.') + ' m²';
@@ -13472,145 +13472,4 @@ function hitungAppraisalModal() {
   resultEl.innerHTML = infoBlock + html + saveBar;
   resultEl.style.display = 'block';
   setTimeout(() => resultEl.scrollIntoView({behavior:'smooth', block:'start'}), 50);
-}
-
-// ─────────────────────────────────────────────────────────────
-// DATA LEADS MANSION — Buyer Request Database
-// ─────────────────────────────────────────────────────────────
-let _buyerRequests      = [];
-let _brActiveFilter     = 'all';
-
-async function loadBuyerRequests() {
-  const el = document.getElementById('br-list');
-  if (!el) return;
-  el.innerHTML = '<div style="text-align:center;padding:48px 0;color:rgba(255,255,255,0.3)"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;margin-bottom:12px;display:block"></i>Memuat data...</div>';
-
-  try {
-    const res       = await API.get('/buyer-requests');
-    _buyerRequests  = res.data || [];
-    const totalEl   = document.getElementById('br-total-count');
-    if (totalEl) totalEl.textContent = _buyerRequests.length;
-    _brActiveFilter = 'all';
-    _brUpdateFilterUI('all');
-    renderBuyerReqs(_buyerRequests);
-  } catch (e) {
-    el.innerHTML = `<div style="text-align:center;padding:48px 0;color:#f87171">${e.message}</div>`;
-  }
-}
-
-function filterBuyerReqs(status) {
-  _brActiveFilter = status;
-  _brUpdateFilterUI(status);
-  const filtered = status === 'all'
-    ? _buyerRequests
-    : _buyerRequests.filter(r => r.Status_Match === status);
-  renderBuyerReqs(filtered);
-}
-
-function _brUpdateFilterUI(active) {
-  const cfg = {
-    all:              { el: 'br-filter-all',      bg: '#D4A853',                      color: '#0D1526',  border: 'none' },
-    Tersedia:         { el: 'br-filter-tersedia',  bg: 'rgba(34,197,94,0.1)',           color: '#4ade80',  border: '1px solid rgba(34,197,94,0.3)' },
-    Tidak_Tersedia:   { el: 'br-filter-tidak',     bg: 'rgba(148,163,184,0.1)',         color: '#94a3b8',  border: '1px solid rgba(148,163,184,0.2)' },
-  };
-  Object.entries(cfg).forEach(([key, c]) => {
-    const btn = document.getElementById(c.el);
-    if (!btn) return;
-    if (key === active) {
-      btn.style.background   = c.bg;
-      btn.style.color        = c.color;
-      btn.style.border       = c.border;
-      btn.style.fontWeight   = '700';
-    } else {
-      btn.style.background   = 'rgba(255,255,255,0.03)';
-      btn.style.color        = 'rgba(255,255,255,0.4)';
-      btn.style.border       = '1px solid rgba(255,255,255,0.08)';
-      btn.style.fontWeight   = '400';
-    }
-  });
-}
-
-function renderBuyerReqs(list) {
-  const el = document.getElementById('br-list');
-  if (!el) return;
-
-  if (!list.length) {
-    const msg = _brActiveFilter === 'all'
-      ? 'Belum ada buyer request yang tercatat'
-      : (_brActiveFilter === 'Tersedia' ? 'Tidak ada request dengan listing tersedia' : 'Tidak ada request yang belum terpenuhi');
-    el.innerHTML = `<div style="text-align:center;padding:48px 0;color:rgba(255,255,255,0.3)"><i class="fa-solid fa-bell-slash" style="font-size:28px;margin-bottom:12px;display:block"></i>${msg}</div>`;
-    return;
-  }
-
-  el.innerHTML = list.map(r => _brCard(r)).join('');
-}
-
-function _brCard(r) {
-  const isMatch   = r.Status_Match === 'Tersedia';
-  const badgeCol  = isMatch ? '#22c55e' : '#64748b';
-  const badgeBg   = isMatch ? 'rgba(34,197,94,0.1)' : 'rgba(100,116,139,0.1)';
-  const borderCol = isMatch ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.07)';
-
-  const budMin    = parseFloat(r.Budget_Min) || 0;
-  const budMax    = parseFloat(r.Budget_Max) || 0;
-  const fmtBudget = (budMin || budMax)
-    ? `Rp ${_brFmt(budMin)}${budMax ? ' – Rp ' + _brFmt(budMax) : '+'}`
-    : 'Tidak diisi';
-
-  const tgl = r.Tanggal
-    ? new Date(r.Tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-    : '—';
-
-  const chips = [
-    r.Jenis        ? `<span style="font-size:11px;background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.25);color:#D4A853;padding:3px 9px;border-radius:20px">${r.Jenis}</span>` : '',
-    r.Tipe_Properti ? `<span style="font-size:11px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);color:#60a5fa;padding:3px 9px;border-radius:20px">${r.Tipe_Properti}</span>` : '',
-    r.Kategori     ? `<span style="font-size:11px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);color:#a78bfa;padding:3px 9px;border-radius:20px">${r.Kategori}</span>` : '',
-  ].filter(Boolean).join('');
-
-  const matchInfo = isMatch
-    ? `<div><div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em">Listing Cocok</div><div style="font-size:13px;color:#22c55e;font-weight:700;margin-top:2px">${r.Match_Count} listing</div></div>`
-    : '';
-
-  const waIcon = r.Notif_WA_Sent === 'TRUE'
-    ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);font-size:11px;color:#25d366;display:flex;align-items:center;gap:5px"><i class="fa-brands fa-whatsapp"></i> Notif WA terkirim ke agen listing</div>`
-    : '';
-
-  return `
-  <div style="background:rgba(255,255,255,0.03);border:1px solid ${borderCol};border-radius:12px;padding:14px 16px;margin-bottom:10px">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">
-      <div>
-        <div style="font-weight:700;color:#fff;font-size:14px">${r.Nama_User || '(Tanpa Nama)'}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px">${tgl}</div>
-      </div>
-      <span style="flex-shrink:0;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:${badgeBg};color:${badgeCol}">
-        ${isMatch ? '✓ TERSEDIA' : '— TIDAK TERSEDIA'}
-      </span>
-    </div>
-    ${chips ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${chips}</div>` : ''}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
-      <div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em">Area Minat</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px">${r.Area_Minat || '—'}</div>
-      </div>
-      <div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em">Budget</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px">${fmtBudget}</div>
-      </div>
-      <div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em">Sumber</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px">${r.Sumber_Leads || '—'}</div>
-      </div>
-      ${matchInfo}
-    </div>
-    ${waIcon}
-  </div>`;
-}
-
-function _brFmt(n) {
-  if (!n) return '0';
-  const v = parseFloat(n) || 0;
-  if (v >= 1_000_000_000) return (v / 1_000_000_000).toFixed(1).replace('.0', '') + 'M';
-  if (v >= 1_000_000)     return (v / 1_000_000).toFixed(0) + ' Jt';
-  if (v >= 1_000)         return (v / 1_000).toFixed(0) + ' rb';
-  return String(v);
 }
