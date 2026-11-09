@@ -3114,3 +3114,16 @@ function _brFmt(n) {
   return String(v);
 }
 
+async function syncBuyerRequestLeads(btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...'; }
+  try {
+    const res = await API.post('/buyer-requests/rematch-leads', {});
+    showToast(res.message || 'Sync selesai', 'success');
+    await loadBuyerRequests();
+  } catch (e) {
+    showToast('Sync gagal: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Sync Leads'; }
+  }
+}
+

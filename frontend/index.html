@@ -958,9 +958,14 @@
           <p style="color:rgba(255,255,255,0.45);font-size:13px;margin:0">Database Buyer Request — pencocokan properti realtime</p>
           <p style="color:#D4A853;font-size:12px;margin:4px 0 0"><span id="br-total-count">—</span> total request</p>
         </div>
-        <button onclick="loadBuyerRequests()" style="background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.3);color:#D4A853;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
-          <i class="fa-solid fa-rotate"></i> Refresh
-        </button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="syncBuyerRequestLeads(this)" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Sync Leads
+          </button>
+          <button onclick="loadBuyerRequests()" style="background:rgba(212,168,83,0.1);border:1px solid rgba(212,168,83,0.3);color:#D4A853;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+            <i class="fa-solid fa-rotate"></i> Refresh
+          </button>
+        </div>
       </div>
     </div>
 

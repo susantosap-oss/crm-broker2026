@@ -278,6 +278,71 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /buyer-requests/rematch-leads — retroactive matching untuk leads existing
+// Baca semua LEADS dengan Is_Buyer_Request=TRUE, skip yang sudah ada di BUYER_REQUESTS,
+// jalankan runBuyerMatch untuk sisanya. Proses sequensial untuk hindari Sheets rate-limit.
+router.post('/rematch-leads', authMiddleware, async (req, res) => {
+  try {
+    // Ambil semua leads
+    const leadRows = await sheetsService.getRange(SHEETS.LEADS);
+    const toL = r => COLUMNS.LEADS.reduce((o, c, i) => { o[c] = r[i] || ''; return o; }, {});
+    const buyerLeads = leadRows && leadRows.length > 1
+      ? leadRows.slice(1).map(toL).filter(l => l.ID && l.Is_Buyer_Request === 'TRUE')
+      : [];
+
+    if (!buyerLeads.length) {
+      return res.json({ success: true, processed: 0, skipped: 0, message: 'Tidak ada leads dengan Is_Buyer_Request=TRUE' });
+    }
+
+    // Ambil Lead_ID yang sudah ada di BUYER_REQUESTS
+    const brRows = await sheetsService.getRange(SHEETS.BUYER_REQUESTS);
+    const existingLeadIds = new Set();
+    if (brRows && brRows.length > 1) {
+      brRows.slice(1).map(r => COLUMNS.BUYER_REQUESTS.reduce((o, c, i) => { o[c] = r[i] || ''; return o; }, {}))
+        .filter(r => r.Lead_ID)
+        .forEach(r => existingLeadIds.add(r.Lead_ID));
+    }
+
+    const toProcess = buyerLeads.filter(l => !existingLeadIds.has(l.ID));
+    const skipped   = buyerLeads.length - toProcess.length;
+
+    let processed = 0;
+    let errors    = 0;
+    for (const lead of toProcess) {
+      try {
+        await runBuyerMatch({
+          lead_id:        lead.ID,
+          nama_user:      lead.Nama      || '',
+          area_minat:     lead.Lokasi_Preferred || '',
+          kategori:       lead.Closing_Tipe     || 'Secondary',
+          tipe_properti:  lead.Minat_Tipe || lead.Tipe_Properti || '',
+          budget_min:     lead.Budget_Min  || 0,
+          budget_max:     lead.Budget_Max  || 0,
+          jenis:          lead.Jenis       || 'Beli',
+          sumber_leads:   lead.Sumber      || 'CRM',
+          agen_input_id:  lead.Agen_ID     || '',
+          agen_input_nama: lead.Agen_Nama  || '',
+        });
+        processed++;
+      } catch (e) {
+        errors++;
+        console.error(`[REMATCH] Lead ${lead.ID} gagal:`, e.message);
+      }
+    }
+
+    console.log(`[REMATCH] Selesai: ${processed} diproses, ${skipped} skip, ${errors} error`);
+    res.json({
+      success: true,
+      processed,
+      skipped,
+      errors,
+      message: `${processed} leads diproses, ${skipped} sudah ada, ${errors} error`,
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // POST /buyer-requests/webhook — webhook dari Web Mansion (future integration)
 // Dilindungi header X-Webhook-Secret (nilai = env BUYER_REQUEST_WEBHOOK_SECRET)
 router.post('/webhook', async (req, res) => {
