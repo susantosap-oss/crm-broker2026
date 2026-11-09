@@ -165,6 +165,8 @@ app.use('/api/v1/camera-roll',        require('./routes/camera-roll.routes'));
 app.use('/api/v1/email-targets',      require('./routes/email-targets.routes'));
 app.use('/api/v1/email-penawaran',    require('./routes/email-penawaran.routes'));
 app.use('/api/v1/berita',            require('./routes/berita.routes'));
+// ★ Buyer Request Matching — database + webhook infrastruktur
+app.use('/api/v1/buyer-requests',    require('./routes/buyer-requests.routes'));
 // ★ Admin: manual trigger cron jobs (superadmin only)
 app.post('/api/v1/admin/trigger-rental-reminder', require('./middleware/auth.middleware').authMiddleware, async (req, res) => {
   if (req.user.role !== 'superadmin') return res.status(403).json({ success: false, message: 'Forbidden' });
@@ -448,6 +450,8 @@ async function migrateHeaders() {
     { sheet: SHEETS.EMAIL_LOG,          cols: COLUMNS.EMAIL_LOG },
     // ★ News — tab sudah ada di GSheet, ensureSheet hanya tambah kolom baru jika perlu
     { sheet: SHEETS.NEWS,               cols: COLUMNS.NEWS },
+    // ★ Buyer Request Matching — database permintaan properti
+    { sheet: SHEETS.BUYER_REQUESTS,     cols: COLUMNS.BUYER_REQUESTS },
   ]) {
     try {
       // Pastikan tab ada di spreadsheet (buat jika belum)

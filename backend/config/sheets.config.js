@@ -84,6 +84,8 @@ const SHEETS = {
   EMAIL_LOG:     'EMAIL_LOG',
   // ★ News — Konten berita/artikel untuk WA Blast & web
   NEWS:          'NEWS',
+  // ★ Buyer Request Matching — database permintaan properti dari leads / Web Mansion
+  BUYER_REQUESTS: 'BUYER_REQUESTS',
 };
 
 // ── Column Definitions ─────────────────────────────────────
@@ -891,6 +893,28 @@ const COLUMNS = {
     'Foto_URL',     // F  URL cover image (Cloudinary / link langsung)
     'Updated_At',   // G  ISO datetime terakhir update
     'Tags',         // H  tag pisah koma, mis. "properti,surabaya"
+  ],
+
+  // ★ BUYER_REQUESTS — Database buyer/renter request + hasil matching listing
+  BUYER_REQUESTS: [
+    'ID',              // A  UUID
+    'Tanggal',         // B  ISO datetime
+    'Lead_ID',         // C  FK ke LEADS (kosong jika dari web webhook)
+    'Nama_User',       // D  Nama customer (tanpa No_WA, tanpa alamat)
+    'Area_Minat',      // E  Lokasi/area yang diminati
+    'Kategori',        // F  Secondary|Primary|Aset
+    'Tipe_Properti',   // G  Tipe properti diminati (Rumah, Ruko, dll)
+    'Budget_Min',      // H  Budget minimum (angka)
+    'Budget_Max',      // I  Budget maksimum (angka)
+    'Jenis',           // J  Beli|Sewa
+    'Sumber_Leads',    // K  Web_Mansion | Agen [nama]
+    'Agen_Input_ID',   // L  ID agen yang input (kosong jika dari web)
+    'Agen_Input_Nama', // M  Nama agen yang input
+    'Status_Match',    // N  Tersedia|Tidak_Tersedia
+    'Match_Count',     // O  Jumlah listing yang cocok
+    'Match_IDs',       // P  JSON array listing IDs yang cocok
+    'Notif_WA_Sent',   // Q  TRUE|FALSE — notif sudah dikirim ke agen listing
+    'Created_At',      // R  ISO datetime
   ],
 
 };

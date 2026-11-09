@@ -15,6 +15,7 @@ const listingsService  = require('../services/listings.service');
 const { SHEETS, COLUMNS } = require('../config/sheets.config');
 const { authMiddleware, isManager } = require('../middleware/auth.middleware');
 const { createNotification } = require('./notifications.routes');
+const { triggerBuyerMatch } = require('./buyer-requests.routes');
 const { v4: uuidv4 } = require('uuid');
 
 router.use(authMiddleware);
@@ -221,6 +222,21 @@ router.post('/', async (req, res) => {
         link_type:      'lead',
         link_id:        id,
       });
+
+      // Jalankan matching engine (fire-and-forget)
+      triggerBuyerMatch({
+        lead_id:         id,
+        nama_user:       req.body.Nama             || '',
+        area_minat:      req.body.Lokasi_Preferred  || '',
+        kategori:        req.body.Closing_Tipe      || 'Secondary',
+        tipe_properti:   req.body.Minat_Tipe        || req.body.Tipe_Properti || '',
+        budget_min:      req.body.Budget_Min        || 0,
+        budget_max:      req.body.Budget_Max        || 0,
+        jenis:           req.body.Jenis             || 'Beli',
+        sumber_leads:    `Agen ${req.user.nama}`,
+        agen_input_id:   req.user.id,
+        agen_input_nama: req.user.nama,
+      }).catch(e => console.error('[BUYER_MATCH] POST trigger error:', e.message));
     }
 
     // Increment Leads_Count agen
@@ -264,6 +280,22 @@ router.patch('/:id', async (req, res) => {
         link_type:      'lead',
         link_id:        req.params.id,
       });
+
+      // Jalankan matching engine (fire-and-forget)
+      triggerBuyerMatch({
+        lead_id:         req.params.id,
+        nama_user:       existing.Nama,
+        area_minat:      req.body.Lokasi_Preferred  || existing.Lokasi_Preferred  || '',
+        kategori:        req.body.Closing_Tipe      || existing.Closing_Tipe      || 'Secondary',
+        tipe_properti:   req.body.Minat_Tipe        || existing.Minat_Tipe        ||
+                         req.body.Tipe_Properti     || existing.Tipe_Properti     || '',
+        budget_min:      req.body.Budget_Min        || existing.Budget_Min        || 0,
+        budget_max:      req.body.Budget_Max        || existing.Budget_Max        || 0,
+        jenis,
+        sumber_leads:    `Agen ${req.user.nama}`,
+        agen_input_id:   req.user.id,
+        agen_input_nama: req.user.nama,
+      }).catch(e => console.error('[BUYER_MATCH] PATCH trigger error:', e.message));
     }
 
     const merged = { ...existing, ...req.body, Updated_At: new Date().toISOString() };

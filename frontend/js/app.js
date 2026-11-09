@@ -277,7 +277,8 @@ async function navigateTo(page) {
     komisi:    'Request Komisi',
     search:    'Property Search',
     rpl:            'RPL Portfolio KKNI VI',
-    'email-targets': 'Email Target Manager',
+    'email-targets':    'Email Target Manager',
+    'buyer-requests':   'Data Leads Mansion',
   };
   setText('page-title', titles[page] || page);
   STATE.currentPage = page;
@@ -294,7 +295,8 @@ async function navigateTo(page) {
   if (page === 'komisi' && typeof loadKomisiPage === 'function') await loadKomisiPage();
   if (page === 'search') await loadSearchPage();
   if (page === 'rpl' && typeof loadRplPage === 'function') await loadRplPage();
-  if (page === 'email-targets') await loadEmailTargets();
+  if (page === 'email-targets')    await loadEmailTargets();
+  if (page === 'buyer-requests' && typeof loadBuyerRequests === 'function') await loadBuyerRequests();
 
   // Scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' });
