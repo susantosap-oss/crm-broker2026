@@ -9308,7 +9308,8 @@ function buildAssetCard(a) {
     Kavling: '/assets/kavling.png', Kios: '/assets/Ruko.png'
   }[a.Tipe_Properti] || '/assets/Rumah.png';
 
-  const sc = a.Status === 'Publish' ? '#22C55E' : '#6B7280';
+  const isTerjualCard = a.Status === 'Terjual';
+  const sc = a.Status === 'Publish' ? '#22C55E' : isTerjualCard ? '#ef4444' : '#6B7280';
   const specs = [lt ? `LT ${lt}` : null, lb ? `LB ${lb}` : null, sert].filter(Boolean);
 
   // Quick discount badge
@@ -9340,11 +9341,14 @@ function buildAssetCard(a) {
     : '';
 
   const isFav = _assetFavs.has(a.ID);
+  const _cardBorder    = isFav ? 'rgba(239,68,68,0.35)' : isTerjualCard ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.06)';
+  const _cardBorderHov = isFav ? 'rgba(239,68,68,0.5)'  : isTerjualCard ? 'rgba(239,68,68,0.35)' : 'rgba(212,168,83,0.25)';
+  const _cardOpacity   = isTerjualCard ? 'opacity:0.6;' : '';
   return `
   <div data-id="${escapeHtml(a.ID)}"
-    style="display:flex;gap:12px;background:#131F38;border:1px solid ${isFav ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.06)'};border-radius:14px;padding:12px;cursor:pointer;transition:border-color 0.2s"
-    onmouseenter="this.style.borderColor='${isFav ? 'rgba(239,68,68,0.5)' : 'rgba(212,168,83,0.25)'}'"
-    onmouseleave="this.style.borderColor='${isFav ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.06)'}'">
+    style="display:flex;gap:12px;background:#131F38;border:1px solid ${_cardBorder};border-radius:14px;padding:12px;cursor:pointer;transition:border-color 0.2s;${_cardOpacity}"
+    onmouseenter="this.style.borderColor='${_cardBorderHov}'"
+    onmouseleave="this.style.borderColor='${_cardBorder}'">
     <!-- Foto 80×80 + fav button overlay kanan atas -->
     <div style="width:80px;height:80px;border-radius:10px;background:#1C2D52;overflow:hidden;flex-shrink:0;position:relative">
       ${foto
@@ -9400,7 +9404,7 @@ function filterAssets() {
     const kodeAkhir = (a.Kode_Asset || '').split('-').pop().replace(/\D/g, '');
     const matchKode = !kode || kodeAkhir.endsWith(kode) || kodeAkhir === kode.padStart(kodeAkhir.length, '0');
     const matchT  = !tipe     || a.Tipe_Properti === tipe;
-    const matchSt = !status   || a.Status === status;
+    const matchSt = !status ? a.Status !== 'Terjual' : a.Status === status;
     const matchP  = !provinsi || (a.Provinsi || '').toLowerCase() === provinsi.toLowerCase();
     const matchK  = !kota     || a.Kota === kota;
     const matchB  = !bank     || a.Bank_Kreditur === bank;
@@ -10000,8 +10004,9 @@ async function openAssetDetail(id) {
     const sBadge = document.getElementById('ad-status-badge');
     if (sBadge) {
       sBadge.textContent = a.Status || 'Draft';
-      sBadge.style.background = a.Status === 'Publish' ? 'rgba(34,197,94,0.2)' : 'rgba(148,163,184,0.15)';
-      sBadge.style.color = a.Status === 'Publish' ? '#4ade80' : '#94a3b8';
+      const _isTj = a.Status === 'Terjual', _isPb = a.Status === 'Publish';
+      sBadge.style.background = _isPb ? 'rgba(34,197,94,0.2)' : _isTj ? 'rgba(239,68,68,0.2)' : 'rgba(148,163,184,0.15)';
+      sBadge.style.color = _isPb ? '#4ade80' : _isTj ? '#ef4444' : '#94a3b8';
     }
     const wBadge = document.getElementById('ad-web-badge');
     if (wBadge) {
@@ -10059,7 +10064,22 @@ async function openAssetDetail(id) {
       pubBtn.style.color  = isPublish ? '#f87171' : '#4ade80';
       pubBtn.style.borderColor = isPublish ? 'rgba(248,113,113,0.3)' : 'rgba(34,197,94,0.3)';
       pubBtn.style.background  = isPublish ? 'rgba(248,113,113,0.08)' : 'rgba(34,197,94,0.08)';
-      pubBtn.style.display = PUBLISH_ROLES_ASSET.includes(role) ? '' : 'none';
+      pubBtn.style.display = (PUBLISH_ROLES_ASSET.includes(role) && a.Status !== 'Terjual') ? '' : 'none';
+    }
+
+    // Tandai Terjual button
+    const terjualBtn = document.getElementById('ad-terjual-btn');
+    if (terjualBtn) {
+      if (PUBLISH_ROLES_ASSET.includes(role)) {
+        terjualBtn.style.display = '';
+        const isTj = a.Status === 'Terjual';
+        terjualBtn.textContent = isTj ? '↩️ Batalkan Terjual' : '🏷️ Tandai Terjual';
+        terjualBtn.style.color = isTj ? '#94a3b8' : '#ef4444';
+        terjualBtn.style.borderColor = isTj ? 'rgba(148,163,184,0.3)' : 'rgba(239,68,68,0.25)';
+        terjualBtn.style.background  = isTj ? 'rgba(148,163,184,0.08)' : 'rgba(239,68,68,0.08)';
+      } else {
+        terjualBtn.style.display = 'none';
+      }
     }
 
     // Cessie/Cassie — selain superadmin/principal/admin hanya read-only:
@@ -10688,6 +10708,10 @@ async function uploadPendingAssetPhotos(assetId) {
 // ── Publish Toggle ────────────────────────────────────────
 async function toggleAssetPublish() {
   if (!_currentAsset) return;
+  if (_currentAsset.Status === 'Terjual') {
+    showToast('Batalkan status Terjual terlebih dahulu', 'warning');
+    return;
+  }
   const newStatus = _currentAsset.Status === 'Publish' ? 'Draft' : 'Publish';
   try {
     const res = await API.patch(`/assets/${_currentAsset.ID}/publish`, { status: newStatus });
@@ -10701,6 +10725,41 @@ async function toggleAssetPublish() {
       pubBtn.style.color  = isPublish ? '#f87171' : '#4ade80';
       pubBtn.style.borderColor = isPublish ? 'rgba(248,113,113,0.3)' : 'rgba(34,197,94,0.3)';
       pubBtn.style.background  = isPublish ? 'rgba(248,113,113,0.08)' : 'rgba(34,197,94,0.08)';
+    }
+    await fetchAssets(true);
+  } catch (e) {
+    showToast('Gagal: ' + e.message, 'error');
+  }
+}
+
+// ── Tandai / Batalkan Terjual ─────────────────────────────
+async function toggleAssetTerjual() {
+  if (!_currentAsset) return;
+  const newStatus = _currentAsset.Status === 'Terjual' ? 'Draft' : 'Terjual';
+  if (newStatus === 'Terjual') {
+    const nama = _currentAsset.Nama_Asset || _currentAsset.Kode_Asset || 'aset ini';
+    if (!confirm(`Tandai "${nama}" sebagai TERJUAL?\n\nAset akan disembunyikan dari daftar dan tidak tampil di Web.`)) return;
+  }
+  try {
+    const res = await API.patch(`/assets/${_currentAsset.ID}/publish`, { status: newStatus });
+    showToast(res.message || (newStatus === 'Terjual' ? 'Aset ditandai Terjual 🏷️' : 'Status dikembalikan ke Draft'));
+    _currentAsset = res.data;
+    const isTj = _currentAsset.Status === 'Terjual';
+    const isPb = _currentAsset.Status === 'Publish';
+    const sBadge = document.getElementById('ad-status-badge');
+    if (sBadge) {
+      sBadge.textContent = _currentAsset.Status;
+      sBadge.style.background = isPb ? 'rgba(34,197,94,0.2)' : isTj ? 'rgba(239,68,68,0.2)' : 'rgba(148,163,184,0.15)';
+      sBadge.style.color = isPb ? '#4ade80' : isTj ? '#ef4444' : '#94a3b8';
+    }
+    const pubBtn = document.getElementById('ad-publish-btn');
+    if (pubBtn) pubBtn.style.display = isTj ? 'none' : pubBtn.style.display;
+    const terjualBtn = document.getElementById('ad-terjual-btn');
+    if (terjualBtn) {
+      terjualBtn.textContent = isTj ? '↩️ Batalkan Terjual' : '🏷️ Tandai Terjual';
+      terjualBtn.style.color = isTj ? '#94a3b8' : '#ef4444';
+      terjualBtn.style.borderColor = isTj ? 'rgba(148,163,184,0.3)' : 'rgba(239,68,68,0.25)';
+      terjualBtn.style.background  = isTj ? 'rgba(148,163,184,0.08)' : 'rgba(239,68,68,0.08)';
     }
     await fetchAssets(true);
   } catch (e) {

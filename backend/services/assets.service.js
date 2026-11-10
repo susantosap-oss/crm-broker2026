@@ -241,7 +241,7 @@ class AssetsService {
 
   // ── PUBLISH / UNPUBLISH ──────────────────────────────────
   async setStatus(id, status, user) {
-    if (!['Draft', 'Publish'].includes(status)) throw new Error('Status tidak valid');
+    if (!['Draft', 'Publish', 'Terjual'].includes(status)) throw new Error('Status tidak valid');
     const tampilkan = status === 'Publish' ? 'TRUE' : 'FALSE';
     return this.update(id, { Status: status, Tampilkan_di_Web: tampilkan }, user, status);
   }
@@ -293,6 +293,7 @@ class AssetsService {
 
     allAssets.forEach(a => {
       if (a.Status === 'Publish') { already++; return; }
+      if (a.Status === 'Terjual') { skipped++; skipLog.push(`[Terjual] ${a.Kode_Asset || a.ID}`); return; }
 
       // Filter 1: Harga Limit kosong / 0 / "-"
       const hargaRaw = String(a.Harga_Limit_Lelang || '').trim();
