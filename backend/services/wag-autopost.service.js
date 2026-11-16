@@ -441,14 +441,6 @@ ${ring ? '\n' + ring : ''}${tagsLine}
 *MANSION Realty* — _Tim Profesional Properti Surabaya_`;
   }
 
-  _makeSlug(text, id) {
-    return (text || '').toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim() + '-' + (id || '').slice(-6);
-  }
-
   _captionListing(l, agenWA) {
     const aksi   = l.Status_Transaksi === 'Sewa' ? 'DISEWAKAN' : 'DIJUAL';
     const harga  = l.Harga_Format || `Rp ${Number(l.Harga || 0).toLocaleString('id-ID')}`;
@@ -473,10 +465,10 @@ ${ring ? '\n' + ring : ''}${tagsLine}
     if (l.Kondisi)   spek.push(`• Kondisi     : ${l.Kondisi}`);
     if (l.Fasilitas) spek.push(`• Fasilitas   : ${l.Fasilitas}`);
 
-    const loc   = [l.Kecamatan, l.Kota].filter(Boolean).join(', ');
-    const kode  = l.Kode_Listing || l.ID;
-    const slug  = this._makeSlug(l.Judul || '', l.ID || '');
-    const url   = `https://www.mansionpro.id/listings/${slug}`;
+    const loc       = [l.Kecamatan, l.Kota].filter(Boolean).join(', ');
+    const kode      = l.Kode_Listing || l.ID;
+    const agenSlug  = (l.Agen_Nama || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-').trim();
+    const url       = agenSlug ? `https://www.mansionpro.id/agents/${agenSlug}` : '';
 
     return `${emoji} *${aksi} ${(l.Tipe_Properti || '').toUpperCase()}* | ${harga}
 📍 ${loc}
@@ -492,8 +484,7 @@ ${spek.length ? spek.join('\n') : '• Hubungi kami untuk detail spesifikasi'}
 *Info lebih lanjut:*
 👤 ${l.Agen_Nama || ''}${agenWA ? `\n📱 ${agenWA}` : ''}
 🏷 Kode: ${kode}
-
-🔗 ${url}`;
+${url ? `\n🔗 ${url}` : ''}`;
   }
 
   _captionAset(a) {
